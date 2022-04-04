@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
 import Data.Traversable (class Traversable, sequenceDefault, traverse)
 
 newtype Ident = Ident String
@@ -15,6 +16,7 @@ newtype ModuleName = ModuleName String
 
 derive newtype instance eqModuleName :: Eq ModuleName
 derive newtype instance ordModuleName :: Ord ModuleName
+derive instance Newtype ModuleName _
 
 newtype ProperName = ProperName String
 
@@ -25,6 +27,7 @@ data Qualified a = Qualified (Maybe ModuleName) a
 
 derive instance eqQualified :: Eq a => Eq (Qualified a)
 derive instance ordQualified :: Ord a => Ord (Qualified a)
+derive instance Functor Qualified
 
 unQualified :: forall a. Qualified a -> a
 unQualified (Qualified _ a) = a
