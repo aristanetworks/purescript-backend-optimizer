@@ -15,15 +15,17 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Monoid as Monoid
 import Data.Newtype (un)
+import Data.Set as Set
 import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
-import Data.Traversable (traverse)
+import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Dodo as Dodo
 import Dodo.Common (jsCurlies, jsParens, jsSquares, trailingComma)
+import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.CoreFn (Ann, Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
 
 type BackendEnv =
@@ -48,7 +50,7 @@ runBackendM :: forall a. BackendEnv -> Int -> BackendM a -> a
 runBackendM env fresh m = fst $ un Identity $ evalRWST m env { fresh, constructors: Map.empty }
 
 tmpIdent :: BackendM Ident
-tmpIdent = state \st -> Tuple (Ident ("_t" <> show st.fresh)) (st { fresh = st.fresh + 1 })
+tmpIdent = state \st -> Tuple (Ident ("$t" <> show st.fresh)) (st { fresh = st.fresh + 1 })
 
 type BackendBindingGroup =
   { recursive :: Boolean
@@ -67,9 +69,14 @@ backendModule (Module mod@{ name: ModuleName this }) = do
   let foreignModuleName = ModuleName (this <> "$foreign")
   pure $ BackendModule
     { imports: fold
-        [ map (\(Import _ mn) -> Tuple mn (luaModulePath mn)) mod.imports
+        [ Array.mapMaybe
+            ( \(Import _ mn) ->
+                guard (mn /= mod.name && mn /= ModuleName "Prim")
+                  $> Tuple mn (luaModulePath mn)
+            )
+            mod.imports
         , Monoid.guard (not (Array.null mod.foreign))
-            [ Tuple foreignModuleName (this <> ".foreign.lua") ]
+            [ Tuple foreignModuleName (luaForeignModulePath mod.name) ]
         ]
     , bindings: fold
         [ [ { recursive: false
@@ -145,8 +152,12 @@ backendExpr = go
 
   goExpr :: Expr Ann -> BackendM BackendExpr
   goExpr = case _ of
-    ExprVar _ qi ->
-      pure (Var qi)
+    ExprVar _ qi@(Qualified mn ident) -> do
+      { currentModule } <- ask
+      if mn == Just currentModule then
+        pure (Var (Qualified Nothing ident))
+      else
+        pure (Var qi)
     ExprLit _ lit ->
       Lit <$> traverse go lit
     ExprConstructor _ _ name fields ->
@@ -288,6 +299,8 @@ codegenModule (BackendModule mod) = do
 
 codegenExpr :: forall a. BackendExpr -> BackendM (Dodo.Doc a)
 codegenExpr = case _ of
+  Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined")) ->
+    pure luaUndefined
   Var var ->
     pure $ codegenQualified codegenIdent var
   Lit lit ->
@@ -308,8 +321,120 @@ codegenExpr = case _ of
     pure $ luaCurriedFn fields (luaCtor tag (codegenIdent <$> fields))
   Let bindingGroup body ->
     luaBlock <$> codegenBindingGroup bindingGroup <*> codegenExpr body
-  Case _ _ ->
-    pure mempty
+  Case exprs pattern -> do
+    tmps <- sequence $ Array.replicate (Array.length exprs) tmpIdent
+    exprs' <- traverse codegenExpr exprs
+    pattern' <- codegenPattern tmps pattern
+    pure $ luaBlock (Array.snoc (Array.zipWith luaAssign tmps exprs') pattern') mempty
+
+codegenPattern :: forall a. Array Ident -> BackendPattern -> BackendM (Dodo.Doc a)
+codegenPattern caseIdents =
+  ( \p -> do
+      failLbl <- tmpIdent
+      branches <- go List.Nil (List.singleton failLbl) List.Nil p
+      if isTotal p then
+        pure branches
+      else
+        pure $ Dodo.lines
+          [ branches
+          , luaLabel failLbl
+          , luaApp (Dodo.text "error") [ luaString "Failed pattern match." ]
+          ]
+  )
+  where
+  isTotal = case _ of
+    Branch a Fail -> isTotal' a
+    Branch _ a -> isTotal a
+    a -> isTotal' a
+
+  isTotal' = case _ of
+    PatternGuard _ a -> isTotal' a
+    Command _ a -> isTotal' a
+    Rename _ a -> isTotal' a
+    Match _ -> true
+    _ -> false
+
+  go :: List Ident -> List Ident -> List Ident -> BackendPattern -> BackendM (Dodo.Doc a)
+  go stk alts store = case _ of
+    Branch p1 Fail ->
+      go stk alts store p1
+    Branch p1 p2 -> do
+      altLbl <- tmpIdent
+      branch1 <- go stk (List.Cons altLbl alts) store p1
+      branch2 <- go stk alts store p2
+      pure $ Dodo.lines
+        [ branch1
+        , luaLabel altLbl
+        , branch2
+        ]
+    Command cmd next -> do
+      case cmd, stk of
+        PushProp prop, List.Cons val _ -> do
+          tmp <- tmpIdent
+          next' <- go (List.Cons tmp stk) alts store next
+          pure $ Dodo.lines
+            [ luaBinding tmp (luaAccessor (codegenIdent val) prop)
+            , next'
+            ]
+        PushIndex ix, List.Cons val _ -> do
+          tmp <- tmpIdent
+          next' <- go (List.Cons tmp stk) alts store next
+          pure $ Dodo.lines
+            [ luaBinding tmp (luaIndex (codegenIdent val) ix)
+            , next'
+            ]
+        PushOffset off, List.Cons val _ -> do
+          tmp <- tmpIdent
+          next' <- go (List.Cons tmp stk) alts store next
+          pure $ Dodo.lines
+            [ luaBinding tmp (luaOffset (codegenIdent val) off)
+            , next'
+            ]
+        PushCase cs, _ ->
+          go (List.Cons (unsafePartial Array.unsafeIndex caseIdents cs) stk) alts store next
+        Store, List.Cons val _ ->
+          go stk alts (List.Cons val store) next
+        Pop, List.Cons _ stk' ->
+          go stk' alts store next
+        _, List.Nil ->
+          unsafeCrashWith "codegenPattern: impossible Command"
+    PatternGuard grd next -> do
+      next' <- go stk alts store next
+      case alts of
+        List.Cons altLbl _ -> do
+          cond <- case grd, stk of
+            GuardNumber n, List.Cons val _ ->
+              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaNumber n ]
+            GuardInt n, List.Cons val _ ->
+              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaInt n ]
+            GuardString str, List.Cons val _ ->
+              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaString str ]
+            GuardBoolean bool, List.Cons val _ ->
+              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaBoolean bool ]
+            GuardChar ch, List.Cons val _ ->
+              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaChar ch ]
+            GuardTag (Qualified _ (Ident tag)), List.Cons val _ -> do
+              pure $ Dodo.words [ luaIndex (codegenIdent val) 0, Dodo.text "==", luaString tag ]
+            GuardArrayLength len, List.Cons val _ -> do
+              pure $ Dodo.words [ Dodo.text "#" <> codegenIdent val, Dodo.text "==", luaInt len ]
+            GuardExpr expr, _ ->
+              codegenExpr expr
+            _, List.Nil ->
+              unsafeCrashWith "codegenPattern: impossible PatternGuard empty stk"
+          pure $ luaIfElse [ Tuple cond next' ] (luaGoto altLbl)
+        _ ->
+          unsafeCrashWith "codegenPattern: impossible PatternGuard empty alts"
+    Match expr ->
+      luaReturn <$> codegenExpr expr
+    Rename rename next -> do
+      let names = List.zipWith (\a b -> luaBinding a (codegenIdent b)) rename store
+      Dodo.appendBreak (Dodo.lines names) <$> go stk alts List.Nil next
+    Fail ->
+      case alts of
+        List.Cons altLbl _ ->
+          pure $ luaGoto altLbl
+        _ ->
+          unsafeCrashWith "Bad pattern tree"
 
 codegenBindingGroup :: forall a. BackendBindingGroup -> BackendM (Array (Dodo.Doc a))
 codegenBindingGroup { recursive, bindings }
@@ -322,13 +447,13 @@ codegenBindingGroup { recursive, bindings }
 codegenLit :: forall a. Literal BackendExpr -> BackendM (Dodo.Doc a)
 codegenLit = case _ of
   LitInt n ->
-    pure $ Dodo.text (show n)
+    pure $ luaInt n
   LitNumber n ->
-    pure $ Dodo.text (show n)
+    pure $ luaNumber n
   LitString str ->
-    pure $ Dodo.text (show str)
+    pure $ luaString str
   LitChar ch ->
-    pure $ Dodo.text (show ch)
+    pure $ luaChar ch
   LitBoolean bool ->
     pure $ Dodo.text (show bool)
   LitArray as ->
@@ -337,7 +462,7 @@ codegenLit = case _ of
     luaRecord <$> traverse (traverse codegenExpr) props
 
 codegenIdent :: forall a. Ident -> Dodo.Doc a
-codegenIdent (Ident a) = Dodo.text a
+codegenIdent (Ident a) = Dodo.text (escapeIdent a)
 
 codegenQualified :: forall a b. (a -> Dodo.Doc b) -> Qualified a -> Dodo.Doc b
 codegenQualified codegenInner (Qualified qual inner) = case qual of
@@ -345,10 +470,62 @@ codegenQualified codegenInner (Qualified qual inner) = case qual of
   Just mn -> codegenModuleName mn <> Dodo.text "." <> codegenInner inner
 
 codegenModuleName :: forall a. ModuleName -> Dodo.Doc a
-codegenModuleName (ModuleName mn) = Dodo.text (dotsToDollars mn)
+codegenModuleName (ModuleName mn) = Dodo.text (escapeIdent mn)
 
-dotsToDollars :: String -> String
-dotsToDollars = String.replaceAll (Pattern ".") (Replacement "$")
+escapeIdent :: String -> String
+escapeIdent = escapeReserved
+  where
+  escapeReserved str
+    | Set.member str reservedNames =
+        str <> "_r"
+    | otherwise =
+        escapeSpecial str
+
+  escapeSpecial =
+    String.replaceAll (Pattern "_") (Replacement "_u")
+      >>> String.replaceAll (Pattern "'") (Replacement "_p")
+      >>> String.replaceAll (Pattern ".") (Replacement "_")
+      >>> String.replaceAll (Pattern "$") (Replacement "__")
+
+  reservedNames = Set.fromFoldable
+    [ "and"
+    , "args"
+    , "assert"
+    , "break"
+    , "do"
+    , "dofile"
+    , "dostring"
+    , "else"
+    , "elseif"
+    , "end"
+    , "error"
+    , "false"
+    , "for"
+    , "function"
+    , "getglobal"
+    , "goto"
+    , "if"
+    , "in"
+    , "local"
+    , "next"
+    , "nextvar"
+    , "nil"
+    , "not"
+    , "or"
+    , "print"
+    , "repeat"
+    , "return"
+    , "setfallback"
+    , "setglobal"
+    , "then"
+    , "tonumber"
+    , "tostring"
+    , "true"
+    , "type"
+    , "until"
+    , "while"
+    , "_ENV"
+    ]
 
 luaFwdRef :: forall a. Ident -> Dodo.Doc a
 luaFwdRef ident = Dodo.text "local" <> Dodo.space <> codegenIdent ident
@@ -376,6 +553,12 @@ luaAssignProp ident (Prop prop val) = fold
 luaAccessor :: forall a. Dodo.Doc a -> String -> Dodo.Doc a
 luaAccessor expr prop = expr <> jsSquares (Dodo.text (show prop))
 
+luaIndex :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
+luaIndex expr ix = expr <> jsSquares (Dodo.text (show (ix + 1)))
+
+luaOffset :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
+luaOffset expr ix = expr <> jsSquares (Dodo.text (show (ix + 2)))
+
 luaCopyTo :: forall a. Ident -> Ident -> Dodo.Doc a -> Array (Dodo.Doc a) -> Dodo.Doc a
 luaCopyTo tmp1 tmp2 val stmts = fold
   [ jsParens $ Dodo.lines
@@ -399,19 +582,20 @@ luaBlock stmts expr = jsParens (luaFn mempty stmts expr) <> Dodo.text "()"
 luaFn :: forall a. Array Ident -> Array (Dodo.Doc a) -> Dodo.Doc a -> Dodo.Doc a
 luaFn args stmts expr =
   Dodo.lines
-    [ Dodo.words
-        [ Dodo.text "local"
-        , Dodo.text "function" <> jsParens (Dodo.foldWithSeparator trailingComma (codegenIdent <$> args))
-        ]
+    [ Dodo.text "function" <> jsParens (Dodo.foldWithSeparator trailingComma (codegenIdent <$> args))
     , Dodo.indent $ Dodo.lines
         [ Dodo.lines stmts
-        , Dodo.words
-            [ Dodo.text "return"
-            , expr
-            ]
+        , Monoid.guard (not (Dodo.isEmpty expr)) $ luaReturn expr
         ]
     , Dodo.text "end"
     ]
+
+luaReturn :: forall a. Dodo.Doc a -> Dodo.Doc a
+luaReturn doc = Dodo.flexGroup $ fold
+  [ Dodo.text "return"
+  , Dodo.space
+  , Dodo.indent doc
+  ]
 
 luaCurriedFn :: forall f a. Foldable f => f Ident -> Dodo.Doc a -> Dodo.Doc a
 luaCurriedFn = flip (foldr (flip luaFn [] <<< pure))
@@ -435,25 +619,70 @@ luaCtor tag vals = luaArray (Array.cons (luaString tag) vals)
 luaString :: forall a. String -> Dodo.Doc a
 luaString = Dodo.text <<< show
 
+luaNumber :: forall a. Number -> Dodo.Doc a
+luaNumber = Dodo.text <<< show
+
+luaInt :: forall a. Int -> Dodo.Doc a
+luaInt = Dodo.text <<< show
+
+luaChar :: forall a. Char -> Dodo.Doc a
+luaChar = Dodo.text <<< show
+
+luaBoolean :: forall a. Boolean -> Dodo.Doc a
+luaBoolean = Dodo.text <<< show
+
 luaApp :: forall f a. Foldable f => Dodo.Doc a -> f (Dodo.Doc a) -> Dodo.Doc a
 luaApp a bs = a <> jsParens (Dodo.foldWithSeparator trailingComma bs)
 
 luaCurriedApp :: forall a. Dodo.Doc a -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
 luaCurriedApp = foldl (\a b -> a <> jsParens b)
 
+luaIfElse :: forall f a. Foldable f => f (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
+luaIfElse conds default = Dodo.lines
+  [ condChain.doc
+  , Dodo.text "else"
+  , Dodo.indent default
+  , Dodo.text "end"
+  ]
+  where
+  condChain = foldl go { elseif: false, doc: mempty } conds
+  go { elseif, doc } (Tuple cond body) =
+    { elseif: true
+    , doc: Dodo.lines
+        [ doc
+        , Dodo.flexGroup $ fold
+            [ if elseif then Dodo.text "elseif" else Dodo.text "if"
+            , Dodo.spaceBreak
+            , Dodo.indent cond
+            , Dodo.space
+            , Dodo.text "then"
+            ]
+        , Dodo.indent body
+        ]
+    }
+
 luaImport :: forall a. ModuleName -> String -> Dodo.Doc a
 luaImport mn path = Dodo.words
   [ Dodo.text "local"
   , codegenModuleName mn
   , Dodo.text "="
-  , Dodo.text "require" <> jsParens (Dodo.text (show requirePath))
+  , Dodo.text "require" <> jsParens (Dodo.text (show path))
   ]
-  where
-  requirePath =
-    fromMaybe path (String.stripSuffix (Pattern ".lua") path)
 
 luaExport :: forall a. Ident -> Qualified Ident -> Prop (Dodo.Doc a)
 luaExport (Ident ident) ref = Prop ident (codegenQualified codegenIdent ref)
 
 luaModulePath :: ModuleName -> String
-luaModulePath (ModuleName mn) = mn <> ".lua"
+luaModulePath (ModuleName mn) = escapeIdent mn
+
+luaForeignModulePath :: ModuleName -> String
+luaForeignModulePath (ModuleName mn) = escapeIdent mn <> "_foreign"
+
+luaLabel :: forall a. Ident -> Dodo.Doc a
+luaLabel = Dodo.enclose (Dodo.text "::") (Dodo.text "::") <<< codegenIdent
+
+luaGoto :: forall a. Ident -> Dodo.Doc a
+luaGoto = Dodo.appendSpace (Dodo.text "goto") <<< codegenIdent
+
+luaUndefined :: forall a. Dodo.Doc a
+luaUndefined = Dodo.text "nil"
