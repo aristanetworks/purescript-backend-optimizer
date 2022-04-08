@@ -309,8 +309,11 @@ codegenExpr = case _ of
     codegenLit lit
   App a bs ->
     luaCurriedApp <$> codegenExpr a <*> traverse codegenExpr bs
-  Abs idents body ->
-    luaCurriedFn idents <$> codegenExpr body
+  Abs idents body
+    | [ Ident "$__unused" ] <- NonEmptyArray.toArray idents ->
+        luaFn [] [] <$> codegenExpr body
+    | otherwise ->
+        luaCurriedFn idents <$> codegenExpr body
   Accessor a prop ->
     flip luaAccessor prop <$> codegenExpr a
   Update a props -> do
