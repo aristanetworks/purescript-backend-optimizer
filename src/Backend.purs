@@ -21,7 +21,7 @@ import Data.Newtype (un)
 import Data.Set as Set
 import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
-import Data.Traversable (sequence, traverse)
+import Data.Traversable (for, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Dodo as Dodo
 import Dodo.Common (jsCurlies, jsParens, jsSquares, trailingComma)
@@ -101,6 +101,7 @@ data BackendExpr
   | CtorDef Ident (Array Ident)
   | Let BackendBindingGroup BackendExpr
   | Case (Array BackendExpr) BackendPattern
+  | OptInlineComp BackendExpr (NonEmptyArray BackendExpr)
 
 type PatternRenaming = List Ident
 
@@ -134,10 +135,13 @@ backendExpr :: Expr Ann -> BackendM BackendExpr
 backendExpr = go
   where
   go :: Expr Ann -> BackendM BackendExpr
-  go expr = rewriteExpr <$> goExpr expr
+  go expr = rewrite <$> goExpr expr
 
-  rewriteExpr :: BackendExpr -> BackendExpr
-  rewriteExpr = case _ of
+  rewrite :: BackendExpr -> BackendExpr
+  rewrite expr = optimizeExpr (simplifyExpr expr)
+
+  simplifyExpr :: BackendExpr -> BackendExpr
+  simplifyExpr = case _ of
     App (App a bs) cs ->
       App a (bs <> cs)
     Abs as (Abs bs expr) ->
@@ -147,6 +151,22 @@ backendExpr = go
           expr
     Let { bindings: [] } expr ->
       expr
+    other ->
+      other
+
+  optimizeExpr :: BackendExpr -> BackendExpr
+  optimizeExpr = case _ of
+    App (Var (Qualified (Just (ModuleName "Control.Semigroupoid")) (Ident "compose"))) args
+      | [ (Var (Qualified (Just (ModuleName "Control.Semigroupoid")) (Ident "semigroupoidFn"))), f, g ] <- NonEmptyArray.toArray args ->
+          case f, g of
+            OptInlineComp hd1 tl1, OptInlineComp hd2 tl2 ->
+              OptInlineComp hd1 (tl1 <> NonEmptyArray.cons hd2 tl2)
+            OptInlineComp hd1 tl1, _ ->
+              OptInlineComp hd1 (NonEmptyArray.snoc tl1 g)
+            _, OptInlineComp hd1 tl1 ->
+              OptInlineComp f (NonEmptyArray.cons hd1 tl1)
+            _, _ ->
+              OptInlineComp f (NonEmptyArray.singleton g)
     other ->
       other
 
@@ -331,6 +351,17 @@ codegenExpr = case _ of
     exprs' <- traverse codegenExpr exprs
     pattern' <- codegenPattern tmps pattern
     pure $ luaBlock (Array.snoc (Array.zipWith luaAssign tmps exprs') pattern') mempty
+  OptInlineComp hd tl -> do
+    bindings <- for (NonEmptyArray.toArray (NonEmptyArray.cons hd tl)) \expr ->
+      Tuple <$> tmpIdent <*> codegenExpr expr
+    arg <- tmpIdent
+    pure $ luaBlock (uncurry luaBinding <$> bindings)
+      ( luaFn [ arg ] []
+          ( foldr (\(Tuple fn _) a -> luaApp (codegenIdent fn) [ a ])
+              (codegenIdent arg)
+              bindings
+          )
+      )
 
 codegenPattern :: forall a. Array Ident -> BackendPattern -> BackendM (Dodo.Doc a)
 codegenPattern caseIdents =

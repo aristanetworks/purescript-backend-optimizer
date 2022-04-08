@@ -1,0 +1,7 @@
+* Prim.undefined (Not a real value)
+* import Prim (must remove import)
+* $__unused (corefn identifiers are not the same as purs identifiers)
+* import self (must remove import)
+* qualified self references (must remove qualification)
+* dictionary newtypes have no tag (must implement newtype optimization)
+* likely need to remove redundant case branches (code after a return)
