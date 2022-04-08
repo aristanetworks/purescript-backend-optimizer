@@ -26,7 +26,7 @@ import Data.Tuple (Tuple(..), fst, uncurry)
 import Dodo as Dodo
 import Dodo.Common (jsCurlies, jsParens, jsSquares, trailingComma)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.CoreFn (Ann, Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
 
 type BackendEnv =
   { coreFnModules :: Map ModuleName (Module Ann)
@@ -230,6 +230,8 @@ backendExpr = go
             go' (Prop p b) next' =
               Command (PushProp p) <$> (goBinder b <<< Command Pop =<< next')
           foldr go' (pure next) bs
+    BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ] ->
+      goBinder b next
     BinderConstructor _ _ ident bs -> do
       let
         go' ix b next' =
@@ -372,24 +374,15 @@ codegenPattern caseIdents =
         PushProp prop, List.Cons val _ -> do
           tmp <- tmpIdent
           next' <- go (List.Cons tmp stk) alts store next
-          pure $ Dodo.lines
-            [ luaBinding tmp (luaAccessor (codegenIdent val) prop)
-            , next'
-            ]
+          pure $ Dodo.lines [ luaBinding tmp (luaAccessor (codegenIdent val) prop), next' ]
         PushIndex ix, List.Cons val _ -> do
           tmp <- tmpIdent
           next' <- go (List.Cons tmp stk) alts store next
-          pure $ Dodo.lines
-            [ luaBinding tmp (luaIndex (codegenIdent val) ix)
-            , next'
-            ]
+          pure $ Dodo.lines [ luaBinding tmp (luaIndex (codegenIdent val) ix), next' ]
         PushOffset off, List.Cons val _ -> do
           tmp <- tmpIdent
           next' <- go (List.Cons tmp stk) alts store next
-          pure $ Dodo.lines
-            [ luaBinding tmp (luaOffset (codegenIdent val) off)
-            , next'
-            ]
+          pure $ Dodo.lines [ luaBinding tmp (luaOffset (codegenIdent val) off), next' ]
         PushCase cs, _ ->
           go (List.Cons (unsafePartial Array.unsafeIndex caseIdents cs) stk) alts store next
         Store, List.Cons val _ ->

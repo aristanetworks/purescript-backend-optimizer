@@ -19,10 +19,13 @@ fromMaybe def = case _ of
   Nothing -> def
   Just a -> a
 
-map :: forall a b. (a -> b) -> Maybe a -> Maybe b
-map f = case _ of
-  Nothing -> Nothing
-  Just a -> Just (f a)
+class Functor f where
+  map :: forall a b. (a -> b) -> f a -> f b
+
+instance Functor Maybe where
+  map f = case _ of
+    Nothing -> Nothing
+    Just a -> Just (f a)
 
 main :: Effect Unit
 main = do
