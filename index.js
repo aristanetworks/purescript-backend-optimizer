@@ -1,3 +1,3 @@
 #!/usr/bin/env node
 
-require("./output/Main/index.js").main();
+require("./output/Main/index.js").main(__dirname)();

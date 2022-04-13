@@ -5,30 +5,33 @@ import Prelude
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
 import Backend (backendModule, codegenModule, luaForeignModulePath, luaModulePath, runBackendM)
-import Control.Alt ((<|>))
 import Control.Parallel (parTraverse, parTraverse_)
+import Control.Plus (empty)
 import Data.Argonaut (printJsonDecodeError)
 import Data.Argonaut as Json
 import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), isRight)
+import Data.Foldable (oneOf)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
 import Effect (Effect)
-import Effect.Aff (Aff, attempt, effectCanceler, launchAff_, makeAff)
+import Effect.Aff (Aff, attempt, effectCanceler, error, launchAff_, makeAff, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
+import Foreign.Object as Object
 import Node.Buffer as Buffer
 import Node.ChildProcess (defaultExecSyncOptions)
 import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (writeTextFile)
 import Node.FS.Aff as FS
+import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.FS.Sync (mkdirRecursive)
 import Node.Glob.Basic (expandGlobsCwd)
@@ -43,7 +46,7 @@ data Args
   = Build
       { globs :: Array String
       , outputDir :: String
-      , foreignDir :: String
+      , foreignDir :: Maybe String
       }
   | Run
       { main :: String
@@ -69,7 +72,7 @@ argParser = ArgParser.choose "command"
           , foreignDir:
               ArgParser.argument [ "--foreign-dir" ]
                 "Directory for foreign module implementations"
-                # ArgParser.default (Path.concat [ ".", "foreign-lua" ])
+                # ArgParser.optional
           }
           <* ArgParser.flagHelp
   , Run <$> ArgParser.command [ "run" ]
@@ -94,8 +97,8 @@ argParser = ArgParser.choose "command"
           }
   ]
 
-main :: Effect Unit
-main = do
+main :: FilePath -> Effect Unit
+main dirName = do
   args <- Array.drop 2 <$> Process.argv
   let
     parsedArgs =
@@ -107,10 +110,10 @@ main = do
     Left err ->
       Console.error $ ArgParser.printArgError err
     Right args' -> launchAff_ do
-      compileModules args'
+      compileModules dirName args'
 
-compileModules :: Args -> Aff Unit
-compileModules = case _ of
+compileModules :: FilePath -> Args -> Aff Unit
+compileModules dirName = case _ of
   Build { globs, outputDir, foreignDir } -> do
     coreFnModules <-
       expandGlobsCwd globs >>=
@@ -129,23 +132,37 @@ compileModules = case _ of
           0
           (codegenModule =<< backendModule coreFnMod)
         formatted =
-          Dodo.print Dodo.plainText Dodo.twoSpaces backendMod
+          Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 320, ribbonRatio = 0.5 }) backendMod
       writeTextFile UTF8 modPath formatted
       unless (Array.null foreignIdents) do
         let foreignFileName =  luaForeignModulePath name <> ".lua"
         let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
         let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".lua"
-        let foreignRepoPath = Path.concat [ foreignDir, foreignFileName ]
-        res <- attempt $ copyFile foreignSiblingPath foreignOutputPath <|> copyFile foreignRepoPath foreignOutputPath
+        Console.log $ Path.concat [ dirName, "foreign-lua", luaModulePath name <> ".lua" ]
+        res <- attempt $ oneOf
+          [ copyFile foreignSiblingPath foreignOutputPath
+          , maybe empty (\dir -> copyFile (Path.concat [ dir, luaModulePath name <> ".lua" ]) foreignOutputPath) foreignDir
+          , copyFile (Path.concat [ dirName, "foreign-lua", luaModulePath name <> ".lua" ]) foreignOutputPath
+          ]
         unless (isRight res) do
           Console.warn $ "Foreign implementation missing for " <> unwrap name
   Run { main: mainModule, bin, args, outputDir } -> do
     cwd <- liftEffect $ Path.resolve [] outputDir
+    luaPath <- liftEffect $ Process.lookupEnv "LUA_PATH"
     let modulePath = luaModulePath (ModuleName mainModule)
-    let script = "require('" <> modulePath <> "').main()"
+    let script = "require('runtime');require('" <> modulePath <> "').main()"
     buffer <- liftEffect $ ChildProcess.execSync
       (String.joinWith " " ([bin,  "-e", show script ] <> args))
-      defaultExecSyncOptions { cwd = Just cwd }
+      defaultExecSyncOptions
+        { env = Just $ Object.fromFoldable
+            [ Tuple "LUA_PATH" $ String.joinWith ";" $ Array.catMaybes
+                [ Just $ Path.concat [ cwd, "?.lua" ]
+                , Just $ Path.concat [ dirName, "runtime", "?.lua" ]
+                , luaPath
+                ]
+            ]
+        , cwd = Just cwd
+        }
     makeAff \k -> Stream.write Process.stdout buffer (k (Right unit)) $> mempty
 
 readCoreFnModule :: FilePath -> Aff (Maybe (Tuple ModuleName (Module Ann)))
@@ -159,15 +176,19 @@ readCoreFnModule filePath = do
       pure $ Just (Tuple name mod)
 
 copyFile :: FilePath -> FilePath -> Aff Unit
-copyFile from to = makeAff \k -> do
-  src <- createReadStream from
-  dst <- createWriteStream to
-  res <- Stream.pipe src dst
-  Stream.onError src (k <<< Left)
-  Stream.onError dst (k <<< Left)
-  Stream.onError res (k <<< Left)
-  Stream.onFinish res (k (Right unit))
-  pure $ effectCanceler do
-    Stream.destroy res
-    Stream.destroy dst
-    Stream.destroy src
+copyFile from to = do
+  stats <- FS.stat from
+  unless (Stats.isFile stats) do
+    throwError $ error $ "Not a file: " <> from
+  makeAff \k -> do
+    src <- createReadStream from
+    dst <- createWriteStream to
+    res <- Stream.pipe src dst
+    Stream.onError src (k <<< Left)
+    Stream.onError dst (k <<< Left)
+    Stream.onError res (k <<< Left)
+    Stream.onFinish res (k (Right unit))
+    pure $ effectCanceler do
+      Stream.destroy res
+      Stream.destroy dst
+      Stream.destroy src

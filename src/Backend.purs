@@ -443,7 +443,7 @@ codegenPattern caseIdents =
             GuardTag (Qualified _ (Ident tag)), List.Cons val _ -> do
               pure $ Dodo.words [ luaIndex (codegenIdent val) 0, Dodo.text "==", luaString tag ]
             GuardArrayLength len, List.Cons val _ -> do
-              pure $ Dodo.words [ Dodo.text "#" <> codegenIdent val, Dodo.text "==", luaInt len ]
+              pure $ Dodo.words [ codegenIdent val <> Dodo.text ".n", Dodo.text "==", luaInt len ]
             GuardExpr expr, _ ->
               codegenExpr expr
             _, List.Nil ->
@@ -552,6 +552,7 @@ escapeIdent = escapeReserved
     , "until"
     , "while"
     , "_ENV"
+    , "_PS"
     ]
 
 luaFwdRef :: forall a. Ident -> Dodo.Doc a
@@ -628,7 +629,7 @@ luaCurriedFn :: forall f a. Foldable f => f Ident -> Dodo.Doc a -> Dodo.Doc a
 luaCurriedFn = flip (foldr (flip luaFn [] <<< pure))
 
 luaArray :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
-luaArray = jsCurlies <<< Dodo.foldWithSeparator trailingComma
+luaArray = luaApp (Dodo.text "_PS.array")
 
 luaRecord :: forall a. Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
 luaRecord = jsCurlies <<< Dodo.foldWithSeparator trailingComma <<< map luaProp
@@ -641,7 +642,7 @@ luaProp (Prop prop val) = fold
   ]
 
 luaCtor :: forall a. String -> Array (Dodo.Doc a) -> Dodo.Doc a
-luaCtor tag vals = luaArray (Array.cons (luaString tag) vals)
+luaCtor tag vals = jsCurlies $ Dodo.foldWithSeparator trailingComma (Array.cons (luaString tag) vals)
 
 luaString :: forall a. String -> Dodo.Doc a
 luaString = Dodo.text <<< show
