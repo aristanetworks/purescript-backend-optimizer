@@ -3,29 +3,33 @@ module Backend where
 import Prelude
 
 import Control.Alternative (guard)
-import Control.Monad.RWS (RWST, ask, evalRWST, modify_, state)
+import Control.Apply (lift2)
+import Control.Monad.RWS (RWST, ask, censor, evalRWST, listen, modify_, pass, state, tell)
+import Control.Monad.Writer (class MonadWriter)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Bifunctor (lmap)
+import Data.Bitraversable (bitraverse)
 import Data.Foldable (class Foldable, fold, foldl, foldr)
 import Data.FoldableWithIndex (foldrWithIndex)
-import Data.Function (on)
+import Data.Function (applyFlipped, on)
 import Data.Identity (Identity(..))
 import Data.List (List)
 import Data.List as List
-import Data.Map (Map)
+import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid as Monoid
 import Data.Newtype (un)
 import Data.Set as Set
 import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
-import Data.Traversable (for, sequence, traverse)
+import Data.Traversable (for, traverse)
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Dodo as Dodo
 import Dodo.Common (jsCurlies, jsParens, jsSquares, trailingComma)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafeCrashWith)
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
 
 type BackendEnv =
@@ -44,7 +48,60 @@ type BackendState =
   , constructors :: Map (Qualified Ident) ConstructorMeta
   }
 
-type BackendM = RWST BackendEnv Unit BackendState Identity
+data BackendAnalysis
+  = Capture BackendAnalysis
+  | Intro Ident BackendAnalysis BackendAnalysis
+  | IntroRec (Array (Tuple Ident BackendAnalysis)) BackendAnalysis
+  | Summarized BackendAnalysisSummary
+  | Append BackendAnalysis BackendAnalysis
+  | Empty
+
+instance Semigroup BackendAnalysis where
+  append = case _, _ of
+    Empty, b -> b
+    a, Empty -> a
+    Summarized as, Summarized bs -> Summarized (as <> bs)
+    a, b -> Append a b
+
+instance Monoid BackendAnalysis where
+  mempty = Empty
+
+newtype BackendAnalysisSummary = BackendAnalysisSummary
+  { usages :: SemigroupMap Ident Usage
+  }
+
+instance Semigroup BackendAnalysisSummary where
+  append (BackendAnalysisSummary a) (BackendAnalysisSummary b) = BackendAnalysisSummary
+    { usages: a.usages <> b.usages
+    }
+
+newtype Usage = Usage
+  { count :: Int
+  , captured :: Boolean
+  , tailCall :: Boolean
+  }
+
+instance Semigroup Usage where
+  append (Usage a) (Usage b) = Usage
+    { count: a.count + b.count
+    , captured: a.captured || b.captured
+    , tailCall: a.tailCall && b.tailCall
+    }
+
+used :: { tailCall :: Boolean } -> Qualified Ident -> BackendAnalysis
+used { tailCall } (Qualified mn ident)
+  | isJust mn = Empty
+  | otherwise = Summarized $ BackendAnalysisSummary
+      { usages: SemigroupMap $ Map.singleton ident $ Usage { count: 1, captured: false, tailCall }
+      }
+
+passify :: forall w m a. MonadWriter w m => (w -> w) -> m a -> m (Tuple a w)
+passify k = pass <<< map (flip Tuple k) <<< listen
+
+passify_ :: forall w m a. MonadWriter w m => m a -> m (Tuple a w)
+passify_ = passify (const mempty)
+
+type BackendM = RWST BackendEnv BackendAnalysis BackendState Identity
 
 runBackendM :: forall a. BackendEnv -> Int -> BackendM a -> a
 runBackendM env fresh m = fst $ un Identity $ evalRWST m env { fresh, constructors: Map.empty }
@@ -65,7 +122,7 @@ newtype BackendModule = BackendModule
 
 backendModule :: Module Ann -> BackendM BackendModule
 backendModule (Module mod@{ name: ModuleName this }) = do
-  bindings <- backendBindingGroups mod.decls
+  bindings <- backendTopLevelBindingGroups mod.decls
   let foreignModuleName = ModuleName (this <> "$foreign")
   pure $ BackendModule
     { imports: fold
@@ -96,24 +153,26 @@ data BackendExpr
   | Lit (Literal BackendExpr)
   | App BackendExpr (NonEmptyArray BackendExpr)
   | Abs (NonEmptyArray Ident) BackendExpr
-  | Accessor BackendExpr String
+  | Accessor BackendExpr BackendAccessor
   | Update BackendExpr (Array (Prop BackendExpr))
   | CtorDef Ident (Array Ident)
-  | Let BackendBindingGroup BackendExpr
-  | Case (Array BackendExpr) BackendPattern
+  | LetRec (Array (Tuple Ident BackendExpr)) BackendExpr
+  | Let Ident BackendExpr BackendExpr
+  | Branch (Array (Tuple BackendExpr BackendExpr))
+  | Test BackendExpr BackendGuard
+  | Fail String
   | OptInlineComp BackendExpr (NonEmptyArray BackendExpr)
+  -- | LetJoin (Array Ident) (Array JoinPoint) BackendExpr
+  -- | Join Ident (Array (Tuple Ident BackendExpr))
 
-type PatternRenaming = List Ident
+-- data JoinPoint = JoinPoint Ident Int BackendExpr
 
-data BackendPattern
-  = Branch BackendPattern BackendPattern
-  | Command BackendPatternCmd BackendPattern
-  | PatternGuard BackendPatternGuard BackendPattern
-  | Match BackendExpr
-  | Rename PatternRenaming BackendPattern
-  | Fail
+data BackendAccessor
+  = GetProp String
+  | GetIndex Int
+  | GetOffset Int
 
-data BackendPatternGuard
+data BackendGuard
   = GuardNumber Number
   | GuardInt Int
   | GuardString String
@@ -121,21 +180,22 @@ data BackendPatternGuard
   | GuardChar Char
   | GuardTag (Qualified Ident)
   | GuardArrayLength Int
-  | GuardExpr BackendExpr
 
-data BackendPatternCmd
-  = PushProp String
-  | PushIndex Int
-  | PushOffset Int
-  | PushCase Int
-  | Store
-  | Pop
+type PatternRenaming = List Ident
+
+data PatternStk
+  = PatBinder (Binder Ann) PatternStk
+  | PatPush BackendAccessor PatternStk
+  | PatPop PatternStk
+  | PatNil
 
 backendExpr :: Expr Ann -> BackendM BackendExpr
 backendExpr = go
   where
   go :: Expr Ann -> BackendM BackendExpr
-  go expr = rewrite <$> goExpr expr
+  go expr = do
+    expr' <- goExpr expr
+    pure $ rewrite expr'
 
   rewrite :: BackendExpr -> BackendExpr
   rewrite expr = optimizeExpr (simplifyExpr expr)
@@ -146,11 +206,6 @@ backendExpr = go
       App a (bs <> cs)
     Abs as (Abs bs expr) ->
       Abs (as <> bs) expr
-    Accessor (Lit (LitRecord props)) prop
-      | Just expr <- Array.findMap (\(Prop prop' value) -> guard (prop == prop') $> value) props ->
-          expr
-    Let { bindings: [] } expr ->
-      expr
     other ->
       other
 
@@ -174,99 +229,141 @@ backendExpr = go
   goExpr = case _ of
     ExprVar _ qi@(Qualified mn ident) -> do
       { currentModule } <- ask
-      if mn == Just currentModule then
-        pure (Var (Qualified Nothing ident))
-      else
-        pure (Var qi)
+      let
+        qi'
+          | mn == Just currentModule = Qualified Nothing ident
+          | otherwise = qi
+      pure (Var qi')
     ExprLit _ lit ->
       Lit <$> traverse go lit
     ExprConstructor _ _ name fields ->
       pure (CtorDef name fields)
     ExprAccessor _ a field ->
-      Accessor <$> go a <*> pure field
+      flip Accessor (GetProp field) <$> go a
     ExprUpdate _ a bs ->
       Update <$> go a <*> traverse (traverse go) bs
     ExprAbs _ arg body ->
-      Abs (NonEmptyArray.singleton arg) <$> go body
+      Abs (NonEmptyArray.singleton arg) <$> censor Capture (go body)
     ExprApp _ a b ->
       App <$> go a <*> (NonEmptyArray.singleton <$> go b)
-    ExprCase _ exprs alts ->
-      Case <$> traverse go exprs <*> goAlts alts
+    ExprCase _ exprs alts -> do
+      scrutinees <- traverse (lift2 Tuple tmpIdent <<< go) exprs
+      branches <- traverse (goAlt (fst <$> scrutinees)) alts
+      pure $ foldr (uncurry Let) (foldr mergeBranches (Branch [ Tuple (Lit (LitBoolean true)) (Fail "Failed pattern match") ]) branches) scrutinees
+      where
+      mergeBranches = case _, _ of
+        Branch bs1, Branch bs2
+          | Just (Tuple (Lit (LitBoolean true)) _) <- Array.last bs1 ->
+              Branch bs1
+          | otherwise ->
+              Branch (bs1 <> bs2)
+        nonBranch, _ ->
+          nonBranch
     ExprLet _ binds body ->
-      flip (foldr Let) <$> backendBindingGroups binds <*> goExpr body
+      backendBindingGroups binds (goExpr body)
 
-  goAlts :: Array (CaseAlternative Ann) -> BackendM BackendPattern
-  goAlts alts = do
-    let
-      go' alt next =
-        Branch <$> goAlt alt <*> next
-    foldr go' (pure Fail) alts
+  goAlt :: Array Ident -> CaseAlternative Ann -> BackendM BackendExpr
+  goAlt idents (CaseAlternative binders branch) =
+    goBinders
+      ( \renames ->
+          flip (foldr (\(Tuple a b) -> Let a (Var (Qualified Nothing b)))) renames
+            <$> goCaseGuard branch
+      )
+      List.Nil
+      List.Nil
+      (List.fromFoldable idents)
+      (foldr (\b s -> PatBinder b (PatPop s)) PatNil binders)
 
-  goAlt :: CaseAlternative Ann -> BackendM BackendPattern
-  goAlt (CaseAlternative binders guard) = do
-    result <- case guard of
-      Unconditional expr ->
-        Rename (renamingsFromBinders binders) <<< Match <$> go expr
-      Guarded gs -> do
-        let
-          go' (Guard a b) next = do
-            a' <- go a
-            b' <- go b
-            Branch (PatternGuard (GuardExpr a') (Match b')) <$> next
-        Rename (renamingsFromBinders binders) <$> foldr go' (pure Fail) gs
-    let
-      go' ix b next' =
-        Command (PushCase ix) <$> (goBinder b <<< Command Pop =<< next')
-    foldrWithIndex go' (pure result) binders
+  goCaseGuard = case _ of
+    Unconditional expr ->
+      go expr
+    Guarded gs ->
+      Branch <$> traverse (\(Guard a b) -> Tuple <$> go a <*> go b) gs
 
-  goBinder :: Binder Ann -> BackendPattern -> BackendM BackendPattern
-  goBinder binder next = case binder of
-    BinderNull _ ->
-      pure next
-    BinderVar _ _ ->
-      pure $ Command Store next
-    BinderNamed _ _ b ->
-      Command Store <$> goBinder b next
-    BinderLit _ lit ->
-      case lit of
-        LitInt n ->
-          pure $ Branch (PatternGuard (GuardInt n) next) Fail
-        LitNumber n ->
-          pure $ Branch (PatternGuard (GuardNumber n) next) Fail
-        LitString str ->
-          pure $ Branch (PatternGuard (GuardString str) next) Fail
-        LitChar ch ->
-          pure $ Branch (PatternGuard (GuardChar ch) next) Fail
-        LitBoolean bool ->
-          pure $ Branch (PatternGuard (GuardBoolean bool) next) Fail
-        LitArray bs -> do
-          let
-            go' ix b next' =
-              Command (PushIndex ix) <$> (goBinder b <<< Command Pop =<< next')
-          bs' <- foldrWithIndex go' (pure next) bs
-          pure $ Branch (PatternGuard (GuardArrayLength (Array.length bs)) bs') Fail
-        LitRecord bs -> do
-          let
-            go' (Prop p b) next' =
-              Command (PushProp p) <$> (goBinder b <<< Command Pop =<< next')
-          foldr go' (pure next) bs
-    BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ] ->
-      goBinder b next
-    BinderConstructor _ _ ident bs -> do
-      let
-        go' ix b next' =
-          Command (PushOffset ix) <$> (goBinder b <<< Command Pop =<< next')
-      bs' <- foldrWithIndex go' (pure next) bs
-      pure $ Branch (PatternGuard (GuardTag ident) bs') Fail
+  goBinders
+    :: (List (Tuple Ident Ident) -> BackendM BackendExpr)
+    -> List (BackendExpr -> BackendExpr)
+    -> List (Tuple Ident Ident)
+    -> List Ident
+    -> PatternStk
+    -> BackendM BackendExpr
+  goBinders k ks store stk = case _ of
+    PatBinder binder next ->
+      case binder, stk of
+        BinderNull _, _ ->
+          goBinders k ks store stk next
+        BinderVar _ a, List.Cons id _ ->
+          goBinders k ks (List.Cons (Tuple a id) store) stk next
+        BinderNamed _ a b, List.Cons id _ ->
+          goBinders k ks (List.Cons (Tuple a id) store) stk (PatBinder b next)
+        BinderLit _ lit, List.Cons id _ ->
+          case lit of
+            LitInt n ->
+              goBinders k (List.Cons (makeGuard id (GuardInt n)) ks) store stk next
+            LitNumber n ->
+              goBinders k (List.Cons (makeGuard id (GuardNumber n)) ks) store stk next
+            LitString n ->
+              goBinders k (List.Cons (makeGuard id (GuardString n)) ks) store stk next
+            LitChar n ->
+              goBinders k (List.Cons (makeGuard id (GuardChar n)) ks) store stk next
+            LitBoolean n ->
+              goBinders k (List.Cons (makeGuard id (GuardBoolean n)) ks) store stk next
+            LitArray bs ->
+              goBinders k (List.Cons (makeGuard id (GuardArrayLength (Array.length bs))) ks) store stk
+                $ foldrWithIndex (\ix b s -> PatPush (GetIndex ix) $ PatBinder b $ PatPop s) next bs
+            LitRecord ps ->
+              goBinders k ks store stk
+                $ foldr (\(Prop ix b) s -> PatPush (GetProp ix) $ PatBinder b $ PatPop s) next ps
+        BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ], _ ->
+          goBinders k ks store stk (PatBinder b next)
+        BinderConstructor _ _ tag bs, List.Cons id _ ->
+          goBinders k (List.Cons (makeGuard id (GuardTag tag)) ks) store stk
+            $ foldrWithIndex (\ix b s -> PatPush (GetOffset ix) $ PatBinder b $ PatPop s) next bs
+        _, _ ->
+          unsafeCrashWith "impossible: goBinders (binder)"
+    PatPush accessor next ->
+      case stk of
+        List.Cons id _ -> do
+          tmp <- tmpIdent
+          goBinders k (List.Cons (Let tmp (Accessor (Var (Qualified Nothing id)) accessor)) ks) store (List.Cons tmp stk) next
+        _ ->
+          unsafeCrashWith "impossible: goBinders (push)"
+    PatPop next ->
+      case stk of
+        List.Cons _ stk' ->
+          goBinders k ks store stk' next
+        List.Nil ->
+          unsafeCrashWith "impossible: goBinders (pop)"
+    PatNil ->
+      flip (foldl applyFlipped) ks <$> k store
 
-backendBindingGroups :: Array (Bind Ann) -> BackendM (Array BackendBindingGroup)
-backendBindingGroups binds = do
-  binds' <- traverse backendBindingGroup binds
+  makeGuard id g inner =
+    Branch [ Tuple (Test (Var (Qualified Nothing id)) g) inner ]
+
+backendBindingGroups :: Array (Bind Ann) -> BackendM BackendExpr -> BackendM BackendExpr
+backendBindingGroups binds body = foldr go body binds
+  where
+  go :: Bind Ann -> BackendM BackendExpr -> BackendM BackendExpr
+  go bind' next = case bind' of
+    Rec bindings -> do
+      bindings' <- traverse (passify_ <<< backendBinding) bindings
+      Tuple next' w <- passify_ next
+      tell $ IntroRec (lmap fst <$> bindings') w
+      pure $ LetRec (fst <$> bindings') next'
+    NonRec binding -> do
+      Tuple (Tuple ident binding') w1 <- passify_ (backendBinding binding)
+      Tuple next' w2 <- passify_ next
+      tell $ Intro ident w1 w2
+      pure $ Let ident binding' next'
+
+backendTopLevelBindingGroups :: Array (Bind Ann) -> BackendM (Array BackendBindingGroup)
+backendTopLevelBindingGroups binds = do
+  binds' <- traverse backendTopLevelBindingGroup binds
   pure $ (\as -> { recursive: (NonEmptyArray.head as).recursive, bindings: _.bindings =<< NonEmptyArray.toArray as }) <$>
     Array.groupBy ((&&) `on` (not <<< _.recursive)) binds'
 
-backendBindingGroup :: Bind Ann -> BackendM BackendBindingGroup
-backendBindingGroup = case _ of
+backendTopLevelBindingGroup :: Bind Ann -> BackendM BackendBindingGroup
+backendTopLevelBindingGroup = case _ of
   Rec bindings ->
     { recursive: true, bindings: _ } <$> traverse backendBinding bindings
   NonRec binding ->
@@ -331,11 +428,11 @@ codegenExpr = case _ of
     luaCurriedApp <$> codegenExpr a <*> traverse codegenExpr bs
   Abs idents body
     | [ Ident "$__unused" ] <- NonEmptyArray.toArray idents ->
-        luaFn [] [] <$> codegenExpr body
+        luaFn [] <$> codegenBlockStatements body
     | otherwise ->
-        luaCurriedFn idents <$> codegenExpr body
+        luaCurriedFn idents <$> codegenBlockStatements body
   Accessor a prop ->
-    flip luaAccessor prop <$> codegenExpr a
+    flip codegenAccessor prop <$> codegenExpr a
   Update a props -> do
     tmp1 <- tmpIdent
     tmp2 <- tmpIdent
@@ -344,124 +441,90 @@ codegenExpr = case _ of
       <*> map (map (luaAssignProp tmp2)) (traverse (traverse codegenExpr) props)
   CtorDef (Ident tag) fields ->
     pure $ luaCurriedFn fields (luaCtor tag (codegenIdent <$> fields))
-  Let bindingGroup body ->
-    luaBlock <$> codegenBindingGroup bindingGroup <*> codegenExpr body
-  Case exprs pattern -> do
-    tmps <- sequence $ Array.replicate (Array.length exprs) tmpIdent
-    exprs' <- traverse codegenExpr exprs
-    pattern' <- codegenPattern tmps pattern
-    pure $ luaBlock (Array.snoc (Array.zipWith luaAssign tmps exprs') pattern') mempty
+  Test a b ->
+    flip codegenTest b <$> codegenExpr a
+  Fail str ->
+    pure $ luaError str
   OptInlineComp hd tl -> do
     bindings <- for (NonEmptyArray.toArray (NonEmptyArray.cons hd tl)) \expr ->
       Tuple <$> tmpIdent <*> codegenExpr expr
     arg <- tmpIdent
-    pure $ luaBlock (uncurry luaBinding <$> bindings)
-      ( luaFn [ arg ] []
-          ( foldr (\(Tuple fn _) a -> luaApp (codegenIdent fn) [ a ])
-              (codegenIdent arg)
-              bindings
-          )
-      )
-
-codegenPattern :: forall a. Array Ident -> BackendPattern -> BackendM (Dodo.Doc a)
-codegenPattern caseIdents =
-  ( \p -> do
-      failLbl <- tmpIdent
-      branches <- go List.Nil (List.singleton failLbl) List.Nil p
-      if isTotal p then
-        pure branches
-      else
-        pure $ Dodo.lines
-          [ branches
-          , luaLabel failLbl
-          , luaApp (Dodo.text "error") [ luaString "Failed pattern match." ]
-          ]
-  )
-  where
-  isTotal = case _ of
-    Branch a Fail -> isTotal' a
-    Branch _ a -> isTotal a
-    a -> isTotal' a
-
-  isTotal' = case _ of
-    PatternGuard _ a -> isTotal' a
-    Command _ a -> isTotal' a
-    Rename _ a -> isTotal' a
-    Match _ -> true
-    _ -> false
-
-  go :: List Ident -> List Ident -> List Ident -> BackendPattern -> BackendM (Dodo.Doc a)
-  go stk alts store = case _ of
-    Branch p1 Fail ->
-      go stk alts store p1
-    Branch p1 p2 -> do
-      altLbl <- tmpIdent
-      branch1 <- go stk (List.Cons altLbl alts) store p1
-      branch2 <- go stk alts store p2
-      pure $ Dodo.lines
-        [ branch1
-        , luaLabel altLbl
-        , branch2
+    pure $ luaBlock $ luaStatements $ fold
+      [ uncurry luaBinding <$> bindings
+      , [ luaFn [ arg ] $ luaReturn
+            ( foldr (\(Tuple fn _) a -> luaApp (codegenIdent fn) [ a ])
+                (codegenIdent arg)
+                bindings
+            )
         ]
-    Command cmd next -> do
-      case cmd, stk of
-        PushProp prop, List.Cons val _ -> do
-          tmp <- tmpIdent
-          next' <- go (List.Cons tmp stk) alts store next
-          pure $ Dodo.lines [ luaBinding tmp (luaAccessor (codegenIdent val) prop), next' ]
-        PushIndex ix, List.Cons val _ -> do
-          tmp <- tmpIdent
-          next' <- go (List.Cons tmp stk) alts store next
-          pure $ Dodo.lines [ luaBinding tmp (luaIndex (codegenIdent val) ix), next' ]
-        PushOffset off, List.Cons val _ -> do
-          tmp <- tmpIdent
-          next' <- go (List.Cons tmp stk) alts store next
-          pure $ Dodo.lines [ luaBinding tmp (luaOffset (codegenIdent val) off), next' ]
-        PushCase cs, _ ->
-          go (List.Cons (unsafePartial Array.unsafeIndex caseIdents cs) stk) alts store next
-        Store, List.Cons val _ ->
-          go stk alts (List.Cons val store) next
-        Pop, List.Cons _ stk' ->
-          go stk' alts store next
-        _, List.Nil ->
-          unsafeCrashWith "codegenPattern: impossible Command"
-    PatternGuard grd next -> do
-      next' <- go stk alts store next
-      case alts of
-        List.Cons altLbl _ -> do
-          cond <- case grd, stk of
-            GuardNumber n, List.Cons val _ ->
-              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaNumber n ]
-            GuardInt n, List.Cons val _ ->
-              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaInt n ]
-            GuardString str, List.Cons val _ ->
-              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaString str ]
-            GuardBoolean bool, List.Cons val _ ->
-              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaBoolean bool ]
-            GuardChar ch, List.Cons val _ ->
-              pure $ Dodo.words [ codegenIdent val, Dodo.text "==", luaChar ch ]
-            GuardTag (Qualified _ (Ident tag)), List.Cons val _ -> do
-              pure $ Dodo.words [ luaIndex (codegenIdent val) 0, Dodo.text "==", luaString tag ]
-            GuardArrayLength len, List.Cons val _ -> do
-              pure $ Dodo.words [ codegenIdent val <> Dodo.text ".n", Dodo.text "==", luaInt len ]
-            GuardExpr expr, _ ->
-              codegenExpr expr
-            _, List.Nil ->
-              unsafeCrashWith "codegenPattern: impossible PatternGuard empty stk"
-          pure $ luaIfElse [ Tuple cond next' ] (luaGoto altLbl)
-        _ ->
-          unsafeCrashWith "codegenPattern: impossible PatternGuard empty alts"
-    Match expr ->
-      luaReturn <$> codegenExpr expr
-    Rename rename next -> do
-      let names = List.zipWith (\a b -> luaBinding a (codegenIdent b)) rename store
-      Dodo.appendBreak (Dodo.lines names) <$> go stk alts List.Nil next
-    Fail ->
-      case alts of
-        List.Cons altLbl _ ->
-          pure $ luaGoto altLbl
-        _ ->
-          unsafeCrashWith "Bad pattern tree"
+      ]
+  -- LetJoin idents points body -> do
+  --   luaJoinTable idents
+  --     <$> traverse (\(JoinPoint lbl _ expr) -> Tuple lbl <$> codegenExpr expr) points
+  --     <*> codegenExpr body
+  -- Join ident args ->
+  --   luaJoin ident <$> traverse (traverse codegenExpr) args
+  expr@(Branch _) ->
+    codegenBlock expr
+  expr@(LetRec _ _) ->
+    codegenBlock expr
+  expr@(Let _ _ _) ->
+    codegenBlock expr
+
+codegenBlock :: forall a. BackendExpr -> BackendM (Dodo.Doc a)
+codegenBlock expr = luaBlock <$> codegenBlockStatements expr
+
+codegenBlockBranches :: forall a. Array (Tuple BackendExpr BackendExpr) -> BackendM (Dodo.Doc a)
+codegenBlockBranches = (\bs -> luaBranches <$> traverse (bitraverse codegenExpr go) bs)
+  where
+  go = case _ of
+    Branch bs ->
+      codegenBlockBranches bs
+    expr ->
+      codegenBlockStatements expr
+
+codegenBlockStatements :: forall a. BackendExpr -> BackendM (Dodo.Doc a)
+codegenBlockStatements = map luaStatements <<< go []
+  where
+  go acc = case _ of
+    LetRec bindings body -> do
+      lines <- codegenBindingGroup { recursive: true, bindings }
+      go (acc <> lines) body
+    Let ident expr body -> do
+      lines <- codegenBindingGroup { recursive: false, bindings: [ Tuple ident expr ] }
+      go (acc <> lines) body
+    Branch bs ->
+      Array.snoc acc <$> codegenBlockBranches bs
+    expr@(Fail _) ->
+      Array.snoc acc <$> codegenExpr expr
+    expr ->
+      Array.snoc acc <<< luaReturn <$> codegenExpr expr
+
+codegenTest :: forall a. Dodo.Doc a -> BackendGuard -> Dodo.Doc a
+codegenTest lhs = case _ of
+  GuardNumber n ->
+    Dodo.words [ lhs, Dodo.text "==", luaNumber n ]
+  GuardInt n ->
+    Dodo.words [ lhs, Dodo.text "==", luaInt n ]
+  GuardString str ->
+    Dodo.words [ lhs, Dodo.text "==", luaString str ]
+  GuardBoolean bool ->
+    Dodo.words [ lhs, Dodo.text "==", luaBoolean bool ]
+  GuardChar ch ->
+    Dodo.words [ lhs, Dodo.text "==", luaChar ch ]
+  GuardTag (Qualified _ (Ident tag)) ->
+    Dodo.words [ luaIndex lhs 0, Dodo.text "==", luaString tag ]
+  GuardArrayLength len ->
+    Dodo.words [ lhs <> Dodo.text ".n", Dodo.text "==", luaInt len ]
+
+codegenAccessor :: forall a. Dodo.Doc a -> BackendAccessor -> Dodo.Doc a
+codegenAccessor lhs = case _ of
+  GetProp p ->
+    luaAccessor lhs p
+  GetIndex n ->
+    luaIndex lhs n
+  GetOffset n ->
+    luaOffset lhs n
 
 codegenBindingGroup :: forall a. BackendBindingGroup -> BackendM (Array (Dodo.Doc a))
 codegenBindingGroup { recursive, bindings }
@@ -604,17 +667,17 @@ luaCopyTo tmp1 tmp2 val stmts = fold
   , jsParens val
   ]
 
-luaBlock :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a -> Dodo.Doc a
-luaBlock stmts expr = jsParens (luaFn mempty stmts expr) <> Dodo.text "()"
+luaBlock :: forall a. Dodo.Doc a -> Dodo.Doc a
+luaBlock stmts = jsParens (luaFn mempty stmts) <> Dodo.text "()"
 
-luaFn :: forall a. Array Ident -> Array (Dodo.Doc a) -> Dodo.Doc a -> Dodo.Doc a
-luaFn args stmts expr =
+luaStatements :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
+luaStatements = Dodo.lines
+
+luaFn :: forall a. Array Ident -> Dodo.Doc a -> Dodo.Doc a
+luaFn args stmts =
   Dodo.lines
     [ Dodo.text "function" <> jsParens (Dodo.foldWithSeparator trailingComma (codegenIdent <$> args))
-    , Dodo.indent $ Dodo.lines
-        [ Dodo.lines stmts
-        , Monoid.guard (not (Dodo.isEmpty expr)) $ luaReturn expr
-        ]
+    , Dodo.indent $ stmts
     , Dodo.text "end"
     ]
 
@@ -626,7 +689,7 @@ luaReturn doc = Dodo.flexGroup $ fold
   ]
 
 luaCurriedFn :: forall f a. Foldable f => f Ident -> Dodo.Doc a -> Dodo.Doc a
-luaCurriedFn = flip (foldr (flip luaFn [] <<< pure))
+luaCurriedFn = flip (foldr (luaFn <<< pure))
 
 luaArray :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
 luaArray = luaApp (Dodo.text "_PS.array")
@@ -668,8 +731,10 @@ luaCurriedApp = foldl (\a b -> a <> jsParens b)
 luaIfElse :: forall f a. Foldable f => f (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
 luaIfElse conds default = Dodo.lines
   [ condChain.doc
-  , Dodo.text "else"
-  , Dodo.indent default
+  , Monoid.guard (not (Dodo.isEmpty default)) $ Dodo.lines
+      [ Dodo.text "else"
+      , Dodo.indent default
+      ]
   , Dodo.text "end"
   ]
   where
@@ -688,6 +753,20 @@ luaIfElse conds default = Dodo.lines
         , Dodo.indent body
         ]
     }
+
+luaBranches :: forall a. Array (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a
+luaBranches = Dodo.lines <<< map \(Tuple doc1 doc2) ->
+  Dodo.lines
+    [ Dodo.flexGroup $ fold
+        [ Dodo.text "if"
+        , Dodo.spaceBreak
+        , Dodo.indent doc1
+        , Dodo.space
+        , Dodo.text "then"
+        ]
+    , Dodo.indent doc2
+    , Dodo.text "end"
+    ]
 
 luaImport :: forall a. ModuleName -> String -> Dodo.Doc a
 luaImport mn path = Dodo.words
@@ -714,3 +793,22 @@ luaGoto = Dodo.appendSpace (Dodo.text "goto") <<< codegenIdent
 
 luaUndefined :: forall a. Dodo.Doc a
 luaUndefined = Dodo.text "nil"
+
+luaError :: forall a. String -> Dodo.Doc a
+luaError str = luaApp (Dodo.text "error") [ luaString str ]
+
+-- luaJoin :: forall a. Ident -> Array (Tuple Ident (Dodo.Doc a)) -> Dodo.Doc a
+-- luaJoin lbl args = Dodo.lines
+--   [ Dodo.lines $ uncurry luaAssign <$> args
+--   , luaGoto lbl
+--   ]
+
+-- luaJoinTable :: forall a. Array Ident -> Array (Tuple Ident (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
+-- luaJoinTable idents points body =
+--   luaBlock
+--     ( luaStatements $ fold
+--         [ luaFwdRef <$> idents
+--         , [ body ]
+--         , uncurry Dodo.appendBreak <<< lmap luaLabel <$> points
+--         ]
+--     )
