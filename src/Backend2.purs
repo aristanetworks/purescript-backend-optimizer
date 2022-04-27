@@ -4,20 +4,19 @@ import Prelude
 
 import Control.Alternative (guard)
 import Control.Apply (lift2)
-import Control.Monad.RWS (RWST, ask, evalRWST, state)
+import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.FoldableWithIndex (foldrWithIndex)
-import Data.Function (applyFlipped, on)
-import Data.Identity (Identity(..))
+import Data.Function (on)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Monoid as Monoid
-import Data.Newtype (class Newtype, over, un)
+import Data.Newtype (class Newtype, over)
 import Data.Set as Set
 import Data.String as String
 import Data.Traversable (class Foldable, class Traversable, fold, foldMap, foldl, foldlDefault, foldr, foldrDefault, sequence, sequenceDefault, traverse)
@@ -84,7 +83,7 @@ data BackendExpr = BackendExpr (BackendExprView BackendExpr) BackendInlineData B
 
 data BackendExprView a
   = Var (Qualified Ident)
-  -- | Local (Maybe Ident) Lvl
+  -- | Local (Maybe Ident) Level
   | Lit (Literal a)
   | App a (NonEmptyArray a)
   | Abs (NonEmptyArray Ident) a
@@ -97,10 +96,10 @@ data BackendExprView a
   | Test a BackendGuard
   | Fail String
 
-newtype Lvl = Lvl Int
+newtype Level = Level Int
 
-derive newtype instance Eq Lvl
-derive newtype instance Ord Lvl
+derive newtype instance Eq Level
+derive newtype instance Ord Level
 
 data Pair a = Pair a a
 
@@ -261,13 +260,15 @@ view (BackendExpr expr inlining _) = case expr of
     let BackendAnalysisSummary s1 = analysisOf a
     let BackendAnalysisSummary s2 = analysisOf b
     case Map.lookup ident s2.usages of
+      Nothing ->
+        view (inline [ Tuple (Qualified Nothing ident) NoInline ] inlining b)
       Just (Usage { captured, count })
         | not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)) ->
             view (inline [ Tuple (Qualified Nothing ident) (Inline (inline [] inlining a)) ] inlining b)
-      _ ->
-        Let ident
-          (inline [] inlining a)
-          (inline [ Tuple (Qualified Nothing ident) NoInline ] inlining b)
+        | otherwise ->
+            Let ident
+              (inline [] inlining a)
+              (inline [ Tuple (Qualified Nothing ident) NoInline ] inlining b)
   LetRec as b -> do
     let bindings = (\(Tuple id _) -> Tuple (Qualified Nothing id) NoInline) <$> as
     let f = inline bindings inlining
@@ -307,22 +308,17 @@ newtype BackendModule = BackendModule
   }
 
 type BackendEnv =
-  { coreFnModules :: Map ModuleName (Module Ann)
-  , backendModules :: Map ModuleName BackendModule
-  , currentModule :: ModuleName
+  { currentModule :: ModuleName
+  , currentLevel :: Int
   }
 
-type BackendState =
-  { fresh :: Int
-  }
+type BackendM = Function BackendEnv
 
-type BackendM = RWST BackendEnv Unit BackendState Identity
+levelUp :: forall a. BackendM a -> BackendM a
+levelUp f env = f (env { currentLevel = env.currentLevel + 1 })
 
-runBackendM :: forall a. BackendEnv -> Int -> BackendM a -> a
-runBackendM env fresh m = fst $ un Identity $ evalRWST m env { fresh }
-
-tmpIdent :: BackendM Ident
-tmpIdent = state \st -> Tuple (Ident ("$t" <> show st.fresh)) (st { fresh = st.fresh + 1 })
+currentLevel :: BackendM Level
+currentLevel env = Level env.currentLevel
 
 toBackendModule :: Module Ann -> BackendM BackendModule
 toBackendModule (Module mod@{ name: ModuleName this }) = do
@@ -414,9 +410,16 @@ toBackendExpr = case _ of
           <$> toBackendBinding binding
           <*> next
   ExprCase _ exprs alts -> do
-    scrutinees <- traverse (\e -> flip Tuple (toBackendExpr e) <$> tmpIdent) exprs
-    let branches = foldr (lift2 mergeBranches) patternFail $ goAlt (fst <$> scrutinees) <$> alts
-    foldr (\(Tuple x y) z -> make (Let x y z)) branches scrutinees
+    foldr
+      ( \expr next idents ->
+          makeTmpLet (toBackendExpr expr) \tmp ->
+            next (Array.snoc idents tmp)
+      )
+      ( \idents ->
+          foldr (lift2 mergeBranches) patternFail $ goAlt idents <$> alts
+      )
+      exprs
+      []
   where
   mergeBranches :: BackendExpr -> BackendExpr -> BackendExpr 
   mergeBranches = case _, _ of
@@ -455,7 +458,6 @@ toBackendExpr = case _ of
           renames
       )
       List.Nil
-      List.Nil
       (List.fromFoldable idents)
       (foldr (\b s -> PatBinder b (PatPop s)) PatNil binders)
 
@@ -468,64 +470,81 @@ toBackendExpr = case _ of
 
   goBinders
     :: (List (Tuple Ident Ident) -> BackendM BackendExpr)
-    -> List (BackendM BackendExpr -> BackendM BackendExpr)
     -> List (Tuple Ident Ident)
     -> List Ident
     -> PatternStk
     -> BackendM BackendExpr
-  goBinders k ks store stk = case _ of
+  goBinders k store stk = case _ of
     PatBinder binder next ->
       case binder, stk of
         BinderNull _, _ ->
-          goBinders k ks store stk next
+          goBinders k store stk next
         BinderVar _ a, List.Cons id _ ->
-          goBinders k ks (List.Cons (Tuple a id) store) stk next
+          goBinders k (List.Cons (Tuple a id) store) stk next
         BinderNamed _ a b, List.Cons id _ ->
-          goBinders k ks (List.Cons (Tuple a id) store) stk (PatBinder b next)
-        BinderLit _ lit, List.Cons id _ ->
+          goBinders k (List.Cons (Tuple a id) store) stk (PatBinder b next)
+        BinderLit _ lit, List.Cons id _ -> do
           case lit of
             LitInt n ->
-              goBinders k (List.Cons (makeGuard id (GuardInt n)) ks) store stk next
+              makeGuard id (GuardInt n) $ goBinders k store stk next
             LitNumber n ->
-              goBinders k (List.Cons (makeGuard id (GuardNumber n)) ks) store stk next
+              makeGuard id (GuardNumber n) $ goBinders k store stk next
             LitString n ->
-              goBinders k (List.Cons (makeGuard id (GuardString n)) ks) store stk next
+              makeGuard id (GuardString n) $ goBinders k store stk next
             LitChar n ->
-              goBinders k (List.Cons (makeGuard id (GuardChar n)) ks) store stk next
+              makeGuard id (GuardChar n) $ goBinders k store stk next
             LitBoolean n ->
-              goBinders k (List.Cons (makeGuard id (GuardBoolean n)) ks) store stk next
+              makeGuard id (GuardBoolean n) $ goBinders k store stk next
             LitArray bs ->
-              goBinders k (List.Cons (makeGuard id (GuardArrayLength (Array.length bs))) ks) store stk
-                $ foldrWithIndex (\ix b s -> PatPush (GetIndex ix) $ PatBinder b $ PatPop s) next bs
+              makeGuard id (GuardArrayLength (Array.length bs)) $ goBinders k store stk $ foldrWithIndex
+                ( \ix b s ->
+                    PatPush (GetIndex ix) $ PatBinder b $ PatPop s
+                )
+                next
+                bs
             LitRecord ps ->
-              goBinders k ks store stk
-                $ foldr (\(Prop ix b) s -> PatPush (GetProp ix) $ PatBinder b $ PatPop s) next ps
+              goBinders k store stk $ foldr
+                ( \(Prop ix b) s ->
+                    PatPush (GetProp ix) $ PatBinder b $ PatPop s
+                )
+                next
+                ps
         BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ], _ ->
-          goBinders k ks store stk (PatBinder b next)
+          goBinders k store stk (PatBinder b next)
         BinderConstructor _ _ tag bs, List.Cons id _ ->
-          goBinders k (List.Cons (makeGuard id (GuardTag tag)) ks) store stk
-            $ foldrWithIndex (\ix b s -> PatPush (GetOffset ix) $ PatBinder b $ PatPop s) next bs
+          makeGuard id (GuardTag tag) $ goBinders k store stk $ foldrWithIndex
+            ( \ix b s ->
+                PatPush (GetOffset ix) $ PatBinder b $ PatPop s
+            )
+            next
+            bs
         _, _ ->
           unsafeCrashWith "impossible: goBinders (binder)"
     PatPush accessor next ->
       case stk of
-        List.Cons id _ -> do
-          tmp <- tmpIdent
-          goBinders k (List.Cons (make <<< Let tmp (make (Accessor (make (Var (Qualified Nothing id))) accessor))) ks) store (List.Cons tmp stk) next
+        List.Cons id _ ->
+          makeTmpLet (make (Accessor (make (Var (Qualified Nothing id))) accessor)) \tmp ->
+            goBinders k store (List.Cons tmp stk) next
         _ ->
           unsafeCrashWith "impossible: goBinders (push)"
     PatPop next ->
       case stk of
         List.Cons _ stk' ->
-          goBinders k ks store stk' next
+          goBinders k store stk' next
         List.Nil ->
           unsafeCrashWith "impossible: goBinders (pop)"
     PatNil ->
-      foldl applyFlipped (k store) ks
+      k store
 
   patternFail :: BackendM BackendExpr
   patternFail =
     make (Branch [ Pair (make (Lit (LitBoolean true))) (make (Fail "Failed pattern match")) ])
+
+  makeTmpLet :: BackendM BackendExpr -> (Ident -> BackendM BackendExpr) -> BackendM BackendExpr
+  makeTmpLet a k = do
+    Level level <- currentLevel
+    let tmp = Ident ("$t" <> show level)
+    make $ Let tmp a (levelUp (k tmp))
 
   makeGuard :: Ident -> BackendGuard -> BackendM BackendExpr -> BackendM BackendExpr
   makeGuard id g inner =
