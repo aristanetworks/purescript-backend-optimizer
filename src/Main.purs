@@ -4,7 +4,7 @@ import Prelude
 
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
-import Backend (backendModule, codegenModule, luaForeignModulePath, luaModulePath, runBackendM)
+import Backend2 (toBackendModule, luaCodegenModule, luaForeignModulePath, luaModulePath, runBackendM)
 import Control.Parallel (parTraverse, parTraverse_)
 import Control.Plus (empty)
 import Data.Argonaut (printJsonDecodeError)
@@ -130,7 +130,7 @@ compileModules dirName = case _ of
           , currentModule: name
           }
           0
-          (codegenModule =<< backendModule coreFnMod)
+          (luaCodegenModule <$> toBackendModule coreFnMod)
         formatted =
           Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 320, ribbonRatio = 0.5 }) backendMod
       writeTextFile UTF8 modPath formatted

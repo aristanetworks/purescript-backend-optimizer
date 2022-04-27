@@ -6,18 +6,19 @@ import Control.Alternative (guard)
 import Control.Apply (lift2)
 import Control.Monad.RWS (RWST, ask, censor, evalRWST, listen, modify_, pass, state, tell)
 import Control.Monad.Writer (class MonadWriter)
+import Data.Array (foldMap)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Bifunctor (lmap)
-import Data.Bitraversable (bitraverse)
+import Data.Bifunctor (bimap, lmap)
+import Data.Bitraversable (bisequence, bitraverse)
 import Data.Foldable (class Foldable, fold, foldl, foldr)
 import Data.FoldableWithIndex (foldrWithIndex)
 import Data.Function (applyFlipped, on)
 import Data.Identity (Identity(..))
 import Data.List (List)
 import Data.List as List
-import Data.Map (Map, SemigroupMap(..))
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid as Monoid
@@ -25,12 +26,12 @@ import Data.Newtype (un)
 import Data.Set as Set
 import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
-import Data.Traversable (for, traverse)
-import Data.Tuple (Tuple(..), fst, uncurry)
+import Data.Traversable (for, sequence, traverse)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common (jsCurlies, jsParens, jsSquares, trailingComma)
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..), propValue)
 
 type BackendEnv =
   { coreFnModules :: Map ModuleName (Module Ann)
@@ -49,10 +50,10 @@ type BackendState =
   }
 
 data BackendAnalysis
-  = Capture BackendAnalysis
+  = Summarized BackendAnalysisSummary
+  | Capture BackendAnalysis
   | Intro Ident BackendAnalysis BackendAnalysis
   | IntroRec (Array (Tuple Ident BackendAnalysis)) BackendAnalysis
-  | Summarized BackendAnalysisSummary
   | Append BackendAnalysis BackendAnalysis
   | Empty
 
@@ -67,13 +68,16 @@ instance Monoid BackendAnalysis where
   mempty = Empty
 
 newtype BackendAnalysisSummary = BackendAnalysisSummary
-  { usages :: SemigroupMap Ident Usage
+  { usages :: Map Ident Usage
   }
 
 instance Semigroup BackendAnalysisSummary where
   append (BackendAnalysisSummary a) (BackendAnalysisSummary b) = BackendAnalysisSummary
-    { usages: a.usages <> b.usages
+    { usages: Map.unionWith append a.usages b.usages
     }
+
+instance Monoid BackendAnalysisSummary where
+  mempty = BackendAnalysisSummary { usages: Map.empty }
 
 newtype Usage = Usage
   { count :: Int
@@ -92,8 +96,33 @@ used :: { tailCall :: Boolean } -> Qualified Ident -> BackendAnalysis
 used { tailCall } (Qualified mn ident)
   | isJust mn = Empty
   | otherwise = Summarized $ BackendAnalysisSummary
-      { usages: SemigroupMap $ Map.singleton ident $ Usage { count: 1, captured: false, tailCall }
+      { usages: Map.singleton ident $ Usage { count: 1, captured: false, tailCall }
       }
+
+summarize :: BackendAnalysis -> BackendAnalysisSummary
+summarize = case _ of
+  Summarized s -> s
+  Capture (Capture b) ->
+    summarize (Capture b)
+  Capture b -> do
+    let BackendAnalysisSummary { usages } = summarize b
+    BackendAnalysisSummary
+      { usages: (\(Usage u) -> Usage (u { captured = true })) <$> usages
+      }
+  Intro id a b -> do
+    let BackendAnalysisSummary { usages } = summarize b
+    summarize a <> BackendAnalysisSummary
+      { usages: Map.delete id usages
+      }
+  IntroRec as b -> do
+    let BackendAnalysisSummary { usages } = summarize $ foldMap snd as <> b
+    BackendAnalysisSummary
+      { usages: foldr (Map.delete <<< fst) usages as
+      }
+  Append a b ->
+    summarize a <> summarize b
+  Empty ->
+    mempty
 
 passify :: forall w m a. MonadWriter w m => (w -> w) -> m a -> m (Tuple a w)
 passify k = pass <<< map (flip Tuple k) <<< listen
@@ -162,6 +191,7 @@ data BackendExpr
   | Test BackendExpr BackendGuard
   | Fail String
   | OptInlineComp BackendExpr (NonEmptyArray BackendExpr)
+  | OptInline (Map Ident BackendExpr) BackendExpr
   -- | LetJoin (Array Ident) (Array JoinPoint) BackendExpr
   -- | Join Ident (Array (Tuple Ident BackendExpr))
 
@@ -181,8 +211,6 @@ data BackendGuard
   | GuardTag (Qualified Ident)
   | GuardArrayLength Int
 
-type PatternRenaming = List Ident
-
 data PatternStk
   = PatBinder (Binder Ann) PatternStk
   | PatPush BackendAccessor PatternStk
@@ -193,12 +221,12 @@ backendExpr :: Expr Ann -> BackendM BackendExpr
 backendExpr = go
   where
   go :: Expr Ann -> BackendM BackendExpr
-  go expr = do
-    expr' <- goExpr expr
-    pure $ rewrite expr'
+  go expr = rewrite (goExpr expr)
 
-  rewrite :: BackendExpr -> BackendExpr
-  rewrite expr = optimizeExpr (simplifyExpr expr)
+  rewrite :: BackendM BackendExpr -> BackendM BackendExpr
+  rewrite expr = pass do
+    Tuple expr' analysis' <- listen expr
+    pure $ map const $ inlineExpr (optimizeExpr (simplifyExpr expr')) analysis'
 
   simplifyExpr :: BackendExpr -> BackendExpr
   simplifyExpr = case _ of
@@ -225,6 +253,30 @@ backendExpr = go
     other ->
       other
 
+  inlineExpr :: BackendExpr -> BackendAnalysis -> Tuple BackendExpr BackendAnalysis
+  inlineExpr expr analysis =
+    case expr, analysis of
+      Let id b@(Var _) c, Intro _ b' c' -> do
+        let s2@(BackendAnalysisSummary { usages }) = summarize c'
+        case Map.lookup id usages of
+          Just (Usage { count: 1, captured: false }) ->
+            Tuple (OptInline (Map.singleton id b) c) (b' <> Summarized s2)
+          _ ->
+            Tuple expr (Intro id b' (Summarized s2))
+      _, _ ->
+        Tuple expr analysis
+
+  -- isSimpleExpr :: BackendExpr -> Boolean
+  -- isSimpleExpr = case _ of
+  --   Var _ -> true
+  --   -- Accessor a _ -> isSimpleExpr a
+  --   -- App a bs -> isSimpleExpr a && NonEmptyArray.all isSimpleExpr bs
+  --   -- OptInline _ a -> isSimpleExpr a
+  --   -- Lit (LitArray as) -> Array.all isSimpleExpr as
+  --   -- Lit (LitRecord as) -> Array.all (isSimpleExpr <<< propValue) as
+  --   -- Lit _ -> true
+  --   _ -> false
+
   goExpr :: Expr Ann -> BackendM BackendExpr
   goExpr = case _ of
     ExprVar _ qi@(Qualified mn ident) -> do
@@ -233,6 +285,7 @@ backendExpr = go
         qi'
           | mn == Just currentModule = Qualified Nothing ident
           | otherwise = qi
+      tell $ used { tailCall: false } qi'
       pure (Var qi')
     ExprLit _ lit ->
       Lit <$> traverse go lit
@@ -244,12 +297,15 @@ backendExpr = go
       Update <$> go a <*> traverse (traverse go) bs
     ExprAbs _ arg body ->
       Abs (NonEmptyArray.singleton arg) <$> censor Capture (go body)
-    ExprApp _ a b ->
-      App <$> go a <*> (NonEmptyArray.singleton <$> go b)
+    ExprApp _ a b
+      | ExprVar (Ann { meta: Just IsNewtype }) _ <- a ->
+          go b
+      | otherwise ->
+          App <$> go a <*> (NonEmptyArray.singleton <$> go b)
     ExprCase _ exprs alts -> do
-      scrutinees <- traverse (lift2 Tuple tmpIdent <<< go) exprs
-      branches <- traverse (goAlt (fst <$> scrutinees)) alts
-      pure $ foldr (uncurry Let) (foldr mergeBranches (Branch [ Tuple (Lit (LitBoolean true)) (Fail "Failed pattern match") ]) branches) scrutinees
+      scrutinees <- traverse (\e -> flip Tuple (goExpr e) <$> tmpIdent) exprs
+      let branches = map (goAlt (fst <$> scrutinees)) alts
+      foldr (uncurry makeLet) (foldr (lift2 mergeBranches) (makeBranch [ Tuple (makeLit (LitBoolean true)) (makeFail "Failed pattern match") ]) branches) scrutinees
       where
       mergeBranches = case _, _ of
         Branch bs1, Branch bs2
@@ -266,14 +322,14 @@ backendExpr = go
   goAlt idents (CaseAlternative binders branch) =
     goBinders
       ( \renames ->
-          flip (foldr (\(Tuple a b) -> Let a (Var (Qualified Nothing b)))) renames
-            <$> goCaseGuard branch
+          foldr (\(Tuple a b) -> makeLet a (makeVar (Qualified Nothing b))) (goCaseGuard branch) renames
       )
       List.Nil
       List.Nil
       (List.fromFoldable idents)
       (foldr (\b s -> PatBinder b (PatPop s)) PatNil binders)
 
+  goCaseGuard :: CaseGuard Ann -> BackendM BackendExpr
   goCaseGuard = case _ of
     Unconditional expr ->
       go expr
@@ -282,7 +338,7 @@ backendExpr = go
 
   goBinders
     :: (List (Tuple Ident Ident) -> BackendM BackendExpr)
-    -> List (BackendExpr -> BackendExpr)
+    -> List (BackendM BackendExpr -> BackendM BackendExpr)
     -> List (Tuple Ident Ident)
     -> List Ident
     -> PatternStk
@@ -325,7 +381,7 @@ backendExpr = go
       case stk of
         List.Cons id _ -> do
           tmp <- tmpIdent
-          goBinders k (List.Cons (Let tmp (Accessor (Var (Qualified Nothing id)) accessor)) ks) store (List.Cons tmp stk) next
+          goBinders k (List.Cons (makeLet tmp (makeAccessor (makeVar (Qualified Nothing id)) accessor)) ks) store (List.Cons tmp stk) next
         _ ->
           unsafeCrashWith "impossible: goBinders (push)"
     PatPop next ->
@@ -335,26 +391,54 @@ backendExpr = go
         List.Nil ->
           unsafeCrashWith "impossible: goBinders (pop)"
     PatNil ->
-      flip (foldl applyFlipped) ks <$> k store
+      foldl applyFlipped (k store) ks
 
-  makeGuard id g inner =
-    Branch [ Tuple (Test (Var (Qualified Nothing id)) g) inner ]
+  makeGuard :: Ident -> BackendGuard -> BackendM BackendExpr -> BackendM BackendExpr
+  makeGuard id g inner = rewrite do
+    inner' <- inner
+    let qi = Qualified Nothing id
+    tell $ used { tailCall: false } qi
+    pure $ Branch [ Tuple (Test (Var qi) g) inner' ]
 
-backendBindingGroups :: Array (Bind Ann) -> BackendM BackendExpr -> BackendM BackendExpr
-backendBindingGroups binds body = foldr go body binds
-  where
-  go :: Bind Ann -> BackendM BackendExpr -> BackendM BackendExpr
-  go bind' next = case bind' of
-    Rec bindings -> do
-      bindings' <- traverse (passify_ <<< backendBinding) bindings
-      Tuple next' w <- passify_ next
-      tell $ IntroRec (lmap fst <$> bindings') w
-      pure $ LetRec (fst <$> bindings') next'
-    NonRec binding -> do
-      Tuple (Tuple ident binding') w1 <- passify_ (backendBinding binding)
-      Tuple next' w2 <- passify_ next
-      tell $ Intro ident w1 w2
-      pure $ Let ident binding' next'
+  makeLet :: Ident -> BackendM BackendExpr -> BackendM BackendExpr -> BackendM BackendExpr
+  makeLet id a b = rewrite do
+    Tuple a' w1 <- passify_ a
+    Tuple b' w2 <- passify_ b
+    tell $ Intro id w1 w2
+    pure $ Let id a' b'
+
+  makeAccessor :: BackendM BackendExpr -> BackendAccessor -> BackendM BackendExpr
+  makeAccessor v acc = rewrite $ flip Accessor acc <$> v
+
+  makeVar :: Qualified Ident -> BackendM BackendExpr
+  makeVar qi = rewrite do
+    tell $ used { tailCall: false } qi
+    pure (Var qi)
+
+  makeBranch :: Array (Tuple (BackendM BackendExpr) (BackendM BackendExpr)) -> BackendM BackendExpr
+  makeBranch = map Branch <<< traverse bisequence
+
+  makeFail :: String -> BackendM BackendExpr
+  makeFail = pure <<< Fail
+
+  makeLit :: Literal (BackendM BackendExpr) -> BackendM BackendExpr
+  makeLit = map Lit <<< sequence
+
+  backendBindingGroups :: Array (Bind Ann) -> BackendM BackendExpr -> BackendM BackendExpr
+  backendBindingGroups binds body = foldr goBind body binds
+    where
+    goBind :: Bind Ann -> BackendM BackendExpr -> BackendM BackendExpr
+    goBind bind' next = rewrite case bind' of
+      Rec bindings -> do
+        bindings' <- traverse (passify_ <<< backendBinding) bindings
+        Tuple next' w <- passify_ next
+        tell $ IntroRec (lmap fst <$> bindings') w
+        pure $ LetRec (fst <$> bindings') next'
+      NonRec binding -> do
+        Tuple (Tuple ident binding') w1 <- passify_ (backendBinding binding)
+        Tuple next' w2 <- passify_ next
+        tell $ Intro ident w1 w2
+        pure $ Let ident binding' next'
 
 backendTopLevelBindingGroups :: Array (Bind Ann) -> BackendM (Array BackendBindingGroup)
 backendTopLevelBindingGroups binds = do
@@ -385,24 +469,6 @@ addConstructor ident meta = modify_ \state ->
     { constructors =
         Map.insert ident meta state.constructors
     }
-
-renamingsFromBinders :: forall a. Array (Binder a) -> PatternRenaming
-renamingsFromBinders = foldl go List.Nil
-  where
-  go :: PatternRenaming -> Binder a -> PatternRenaming
-  go acc = case _ of
-    BinderVar _ ident ->
-      List.Cons ident acc
-    BinderNamed _ ident b -> do
-      go (List.Cons ident acc) b
-    BinderLit _ (LitArray bs) ->
-      foldl go acc bs
-    BinderLit _ (LitRecord bs) ->
-      foldl (\acc' (Prop _ b) -> go acc' b) acc bs
-    BinderConstructor _ _ _ bs ->
-      foldl go acc bs
-    _ ->
-      acc
 
 codegenModule :: forall a. BackendModule -> BackendM (Dodo.Doc a)
 codegenModule (BackendModule mod) = do
@@ -458,18 +524,52 @@ codegenExpr = case _ of
             )
         ]
       ]
-  -- LetJoin idents points body -> do
-  --   luaJoinTable idents
-  --     <$> traverse (\(JoinPoint lbl _ expr) -> Tuple lbl <$> codegenExpr expr) points
-  --     <*> codegenExpr body
-  -- Join ident args ->
-  --   luaJoin ident <$> traverse (traverse codegenExpr) args
+  OptInline rewrites next ->
+    codegenExpr (evalInline rewrites next)
   expr@(Branch _) ->
     codegenBlock expr
   expr@(LetRec _ _) ->
     codegenBlock expr
   expr@(Let _ _ _) ->
     codegenBlock expr
+
+evalInline :: Map Ident BackendExpr -> BackendExpr -> BackendExpr
+evalInline rewrites = case _ of
+  Var (Qualified Nothing ident) | Just expr <- Map.lookup ident rewrites ->
+    expr
+  expr@(Var _) ->
+    expr
+  Let ident a b ->
+    Let ident (OptInline rewrites a) (OptInline (Map.delete ident rewrites) b)
+  LetRec idents b -> do
+    let rewrites' = foldr (Map.delete <<< fst) rewrites idents
+    LetRec (map (OptInline rewrites') <$> idents) (OptInline rewrites' b)
+  Lit (LitArray as) ->
+    Lit (LitArray (OptInline rewrites <$> as))
+  Lit (LitRecord as) ->
+    Lit (LitRecord (map (OptInline rewrites) <$> as))
+  expr@(Lit _) ->
+    expr
+  App a bs ->
+    App (OptInline rewrites a) (OptInline rewrites <$> bs)
+  Abs idents b ->
+    Abs idents (OptInline (foldr Map.delete rewrites idents) b)
+  Accessor a b ->
+    Accessor (OptInline rewrites a) b
+  Update a bs ->
+    Update (OptInline rewrites a) (map (OptInline rewrites) <$> bs)
+  Branch bs ->
+    Branch (bimap (OptInline rewrites) (OptInline rewrites) <$> bs)
+  Test a b ->
+    Test (OptInline rewrites a) b
+  OptInline rewrites' next ->
+    evalInline (Map.union rewrites' rewrites) next
+  OptInlineComp a bs ->
+    OptInlineComp (OptInline rewrites a) (OptInline rewrites <$> bs)
+  expr@(Fail _) ->
+    expr
+  expr@(CtorDef _ _) ->
+    expr
 
 codegenBlock :: forall a. BackendExpr -> BackendM (Dodo.Doc a)
 codegenBlock expr = luaBlock <$> codegenBlockStatements expr
@@ -812,3 +912,77 @@ luaError str = luaApp (Dodo.text "error") [ luaString str ]
 --         , uncurry Dodo.appendBreak <<< lmap luaLabel <$> points
 --         ]
 --     )
+
+type BackendExprView expr r =
+  ( var :: Qualified Ident -> expr
+  , litInt :: Int -> expr
+  , litNumber :: Number -> expr
+  , litString :: String -> expr
+  , litChar :: Char -> expr
+  , litBoolean :: Boolean -> expr
+  , litArray :: Array expr -> expr
+  , litRecord :: Array (Prop expr) -> expr
+  , app :: expr -> expr -> expr
+  , abs :: Ident -> expr -> expr
+  , accessor :: expr -> BackendAccessor -> expr
+  , update :: expr -> Array (Prop expr) -> expr
+  , ctor :: Ident -> Array Ident -> expr
+  , letRec :: Array (Tuple Ident expr) -> expr -> expr
+  , letIn :: Ident -> expr -> expr -> expr
+  , branch :: Array (Tuple expr expr) -> expr
+  , test :: expr -> BackendGuard -> expr
+  , fail :: String -> expr
+  | r
+  )
+
+buildBackendExpr :: { | BackendExprView BackendExpr () }
+buildBackendExpr =
+  { var: Var
+  , litInt: Lit <<< LitInt
+  , litNumber: Lit <<< LitNumber
+  , litString: Lit <<< LitString
+  , litChar: Lit <<< LitChar
+  , litBoolean: Lit <<< LitBoolean
+  , litArray: Lit <<< LitArray
+  , litRecord: Lit <<< LitRecord
+  , app: \a b -> App a (NonEmptyArray.singleton b)
+  , abs: \a b -> Abs (NonEmptyArray.singleton a) b
+  , accessor: Accessor
+  , update: Update
+  , ctor: CtorDef
+  , letRec: LetRec
+  , letIn: Let
+  , branch: Branch
+  , test: Test
+  , fail: Fail
+  }
+
+monoidalBackendView :: forall a. Monoid a => { | BackendExprView a () }
+monoidalBackendView =
+  { var: mempty
+  , litInt: mempty
+  , litNumber: mempty
+  , litString: mempty
+  , litChar: mempty
+  , litBoolean: mempty
+  , litArray: fold
+  , litRecord: foldMap propValue
+  , app: append
+  , abs: \_ a -> a
+  , accessor: \a _ -> a
+  , update: \a bs -> a <> foldMap propValue bs
+  , ctor: mempty
+  , letRec: \as b -> foldMap snd as <> b
+  , letIn: \_ a b -> a <> b
+  , branch: foldMap (uncurry append)
+  , test: \a _ -> a
+  , fail: mempty
+  }
+
+analyzeBackendExpr :: { | BackendExprView BackendAnalysis () }
+analyzeBackendExpr = monoidalBackendView
+  { var = used { tailCall: false }
+  , abs = \_ a -> Capture a
+  , letRec = IntroRec
+  , letIn = Intro
+  }

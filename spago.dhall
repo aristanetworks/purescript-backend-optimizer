@@ -12,6 +12,7 @@ You can edit this file as you like.
   , "bifunctors"
   , "console"
   , "control"
+  , "debug"
   , "dodo-printer"
   , "effect"
   , "either"
