@@ -123,7 +123,7 @@ compileModules dirName = case _ of
     liftEffect $ mkdirRecursive outputDir
     flip parTraverse_ coreFnModules \coreFnMod@(Module { name, foreign: foreignIdents, path }) -> do
       let modPath = Path.concat [ outputDir, luaModulePath name <> ".lua" ]
-      let backendMod = luaCodegenModule $ toBackendModule coreFnMod { currentModule: name, currentLevel: 0 }
+      let backendMod = luaCodegenModule $ toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty }
       let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 320, ribbonRatio = 0.5 }) backendMod
       writeTextFile UTF8 modPath formatted
       unless (Array.null foreignIdents) do

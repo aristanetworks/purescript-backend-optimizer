@@ -5,21 +5,25 @@ import Prelude
 import Control.Alternative (guard)
 import Control.Apply (lift2)
 import Control.Monad.RWS (ask)
+import Data.Array (findMap)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Bifunctor (lmap)
 import Data.FoldableWithIndex (foldrWithIndex)
 import Data.Function (on)
+import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid as Monoid
-import Data.Newtype (class Newtype, over)
+import Data.Newtype (class Newtype, over, unwrap)
+import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
-import Data.Traversable (class Foldable, class Traversable, fold, foldMap, foldl, foldlDefault, foldr, foldrDefault, sequence, sequenceDefault, traverse)
+import Data.Traversable (class Foldable, class Traversable, fold, foldMap, foldl, foldlDefault, foldr, foldrDefault, mapAccumL, sequence, sequenceDefault, traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
@@ -29,6 +33,7 @@ import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAltern
 newtype Usage = Usage
   { count :: Int
   , captured :: Boolean
+  , arities :: Set Int
   }
 
 derive instance Newtype Usage _
@@ -37,6 +42,7 @@ instance Semigroup Usage where
   append (Usage a) (Usage b) = Usage
     { count: a.count + b.count
     , captured: a.captured || b.captured
+    , arities: Set.union a.arities b.arities
     }
 
 data Complexity = Trivial | Deref | NonTrivial
@@ -55,43 +61,39 @@ instance Semigroup Complexity where
 instance Monoid Complexity where
   mempty = Trivial
 
-newtype BackendAnalysisSummary = BackendAnalysisSummary
-  { usages :: Map Ident Usage
+newtype BackendAnalysis = BackendAnalysis
+  { usages :: Map Level Usage
   , size :: Int
   , complexity :: Complexity
   }
 
-instance Semigroup BackendAnalysisSummary where
-  append (BackendAnalysisSummary a) (BackendAnalysisSummary b) = BackendAnalysisSummary
+instance Semigroup BackendAnalysis where
+  append (BackendAnalysis a) (BackendAnalysis b) = BackendAnalysis
     { usages: Map.unionWith append a.usages b.usages
     , size: a.size + b.size
     , complexity: a.complexity <> b.complexity
     }
 
-instance Monoid BackendAnalysisSummary where
-  mempty = BackendAnalysisSummary
+instance Monoid BackendAnalysis where
+  mempty = BackendAnalysis
     { usages: Map.empty
     , size: 0
     , complexity: Trivial
     }
 
-data InlineData = NoInline | Inline BackendExpr
-
-type BackendInlineData = Map (Qualified Ident) InlineData
-
-data BackendExpr = BackendExpr (BackendExprView BackendExpr) BackendInlineData BackendAnalysisSummary
+data BackendExpr = BackendExpr BackendInlineEnv BackendAnalysis (BackendExprView BackendExpr)
 
 data BackendExprView a
   = Var (Qualified Ident)
-  -- | Local (Maybe Ident) Level
+  | Local (Maybe Ident) Level
   | Lit (Literal a)
   | App a (NonEmptyArray a)
-  | Abs (NonEmptyArray Ident) a
+  | Abs (NonEmptyArray (Tuple (Maybe Ident) Level)) a
   | Accessor a BackendAccessor
   | Update a (Array (Prop a))
   | CtorDef Ident (Array Ident)
-  | LetRec (Array (Tuple Ident a)) a
-  | Let Ident a a
+  | LetRec Level (Array (Tuple Ident a)) a
+  | Let (Maybe Ident) Level a a
   | Branch (Array (Pair a))
   | Test a BackendGuard
   | Fail String
@@ -100,6 +102,7 @@ newtype Level = Level Int
 
 derive newtype instance Eq Level
 derive newtype instance Ord Level
+derive instance Newtype Level _
 
 data Pair a = Pair a a
 
@@ -143,8 +146,8 @@ instance Foldable BackendExprView where
     Abs _ b -> f b
     Accessor a _ -> f a
     Update a bs -> f a <> foldMap (foldMap f) bs
-    LetRec as b -> foldMap (foldMap f) as <> f b
-    Let _ b c -> f b <> f c
+    LetRec _ as b -> foldMap (foldMap f) as <> f b
+    Let _ _ b c -> f b <> f c
     Branch as -> foldMap (foldMap f) as
     Test a _ -> f a
     _ -> mempty
@@ -154,6 +157,8 @@ instance Traversable BackendExprView where
   traverse f = case _ of
     Var a ->
       pure (Var a)
+    Local a b ->
+      pure (Local a b)
     Lit lit ->
       case lit of
         LitInt a -> pure (Lit (LitInt a))
@@ -173,10 +178,10 @@ instance Traversable BackendExprView where
       Update <$> f a <*> traverse (traverse f) bs
     CtorDef a bs ->
       pure (CtorDef a bs)
-    LetRec as b ->
-      LetRec <$> traverse (traverse f) as <*> f b
-    Let a b c ->
-      Let a <$> f b <*> f c
+    LetRec lvl as b ->
+      LetRec lvl <$> traverse (traverse f) as <*> f b
+    Let ident lvl b c ->
+      Let ident lvl <$> f b <*> f c
     Branch as ->
       Branch <$> traverse (traverse f) as
     Test a b ->
@@ -184,48 +189,60 @@ instance Traversable BackendExprView where
     Fail a ->
       pure (Fail a)
 
-inline :: forall f. Foldable f => f (Tuple (Qualified Ident) InlineData) -> BackendInlineData -> BackendExpr -> BackendExpr
-inline new inlining (BackendExpr analysis inlining' expr) =
-  BackendExpr analysis (Map.union inlining' (foldr (uncurry Map.insert) inlining new)) expr
+bound :: Level -> BackendAnalysis -> BackendAnalysis
+bound level (BackendAnalysis { size, usages, complexity }) =
+  BackendAnalysis { size, usages: Map.delete level usages, complexity }
 
-bound :: forall f. Foldable f => f Ident -> BackendAnalysisSummary -> BackendAnalysisSummary
-bound idents (BackendAnalysisSummary { size, usages, complexity }) =
-  BackendAnalysisSummary { size, usages: foldr Map.delete usages idents, complexity }
+used :: Level -> BackendAnalysis
+used level = BackendAnalysis
+  { usages: Map.singleton level (Usage { count: 1, captured: false, arities: Set.empty })
+  , size: 0
+  , complexity: Trivial
+  }
 
-used :: Qualified Ident -> BackendAnalysisSummary
-used (Qualified mn ident) = case mn of
-  Just _ -> mempty
-  Nothing -> BackendAnalysisSummary
-    { usages: Map.singleton ident (Usage { count: 1, captured: false })
-    , size: 0
-    , complexity: Trivial
+bump :: BackendAnalysis -> BackendAnalysis
+bump (BackendAnalysis { usages, size, complexity }) =
+  BackendAnalysis { usages, size: size + 1, complexity }
+
+complex :: Complexity -> BackendAnalysis -> BackendAnalysis
+complex complexity (BackendAnalysis { usages, size }) =
+  BackendAnalysis { usages, size, complexity }
+
+capture :: BackendAnalysis -> BackendAnalysis
+capture (BackendAnalysis { usages, size, complexity }) =
+  BackendAnalysis { usages: over Usage _ { captured = true } <$> usages, size, complexity }
+
+callArity :: Level -> Int -> BackendAnalysis -> BackendAnalysis
+callArity lvl arity (BackendAnalysis { usages, size, complexity }) =
+  BackendAnalysis
+    { usages: Map.update (Just <<< over Usage (\us -> us { arities = Set.insert arity us.arities })) lvl usages
+    , size
+    , complexity
     }
 
-bump :: BackendAnalysisSummary -> BackendAnalysisSummary
-bump (BackendAnalysisSummary { usages, size, complexity }) =
-  BackendAnalysisSummary { usages, size: size + 1, complexity }
+analysisOf :: BackendExpr -> BackendAnalysis
+analysisOf (BackendExpr _ analysis _) = analysis
 
-complex :: Complexity -> BackendAnalysisSummary -> BackendAnalysisSummary
-complex complexity (BackendAnalysisSummary { usages, size }) =
-  BackendAnalysisSummary { usages, size, complexity }
-
-capture :: BackendAnalysisSummary -> BackendAnalysisSummary
-capture (BackendAnalysisSummary { usages, size, complexity }) =
-  BackendAnalysisSummary { usages: over Usage _ { captured = true } <$> usages, size, complexity }
-
-analysisOf :: BackendExpr -> BackendAnalysisSummary
-analysisOf (BackendExpr _ _ analysis) = analysis
-
-analyze :: BackendExprView BackendExpr -> BackendAnalysisSummary
+analyze :: BackendExprView BackendExpr -> BackendAnalysis
 analyze expr = case expr of
-  Var ident ->
-    bump (used ident)
-  Let ident a b ->
-    bump (complex NonTrivial (analysisOf a <> bound [ ident ] (analysisOf b)))
-  LetRec as b ->
-    bump (complex NonTrivial (bound (fst <$> as) (foldMap (analysisOf <<< snd) as <> analysisOf b)))
-  Abs _ _ ->
-    complex NonTrivial $ capture $ analyzeDefault expr
+  Var _ ->
+    bump mempty
+  Local _ lvl ->
+    bump (used lvl)
+  Let _ lvl a b ->
+    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+  LetRec lvl as b ->
+    bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
+  Abs args _ ->
+    complex NonTrivial $ capture $ foldr (bound <<< snd) (analyzeDefault expr) args
+  App (BackendExpr _ _ hd) tl ->
+    case hd of
+      Local _ lvl ->
+        callArity lvl (NonEmptyArray.length tl) analysis
+      _ ->
+        analysis
+    where
+    analysis = complex NonTrivial $ analyzeDefault expr
   Update _ _ ->
     complex NonTrivial $ analyzeDefault expr
   CtorDef _ _ ->
@@ -235,81 +252,234 @@ analyze expr = case expr of
   Test _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Fail _ ->
-    complex NonTrivial $ analyzeDefault expr
-  App _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Accessor _ _ ->
     complex Deref $ analyzeDefault expr
   Lit _ ->
     analyzeDefault expr
 
-analyzeDefault :: BackendExprView BackendExpr -> BackendAnalysisSummary
+analyzeDefault :: BackendExprView BackendExpr -> BackendAnalysis
 analyzeDefault = bump <<< foldMap analysisOf
 
-build :: BackendExprView BackendExpr -> BackendExpr
-build expr = BackendExpr expr Map.empty (analyze expr)
+data VarImpl
+  = ForeignImpl
+  | CoreFnImpl BackendAnalysis (Expr Ann)
+
+type BackendInlineEnv =
+  { currentModule :: ModuleName
+  , currentLevel :: Level
+  , vars :: Map (Qualified Ident) VarImpl
+  }
+
+build :: BackendInlineEnv -> BackendExprView BackendExpr -> BackendExpr
+build env = case _ of
+  App (BackendExpr _ _ (App hd tl1)) tl2 ->
+    build env $ App hd (tl1 <> tl2)
+  Abs ids1 (BackendExpr _ _ (Abs ids2 body)) ->
+    build env $ Abs (ids1 <> ids2) body
+  Abs idents (BackendExpr _ _ (App f args))
+    | [ Tuple _ lvl1 ] <- NonEmptyArray.toArray idents
+    , [ BackendExpr _ _ (Local _ lvl2) ] <- NonEmptyArray.toArray args
+    , lvl1 == lvl2 ->
+        f
+  expr ->
+    BackendExpr env (analyze expr) expr
+
+buildM :: BackendExprView BackendExpr -> BackendM BackendExpr
+buildM expr env = build
+  { currentModule: env.currentModule
+  , currentLevel: Level env.currentLevel
+  , vars: env.vars
+  }
+  expr
+
+withVars :: Map (Qualified Ident) VarImpl -> BackendExpr -> BackendExpr
+withVars vars (BackendExpr env analysis expr) =
+  BackendExpr (env { vars = vars }) analysis $ map (withVars vars) expr
+
+type Relevel =
+  { original :: Level
+  , delta :: Int
+  }
+
+relevelSub :: Level -> BackendExpr -> BackendExpr
+relevelSub =
+  ( \next@(Level n) expr@(BackendExpr { currentLevel: prev@(Level p) } _ _) ->
+      go { original: prev, delta: n - p } next expr
+  )
+  where
+  go origLevel newLevel@(Level lvl) (BackendExpr env _ expr) = case expr of
+    Local ident refLevel
+      | refLevel >= origLevel.original ->
+          build (env { currentLevel = newLevel }) do
+            Local ident (over Level (add origLevel.delta) refLevel)
+      | otherwise ->
+          build (env { currentLevel = newLevel }) do
+            Local ident refLevel
+    Abs args inner ->
+      build (env { currentLevel = newLevel }) do
+        Abs (mapWithIndex (\ix (Tuple ident _) -> Tuple ident (Level (lvl + ix))) args) do
+          go origLevel (Level (lvl + NonEmptyArray.length args)) inner
+    Let ident _ expr1 expr2 ->
+      build (env { currentLevel = newLevel }) do
+        Let ident newLevel
+          (go origLevel newLevel expr1)
+          (go origLevel (Level (lvl + 1)) expr2)
+    LetRec _ bindings expr1 ->
+      build (env { currentLevel = newLevel }) do
+        LetRec newLevel
+          (map (go origLevel (Level (lvl + 1))) <$> bindings)
+          (go origLevel (Level (lvl + 1)) expr1)
+    _ ->
+      build (env { currentLevel = newLevel }) do
+        go origLevel newLevel <$> expr
+
+inlineSub :: Level -> BackendExpr -> BackendExpr -> BackendExpr
+inlineSub subLevel newExpr (BackendExpr env2 _ expr) = case expr of
+  Local _ refLevel | subLevel == refLevel ->
+    relevelSub env2.currentLevel newExpr
+  _ ->
+    build env2 $ inlineSub subLevel newExpr <$> expr
+
+review :: BackendExpr -> BackendExpr
+review expr@(BackendExpr env _ _) = build env $ map review $ view expr
 
 view :: BackendExpr -> BackendExprView BackendExpr
-view (BackendExpr expr inlining _) = case expr of
-  Var ident
-    | Just (Inline val) <- Map.lookup ident inlining ->
-        view val
-    | otherwise ->
-        expr
-  Let ident a b -> do
-    let BackendAnalysisSummary s1 = analysisOf a
-    let BackendAnalysisSummary s2 = analysisOf b
-    case Map.lookup ident s2.usages of
-      Nothing ->
-        view (inline [ Tuple (Qualified Nothing ident) NoInline ] inlining b)
-      Just (Usage { captured, count })
-        | not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)) ->
-            view (inline [ Tuple (Qualified Nothing ident) (Inline (inline [] inlining a)) ] inlining b)
-        | otherwise ->
-            Let ident
-              (inline [] inlining a)
-              (inline [ Tuple (Qualified Nothing ident) NoInline ] inlining b)
-  LetRec as b -> do
-    let bindings = (\(Tuple id _) -> Tuple (Qualified Nothing id) NoInline) <$> as
-    let f = inline bindings inlining
-    LetRec (map f <$> as) (f b)
-  Abs idents b -> do
-    let bindings = (\id -> Tuple (Qualified Nothing id) NoInline) <$> idents
-    Abs idents (inline bindings inlining b)
-  Update _ _ ->
-    inlineDefault inlining expr
-  Branch _ ->
-    inlineDefault inlining expr
-  Test _ _ ->
-    inlineDefault inlining expr
-  Accessor _ _ ->
-    inlineDefault inlining expr
-  App _ _ ->
-    inlineDefault inlining expr
-  Lit _ ->
-    inlineDefault inlining expr
-  CtorDef _ _ ->
-    expr
-  Fail _ ->
+view (BackendExpr env _ expr) = case expr of
+  Let _ lvl a b
+    | a' <- review a
+    , shouldInlineLet lvl a' b ->
+        view $ relevelSub env.currentLevel (inlineSub lvl a' b)
+  Accessor (BackendExpr env' _ (Var qi)) acc | Just expr' <- inlineVarAccessor env' qi acc ->
+    view expr'
+  Var qi | Just expr' <- inlineVarImpl env qi [] ->
+    view expr'
+  App head@(BackendExpr env' _ _) args ->
+    case view head of
+      Var qi | Just expr' <- inlineVarImpl env' qi (NonEmptyArray.toArray args) ->
+        view expr'
+      Abs idents body -> do
+        let
+          appliedArgs = NonEmptyArray.zip idents args
+          appliedLen = NonEmptyArray.length appliedArgs
+          appliedUnder = NonEmptyArray.drop appliedLen idents
+          appliedOver = NonEmptyArray.drop appliedLen args
+          body' = case NonEmptyArray.fromArray appliedUnder of
+            Nothing ->
+              body
+            Just idents' -> do
+              let Tuple _ lvl = NonEmptyArray.head idents'
+              build (env { currentLevel = lvl }) do
+                Abs idents' body
+          head' = foldr
+            ( \(Tuple (Tuple ident lvl) arg) next ->
+                build (env { currentLevel = lvl })
+                  $ Let ident lvl (relevelSub lvl arg) next
+            )
+            body'
+            appliedArgs
+          expr' = case NonEmptyArray.fromArray appliedOver of
+            Nothing ->
+              head'
+            Just args' ->
+              build env $ App head' args'
+        view $ relevelSub env.currentLevel $ expr'
+      other ->
+        App (build env' other) args
+  Accessor head@(BackendExpr env' _ _) acc ->
+    case view head of
+      Var qi | Just expr' <- inlineVarAccessor env' qi acc ->
+        view expr'
+      other ->
+        Accessor (build env' other) acc
+  _ ->
     expr
 
-inlineDefault :: BackendInlineData -> BackendExprView BackendExpr -> BackendExprView BackendExpr
-inlineDefault inlining expr = inline [] inlining <$> expr
+overInlineEnv :: (BackendInlineEnv -> BackendInlineEnv) -> BackendExpr -> BackendExpr
+overInlineEnv k (BackendExpr env analysis expr) = BackendExpr (k env) analysis expr
 
-type BackendBindingGroup =
+shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
+shouldInlineLet lvl a b = do
+  let BackendExpr _ (BackendAnalysis s1) e1 = a
+  let BackendExpr _ (BackendAnalysis s2) _ = b
+  case Map.lookup lvl s2.usages of
+    Nothing ->
+      true
+    Just (Usage { captured, count }) ->
+      (s1.complexity == Trivial && s1.size < 5)
+        || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
+        || (isAbs e1 && (Map.isEmpty s1.usages || s1.size < 128))
+
+shouldInlineVar :: BackendAnalysis -> Expr Ann -> Boolean
+shouldInlineVar (BackendAnalysis s) e =
+  (s.complexity == Trivial && s.size < 5)
+    || (s.complexity <= Deref && s.size < 5)
+    || (isCoreFnAbs e && s.size < 128)
+
+inlineVarImpl :: BackendInlineEnv -> Qualified Ident -> Array BackendExpr -> Maybe BackendExpr
+inlineVarImpl env qi _ = Map.lookup qi env.vars >>= go
+  where
+  go = case _ of
+    CoreFnImpl analysis (ExprApp _ (ExprVar (Ann { meta: Just IsNewtype }) _) expr) ->
+      go (CoreFnImpl analysis expr)
+    CoreFnImpl analysis expr | shouldInlineVar analysis expr ->
+      Just $ toBackendExpr expr
+        { currentLevel: unwrap env.currentLevel
+        , currentModule: env.currentModule
+        , toLevel: Map.empty
+        , vars: env.vars
+        }
+    _ ->
+      Nothing
+
+inlineVarAccessor :: BackendInlineEnv -> Qualified Ident -> BackendAccessor -> Maybe BackendExpr
+inlineVarAccessor env qi accessor = Map.lookup qi env.vars >>= go
+  where
+  go = case _ of
+    CoreFnImpl analysis (ExprApp _ (ExprVar (Ann { meta: Just IsNewtype }) _) expr) ->
+      go (CoreFnImpl analysis expr)
+    CoreFnImpl _ (ExprLit _ (LitRecord props)) | GetProp prop <- accessor ->
+      props
+        # findMap (\(Prop prop' val) -> val <$ guard (prop == prop'))
+        # map
+            ( \expr' ->
+                toBackendExpr expr'
+                  { currentLevel: unwrap env.currentLevel
+                  , currentModule: env.currentModule
+                  , toLevel: Map.empty
+                  , vars: env.vars
+                  }
+            )
+    _ ->
+      Nothing
+
+isAbs :: forall a. BackendExprView a -> Boolean
+isAbs = case _ of
+  Abs _ _ -> true
+  _ -> false
+
+isCoreFnAbs :: Expr Ann -> Boolean
+isCoreFnAbs = case _ of
+  ExprAbs _ _ _ -> true
+  _ -> false
+
+type BackendBindingGroup b =
   { recursive :: Boolean
-  , bindings :: Array (Tuple Ident BackendExpr)
+  , bindings :: Array (Tuple Ident b)
   }
 
 newtype BackendModule = BackendModule
-  { imports :: Array (Tuple ModuleName String)
-  , bindings :: Array BackendBindingGroup
+  { name :: ModuleName
+  , imports :: Array (Tuple ModuleName String)
+  , bindings :: Array (BackendBindingGroup (Tuple BackendExpr (Maybe (Expr Ann))))
   , exports :: Array (Tuple Ident (Qualified Ident))
   }
 
 type BackendEnv =
   { currentModule :: ModuleName
   , currentLevel :: Int
+  , toLevel :: Map Ident Level
+  , vars :: Map (Qualified Ident) VarImpl
   }
 
 type BackendM = Function BackendEnv
@@ -317,15 +487,32 @@ type BackendM = Function BackendEnv
 levelUp :: forall a. BackendM a -> BackendM a
 levelUp f env = f (env { currentLevel = env.currentLevel + 1 })
 
+intro :: forall f a. Foldable f => f Ident -> Level -> BackendM a -> BackendM a
+intro ident lvl f env = f
+  ( env
+      { currentLevel = env.currentLevel + 1
+      , toLevel = foldr (flip Map.insert lvl) env.toLevel ident
+      }
+  )
+
 currentLevel :: BackendM Level
 currentLevel env = Level env.currentLevel
+
+currentInlineEnv :: BackendM BackendInlineEnv
+currentInlineEnv env =
+  { currentModule: env.currentModule
+  , currentLevel: Level env.currentLevel
+  , vars: env.vars
+  }
 
 toBackendModule :: Module Ann -> BackendM BackendModule
 toBackendModule (Module mod@{ name: ModuleName this }) = do
   bindings <- toBackendTopLevelBindingGroups mod.decls
   let foreignModuleName = ModuleName (this <> "$foreign")
+  env <- currentInlineEnv
   pure $ BackendModule
-    { imports: fold
+    { name: mod.name
+    , imports: fold
         [ Array.mapMaybe
             ( \(Import _ mn) ->
                 guard (mn /= mod.name && mn /= ModuleName "Prim")
@@ -337,7 +524,11 @@ toBackendModule (Module mod@{ name: ModuleName this }) = do
         ]
     , bindings: fold
         [ [ { recursive: false
-            , bindings: map (\ident -> Tuple ident (build (Var (Qualified (Just foreignModuleName) ident)))) mod.foreign
+            , bindings: map
+                ( \ident ->
+                    Tuple ident (Tuple (build env (Var (Qualified (Just foreignModuleName) ident))) Nothing)
+                )
+                mod.foreign
             }
           ]
         , bindings
@@ -348,18 +539,21 @@ toBackendModule (Module mod@{ name: ModuleName this }) = do
         ]
     }
 
-toBackendTopLevelBindingGroups :: Array (Bind Ann) -> BackendM (Array BackendBindingGroup)
+toBackendTopLevelBindingGroups :: Array (Bind Ann) -> BackendM (Array (BackendBindingGroup (Tuple BackendExpr (Maybe (Expr Ann)))))
 toBackendTopLevelBindingGroups binds = do
   binds' <- traverse toBackendTopLevelBindingGroup binds
   pure $ (\as -> { recursive: (NonEmptyArray.head as).recursive, bindings: _.bindings =<< NonEmptyArray.toArray as }) <$>
     Array.groupBy ((&&) `on` (not <<< _.recursive)) binds'
 
-toBackendTopLevelBindingGroup :: Bind Ann -> BackendM BackendBindingGroup
+toBackendTopLevelBindingGroup :: Bind Ann -> BackendM (BackendBindingGroup (Tuple BackendExpr (Maybe (Expr Ann))))
 toBackendTopLevelBindingGroup = case _ of
   Rec bindings ->
-    { recursive: true, bindings: _ } <$> traverse toBackendBinding bindings
+    { recursive: true, bindings: _ } <$> traverse go bindings
   NonRec binding ->
-    { recursive: false, bindings: _ } <<< pure <$> toBackendBinding binding
+    { recursive: false, bindings: _ } <<< pure <$> go binding
+  where
+  go (Binding _ ident expr) =
+    Tuple ident <<< flip Tuple (Just expr) <$> toBackendExpr expr
 
 data PatternStk
   = PatBinder (Binder Ann) PatternStk
@@ -370,89 +564,77 @@ data PatternStk
 toBackendExpr :: Expr Ann -> BackendM BackendExpr
 toBackendExpr = case _ of
   ExprVar _ qi@(Qualified mn ident) -> do
-    { currentModule } <- ask
+    { currentModule, toLevel } <- ask
     let
       qi'
         | mn == Just currentModule = Qualified Nothing ident
         | otherwise = qi
-    pure (build (Var qi'))
+    case qi' of
+      Qualified Nothing _ | Just lvl <- Map.lookup ident toLevel ->
+        buildM (Local (Just ident) lvl)
+      _ ->
+        buildM (Var qi')
   ExprLit _ lit ->
-    build <<< Lit <$> traverse toBackendExpr lit
+    buildM <<< Lit =<< traverse toBackendExpr lit
   ExprConstructor _ _ name fields ->
-    pure (build (CtorDef name fields))
+    buildM (CtorDef name fields)
   ExprAccessor _ a field ->
-    build <<< flip Accessor (GetProp field) <$> toBackendExpr a
+    buildM <<< flip Accessor (GetProp field) =<< toBackendExpr a
   ExprUpdate _ a bs ->
-    (\x y -> build (Update x y))
+    join $ (\x y -> buildM (Update x y))
       <$> toBackendExpr a
       <*> traverse (traverse toBackendExpr) bs
   ExprAbs _ arg body -> do
-    let Tuple args expr = flattenAbs (NonEmptyArray.singleton arg) body
-    build <<< Abs args <$> toBackendExpr expr
+    lvl <- currentLevel
+    make $ Abs (NonEmptyArray.singleton (Tuple (Just arg) lvl)) (intro [ arg ] lvl (toBackendExpr body))
   ExprApp _ a b
     | ExprVar (Ann { meta: Just IsNewtype }) _ <- a ->
         toBackendExpr b
-    | otherwise -> do
-        let Tuple fn args = flattenApp (NonEmptyArray.singleton b) a
-        (\x y -> build (App x y))
-          <$> toBackendExpr fn
-          <*> traverse toBackendExpr args
+    | otherwise ->
+        make $ App (toBackendExpr a) (NonEmptyArray.singleton (toBackendExpr b))
   ExprLet _ binds body ->
     foldr go (toBackendExpr body) binds
     where
     go bind' next = case bind' of
-      Rec bindings ->
-        (\x y -> build (LetRec x y))
-          <$> traverse toBackendBinding bindings
-          <*> next
-      NonRec binding ->
-        (\(Tuple ident x) y -> build (Let ident x y))
-          <$> toBackendBinding binding
-          <*> next
+      Rec bindings -> do
+        lvl <- currentLevel
+        let idents = (\(Binding _ ident _) -> ident) <$> bindings
+        join $ (\x y -> buildM (LetRec lvl x y))
+          <$> intro idents lvl (traverse toBackendBinding bindings)
+          <*> intro idents lvl next
+      NonRec (Binding _ ident expr) ->
+        makeLet (Just ident) (toBackendExpr expr) \_ -> next
   ExprCase _ exprs alts -> do
     foldr
       ( \expr next idents ->
-          makeTmpLet (toBackendExpr expr) \tmp ->
+          makeLet Nothing (toBackendExpr expr) \tmp ->
             next (Array.snoc idents tmp)
       )
-      ( \idents ->
-          foldr (lift2 mergeBranches) patternFail $ goAlt idents <$> alts
+      ( \idents -> do
+          env <- currentInlineEnv
+          foldr (lift2 (mergeBranches env)) patternFail $ goAlt idents <$> alts
       )
       exprs
       []
   where
-  mergeBranches :: BackendExpr -> BackendExpr -> BackendExpr 
-  mergeBranches = case _, _ of
-    BackendExpr (Branch bs1) _ a1, BackendExpr (Branch bs2) _ a2
-      | Just (Pair (BackendExpr (Lit (LitBoolean true)) _ _) _) <- Array.last bs1 ->
-          BackendExpr (Branch bs1) Map.empty a1
+  mergeBranches :: BackendInlineEnv -> BackendExpr -> BackendExpr -> BackendExpr
+  mergeBranches env = case _, _ of
+    BackendExpr e1 a1 (Branch bs1), BackendExpr _ a2 (Branch bs2)
+      | Just (Pair (BackendExpr _ _ (Lit (LitBoolean true))) _) <- Array.last bs1 ->
+          BackendExpr e1 a1 (Branch bs1)
       | otherwise ->
-          BackendExpr (Branch (bs1 <> bs2)) Map.empty (a1 <> a2)
-    BackendExpr (Branch bs1) _ _, nonBranch ->
-      build (Branch (Array.snoc bs1 (Pair (build (Lit (LitBoolean true))) nonBranch)))
+          BackendExpr e1 (a1 <> a2) (Branch (bs1 <> bs2))
+    BackendExpr _ _ (Branch bs1), nonBranch ->
+      build env (Branch (Array.snoc bs1 (Pair (build env (Lit (LitBoolean true))) nonBranch)))
     nonBranch, _ ->
       nonBranch
 
-  flattenAbs :: forall a. NonEmptyArray Ident -> Expr a -> Tuple (NonEmptyArray Ident) (Expr a)
-  flattenAbs args = case _ of
-    ExprAbs _ ident b ->
-      flattenAbs (NonEmptyArray.snoc args ident) b
-    expr ->
-      Tuple args expr
-
-  flattenApp :: forall a. NonEmptyArray (Expr a) -> Expr a -> Tuple (Expr a) (NonEmptyArray (Expr a))
-  flattenApp bs = case _ of
-    ExprApp _ a b ->
-      flattenApp (NonEmptyArray.cons b bs) a
-    expr ->
-      Tuple expr bs
-
-  goAlt :: Array Ident -> CaseAlternative Ann -> BackendM BackendExpr
+  goAlt :: Array Level -> CaseAlternative Ann -> BackendM BackendExpr
   goAlt idents (CaseAlternative binders branch) =
     goBinders
       ( \renames -> foldr
-          ( \(Tuple a b) ->
-              make <<< Let a (make (Var (Qualified Nothing b)))
+          ( \(Tuple a b) next ->
+              makeLet (Just a) (make (Local Nothing b)) \_ -> next
           )
           (goCaseGuard branch)
           renames
@@ -466,12 +648,12 @@ toBackendExpr = case _ of
     Unconditional expr ->
       toBackendExpr expr
     Guarded gs ->
-      build <<< Branch <$> traverse (\(Guard a b) -> Pair <$> toBackendExpr a <*> toBackendExpr b) gs
+      buildM <<< Branch =<< traverse (\(Guard a b) -> Pair <$> toBackendExpr a <*> toBackendExpr b) gs
 
   goBinders
-    :: (List (Tuple Ident Ident) -> BackendM BackendExpr)
-    -> List (Tuple Ident Ident)
-    -> List Ident
+    :: (List (Tuple Ident Level) -> BackendM BackendExpr)
+    -> List (Tuple Ident Level)
+    -> List Level
     -> PatternStk
     -> BackendM BackendExpr
   goBinders k store stk = case _ of
@@ -523,7 +705,7 @@ toBackendExpr = case _ of
     PatPush accessor next ->
       case stk of
         List.Cons id _ ->
-          makeTmpLet (make (Accessor (make (Var (Qualified Nothing id))) accessor)) \tmp ->
+          makeLet Nothing (make (Accessor (make (Local Nothing id)) accessor)) \tmp ->
             goBinders k store (List.Cons tmp stk) next
         _ ->
           unsafeCrashWith "impossible: goBinders (push)"
@@ -540,18 +722,21 @@ toBackendExpr = case _ of
   patternFail =
     make (Branch [ Pair (make (Lit (LitBoolean true))) (make (Fail "Failed pattern match")) ])
 
-  makeTmpLet :: BackendM BackendExpr -> (Ident -> BackendM BackendExpr) -> BackendM BackendExpr
-  makeTmpLet a k = do
-    Level level <- currentLevel
-    let tmp = Ident ("$t" <> show level)
-    make $ Let tmp a (levelUp (k tmp))
+  makeLet :: Maybe Ident -> BackendM BackendExpr -> (Level -> BackendM BackendExpr) -> BackendM BackendExpr
+  makeLet id a k = do
+    lvl <- currentLevel
+    case id of
+      Nothing ->
+        make $ Let id lvl a (levelUp (k lvl))
+      Just ident ->
+        make $ Let id lvl a (intro [ ident ] lvl (k lvl))
 
-  makeGuard :: Ident -> BackendGuard -> BackendM BackendExpr -> BackendM BackendExpr
-  makeGuard id g inner =
-    make $ Branch [ Pair (make (Test (make (Var (Qualified Nothing id))) g)) inner ]
+  makeGuard :: Level -> BackendGuard -> BackendM BackendExpr -> BackendM BackendExpr
+  makeGuard lvl g inner =
+    make $ Branch [ Pair (make (Test (make (Local Nothing lvl)) g)) inner ]
 
   make :: BackendExprView (BackendM BackendExpr) -> BackendM BackendExpr
-  make = map build <<< sequence
+  make a = buildM =<< sequence a
 
 toBackendBinding :: Binding Ann -> BackendM (Tuple Ident BackendExpr)
 toBackendBinding (Binding _ ident expr) = Tuple ident <$> toBackendExpr expr
@@ -560,12 +745,35 @@ luaCodegenModule :: forall a. BackendModule -> Dodo.Doc a
 luaCodegenModule (BackendModule mod) =
   Dodo.lines
     [ Dodo.lines $ uncurry luaImport <$> mod.imports
-    , Dodo.lines $ luaCodegenBindingGroup =<< mod.bindings
+    , Dodo.lines $ luaCodegenBindingGroup <<< withInlining =<< mod.bindings
     , Dodo.words
         [ Dodo.text "return"
         , luaRecord (map (uncurry luaExport) mod.exports)
         ]
     ]
+  where
+  inliningEnv =
+    { currentModule: mod.name
+    , currentLevel: Level 0
+    , vars: Map.empty
+    }
+
+  withInlining :: BackendBindingGroup (Tuple BackendExpr (Maybe (Expr Ann))) -> BackendBindingGroup BackendExpr
+  withInlining r = do
+    -- TODO: recursive group
+    let
+      { value: newBindings } = mapAccumL
+        ( \env (Tuple ident (Tuple expr impl)) ->
+            { accum: varImpl ident (maybe ForeignImpl (CoreFnImpl (analysisOf expr)) impl) env
+            , value: Tuple ident (review (withVars env.vars expr))
+            }
+        )
+        inliningEnv
+        r.bindings
+    r { bindings = newBindings }
+
+  varImpl :: Ident -> VarImpl -> BackendInlineEnv -> BackendInlineEnv
+  varImpl ident impl env = env { vars = Map.insert (Qualified Nothing ident) impl env.vars }
 
 luaCodegenExpr :: forall a. BackendExpr -> Dodo.Doc a
 luaCodegenExpr a = luaCodegenExprView (view a)
@@ -576,12 +784,14 @@ luaCodegenExprView = case _ of
     luaUndefined
   Var var ->
     luaCodegenQualified luaCodegenIdent var
+  Local ident lvl ->
+    luaCodegenLocal ident lvl
   Lit lit ->
     luaCodegenLit lit
   App a bs ->
     luaCurriedApp (luaCodegenExpr a) (luaCodegenExpr <$> bs)
   Abs idents body
-    | [ Ident "$__unused" ] <- NonEmptyArray.toArray idents ->
+    | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
         luaFn [] (luaCodegenBlockStatements (view body))
     | otherwise ->
         luaCurriedFn idents (luaCodegenBlockStatements (view body))
@@ -589,17 +799,18 @@ luaCodegenExprView = case _ of
     luaCodegenAccessor (luaCodegenExpr a) prop
   Update a props ->
     luaUpdate (luaCodegenExpr a) (map luaCodegenExpr <$> props)
-  CtorDef (Ident tag) fields ->
-    luaCurriedFn fields (luaCtor tag (luaCodegenIdent <$> fields))
+  CtorDef (Ident tag) fields -> do
+    let fieldsWithLevel = mapWithIndex (\ix ident -> Tuple (Just ident) (Level ix)) fields
+    luaCurriedFn fieldsWithLevel (luaCtor tag (uncurry luaCodegenLocal <$> fieldsWithLevel))
   Test a b ->
     luaCodegenTest (luaCodegenExpr a) b
   Fail str ->
     luaError str
   expr@(Branch _) ->
     luaCodegenBlock expr
-  expr@(LetRec _ _) ->
+  expr@(LetRec _ _ _) ->
     luaCodegenBlock expr
-  expr@(Let _ _ _) ->
+  expr@(Let _ _ _ _) ->
     luaCodegenBlock expr
 
 luaCodegenLit :: forall a. Literal BackendExpr -> Dodo.Doc a
@@ -637,11 +848,11 @@ luaCodegenBlockStatements = luaStatements <<< go []
   where
   go :: Array (Dodo.Doc a) -> BackendExprView BackendExpr -> Array (Dodo.Doc a)
   go acc = case _ of
-    LetRec bindings body -> do
-      let lines = luaCodegenBindingGroup { recursive: true, bindings }
+    LetRec lvl bindings body -> do
+      let lines = luaCodegenBindingGroup { recursive: true, bindings: lmap (flip luaLocalIdent lvl <<< Just) <$> bindings }
       go (acc <> lines) (view body)
-    Let ident expr body -> do
-      let lines = luaCodegenBindingGroup { recursive: false, bindings: [ Tuple ident expr ] }
+    Let ident lvl expr body -> do
+      let lines = luaCodegenBindingGroup { recursive: false, bindings: [ Tuple (luaLocalIdent ident lvl) expr ] }
       go (acc <> lines) (view body)
     Branch bs ->
       Array.snoc acc (luaCodegenBlockBranches bs)
@@ -650,7 +861,7 @@ luaCodegenBlockStatements = luaStatements <<< go []
     expr ->
       Array.snoc acc (luaReturn (luaCodegenExprView expr))
 
-luaCodegenBindingGroup :: forall a. BackendBindingGroup -> Array (Dodo.Doc a)
+luaCodegenBindingGroup :: forall a. BackendBindingGroup BackendExpr -> Array (Dodo.Doc a)
 luaCodegenBindingGroup { recursive, bindings }
   | recursive = do
       let fwdRefs = luaFwdRef <<< fst <$> bindings
@@ -683,6 +894,16 @@ luaCodegenAccessor lhs = case _ of
     luaIndex lhs n
   GetOffset n ->
     luaOffset lhs n
+
+luaLocalIdent :: Maybe Ident -> Level -> Ident
+luaLocalIdent mb (Level lvl) = case mb of
+  Just (Ident a) ->
+    Ident (a <> "." <> show lvl)
+  Nothing ->
+    Ident ("." <> show lvl)
+
+luaCodegenLocal :: forall a. Maybe Ident -> Level -> Dodo.Doc a
+luaCodegenLocal a b = luaCodegenIdent (luaLocalIdent a b)
 
 luaCodegenIdent :: forall a. Ident -> Dodo.Doc a
 luaCodegenIdent (Ident a) = Dodo.text (luaEscapeIdent a)
@@ -792,11 +1013,11 @@ luaBlock stmts = Dodo.Common.jsParens (luaFn mempty stmts) <> Dodo.text "()"
 luaStatements :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
 luaStatements = Dodo.lines
 
-luaFn :: forall a. Array Ident -> Dodo.Doc a -> Dodo.Doc a
+luaFn :: forall a. Array (Tuple (Maybe Ident) Level) -> Dodo.Doc a -> Dodo.Doc a
 luaFn args stmts =
   Dodo.lines
     [ Dodo.text "function" <> Dodo.Common.jsParens
-        (Dodo.foldWithSeparator Dodo.Common.trailingComma (luaCodegenIdent <$> args))
+        (Dodo.foldWithSeparator Dodo.Common.trailingComma (uncurry luaCodegenLocal <$> args))
     , Dodo.indent $ stmts
     , Dodo.text "end"
     ]
@@ -808,7 +1029,7 @@ luaReturn doc = Dodo.flexGroup $ fold
   , Dodo.indent doc
   ]
 
-luaCurriedFn :: forall f a. Foldable f => f Ident -> Dodo.Doc a -> Dodo.Doc a
+luaCurriedFn :: forall f a. Foldable f => f (Tuple (Maybe Ident) Level) -> Dodo.Doc a -> Dodo.Doc a
 luaCurriedFn = flip (foldr (luaFn <<< pure))
 
 luaArray :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
@@ -898,7 +1119,7 @@ luaImport mn path = Dodo.words
   ]
 
 luaExport :: forall a. Ident -> Qualified Ident -> Prop (Dodo.Doc a)
-luaExport (Ident ident) ref = Prop ident (luaCodegenQualified luaCodegenIdent ref)
+luaExport (Ident ident) ref = Prop (luaEscapeIdent ident) (luaCodegenQualified luaCodegenIdent ref)
 
 luaModulePath :: ModuleName -> String
 luaModulePath (ModuleName mn) = luaEscapeIdent mn

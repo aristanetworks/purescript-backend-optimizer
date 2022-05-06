@@ -10,6 +10,7 @@ You can edit this file as you like.
   , "argparse-basic"
   , "arrays"
   , "bifunctors"
+  , "catenable-lists"
   , "console"
   , "control"
   , "debug"
