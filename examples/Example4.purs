@@ -69,10 +69,12 @@ test7 = (false || true)
 
 test8 = test6 `Data.HeytingAlgebra.implies` test7
 
+test9 :: Effect Unit
+test9 =  when test8 do
+  Effect.Class.Console.log "test8 true"
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"
   Effect.Class.Console.log "World"
-  when true do
-    Effect.Class.Console.log "test6 true"
   pure unit

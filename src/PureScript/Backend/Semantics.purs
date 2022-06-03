@@ -14,6 +14,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
+import Data.String as String
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
@@ -351,6 +352,8 @@ evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
     case expr, spine of
       NeutralExpr (Var _), [] ->
         Just $ eval env expr
+      NeutralExpr (Lit lit), [] | shouldInlineExternLiteral lit ->
+        Just $ eval env expr
       NeutralExpr (Lit (LitRecord props)), [ ExternAccessor (GetProp prop) ] ->
         eval env <$> findProp prop props
       body, [ ExternApp args ] | shouldInlineExternApp qual analysis body args ->
@@ -571,6 +574,16 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args =
     || (Array.length s.args <= Array.length args && s.size < 128)
 
 -- || (not Array.null s.args && not Array.null args)
+
+shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
+shouldInlineExternLiteral = case _ of
+  LitInt _ -> true
+  LitNumber _ -> true
+  LitString s -> String.length s <= 32
+  LitChar _ -> true
+  LitBoolean _ -> true
+  LitArray a -> Array.null a
+  LitRecord r -> Array.null r
 
 isAbs :: BackendExpr -> Boolean
 isAbs = syntaxOf >>> case _ of
