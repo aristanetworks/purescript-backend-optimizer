@@ -3,6 +3,8 @@
 /.pulp-cache/
 /output/
 /output-lua/
+/output-es/
+/examples-deps/
 /bundle/
 /generated-docs/
 /.psc-package/

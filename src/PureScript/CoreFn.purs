@@ -2,6 +2,7 @@ module PureScript.CoreFn where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
@@ -11,6 +12,7 @@ newtype Ident = Ident String
 
 derive newtype instance eqIdent :: Eq Ident
 derive newtype instance ordIdent :: Ord Ident
+derive instance Newtype Ident _
 
 newtype ModuleName = ModuleName String
 
@@ -31,6 +33,9 @@ derive instance Functor Qualified
 
 unQualified :: forall a. Qualified a -> a
 unQualified (Qualified _ a) = a
+
+qualifiedModuleName :: forall a. Qualified a -> Maybe ModuleName
+qualifiedModuleName (Qualified mn _) = mn
 
 type SourcePos =
   { line :: Int
@@ -140,8 +145,14 @@ instance traversableProp :: Traversable Prop where
   traverse k (Prop str a) = Prop str <$> k a
   sequence (Prop str a) = Prop str <$> a
 
+propKey :: forall a. Prop a -> String
+propKey (Prop k _) = k
+
 propValue :: forall a. Prop a -> a
 propValue (Prop _ a) = a
+
+findProp :: forall a. String -> Array (Prop a) -> Maybe a
+findProp prop = Array.findMap (\(Prop k v) -> if prop == k then Just v else Nothing)
 
 data Literal a
   = LitInt Int

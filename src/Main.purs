@@ -4,8 +4,7 @@ import Prelude
 
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
-import Backend2 (toBackendModule, luaCodegenModule, luaForeignModulePath, luaModulePath)
-import Control.Parallel (parTraverse, parTraverse_)
+import Control.Parallel (parTraverse)
 import Control.Plus (empty)
 import Data.Argonaut (printJsonDecodeError)
 import Data.Argonaut as Json
@@ -13,9 +12,13 @@ import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), isRight)
 import Data.Foldable (oneOf)
+import Data.List (List)
+import Data.List as List
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
+import Data.Set as Set
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
@@ -39,7 +42,9 @@ import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Process as Process
 import Node.Stream as Stream
-import PureScript.CoreFn (Ann, Module(..), ModuleName(..))
+import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esForeignModulePath, esModulePath)
+import PureScript.Backend.Convert (toBackendModule)
+import PureScript.CoreFn (Ann, Import(..), Module(..), ModuleName(..))
 import PureScript.CoreFn.Json (decodeModule)
 
 data Args
@@ -68,7 +73,7 @@ argParser = ArgParser.choose "command"
           , outputDir:
               ArgParser.argument [ "--output-dir" ]
                 "Output directory for backend files"
-                # ArgParser.default (Path.concat [ ".", "output-lua" ])
+                # ArgParser.default (Path.concat [ ".", "output-es" ])
           , foreignDir:
               ArgParser.argument [ "--foreign-dir" ]
                 "Directory for foreign module implementations"
@@ -93,7 +98,7 @@ argParser = ArgParser.choose "command"
           , outputDir:
               ArgParser.argument [ "--output-dir" ]
                 "Output directory for backend files"
-                # ArgParser.default (Path.concat [ ".", "output-lua" ])
+                # ArgParser.default (Path.concat [ ".", "output-es" ])
           }
   ]
 
@@ -121,27 +126,32 @@ compileModules dirName = case _ of
           >>> parTraverse readCoreFnModule
           >>> map (Array.catMaybes >>> Map.fromFoldable)
     liftEffect $ mkdirRecursive outputDir
-    flip parTraverse_ coreFnModules \coreFnMod@(Module { name, foreign: foreignIdents, path }) -> do
-      let modPath = Path.concat [ outputDir, luaModulePath name <> ".lua" ]
-      let backendMod = luaCodegenModule $ toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty }
-      let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 320, ribbonRatio = 0.5 }) backendMod
-      writeTextFile UTF8 modPath formatted
-      unless (Array.null foreignIdents) do
-        let foreignFileName =  luaForeignModulePath name <> ".lua"
-        let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
-        let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".lua"
-        Console.log $ Path.concat [ dirName, "foreign-lua", luaModulePath name <> ".lua" ]
-        res <- attempt $ oneOf
-          [ copyFile foreignSiblingPath foreignOutputPath
-          , maybe empty (\dir -> copyFile (Path.concat [ dir, luaModulePath name <> ".lua" ]) foreignOutputPath) foreignDir
-          , copyFile (Path.concat [ dirName, "foreign-lua", luaModulePath name <> ".lua" ]) foreignOutputPath
-          ]
-        unless (isRight res) do
-          Console.warn $ "Foreign implementation missing for " <> unwrap name
+    let
+      go implementations = case _ of
+        List.Nil -> pure unit
+        List.Cons coreFnMod@(Module { name, foreign: foreignIdents, path }) mods -> do
+          Console.log $ unwrap name
+          let modPath = Path.concat [ outputDir, esModulePath name ]
+          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty }
+          let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 0.5 }) $ esCodegenModule backendMod
+          writeTextFile UTF8 modPath formatted
+          unless (Array.null foreignIdents) do
+            let foreignFileName =  esForeignModulePath name
+            let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
+            let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".lua"
+            res <- attempt $ oneOf
+              [ copyFile foreignSiblingPath foreignOutputPath
+              , maybe empty (\dir -> copyFile (Path.concat [ dir, esModulePath name ]) foreignOutputPath) foreignDir
+              , copyFile (Path.concat [ dirName, "foreign-es", esModulePath name ]) foreignOutputPath
+              ]
+            unless (isRight res) do
+              Console.warn $ "  Foreign implementation missing"
+          go (Map.union backendMod.implementations implementations) mods
+    go Map.empty (sortCoreFnModules coreFnModules)
   Run { main: mainModule, bin, args, outputDir } -> do
     cwd <- liftEffect $ Path.resolve [] outputDir
     luaPath <- liftEffect $ Process.lookupEnv "LUA_PATH"
-    let modulePath = luaModulePath (ModuleName mainModule)
+    let modulePath = esModulePath (ModuleName mainModule)
     let script = "require('runtime');require('" <> modulePath <> "').main()"
     buffer <- liftEffect $ ChildProcess.execSync
       (String.joinWith " " ([bin,  "-e", show script ] <> args))
@@ -184,3 +194,29 @@ copyFile from to = do
       Stream.destroy res
       Stream.destroy dst
       Stream.destroy src
+
+sortCoreFnModules :: forall a. Map ModuleName (Module a) -> List (Module a)
+sortCoreFnModules initialModules = go initialModIndex List.Nil (Right <<< getModuleName <$> List.fromFoldable initialModules)
+  where
+  initialModIndex =
+    (\mod -> { module: mod, visited: false }) <$> initialModules
+
+  go modIndex acc = case _ of
+    List.Nil ->
+      List.reverse acc
+    List.Cons (Left mod) names ->
+      go modIndex (List.Cons mod acc) names
+    List.Cons (Right name) names ->
+      case Map.lookup name modIndex of
+        Just modState@{ module: Module mod } -> do
+          if modState.visited then
+            go modIndex acc names
+          else do
+            let importNames = (\(Import _ imp) -> Right imp) <$> mod.imports
+            let modIndex' = Map.insert name (modState { visited = true }) modIndex
+            go modIndex' acc (List.fromFoldable importNames <> List.Cons (Left modState.module) names)
+        _ ->
+          go modIndex acc names
+
+getModuleName :: forall a. Module a -> ModuleName
+getModuleName (Module mod) = mod.name
