@@ -513,8 +513,20 @@ build ctx = case _ of
     def
   Branch branches1 (Just (ExprSyntax _ (Branch branches2 def))) ->
     build ctx (Branch (branches1 <> branches2) def)
+  Branch [ pair ] (Just def) | Just expr <- isTestPred pair def ->
+    expr
+  Test expr@(ExprSyntax _ (Test _ _)) (GuardBoolean true) ->
+    expr
   expr ->
     buildDefault ctx expr
+
+isTestPred :: Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+isTestPred = case _, _ of
+  Pair expr@(ExprSyntax _ (Test _ _)) (ExprSyntax _ (Lit (LitBoolean true))),
+  ExprSyntax _ (Lit (LitBoolean false)) ->
+    Just expr
+  _, _ ->
+    Nothing
 
 buildDefault :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 buildDefault ctx expr = ExprSyntax (analyzeDefault ctx expr) expr
@@ -557,7 +569,8 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity == Trivial && s.size < 5)
     || (s.complexity <= Deref && s.size < 5)
     || (Array.length s.args <= Array.length args && s.size < 128)
-    -- || (not Array.null s.args && not Array.null args)
+
+-- || (not Array.null s.args && not Array.null args)
 
 isAbs :: BackendExpr -> Boolean
 isAbs = syntaxOf >>> case _ of
