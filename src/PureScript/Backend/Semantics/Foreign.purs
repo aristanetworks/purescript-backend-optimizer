@@ -26,6 +26,10 @@ coreForeignSemantics = Map.fromFoldable
   , data_semiring_intAdd
   , effect_bindE
   , effect_pureE
+  , data_heytingAlgebra_boolConj
+  , data_heytingAlgebra_boolDisj
+  , data_heytingAlgebra_boolNot
+  , data_heytingAlgebra_boolImplies
   ]
 
 effect_bindE :: ForeignSemantics
@@ -65,5 +69,60 @@ data_ring_intSub = Tuple (qualified "Data.Ring" "intSub") go
       , SemNeutral (NeutLit (LitInt y)) <- Lazy.force b ->
         -- TODO: detect overflow
         Just $ SemNeutral (NeutLit (LitInt (x - y)))
+    _ ->
+      Nothing
+
+data_heytingAlgebra_boolConj :: ForeignSemantics
+data_heytingAlgebra_boolConj = Tuple (qualified "Data.HeytingAlgebra" "boolConj") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a, b] ]
+      | SemNeutral (NeutLit (LitBoolean false)) <- Lazy.force a ->
+        Just $ SemNeutral (NeutLit (LitBoolean false))
+      | SemNeutral (NeutLit (LitBoolean false)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean false))
+      | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitBoolean y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x && y)))
+    _ ->
+      Nothing
+
+data_heytingAlgebra_boolDisj :: ForeignSemantics
+data_heytingAlgebra_boolDisj = Tuple (qualified "Data.HeytingAlgebra" "boolDisj") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a, b] ]
+      | SemNeutral (NeutLit (LitBoolean true)) <- Lazy.force a ->
+        Just $ SemNeutral (NeutLit (LitBoolean true))
+      | SemNeutral (NeutLit (LitBoolean true)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean true))
+      | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitBoolean y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x || y)))
+    _ ->
+      Nothing
+
+data_heytingAlgebra_boolNot :: ForeignSemantics
+data_heytingAlgebra_boolNot = Tuple (qualified "Data.HeytingAlgebra" "boolNot") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a] ]
+      | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a ->
+        Just $ SemNeutral (NeutLit (LitBoolean (not x)))
+    _ ->
+      Nothing
+
+data_heytingAlgebra_boolImplies :: ForeignSemantics
+data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolImplies") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a, b] ]
+      | SemNeutral (NeutLit (LitBoolean false)) <- Lazy.force a ->
+        Just $ SemNeutral (NeutLit (LitBoolean true))
+      | SemNeutral (NeutLit (LitBoolean true)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean true))
+      | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitBoolean y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (not x || y)))
     _ ->
       Nothing

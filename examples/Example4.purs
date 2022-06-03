@@ -2,6 +2,7 @@ module Example4 where
 
 import Prelude
 
+import Data.HeytingAlgebra as Data.HeytingAlgebra
 import Effect (Effect)
 import Effect.Class.Console as Effect.Class.Console
 
@@ -60,8 +61,18 @@ test5 n =
   else
     n
 
+foreign import boolValue :: Boolean
+
+test6 = false && boolValue
+
+test7 = (false || true)
+
+test8 = test6 `Data.HeytingAlgebra.implies` test7
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"
   Effect.Class.Console.log "World"
+  when true do
+    Effect.Class.Console.log "test6 true"
   pure unit
