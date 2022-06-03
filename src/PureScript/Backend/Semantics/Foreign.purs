@@ -30,6 +30,11 @@ coreForeignSemantics = Map.fromFoldable
   , data_heytingAlgebra_boolDisj
   , data_heytingAlgebra_boolNot
   , data_heytingAlgebra_boolImplies
+  , data_eq_eqBooleanImpl
+  , data_eq_eqIntImpl
+  , data_eq_eqNumberImpl
+  , data_eq_eqCharImpl
+  , data_eq_eqStringImpl
   ]
 
 effect_bindE :: ForeignSemantics
@@ -124,5 +129,60 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
       | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a
       , SemNeutral (NeutLit (LitBoolean y)) <- Lazy.force b ->
         Just $ SemNeutral (NeutLit (LitBoolean (not x || y)))
+    _ ->
+      Nothing
+
+data_eq_eqBooleanImpl :: ForeignSemantics
+data_eq_eqBooleanImpl = Tuple (qualified "Data.Eq" "eqBooleanImpl") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a,b] ]
+      | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitBoolean y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x == y)))
+    _ ->
+      Nothing
+
+data_eq_eqIntImpl :: ForeignSemantics
+data_eq_eqIntImpl = Tuple (qualified "Data.Eq" "eqIntImpl") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a,b] ]
+      | SemNeutral (NeutLit (LitInt x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitInt y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x == y)))
+    _ ->
+      Nothing
+
+data_eq_eqNumberImpl :: ForeignSemantics
+data_eq_eqNumberImpl = Tuple (qualified "Data.Eq" "eqNumberImpl") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a,b] ]
+      | SemNeutral (NeutLit (LitNumber x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitNumber y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x == y)))
+    _ ->
+      Nothing
+
+data_eq_eqCharImpl :: ForeignSemantics
+data_eq_eqCharImpl = Tuple (qualified "Data.Eq" "eqCharImpl") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a,b] ]
+      | SemNeutral (NeutLit (LitChar x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitChar y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x == y)))
+    _ ->
+      Nothing
+
+data_eq_eqStringImpl :: ForeignSemantics
+data_eq_eqStringImpl = Tuple (qualified "Data.Eq" "eqStringImpl") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [a,b] ]
+      | SemNeutral (NeutLit (LitString x)) <- Lazy.force a
+      , SemNeutral (NeutLit (LitString y)) <- Lazy.force b ->
+        Just $ SemNeutral (NeutLit (LitBoolean (x == y)))
     _ ->
       Nothing

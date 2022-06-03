@@ -65,13 +65,16 @@ foreign import boolValue :: Boolean
 
 test6 = false && boolValue
 
-test7 = (false || true)
+test7 = (false || true) && (10 == 12)
 
 test8 = test6 `Data.HeytingAlgebra.implies` test7
 
 test9 :: Effect Unit
-test9 =  when test8 do
-  Effect.Class.Console.log "test8 true"
+test9 = do
+  unless test8 do
+    Effect.Class.Console.log "test8 true"
+  when ("hello" == "hello") do
+    Effect.Class.Console.log "true"
 
 main :: Effect Unit
 main = do
