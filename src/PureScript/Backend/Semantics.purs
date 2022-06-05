@@ -512,6 +512,8 @@ build ctx = case _ of
     , [ ExprSyntax _ (Local _ lvl2) ] <- NonEmptyArray.toArray spine
     , lvl1 == lvl2 ->
         hd
+  EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
+    build ctx $ Let ident level binding body
   Branch [] (Just def) ->
     def
   Branch branches1 (Just (ExprSyntax _ (Branch branches2 def))) ->
