@@ -500,7 +500,7 @@ esCurriedFn args stmts = foldr go (esFnBody stmts) args
 esFnBody :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esFnBody = case _ of
   [] -> Dodo.Common.jsCurlies mempty
-  [ Return a ] -> a
+  [ Return a ] -> Dodo.indent a
   [ ReturnObject a ] -> Dodo.Common.jsParens a
   stmts -> Dodo.Common.jsCurlies (esBlockStatements stmts)
 
