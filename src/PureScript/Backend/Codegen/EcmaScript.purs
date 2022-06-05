@@ -80,11 +80,11 @@ esCodegenModule mod@{ name: ModuleName this } = do
       # Array.groupAllBy (comparing (qualifiedModuleName <<< snd))
       # map (\as -> Tuple (esModulePath <$> qualifiedModuleName (snd (NonEmptyArray.head as))) (map unQualified <$> as))
 
-  Dodo.lines
-    [ Dodo.lines $ (\mn -> esImport mn (esModulePath mn)) <$> mod.imports
-    , Monoid.guard (not (Array.null foreignBindings)) $ esImport foreignModuleName (esForeignModulePath mod.name)
-    , Dodo.lines $ esCodegenBindingGroup codegenEnv =<< moduleBindings
-    , Dodo.lines $ map (uncurry (maybe esExports esExportsFrom)) exportsByPath
+  esBlockStatements $ fold
+    [ (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
+    , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
+    , map Statement $ esCodegenBindingGroup codegenEnv =<< moduleBindings
+    , map (Statement <<< uncurry (maybe esExports esExportsFrom)) exportsByPath
     ]
 
 esCodegenExpr :: forall a. CodegenEnv -> NeutralExpr -> Dodo.Doc a
@@ -106,7 +106,7 @@ esCodegenExprSyntax env = case _ of
     esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   Abs idents (NeutralExpr body)
     | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
-        esFn [] (esCodegenBlockStatements env body)
+        esFn [] (esCodegenBlockStatements PureBlock env body)
     | otherwise -> do
         let
           result = mapAccumL
@@ -118,7 +118,7 @@ esCodegenExprSyntax env = case _ of
             )
             env
             idents
-        esCurriedFn result.value (esCodegenBlockStatements result.accum body)
+        esCurriedFn result.value (esCodegenBlockStatements PureBlock result.accum body)
   Accessor a prop ->
     esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
@@ -126,7 +126,7 @@ esCodegenExprSyntax env = case _ of
   CtorDef (Ident tag) [] ->
     esCtor tag []
   CtorDef (Ident tag) fields ->
-    esCurriedFn fields (esReturn (esCtor tag (esCodegenIdent <$> fields)))
+    esCurriedFn fields [ Return (esCtor tag (esCodegenIdent <$> fields)) ]
   CtorSaturated _ (Ident tag) fields ->
     esCtor tag (esCodegenExpr env <<< snd <$> fields)
   Test a b ->
@@ -162,27 +162,24 @@ esCodegenLit env = case _ of
     esRecord (map (esCodegenExpr env) <$> props)
 
 esCodegenBlock :: forall a. CodegenEnv -> BackendSyntax NeutralExpr -> Dodo.Doc a
-esCodegenBlock env a = esBlock (esCodegenBlockStatements env a)
+esCodegenBlock env a = esBlock (esCodegenBlockStatements PureBlock env a)
 
 esCodegenEffectBlock :: forall a. CodegenEnv -> BackendSyntax NeutralExpr -> Dodo.Doc a
-esCodegenEffectBlock env a = esEffectBlock (esCodegenEffectBlockStatements env a)
+esCodegenEffectBlock env a = esEffectBlock (esCodegenBlockStatements EffectBlock env a)
 
-esCodegenBlockBranches :: forall a. CodegenEnv -> Array (Pair NeutralExpr) -> Maybe NeutralExpr -> Dodo.Doc a
-esCodegenBlockBranches env bs def = esBranches (go <$> bs) (esCodegenBlockStatements env <<< unwrap <$> def)
-  where
-  go :: Pair NeutralExpr -> Tuple (Dodo.Doc a) (Dodo.Doc a)
-  go (Pair a (NeutralExpr b)) = case b of
-    Branch next nextDef ->
-      Tuple (esCodegenExpr env a) (esCodegenBlockBranches env next nextDef)
-    b' ->
-      Tuple (esCodegenExpr env a) (esCodegenBlockStatements env b')
+data BlockMode = EffectBlock | PureBlock
 
-esCodegenBlockStatements :: forall a. CodegenEnv -> BackendSyntax NeutralExpr -> Dodo.Doc a
-esCodegenBlockStatements = (\env -> esStatements <<< go env [])
+data EsStatement a
+  = Statement a
+  | Control a
+  | Return a
+  | ReturnObject a
+
+esCodegenBlockStatements :: forall a. BlockMode -> CodegenEnv -> BackendSyntax NeutralExpr -> Array (EsStatement (Dodo.Doc a))
+esCodegenBlockStatements mode = (\env expr -> go env [] expr)
   where
-  go :: CodegenEnv -> Array (Dodo.Doc a) -> BackendSyntax NeutralExpr -> Array (Dodo.Doc a)
-  go env acc = case _ of
-    LetRec lvl bindings (NeutralExpr body) -> do
+  go env acc = case mode, _ of
+    _, LetRec lvl bindings (NeutralExpr body) -> do
       let
         result = mapAccumL
           ( \env' (Tuple ident binding) -> do
@@ -193,66 +190,45 @@ esCodegenBlockStatements = (\env -> esStatements <<< go env [])
           )
           env
           bindings
-      let lines = esCodegenBindingGroup result.accum { recursive: true, bindings: result.value }
+      let lines = Statement <$> esCodegenBindingGroup result.accum { recursive: true, bindings: result.value }
       go result.accum (acc <> lines) body
-    Let ident lvl expr (NeutralExpr body) -> do
+    _, Let ident lvl expr (NeutralExpr body) -> do
       let Tuple newIdent env' = freshName ident lvl env
-      let lines = esCodegenBindingGroup env { recursive: false, bindings: [ Tuple newIdent expr ] }
+      let lines = Statement <$> esCodegenBindingGroup env { recursive: false, bindings: [ Tuple newIdent expr ] }
       go env' (acc <> lines) body
-    Branch bs def ->
-      Array.snoc acc (esCodegenBlockBranches env bs def)
-    expr@(Fail _) ->
-      Array.snoc acc (esCodegenExprSyntax env expr)
-    expr ->
-      Array.snoc acc (esReturn (esCodegenExprSyntax env expr))
-
-esCodegenEffectBlockStatements :: forall a. CodegenEnv -> BackendSyntax NeutralExpr -> Dodo.Doc a
-esCodegenEffectBlockStatements = (\env -> esStatements <<< go env [])
-  where
-  go :: CodegenEnv -> Array (Dodo.Doc a) -> BackendSyntax NeutralExpr -> Array (Dodo.Doc a)
-  go env acc = case _ of
-    LetRec lvl bindings (NeutralExpr body) -> do
-      let
-        result = mapAccumL
-          ( \env' (Tuple ident binding) -> do
-              let Tuple newIdent env'' = freshName (Just ident) lvl env'
-              { accum: env''
-              , value: Tuple newIdent binding
-              }
-          )
-          env
-          bindings
-      let lines = esCodegenBindingGroup result.accum { recursive: true, bindings: result.value }
-      go result.accum (acc <> lines) body
-    Let ident lvl expr (NeutralExpr body) -> do
-      let Tuple newIdent env' = freshName ident lvl env
-      let lines = esCodegenBindingGroup env { recursive: false, bindings: [ Tuple newIdent expr ] }
-      go env' (acc <> lines) body
-    EffectBind (Just (Ident "$__unused")) _ eff (NeutralExpr body) -> do
-      let line = esApp (esCodegenExpr env eff) []
+    _, Branch bs def ->
+      Array.snoc acc (Control (esCodegenBlockBranches mode env bs def))
+    _, expr@(Fail _) ->
+      Array.snoc acc (Statement (esCodegenExprSyntax env expr))
+    EffectBlock, EffectBind (Just (Ident "$__unused")) _ eff (NeutralExpr body) -> do
+      let line = Statement $ esApp (esCodegenExpr env eff) []
       go env (Array.snoc acc line) body
-    EffectBind ident lvl eff (NeutralExpr body) -> do
+    EffectBlock, EffectBind ident lvl eff (NeutralExpr body) -> do
       let Tuple newIdent env' = freshName ident lvl env
-      let line = esBinding newIdent (esApp (esCodegenExpr env eff) [])
+      let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env eff) [])
       go env' (Array.snoc acc line) body
-    EffectPure a ->
-      Array.snoc acc (esReturn (esCodegenExpr env a))
-    Branch bs def ->
-      Array.snoc acc (esCodegenEffectBlockBranches env bs def)
-    expr@(Fail _) ->
-      Array.snoc acc (esCodegenExprSyntax env expr)
-    expr ->
-      Array.snoc acc (esReturn (esCodegenExprSyntax env expr))
+    EffectBlock, EffectPure expr ->
+      case expr of
+        NeutralExpr (Lit (LitRecord _)) ->
+          Array.snoc acc (ReturnObject (esCodegenExpr env expr))
+        _ ->
+          Array.snoc acc (Return (esCodegenExpr env expr))
+    _, expr ->
+      case expr of
+        Lit (LitRecord _) ->
+          Array.snoc acc (ReturnObject (esCodegenExprSyntax env expr))
+        _ ->
+          Array.snoc acc (Return (esCodegenExprSyntax env expr))
 
-esCodegenEffectBlockBranches :: forall a. CodegenEnv -> Array (Pair NeutralExpr) -> Maybe NeutralExpr -> Dodo.Doc a
-esCodegenEffectBlockBranches env bs def = esBranches (go <$> bs) (esCodegenEffectBlockStatements env <<< unwrap <$> def)
+esCodegenBlockBranches :: forall a. BlockMode -> CodegenEnv -> Array (Pair NeutralExpr) -> Maybe NeutralExpr -> Dodo.Doc a
+esCodegenBlockBranches mode env bs def = esBranches (go <$> bs) (esCodegenBlockStatements mode env <<< unwrap <$> def)
   where
-  go :: Pair NeutralExpr -> Tuple (Dodo.Doc a) (Dodo.Doc a)
+  go :: Pair NeutralExpr -> Tuple (Dodo.Doc a) (Array (EsStatement (Dodo.Doc a)))
   go (Pair a (NeutralExpr b)) = case b of
     Branch next nextDef ->
-      Tuple (esCodegenExpr env a) (esCodegenEffectBlockBranches env next nextDef)
+      Tuple (esCodegenExpr env a) [ Control (esCodegenBlockBranches mode env next nextDef) ]
     b' ->
-      Tuple (esCodegenExpr env a) (esCodegenEffectBlockStatements env b')
+      Tuple (esCodegenExpr env a) (esCodegenBlockStatements mode env b')
 
 esCodegenBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup NeutralExpr -> Array (Dodo.Doc a)
 esCodegenBindingGroup env { recursive, bindings }
@@ -481,23 +457,29 @@ esOffset expr ix = expr <> Dodo.Common.jsSquares (Dodo.text (show (ix + 1)))
 esUpdate :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
 esUpdate rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
 
-esBlock :: forall a. Dodo.Doc a -> Dodo.Doc a
+esBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esBlock stmts = esFn mempty stmts <> Dodo.text "()"
 
-esEffectBlock :: forall a. Dodo.Doc a -> Dodo.Doc a
+esEffectBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esEffectBlock stmts = esFn mempty stmts
 
-esStatements :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
-esStatements = Dodo.lines
+esBlockStatements :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
+esBlockStatements = Dodo.lines <<< map go
+  where
+  go = case _ of
+    Statement a -> a <> Dodo.text ";"
+    Control a -> a
+    Return a -> esReturn a <> Dodo.text ";"
+    ReturnObject a -> esReturn a <> Dodo.text ";"
 
-esFn :: forall a. Array Ident -> Dodo.Doc a -> Dodo.Doc a
+esFn :: forall a. Array Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esFn args stmts = Dodo.words
   [ if Array.length args == 1 then
       foldMap esCodegenIdent args
     else
       Dodo.Common.jsParens (Dodo.foldWithSeparator Dodo.Common.trailingComma (esCodegenIdent <$> args))
   , Dodo.text "=>"
-  , Dodo.Common.jsCurlies stmts
+  , esFnBody stmts
   ]
 
 esReturn :: forall a. Dodo.Doc a -> Dodo.Doc a
@@ -506,14 +488,21 @@ esReturn doc = Dodo.words
   , doc
   ]
 
-esCurriedFn :: forall f a. Foldable f => f Ident -> Dodo.Doc a -> Dodo.Doc a
-esCurriedFn args stmts = foldr go (Dodo.Common.jsCurlies stmts) args
+esCurriedFn :: forall f a. Foldable f => f Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
+esCurriedFn args stmts = foldr go (esFnBody stmts) args
   where
   go arg body = Dodo.words
     [ esCodegenIdent arg
     , Dodo.text "=>"
     , body
     ]
+
+esFnBody :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
+esFnBody = case _ of
+  [] -> Dodo.Common.jsCurlies mempty
+  [ Return a ] -> a
+  [ ReturnObject a ] -> Dodo.Common.jsParens a
+  stmts -> Dodo.Common.jsCurlies (esBlockStatements stmts)
 
 esArray :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
 esArray = Dodo.Common.jsSquares <<< Dodo.foldWithSeparator Dodo.Common.trailingComma
@@ -585,20 +574,20 @@ esIfElse conds default = Dodo.lines
         ]
     }
 
-esBranches :: forall a. Array (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Maybe (Dodo.Doc a) -> Dodo.Doc a
+esBranches :: forall a. Array (Tuple (Dodo.Doc a) (Array (EsStatement (Dodo.Doc a)))) -> Maybe (Array (EsStatement (Dodo.Doc a))) -> Dodo.Doc a
 esBranches branches def =
   Dodo.lines
     [ Dodo.lines $ map
-        ( \(Tuple doc1 doc2) -> fold
+        ( \(Tuple doc stmts) -> fold
             [ Dodo.text "if"
             , Dodo.space
-            , Dodo.Common.jsParens doc1
+            , Dodo.Common.jsParens doc
             , Dodo.space
-            , Dodo.Common.jsCurlies doc2
+            , Dodo.Common.jsCurlies (esBlockStatements stmts)
             ]
         )
         branches
-    , fold def
+    , foldMap esBlockStatements def
     ]
 
 esImport :: forall a. ModuleName -> String -> Dodo.Doc a
