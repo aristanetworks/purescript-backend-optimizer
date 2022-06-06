@@ -6,7 +6,6 @@ import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
 import Control.Parallel (parTraverse)
 import Control.Plus (empty)
-import Data.Argonaut (printJsonDecodeError)
 import Data.Argonaut as Json
 import Data.Array as Array
 import Data.Bifunctor (lmap)
@@ -126,6 +125,8 @@ compileModules dirName = case _ of
           >>> parTraverse readCoreFnModule
           >>> map (Array.catMaybes >>> Map.fromFoldable)
     liftEffect $ mkdirRecursive outputDir
+    writeTextFile UTF8 (Path.concat [ outputDir, "package.json" ]) $ Json.stringify do
+      Json.jsonSingletonObject "type" (Json.fromString "module")
     let
       go implementations = case _ of
         List.Nil -> pure unit
@@ -170,7 +171,7 @@ compileModules dirName = case _ of
 readCoreFnModule :: FilePath -> Aff (Maybe (Tuple ModuleName (Module Ann)))
 readCoreFnModule filePath = do
   contents <- liftEffect <<< Buffer.toString UTF8 =<< FS.readFile filePath
-  case lmap printJsonDecodeError <<< decodeModule =<< Json.jsonParser contents of
+  case lmap Json.printJsonDecodeError <<< decodeModule =<< Json.jsonParser contents of
     Left err -> do
       Console.error $ filePath <> ":\n" <> err
       pure Nothing
