@@ -422,23 +422,28 @@ esFwdRef :: forall a. Ident -> Dodo.Doc a
 esFwdRef ident = Dodo.text "let" <> Dodo.space <> esCodegenIdent ident
 
 esBinding :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
-esBinding ident b = fold
-  [ Dodo.words [ Dodo.text "const", esCodegenIdent ident, Dodo.text "=" ]
-  , Dodo.flexGroup $ Dodo.indent $ Dodo.spaceBreak <> b
+esBinding ident b = Dodo.words
+  [ Dodo.text "const"
+  , esCodegenIdent ident
+  , Dodo.text "="
+  , b
   ]
 
 esAssign :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
-esAssign ident b = fold
-  [ Dodo.words [ esCodegenIdent ident, Dodo.text "=" ]
-  , Dodo.flexGroup $ Dodo.indent $ Dodo.spaceBreak <> b
+esAssign ident b = Dodo.words
+  [ esCodegenIdent ident
+  , Dodo.text "="
+  , b
   ]
 
 esAssignProp :: forall a. Ident -> Prop (Dodo.Doc a) -> Dodo.Doc a
 esAssignProp ident (Prop prop val) = fold
   [ esCodegenIdent ident
   , Dodo.Common.jsSquares (Dodo.text (show prop))
-  , Dodo.text " ="
-  , Dodo.flexGroup (Dodo.indent $ Dodo.spaceBreak <> val)
+  , Dodo.space
+  , Dodo.text "="
+  , Dodo.space
+  , val
   ]
 
 esAccessor :: forall a. Dodo.Doc a -> String -> Dodo.Doc a
@@ -500,7 +505,7 @@ esCurriedFn args stmts = foldr go (esFnBody stmts) args
 esFnBody :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esFnBody = case _ of
   [] -> Dodo.Common.jsCurlies mempty
-  [ Return a ] -> Dodo.indent a
+  [ Return a ] -> a
   [ ReturnObject a ] -> Dodo.Common.jsParens a
   stmts -> Dodo.Common.jsCurlies (esBlockStatements stmts)
 
@@ -514,7 +519,8 @@ esProp :: forall a. Prop (Dodo.Doc a) -> Dodo.Doc a
 esProp (Prop prop val) = fold
   [ Dodo.text (fromMaybe prop $ esEscapeProp prop)
   , Dodo.text ":"
-  , Dodo.indent $ Dodo.flexGroup $ Dodo.spaceBreak <> val
+  , Dodo.space
+  , val
   ]
 
 esEscapeProp :: String -> Maybe String
@@ -578,12 +584,16 @@ esBranches :: forall a. Array (Tuple (Dodo.Doc a) (Array (EsStatement (Dodo.Doc 
 esBranches branches def =
   Dodo.lines
     [ Dodo.lines $ map
-        ( \(Tuple doc stmts) -> fold
+        ( \(Tuple doc stmts) -> Dodo.flexGroup $ fold
             [ Dodo.text "if"
             , Dodo.space
             , Dodo.Common.jsParens doc
             , Dodo.space
-            , Dodo.Common.jsCurlies (esBlockStatements stmts)
+            , Dodo.text "{"
+            , Dodo.spaceBreak
+            , Dodo.indent (esBlockStatements stmts)
+            , Dodo.spaceBreak
+            , Dodo.text "}"
             ]
         )
         branches
