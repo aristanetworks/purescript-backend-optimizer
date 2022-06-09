@@ -2,15 +2,16 @@ module PureScript.Backend.TCO where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (class Foldable, foldMap, foldr)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import PureScript.Backend.Semantics (NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendSyntax(..), Level, Pair(..))
 import PureScript.CoreFn (Ident, Qualified)
@@ -35,7 +36,7 @@ newtype TcoAnalysis = TcoAnalysis
   , tailCalls :: Map (Tuple (Maybe Ident) Level) Int
   , topLevelCalls :: Map (Qualified Ident) Call
   , topLevelTailCalls :: Map (Qualified Ident) Int
-  , shouldOptimize :: Boolean
+  , isTcoBinding :: Boolean
   }
 
 derive instance Newtype TcoAnalysis _
@@ -46,7 +47,7 @@ instance Semigroup TcoAnalysis where
     , tailCalls: Map.unionWith add a.tailCalls b.tailCalls
     , topLevelCalls: Map.unionWith append a.topLevelCalls b.topLevelCalls
     , topLevelTailCalls: Map.unionWith add a.topLevelTailCalls b.topLevelTailCalls
-    , shouldOptimize: false
+    , isTcoBinding: false
     }
 
 instance Monoid TcoAnalysis where
@@ -55,7 +56,7 @@ instance Monoid TcoAnalysis where
     , tailCalls: Map.empty
     , topLevelCalls: Map.empty
     , topLevelTailCalls: Map.empty
-    , shouldOptimize: false
+    , isTcoBinding: false
     }
 
 data TcoExpr = TcoExpr TcoAnalysis (BackendSyntax TcoExpr)
@@ -93,96 +94,120 @@ tcoNoTailCalls (TcoAnalysis s) = TcoAnalysis s
   , topLevelTailCalls = Map.empty
   }
 
-tcoShouldOptimize :: TcoAnalysis -> TcoAnalysis
-tcoShouldOptimize (TcoAnalysis s) = TcoAnalysis s { shouldOptimize = true }
+tcoBinding :: TcoAnalysis -> TcoAnalysis
+tcoBinding (TcoAnalysis s) = TcoAnalysis s { isTcoBinding = true }
 
-isUniformTailCall :: Tuple (Maybe Ident) Level -> TcoAnalysis ->  Maybe Int
-isUniformTailCall ref (TcoAnalysis s) = do
+isUniformTailCall :: TcoAnalysis -> Int -> Tuple (Maybe Ident) Level -> Boolean
+isUniformTailCall (TcoAnalysis s) arity ref = fromMaybe false do
   numTailCalls <- Map.lookup ref s.tailCalls
   Call call <- Map.lookup ref s.calls
   case Set.toUnfoldable call.arities of
-    [ n ] | n > 0 && call.count == numTailCalls -> Just n
-    _ -> Nothing
+    [ n ] ->
+      Just $ n > 0 && n == arity && call.count == numTailCalls
+    _ ->
+      Nothing
+
+isTcoBinding :: Array (Tuple Int (Tuple (Maybe Ident) Level)) -> TcoExpr -> Maybe TcoAnalysis
+isTcoBinding refs (TcoExpr _ expr) = case expr of
+  Abs _ (TcoExpr analysis2 _)
+    | Array.all (uncurry (isUniformTailCall analysis2)) refs ->
+        Just analysis2
+  _ ->
+    Nothing
 
 syntacticArity :: forall a. BackendSyntax a -> Int
 syntacticArity = case _ of
   Abs args _ -> NonEmptyArray.length args
   _ -> 0
 
-analyze :: NeutralExpr -> TcoExpr
-analyze (NeutralExpr expr) = case expr of
+type TcoEnv =
+  { candidates :: Set (Tuple (Maybe Ident) Level)
+  , topLevelCandidates :: Set (Qualified Ident)
+  }
+
+emptyTcoEnv :: TcoEnv
+emptyTcoEnv =
+  { candidates: Set.empty
+  , topLevelCandidates: Set.empty
+  }
+
+analyze :: TcoEnv -> NeutralExpr -> TcoExpr
+analyze env (NeutralExpr expr) = case expr of
   Var ident ->
     TcoExpr (tcoTopLevelCall ident 0 mempty) $ Var ident
   Local ident level ->
     TcoExpr (tcoCall (Tuple ident level) 0 mempty) $ Local ident level
   Branch branches def -> do
-    let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze a)) (analyze b)) branches
-    let def' = analyze <$> def
-    TcoExpr (foldMap (foldMap tcoAnalysisOf) branches' <> foldMap tcoAnalysisOf def') $ Branch branches' def'
+    let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze env a)) (analyze env b)) branches
+    let def' = analyze env <$> def
+    let analysis2 = foldMap (foldMap tcoAnalysisOf) branches' <> foldMap tcoAnalysisOf def'
+    TcoExpr analysis2 $ Branch branches' def'
   LetRec level bindings body -> do
     let refs = flip Tuple level <<< Just <<< fst <$> bindings
-    let bindings' = map analyze <$> bindings
-    let body' = analyze body
-    let analysis3 = foldMap (foldMap tcoAnalysisOf) bindings' <> tcoAnalysisOf body'
-    -- case traverse (uniformTailCall analysis3) refs of
-    --   Just arities
-    --     | Array.all identity $ Array.zipWith (\a (Tuple _ (NeutralExpr b)) -> a == syntacticArity b) arities bindings ->
-    --         TcoExpr (tcoShouldOptimize (tcoBound refs analysis3)) $ LetRec level bindings' body'
-    --   _ ->
-    TcoExpr (tcoBound refs analysis3) $ LetRec level bindings' body'
+    let env' = env { candidates = Set.union (Set.fromFoldable refs) env.candidates }
+    let bindings' = map (analyze env') <$> bindings
+    let body' = analyze env' body
+    let refsWithArity = (\(Tuple ident binding) -> Tuple (syntacticArity (unTcoExpr binding)) (Tuple (Just ident) level)) <$> bindings'
+    case foldMap (isTcoBinding refsWithArity <<< snd) bindings' of
+      Just analysis3 -> do
+        let analysis4 = analysis3 <> tcoAnalysisOf body'
+        TcoExpr (tcoBinding (tcoBound refs analysis4)) $ LetRec level bindings' body'
+      Nothing -> do
+        let analysis3 = foldMap (foldMap tcoAnalysisOf) bindings'
+        let analysis4 = analysis3 <> tcoAnalysisOf body'
+        TcoExpr (tcoNoTailCalls (tcoBound refs analysis4)) $ LetRec level bindings' body'
   Let ident level binding body -> do
-    let binding' = analyze binding
-    let body' = analyze body
+    let binding' = analyze env binding
+    let body' = analyze env body
     let analysis3 = tcoAnalysisOf body'
     let analysis4 = tcoAnalysisOf binding' <> tcoBound [ Tuple ident level ] analysis3
     let newExpr = Let ident level binding' body'
-    case isUniformTailCall (Tuple ident level) analysis3  of
-      Just n | n == syntacticArity (unwrap binding) ->
-        TcoExpr analysis4  newExpr
-      _ ->
-        TcoExpr (tcoNoTailCalls analysis4) newExpr
+    if isUniformTailCall analysis3 (syntacticArity (unwrap binding)) (Tuple ident level) then
+      TcoExpr analysis4 newExpr
+    else
+      TcoExpr (tcoNoTailCalls analysis4) newExpr
   App hd@(NeutralExpr (Local ident level)) tl -> do
-    let hd' = analyze hd
-    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze <$> tl
+    let hd' = analyze env hd
+    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
     let analysis2 = tcoCall (Tuple ident level) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
   App hd@(NeutralExpr (Var ident)) tl -> do
-    let hd' = analyze hd
-    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze <$> tl
+    let hd' = analyze env hd
+    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
     let analysis2 = tcoTopLevelCall ident (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
   App _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   Abs _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   UncurriedApp _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   UncurriedAbs _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   UncurriedEffectApp _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   UncurriedEffectAbs _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   Accessor _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   Update _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   CtorSaturated _ _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   CtorDef _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   EffectBind _ _ _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   EffectPure _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   Lit _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   Test _ _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
   Fail _ ->
-    defaultAnalyze expr
+    defaultAnalyze env expr
 
-defaultAnalyze :: BackendSyntax NeutralExpr -> TcoExpr
-defaultAnalyze expr = do
-  let expr' = analyze <$> expr
+defaultAnalyze :: TcoEnv -> BackendSyntax NeutralExpr -> TcoExpr
+defaultAnalyze env expr = do
+  let expr' = analyze env <$> expr
   TcoExpr (tcoNoTailCalls (foldMap tcoAnalysisOf expr')) expr'
