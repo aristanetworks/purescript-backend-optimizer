@@ -2,13 +2,14 @@ module PureScript.Backend.Semantics.Foreign where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Lazy (force)
 import Data.Lazy as Lazy
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Semantics (BackendNeutral(..), BackendSemantics(..), Env, ExternSpine(..))
+import PureScript.Backend.Semantics (BackendNeutral(..), BackendSemantics(..), Env, ExternSpine(..), evalMkFn)
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
 
 type ForeignEval =
@@ -21,21 +22,27 @@ qualified :: String -> String -> Qualified Ident
 qualified mod id = Qualified (Just (ModuleName mod)) (Ident id)
 
 coreForeignSemantics :: Map (Qualified Ident) ForeignEval
-coreForeignSemantics = Map.fromFoldable
-  [ data_ring_intSub
-  , data_semiring_intAdd
-  , effect_bindE
-  , effect_pureE
-  , data_heytingAlgebra_boolConj
-  , data_heytingAlgebra_boolDisj
-  , data_heytingAlgebra_boolNot
-  , data_heytingAlgebra_boolImplies
-  , data_eq_eqBooleanImpl
-  , data_eq_eqIntImpl
-  , data_eq_eqNumberImpl
-  , data_eq_eqCharImpl
-  , data_eq_eqStringImpl
-  ]
+coreForeignSemantics = Map.fromFoldable semantics
+  where
+  semantics = 
+    [ data_ring_intSub
+    , data_semiring_intAdd
+    , effect_bindE
+    , effect_pureE
+    , data_heytingAlgebra_boolConj
+    , data_heytingAlgebra_boolDisj
+    , data_heytingAlgebra_boolNot
+    , data_heytingAlgebra_boolImplies
+    , data_eq_eqBooleanImpl
+    , data_eq_eqIntImpl
+    , data_eq_eqNumberImpl
+    , data_eq_eqCharImpl
+    , data_eq_eqStringImpl
+    ]
+    <> map data_function_uncurried_mkFn [1,2,3,4,5,6,7,8,9,10]
+    <> map data_function_uncurried_runFn [1,2,3,4,5,6,7,8,9,10]
+    <> map effect_uncurried_mkEffectFn [1,2,3,4,5,6,7,8,9,10]
+    <> map effect_uncurried_runEffectFn [1,2,3,4,5,6,7,8,9,10]
 
 effect_bindE :: ForeignSemantics
 effect_bindE = Tuple (qualified "Effect" "bindE") go
@@ -74,6 +81,46 @@ data_ring_intSub = Tuple (qualified "Data.Ring" "intSub") go
       , SemNeutral (NeutLit (LitInt y)) <- Lazy.force b ->
         -- TODO: detect overflow
         Just $ SemNeutral (NeutLit (LitInt (x - y)))
+    _ ->
+      Nothing
+
+data_function_uncurried_mkFn :: Int -> ForeignSemantics
+data_function_uncurried_mkFn n = Tuple (qualified "Data.Function.Uncurried" ("mkFn" <> show n)) go
+  where
+  go env _ = case _ of
+    [ ExternApp [ f ] ] | sem <- Lazy.force f ->
+      Just $ SemMkFn (evalMkFn env n sem)
+    _ ->
+      Nothing
+
+data_function_uncurried_runFn :: Int -> ForeignSemantics
+data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("runFn" <> show n)) go
+  where
+  go _ _ = case _ of
+    [ ExternApp items ]
+    | Just { head, tail } <- Array.uncons items
+    , Array.length tail == n ->
+      Just $ SemNeutral $ NeutUncurriedApp (Lazy.force head) (Lazy.force <$> tail)
+    _ ->
+      Nothing
+
+effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
+effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn" <> show n)) go
+  where
+  go env _ = case _ of
+    [ ExternApp [ f ] ] | sem <- Lazy.force f ->
+      Just $ SemMkEffectFn (evalMkFn env n sem)
+    _ ->
+      Nothing
+
+effect_uncurried_runEffectFn :: Int -> ForeignSemantics
+effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffectFn" <> show n)) go
+  where
+  go _ _ = case _ of
+    [ ExternApp items ]
+    | Just { head, tail } <- Array.uncons items
+    , Array.length tail == n ->
+      Just $ SemNeutral $ NeutUncurriedEffectApp (Lazy.force head) (Lazy.force <$> tail)
     _ ->
       Nothing
 

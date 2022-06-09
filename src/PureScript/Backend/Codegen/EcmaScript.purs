@@ -119,6 +119,34 @@ esCodegenExprSyntax env = case _ of
             env
             idents
         esCurriedFn result.value (esCodegenBlockStatements PureBlock result.accum body)
+  UncurriedAbs idents (NeutralExpr body) -> do
+    let
+      result = mapAccumL
+        ( \env' (Tuple ident lvl) -> do
+           let Tuple newIdent env'' = freshName ident lvl env'
+           { accum: env''
+           , value: newIdent
+           }
+        )
+        env
+        idents
+    esFn result.value (esCodegenBlockStatements PureBlock result.accum body)
+  UncurriedApp a bs ->
+    esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+  UncurriedEffectAbs idents (NeutralExpr body) -> do
+    let
+      result = mapAccumL
+        ( \env' (Tuple ident lvl) -> do
+           let Tuple newIdent env'' = freshName ident lvl env'
+           { accum: env''
+           , value: newIdent
+           }
+        )
+        env
+        idents
+    esFn result.value (esCodegenBlockStatements EffectBlock result.accum body)
+  expr@(UncurriedEffectApp _ _) ->
+    esCodegenEffectBlock env expr
   Accessor a prop ->
     esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
@@ -200,6 +228,13 @@ esCodegenBlockStatements mode = (\env expr -> go env [] expr)
       Array.snoc acc (Control (esCodegenBlockBranches mode env bs def))
     _, expr@(Fail _) ->
       Array.snoc acc (Statement (esCodegenExprSyntax env expr))
+    EffectBlock, UncurriedEffectApp a bs -> do
+      let line = esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+      Array.snoc acc (Return line)
+    EffectBlock, EffectBind ident lvl (NeutralExpr (UncurriedEffectApp a bs)) (NeutralExpr body) -> do
+       let Tuple newIdent env' = freshName ident lvl env
+       let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs))
+       go env' (Array.snoc acc line) body
     EffectBlock, EffectBind (Just (Ident "$__unused")) _ eff (NeutralExpr body) -> do
       let line = Statement $ esApp (esCodegenExpr env eff) []
       go env (Array.snoc acc line) body

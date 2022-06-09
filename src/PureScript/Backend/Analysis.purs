@@ -165,6 +165,26 @@ analyze externAnalysis expr = case expr of
     noTailCall $ bump (analysisOf a)
   Abs args _ ->
     noTailCall $ complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+  UncurriedAbs args _ ->
+    noTailCall $ complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+  UncurriedApp hd tl | BackendAnalysis { args } <- analysisOf hd ->
+    withArgs (Array.drop (Array.length tl) args) case syntaxOf hd of
+      Just (Local _ lvl) ->
+        tailCalled lvl $ callArity lvl (Array.length tl) analysis
+      _ ->
+        analysis
+    where
+    analysis = noTailCall $ complex NonTrivial $ analyzeDefault expr
+  UncurriedEffectAbs args _ ->
+    noTailCall $ complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+  UncurriedEffectApp hd tl | BackendAnalysis { args } <- analysisOf hd ->
+    withArgs (Array.drop (Array.length tl) args) case syntaxOf hd of
+      Just (Local _ lvl) ->
+        tailCalled lvl $ callArity lvl (Array.length tl) analysis
+      _ ->
+        analysis
+    where
+    analysis = noTailCall $ complex NonTrivial $ analyzeDefault expr
   App hd tl | BackendAnalysis { args } <- analysisOf hd ->
     withArgs (Array.drop (NonEmptyArray.length tl) args) case syntaxOf hd of
       Just (Local _ lvl) ->

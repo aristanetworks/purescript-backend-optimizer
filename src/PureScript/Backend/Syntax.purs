@@ -15,6 +15,10 @@ data BackendSyntax a
   | Lit (Literal a)
   | App a (NonEmptyArray a)
   | Abs (NonEmptyArray (Tuple (Maybe Ident) Level)) a
+  | UncurriedApp a (Array a)
+  | UncurriedAbs (Array (Tuple (Maybe Ident) Level)) a
+  | UncurriedEffectApp a (Array a)
+  | UncurriedEffectAbs (Array (Tuple (Maybe Ident) Level)) a
   | Accessor a BackendAccessor
   | Update a (Array (Prop a))
   | CtorSaturated (Qualified Ident) Ident (Array (Tuple Ident a))
@@ -66,6 +70,8 @@ instance Foldable BackendSyntax where
   foldr a = foldrDefault a
   foldl a = foldlDefault a
   foldMap f = case _ of
+    Var _ -> mempty
+    Local _ _ -> mempty
     Lit lit ->
       case lit of
         LitArray as -> foldMap f as
@@ -73,6 +79,10 @@ instance Foldable BackendSyntax where
         _ -> mempty
     App a bs -> f a <> foldMap f bs
     Abs _ b -> f b
+    UncurriedApp a bs -> f a <> foldMap f bs
+    UncurriedAbs _ b -> f b
+    UncurriedEffectApp a bs -> f a <> foldMap f bs
+    UncurriedEffectAbs _ b -> f b
     Accessor a _ -> f a
     Update a bs -> f a <> foldMap (foldMap f) bs
     LetRec _ as b -> foldMap (foldMap f) as <> f b
@@ -82,7 +92,8 @@ instance Foldable BackendSyntax where
     Branch as b -> foldMap (foldMap f) as <> foldMap f b
     Test a _ -> f a
     CtorSaturated _ _ cs -> foldMap (foldMap f) cs
-    _ -> mempty
+    CtorDef _ _ -> mempty
+    Fail _ -> mempty
 
 instance Traversable BackendSyntax where
   sequence a = sequenceDefault a
@@ -104,6 +115,14 @@ instance Traversable BackendSyntax where
       App <$> f a <*> traverse f bs
     Abs as b ->
       Abs as <$> f b
+    UncurriedApp a bs ->
+      UncurriedApp <$> f a <*> traverse f bs
+    UncurriedAbs as b ->
+      UncurriedAbs as <$> f b
+    UncurriedEffectApp a bs ->
+      UncurriedEffectApp <$> f a <*> traverse f bs
+    UncurriedEffectAbs as b ->
+      UncurriedEffectAbs as <$> f b
     Accessor a b ->
       flip Accessor b <$> f a
     Update a bs ->

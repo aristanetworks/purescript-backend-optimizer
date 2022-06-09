@@ -25,9 +25,15 @@ type Spine a = Array (Lazy a)
 
 type RecSpine a = Array (Tuple Ident (Lazy a))
 
+data MkFn a
+  = MkFnApplied a
+  | MkFnNext (Maybe Ident) (a -> MkFn a)
+
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
+  | SemMkFn (MkFn BackendSemantics)
+  | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemLetRec (Array (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -49,6 +55,8 @@ data BackendNeutral
   | NeutTest BackendSemantics BackendGuard
   | NeutLit (Literal BackendSemantics)
   | NeutFail String
+  | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
+  | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
@@ -119,6 +127,28 @@ instance Eval f => Eval (BackendSyntax f) where
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
     App hd tl ->
       evalApp env (eval env hd) (NonEmptyArray.toArray ((\a -> defer \_ -> eval env a) <$> tl))
+    UncurriedApp hd tl ->
+      SemNeutral (NeutUncurriedApp (eval env hd) (eval env <$> tl))
+    UncurriedAbs idents body -> do
+      let
+        loop env' = case _ of
+          List.Nil ->
+            MkFnApplied (eval env' body)
+          List.Cons a as ->
+            MkFnNext a \nextArg ->
+              loop (bindLocal env' (One nextArg)) as
+      SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
+    UncurriedEffectApp hd tl ->
+      SemNeutral (NeutUncurriedEffectApp (eval env hd) (eval env <$> tl))
+    UncurriedEffectAbs idents body -> do
+      let
+        loop env' = case _ of
+          List.Nil ->
+            MkFnApplied (eval env' body)
+          List.Cons a as ->
+            MkFnNext a \nextArg ->
+              loop (bindLocal env' (One nextArg)) as
+      SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
     Abs idents body ->
       foldr1Array
         (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
@@ -417,6 +447,24 @@ quote = go
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ SemNeutral $ NeutLocal ident level
+    SemMkFn pro -> do
+      let
+        loop ctx' idents = case _ of
+          MkFnNext ident k -> do
+            let Tuple lvl ctx'' = nextLevel ctx'
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (SemNeutral (NeutLocal ident lvl)))
+          MkFnApplied body ->
+            build ctx' $ UncurriedAbs idents $ quote ctx' body
+      loop ctx [] pro
+    SemMkEffectFn pro -> do
+      let
+        loop ctx' idents = case _ of
+          MkFnNext ident k -> do
+            let Tuple lvl ctx'' = nextLevel ctx'
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (SemNeutral (NeutLocal ident lvl)))
+          MkFnApplied body ->
+            build ctx' $ UncurriedEffectAbs idents $ quote ctx' body
+      loop ctx [] pro
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote ctx binding) $ quote ctx' $ k $ SemNeutral $ NeutLocal ident level
@@ -467,6 +515,12 @@ quoteNeutral ctx = case _ of
     build ctx $ CtorSaturated qual tag (map (quote ctx <<< force) <$> values)
   NeutCtorDef tag fields ->
     build ctx $ CtorDef tag fields
+  NeutUncurriedApp hd spine -> do
+     let hd' = quote ctx hd
+     build ctx $ UncurriedApp hd' (quote ctx <$> spine)
+  NeutUncurriedEffectApp hd spine -> do
+     let hd' = quote ctx hd
+     build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
   NeutApp hd spine -> do
     let hd' = quote ctx hd
     case NonEmptyArray.fromArray (quote ctx <<< force <$> spine) of
@@ -630,3 +684,16 @@ freeze init = Tuple (analysisOf init) (go init)
               NeutralExpr $ Let ident level binding (go body)
             Nothing ->
               go body
+
+
+evalMkFn :: Env -> Int -> BackendSemantics -> MkFn BackendSemantics
+evalMkFn env n sem
+  | n == 0 = MkFnApplied sem
+  | otherwise =
+      case sem of
+        SemLam ident k -> do
+          MkFnNext ident (evalMkFn env (n - 1) <<< k)
+        _ ->
+          MkFnNext Nothing \nextArg -> do
+            let env' = bindLocal env (One nextArg)
+            evalMkFn env' (n - 1) (evalApp env' sem [ defer \_ ->  nextArg ])

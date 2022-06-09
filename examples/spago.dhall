@@ -6,6 +6,7 @@ You can edit this file as you like.
 , dependencies =
   [ "console"
   , "effect"
+  , "functions"
   , "prelude"
   ]
 , packages = ../packages.dhall
