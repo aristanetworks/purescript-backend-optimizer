@@ -28,15 +28,15 @@ import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
 
-type BackendBindingGroup b =
+type BackendBindingGroup a b =
   { recursive :: Boolean
-  , bindings :: Array (Tuple Ident b)
+  , bindings :: Array (Tuple a b)
   }
 
 type BackendModule =
   { name :: ModuleName
   , imports :: Array ModuleName
-  , bindings :: Array (BackendBindingGroup NeutralExpr)
+  , bindings :: Array (BackendBindingGroup Ident NeutralExpr)
   , exports :: Array (Tuple Ident (Qualified Ident))
   , foreign :: Array Ident
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis Impl)
@@ -66,7 +66,7 @@ toBackendModule (Module mod) env = do
   , foreign: mod.foreign
   }
 
-toBackendTopLevelBindingGroups :: Array (Bind Ann) -> ConvertM (Accum ConvertEnv (Array (BackendBindingGroup NeutralExpr)))
+toBackendTopLevelBindingGroups :: Array (Bind Ann) -> ConvertM (Accum ConvertEnv (Array (BackendBindingGroup Ident NeutralExpr)))
 toBackendTopLevelBindingGroups binds env = do
   let result = mapAccumL toBackendTopLevelBindingGroup env binds
   result
@@ -75,7 +75,7 @@ toBackendTopLevelBindingGroups binds env = do
           Array.groupBy ((&&) `on` (not <<< _.recursive)) result.value
     }
 
-toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (BackendBindingGroup NeutralExpr)
+toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (BackendBindingGroup Ident NeutralExpr)
 toBackendTopLevelBindingGroup env = case _ of
   Rec bindings -> do
     let group = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
@@ -187,7 +187,6 @@ toBackendExpr = case _ of
     make $ Abs (NonEmptyArray.singleton (Tuple (Just arg) lvl)) (intro [ arg ] lvl (toBackendExpr body))
   ExprApp _ a b
     | ExprVar (Ann { meta: Just IsNewtype }) id <- a -> do
-
         toBackendExpr b
     | otherwise ->
         make $ App (toBackendExpr a) (NonEmptyArray.singleton (toBackendExpr b))

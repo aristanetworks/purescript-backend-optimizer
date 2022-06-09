@@ -245,7 +245,7 @@ luaCodegenEffectBlockBranches env bs def = luaBranches (go <$> bs) (luaCodegenEf
     b' ->
       Tuple (luaCodegenExpr env a) (luaCodegenEffectBlockStatements env b')
 
-luaCodegenBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup NeutralExpr -> Array (Dodo.Doc a)
+luaCodegenBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident NeutralExpr -> Array (Dodo.Doc a)
 luaCodegenBindingGroup env { recursive, bindings }
   | recursive = do
       let fwdRefs = luaFwdRef <<< fst <$> bindings
