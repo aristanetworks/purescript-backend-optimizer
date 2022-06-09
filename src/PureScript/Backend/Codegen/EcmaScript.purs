@@ -28,7 +28,7 @@ import Dodo.Common as Dodo.Common
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.Backend.TCO (TcoAnalysis(..), TcoExpr(..), isUniformTailCall, unTcoExpr)
+import PureScript.Backend.TCO (TcoExpr(..), isUniformTailCall, unTcoExpr)
 import PureScript.Backend.TCO as TCO
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), qualifiedModuleName, unQualified)
 
@@ -212,6 +212,34 @@ esCodegenExprSyntax env = case _ of
             env
             idents
         esCurriedFn result.value (esCodegenBlockStatements PureBlock (noTco result.accum) body)
+  UncurriedAbs idents (TcoExpr _ body) -> do
+    let
+      result = mapAccumL
+        ( \env' (Tuple ident lvl) -> do
+           let Tuple newIdent env'' = freshName ident lvl env'
+           { accum: env''
+           , value: newIdent
+           }
+        )
+        env
+        idents
+    esFn result.value (esCodegenBlockStatements PureBlock (noTco result.accum) body)
+  UncurriedApp a bs ->
+    esApp (esCodegenExpr (noTco env) a) (esCodegenExpr (noTco env) <$> bs)
+  UncurriedEffectAbs idents (TcoExpr _ body) -> do
+    let
+      result = mapAccumL
+        ( \env' (Tuple ident lvl) -> do
+           let Tuple newIdent env'' = freshName ident lvl env'
+           { accum: env''
+           , value: newIdent
+           }
+        )
+        env
+        idents
+    esFn result.value (esCodegenBlockStatements EffectBlock (noTco result.accum) body)
+  expr@(UncurriedEffectApp _ _) ->
+    esCodegenEffectBlock env expr
   Accessor a prop ->
     esCodegenAccessor (esCodegenExpr (noTco env) a) prop
   Update a props ->
@@ -299,6 +327,13 @@ esCodegenBlockStatements mode = (\env expr -> go env [] expr)
       Array.snoc acc (Control (esCodegenBlockBranches mode env bs def))
     _, expr@(Fail _) ->
       Array.snoc acc (Statement (esCodegenExprSyntax env expr))
+    EffectBlock, UncurriedEffectApp a bs -> do
+      let line = esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+      Array.snoc acc (Return line)
+    EffectBlock, EffectBind ident lvl (TcoExpr _ (UncurriedEffectApp a bs)) (TcoExpr _ body) -> do
+       let Tuple newIdent env' = freshName ident lvl env
+       let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs))
+       go env' (Array.snoc acc line) body
     EffectBlock, EffectBind (Just (Ident "$__unused")) _ eff (TcoExpr _ body) -> do
       let line = Statement $ esApp (esCodegenExpr env eff) []
       go env (Array.snoc acc line) body

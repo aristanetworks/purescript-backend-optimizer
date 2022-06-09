@@ -155,6 +155,14 @@ analyze (NeutralExpr expr) = case expr of
     defaultAnalyze expr
   Abs _ _ ->
     defaultAnalyze expr
+  UncurriedApp _ _ ->
+    defaultAnalyze expr
+  UncurriedAbs _ _ ->
+    defaultAnalyze expr
+  UncurriedEffectApp _ _ ->
+    defaultAnalyze expr
+  UncurriedEffectAbs _ _ ->
+    defaultAnalyze expr
   Accessor _ _ ->
     defaultAnalyze expr
   Update _ _ ->

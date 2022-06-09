@@ -2,6 +2,7 @@ module Example4 where
 
 import Prelude
 
+import Data.Function.Uncurried (mkFn2, Fn2)
 import Data.HeytingAlgebra as Data.HeytingAlgebra
 import Effect (Effect)
 import Effect.Class.Console as Effect.Class.Console
@@ -77,6 +78,8 @@ test9 = do
     Effect.Class.Console.log "test8 true"
   when ("hello" == "hello") do
     Effect.Class.Console.log "true"
+
+test10 = boolValue || (boolValue && test7)
 
 main :: Effect Unit
 main = do
