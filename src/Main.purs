@@ -33,9 +33,10 @@ import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (writeTextFile)
 import Node.FS.Aff as FS
+import Node.FS.Perms as Perms
 import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
-import Node.FS.Sync (mkdirRecursive)
+import Node.FS.Sync (mkdir')
 import Node.Glob.Basic (expandGlobsCwd)
 import Node.Path (FilePath)
 import Node.Path as Path
@@ -124,7 +125,7 @@ compileModules dirName = case _ of
         Array.fromFoldable
           >>> parTraverse readCoreFnModule
           >>> map (Array.catMaybes >>> Map.fromFoldable)
-    liftEffect $ mkdirRecursive outputDir
+    liftEffect $ mkdir' outputDir { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
     writeTextFile UTF8 (Path.concat [ outputDir, "package.json" ]) $ Json.stringify do
       Json.jsonSingletonObject "type" (Json.fromString "module")
     let
@@ -139,7 +140,7 @@ compileModules dirName = case _ of
           unless (Array.null foreignIdents) do
             let foreignFileName =  esForeignModulePath name
             let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
-            let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".lua"
+            let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
             res <- attempt $ oneOf
               [ copyFile foreignSiblingPath foreignOutputPath
               , maybe empty (\dir -> copyFile (Path.concat [ dir, esModulePath name ]) foreignOutputPath) foreignDir
@@ -166,7 +167,7 @@ compileModules dirName = case _ of
             ]
         , cwd = Just cwd
         }
-    makeAff \k -> Stream.write Process.stdout buffer (k (Right unit)) $> mempty
+    makeAff \k -> Stream.write Process.stdout buffer (\err -> (k (maybe (Right unit) Left err))) $> mempty
 
 readCoreFnModule :: FilePath -> Aff (Maybe (Tuple ModuleName (Module Ann)))
 readCoreFnModule filePath = do
