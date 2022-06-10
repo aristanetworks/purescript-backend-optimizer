@@ -107,10 +107,28 @@ isUniformTailCall (TcoAnalysis s) arity ref = fromMaybe false do
     _ ->
       Nothing
 
+isTopLevelUniformTailCall :: TcoAnalysis -> Int -> Qualified Ident -> Boolean
+isTopLevelUniformTailCall (TcoAnalysis s) arity ref = fromMaybe false do
+  numTailCalls <- Map.lookup ref s.topLevelTailCalls
+  Call call <- Map.lookup ref s.topLevelCalls
+  case Set.toUnfoldable call.arities of
+    [ n ] ->
+      Just $ n > 0 && n == arity && call.count == numTailCalls
+    _ ->
+      Nothing
+
 isTcoBinding :: Array (Tuple Int (Tuple (Maybe Ident) Level)) -> TcoExpr -> Maybe TcoAnalysis
 isTcoBinding refs (TcoExpr _ expr) = case expr of
   Abs _ (TcoExpr analysis2 _)
     | Array.all (uncurry (isUniformTailCall analysis2)) refs ->
+        Just analysis2
+  _ ->
+    Nothing
+
+isTopLevelTcoBinding :: Array (Tuple Int (Qualified Ident)) -> TcoExpr -> Maybe TcoAnalysis
+isTopLevelTcoBinding refs (TcoExpr _ expr) = case expr of
+  Abs _ (TcoExpr analysis2 _)
+    | Array.all (uncurry (isTopLevelUniformTailCall analysis2)) refs ->
         Just analysis2
   _ ->
     Nothing

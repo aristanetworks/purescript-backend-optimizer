@@ -56,11 +56,9 @@ test4 = do
  res2 <- get
  put (res2 + 1)
 
-test5 = go
-  where
-  go n =
+test5 n =
     if n < 100 then
-      go (n + 1)
+      test5 (n + 1)
     else
       n
 

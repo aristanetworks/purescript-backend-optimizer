@@ -72,14 +72,23 @@ isLocalTcoJump ident level { local } = go List.Nil local
 isTopLevelTcoJump :: Qualified Ident -> TcoScope -> Maybe (Tuple Ident (List Ident))
 isTopLevelTcoJump ident { local, topLevel } = case topLevel of
   Just (Tuple tcoIdent tcoGroup)
-    | Set.member ident tcoGroup ->
-        Just (Tuple tcoIdent (fst <$> local))
+    | Set.member ident tcoGroup && List.null local ->
+        Just (Tuple tcoIdent List.Nil)
+  -- TODO: handle nested TCO loops
+  -- Just (Tuple tcoIdent tcoGroup)
+  --   | Set.member ident tcoGroup ->
+  --       Just (Tuple tcoIdent (fst <$> local))
   _ ->
     Nothing
 
 pushLocalTcoScope :: Tuple Ident (Set (Tuple Ident Level)) -> CodegenEnv -> CodegenEnv
 pushLocalTcoScope scopeItem env = env
   { tcoScope = Just { local: List.singleton scopeItem, topLevel: Nothing }
+  }
+
+pushTopLevelTcoScope :: Tuple Ident (Set (Qualified Ident)) -> CodegenEnv -> CodegenEnv
+pushTopLevelTcoScope scopeItem env = env
+  { tcoScope = Just { local: List.Nil, topLevel: Just scopeItem }
   }
 
 -- TODO: handle nested TCO loops
@@ -102,6 +111,9 @@ getLocalTcoBinding bindings = case bindings of
     Just { arguments, body, name: ident }
   _ ->
     Nothing
+
+boundTopLevel :: Ident -> CodegenEnv -> CodegenEnv
+boundTopLevel ident env = env { bound = Map.insert ident 1 env.bound }
 
 freshName :: Maybe Ident -> Level -> CodegenEnv -> Tuple Ident CodegenEnv
 freshName ident lvl env = case ident of
@@ -151,9 +163,8 @@ esCodegenModule mod@{ name: ModuleName this } = do
       (\ident -> Tuple ident $ NeutralExpr $ Var $ Qualified (Just foreignModuleName) ident)
       mod.foreign
 
-    moduleBindings = map
-      (\r -> r { bindings = map TCO.analyze <$> r.bindings })
-      (Array.cons { recursive: false, bindings: foreignBindings } mod.bindings)
+    moduleBindings =
+      Array.cons { recursive: false, bindings: foreignBindings } mod.bindings
 
     codegenEnv =
       { currentModule: mod.name
@@ -169,7 +180,7 @@ esCodegenModule mod@{ name: ModuleName this } = do
   esBlockStatements $ fold
     [ (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
-    , map Statement $ esCodegenBindingGroup codegenEnv =<< moduleBindings
+    , map Statement $ esCodegenTopLevelBindingGroup codegenEnv =<< moduleBindings
     , map (Statement <<< uncurry (maybe esExports esExportsFrom)) exportsByPath
     ]
 
@@ -327,6 +338,16 @@ esCodegenBlockStatements mode = (\env expr -> go env [] expr)
         --   else
         --     ReturnUndefined
         ]
+    App (TcoExpr _ (Var qual)) bs | Just tco <- isTopLevelTcoJump qual =<< env.tcoScope ->
+      acc <>
+        [ Statement $ esCodegenTcoJump tco (esCodegenExpr (noTco env) <$> bs)
+        , Statement $ esContinue
+        -- TODO: handle nested tco loops
+        -- , if mode.tco && List.null (snd tco) then
+        --     Statement $ esContinue
+        --   else
+        --     ReturnUndefined
+        ]
     Lit (LitRecord _) ->
       Array.snoc acc (ReturnObject (esCodegenExpr env tcoExpr))
     _ ->
@@ -341,6 +362,22 @@ esCodegenBlockBranches mode env bs def = esBranches (go <$> bs) (esCodegenBlockS
       Tuple (esCodegenExpr (noTco env) a) [ Control (esCodegenBlockBranches mode env next nextDef) ]
     _ ->
       Tuple (esCodegenExpr (noTco env) a) (esCodegenBlockStatements mode env b)
+
+esCodegenTopLevelBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident NeutralExpr -> Array (Dodo.Doc a)
+esCodegenTopLevelBindingGroup env { recursive, bindings }
+  | recursive = do
+      let bindings' = map TCO.analyze <$> bindings
+      let refsWithArity = (\(Tuple ident binding) -> Tuple (TCO.syntacticArity (TCO.unTcoExpr binding)) (Qualified (Just env.currentModule) ident)) <$> bindings'
+      case foldMap (TCO.isTopLevelTcoBinding refsWithArity <<< snd) bindings' *> getLocalTcoBinding bindings' of
+        Just tco -> do
+          let env' = pushTopLevelTcoScope (Tuple tco.name (Set.singleton (Qualified (Just env.currentModule) tco.name))) env
+          [ esBinding tco.name $ esCodegenTcoBinding env' tco.name tco
+          ]
+        Nothing -> do
+          let fwdRefs = esFwdRef <<< fst <$> bindings
+          fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env (TCO.analyze b))) bindings
+  | otherwise =
+      map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env (TCO.analyze b))) bindings
 
 esCodegenBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident TcoExpr -> Array (Dodo.Doc a)
 esCodegenBindingGroup env { recursive, bindings }
