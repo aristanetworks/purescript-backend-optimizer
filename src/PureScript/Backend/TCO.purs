@@ -120,33 +120,21 @@ syntacticArity = case _ of
   Abs args _ -> NonEmptyArray.length args
   _ -> 0
 
-type TcoEnv =
-  { candidates :: Set (Tuple (Maybe Ident) Level)
-  , topLevelCandidates :: Set (Qualified Ident)
-  }
-
-emptyTcoEnv :: TcoEnv
-emptyTcoEnv =
-  { candidates: Set.empty
-  , topLevelCandidates: Set.empty
-  }
-
-analyze :: TcoEnv -> NeutralExpr -> TcoExpr
-analyze env (NeutralExpr expr) = case expr of
+analyze :: NeutralExpr -> TcoExpr
+analyze (NeutralExpr expr) = case expr of
   Var ident ->
     TcoExpr (tcoTopLevelCall ident 0 mempty) $ Var ident
   Local ident level ->
     TcoExpr (tcoCall (Tuple ident level) 0 mempty) $ Local ident level
   Branch branches def -> do
-    let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze env a)) (analyze env b)) branches
-    let def' = analyze env <$> def
+    let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze a)) (analyze b)) branches
+    let def' = analyze <$> def
     let analysis2 = foldMap (foldMap tcoAnalysisOf) branches' <> foldMap tcoAnalysisOf def'
     TcoExpr analysis2 $ Branch branches' def'
   LetRec level bindings body -> do
     let refs = flip Tuple level <<< Just <<< fst <$> bindings
-    let env' = env { candidates = Set.union (Set.fromFoldable refs) env.candidates }
-    let bindings' = map (analyze env') <$> bindings
-    let body' = analyze env' body
+    let bindings' = map analyze <$> bindings
+    let body' = analyze body
     let refsWithArity = (\(Tuple ident binding) -> Tuple (syntacticArity (unTcoExpr binding)) (Tuple (Just ident) level)) <$> bindings'
     case foldMap (isTcoBinding refsWithArity <<< snd) bindings' of
       Just analysis3 -> do
@@ -157,8 +145,8 @@ analyze env (NeutralExpr expr) = case expr of
         let analysis4 = analysis3 <> tcoAnalysisOf body'
         TcoExpr (tcoNoTailCalls (tcoBound refs analysis4)) $ LetRec level bindings' body'
   Let ident level binding body -> do
-    let binding' = analyze env binding
-    let body' = analyze env body
+    let binding' = analyze binding
+    let body' = analyze body
     let analysis3 = tcoAnalysisOf body'
     let analysis4 = tcoAnalysisOf binding' <> tcoBound [ Tuple ident level ] analysis3
     let newExpr = Let ident level binding' body'
@@ -167,47 +155,47 @@ analyze env (NeutralExpr expr) = case expr of
     else
       TcoExpr (tcoNoTailCalls analysis4) newExpr
   App hd@(NeutralExpr (Local ident level)) tl -> do
-    let hd' = analyze env hd
-    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
+    let hd' = analyze hd
+    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze <$> tl
     let analysis2 = tcoCall (Tuple ident level) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
   App hd@(NeutralExpr (Var ident)) tl -> do
-    let hd' = analyze env hd
-    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
+    let hd' = analyze hd
+    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze <$> tl
     let analysis2 = tcoTopLevelCall ident (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
   App _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   Abs _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   UncurriedApp _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   UncurriedAbs _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   UncurriedEffectApp _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   UncurriedEffectAbs _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   Accessor _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   Update _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   CtorSaturated _ _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   CtorDef _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   EffectBind _ _ _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   EffectPure _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   Lit _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   Test _ _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
   Fail _ ->
-    defaultAnalyze env expr
+    defaultAnalyze expr
 
-defaultAnalyze :: TcoEnv -> BackendSyntax NeutralExpr -> TcoExpr
-defaultAnalyze env expr = do
-  let expr' = analyze env <$> expr
+defaultAnalyze ::  BackendSyntax NeutralExpr -> TcoExpr
+defaultAnalyze expr = do
+  let expr' = analyze <$> expr
   TcoExpr (tcoNoTailCalls (foldMap tcoAnalysisOf expr')) expr'
