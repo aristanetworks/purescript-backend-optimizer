@@ -145,6 +145,7 @@ esCodegenModule mod@{ name: ModuleName this } = do
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
     , map Statement $ esCodegenTopLevelBindingGroup codegenEnv =<< moduleBindings
     , map (Statement <<< uncurry (maybe esExports esExportsFrom)) exportsByPath
+    , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esExportAllFrom (esForeignModulePath mod.name)) ]
     ]
 
 esCodegenExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
@@ -819,6 +820,14 @@ esExports exports = Dodo.words
               ]
       )
       exports
+  ]
+
+esExportAllFrom :: forall a. String -> Dodo.Doc a
+esExportAllFrom path = Dodo.words
+  [ Dodo.text "export"
+  , Dodo.text "*"
+  , Dodo.text "from"
+  , Dodo.text (show path)
   ]
 
 esExportsFrom :: forall a. String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a

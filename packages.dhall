@@ -1,5 +1,5 @@
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.14.5-20220224/packages.dhall sha256:67cc3d4f0e8fb72bb1413ba94ddd72a3ceb0783eb725e3b22ad7568b3b581163
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.2-20220610/packages.dhall sha256:348212b7c79da7d343bed71b48ed164d426f1977f92196babac49bd560b32e75
 
 in  upstream
   with dodo-printer =
