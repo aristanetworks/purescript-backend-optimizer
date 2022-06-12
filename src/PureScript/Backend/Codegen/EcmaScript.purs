@@ -2,6 +2,7 @@ module PureScript.Backend.Codegen.EcmaScript where
 
 import Prelude
 
+import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -11,7 +12,7 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid as Monoid
 import Data.Newtype (unwrap)
 import Data.Set (Set)
@@ -25,11 +26,11 @@ import Data.TraversableWithIndex (mapAccumLWithIndex)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
+import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoRef(..), TcoScope, TcoRole)
+import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.Backend.TCO (TcoAnalysis(..), TcoExpr(..))
-import PureScript.Backend.TCO as TCO
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), qualifiedModuleName, unQualified)
 
 data CodegenName = CodegenIdent Ident
@@ -38,66 +39,7 @@ type CodegenEnv =
   { currentModule :: ModuleName
   , bound :: Map Ident Int
   , names :: Map (Tuple Ident Level) Ident
-  , tcoScope :: Maybe TcoScope
   }
-
-type LocalRef = Tuple (Maybe Ident) Level
-
-type TcoScope =
-  { local :: List TcoScopeItemLocal
-  , topLevel :: Maybe TcoScopeItemTopLevel
-  }
-
-type TcoScopeItem a = Tuple Ident (Set a)
-type TcoScopeItemLocal = TcoScopeItem (Tuple Ident Level)
-type TcoScopeItemTopLevel = TcoScopeItem (Qualified Ident)
-
-noTco :: CodegenEnv -> CodegenEnv
-noTco env
-  | isNothing env.tcoScope = env
-  | otherwise = env { tcoScope = Nothing }
-
-isLocalTcoJump :: Ident -> Level -> TcoScope -> Maybe (Tuple Ident (List Ident))
-isLocalTcoJump ident level { local } = go List.Nil local
-  where
-  go pop = case _ of
-    List.Cons (Tuple tcoIdent tcoGroup) rest
-      | Set.member (Tuple ident level) tcoGroup ->
-          Just (Tuple tcoIdent pop)
-      | otherwise ->
-          go (List.Cons tcoIdent pop) rest
-    _ ->
-      Nothing
-
-isTopLevelTcoJump :: Qualified Ident -> TcoScope -> Maybe (Tuple Ident (List Ident))
-isTopLevelTcoJump ident { local, topLevel } = case topLevel of
-  Just (Tuple tcoIdent tcoGroup)
-    | Set.member ident tcoGroup && List.null local ->
-        Just (Tuple tcoIdent List.Nil)
-  -- TODO: handle nested TCO loops
-  -- Just (Tuple tcoIdent tcoGroup)
-  --   | Set.member ident tcoGroup ->
-  --       Just (Tuple tcoIdent (fst <$> local))
-  _ ->
-    Nothing
-
-pushLocalTcoScope :: Tuple Ident (Set (Tuple Ident Level)) -> CodegenEnv -> CodegenEnv
-pushLocalTcoScope scopeItem env = env
-  { tcoScope = Just { local: List.singleton scopeItem, topLevel: Nothing }
-  }
-
-pushTopLevelTcoScope :: Tuple Ident (Set (Qualified Ident)) -> CodegenEnv -> CodegenEnv
-pushTopLevelTcoScope scopeItem env = env
-  { tcoScope = Just { local: List.Nil, topLevel: Just scopeItem }
-  }
-
--- TODO: handle nested TCO loops
--- { tcoScope = case env.tcoScope of
---     Nothing ->
---       Just { local: List.singleton scopeItem, topLevel: Nothing }
---     Just scope ->
---       Just scope { local = List.Cons scopeItem scope.local }
--- }
 
 type TcoBinding =
   { arguments :: NonEmptyArray (Tuple (Maybe Ident) Level)
@@ -105,10 +47,32 @@ type TcoBinding =
   , name :: Ident
   }
 
-getLocalTcoBinding :: Array (Tuple Ident TcoExpr) -> Maybe TcoBinding
-getLocalTcoBinding bindings = case bindings of
-  [ Tuple ident (TcoExpr _ (Abs arguments body)) ] ->
-    Just { arguments, body, name: ident }
+type TcoJoin =
+  { arguments :: NonEmptyArray (Tuple (Maybe Ident) Level)
+  , body :: TcoExpr
+  }
+
+toTcoBinding :: Ident -> TcoExpr -> Maybe TcoBinding
+toTcoBinding name = case _ of
+  TcoExpr _ (Abs arguments body) ->
+    Just { arguments, body, name }
+  _ ->
+    Nothing
+
+toTcoBindings :: TcoRole -> Array (Tuple Ident TcoExpr) -> Maybe TcoBinding
+toTcoBindings role = case _ of
+  [ Tuple ident expr ] | role.isLoop ->
+    toTcoBinding ident expr
+  _ ->
+    Nothing
+
+isTcoJoin :: TcoScope -> TcoRole -> Boolean
+isTcoJoin tcoScope role = Array.any (flip Tco.inTcoScope tcoScope) role.joins
+
+toTcoJoin :: TcoScope -> TcoRole -> TcoExpr -> Maybe TcoJoin
+toTcoJoin tcoScope role = case _ of
+  TcoExpr _ (Abs arguments body) | isTcoJoin tcoScope role ->
+    Just { arguments, body }
   _ ->
     Nothing
 
@@ -170,7 +134,6 @@ esCodegenModule mod@{ name: ModuleName this } = do
       { currentModule: mod.name
       , bound: Map.empty
       , names: Map.empty
-      , tcoScope: Nothing
       }
 
     exportsByPath = mod.exports
@@ -195,37 +158,37 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Local ident lvl ->
     esCodegenIdent (rename ident lvl env)
   Lit lit ->
-    esCodegenLit (noTco env) lit
+    esCodegenLit env lit
   App a bs ->
-    esCurriedApp (esCodegenExpr (noTco env) a) (esCodegenExpr (noTco env) <$> bs)
+    esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   Abs idents body
     | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
-        esFn [] (esCodegenBlockStatements pureMode (noTco env) body)
+        esFn [] (esCodegenBlockStatements pureMode env body)
     | otherwise -> do
         let result = freshNames env idents
-        esCurriedFn result.value (esCodegenBlockStatements pureMode (noTco result.accum) body)
+        esCurriedFn result.value (esCodegenBlockStatements pureMode result.accum body)
   UncurriedAbs idents body -> do
     let result = freshNames env idents
-    esFn result.value (esCodegenBlockStatements pureMode (noTco result.accum) body)
+    esFn result.value (esCodegenBlockStatements pureMode result.accum body)
   UncurriedApp a bs ->
-    esApp (esCodegenExpr (noTco env) a) (esCodegenExpr (noTco env) <$> bs)
+    esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   UncurriedEffectAbs idents body -> do
     let result = freshNames env idents
-    esFn result.value (esCodegenBlockStatements effectMode (noTco result.accum) body)
+    esFn result.value (esCodegenBlockStatements effectMode result.accum body)
   UncurriedEffectApp _ _ ->
     esCodegenEffectBlock env tcoExpr
   Accessor a prop ->
-    esCodegenAccessor (esCodegenExpr (noTco env) a) prop
+    esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
-    esUpdate (esCodegenExpr (noTco env) a) (map (esCodegenExpr (noTco env)) <$> props)
+    esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
   CtorDef (Ident tag) [] ->
     esCtor tag []
   CtorDef (Ident tag) fields ->
     esCurriedFn fields [ Return (esCtor tag (esCodegenIdent <$> fields)) ]
   CtorSaturated _ (Ident tag) fields ->
-    esCtor tag (esCodegenExpr (noTco env) <<< snd <$> fields)
+    esCtor tag (esCodegenExpr env <<< snd <$> fields)
   Test a b -> do
-    let lhs = esCodegenExpr (noTco env) a
+    let lhs = esCodegenExpr env a
     case a, b of
       TcoExpr _ (Local _ _), GuardBoolean true ->
         lhs
@@ -240,9 +203,9 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Let _ _ _ _ ->
     esCodegenBlock env tcoExpr
   EffectBind _ _ _ _ ->
-    esCodegenEffectBlock (noTco env) tcoExpr
+    esCodegenEffectBlock env tcoExpr
   EffectPure _ ->
-    esCodegenEffectBlock (noTco env) tcoExpr
+    esCodegenEffectBlock env tcoExpr
 
 esCodegenLit :: forall a. CodegenEnv -> Literal TcoExpr -> Dodo.Doc a
 esCodegenLit env = case _ of
@@ -272,38 +235,57 @@ data EsStatement a
   | Control a
   | Return a
   | ReturnObject a
-  | ReturnUndefined
 
 type BlockMode =
   { effect :: Boolean
   , tco :: Boolean
+  , tcoScope :: TcoScope
+  , tcoJoins :: Set LocalRef
   }
 
 pureMode :: BlockMode
-pureMode = { tco: false, effect: false }
+pureMode = { effect: false, tco: false, tcoScope: List.Nil, tcoJoins: Set.empty }
 
 effectMode :: BlockMode
-effectMode = { tco: false, effect: true }
+effectMode = pureMode { effect = true }
+
+pushTcoScope :: Tuple Ident (Set TcoRef) -> BlockMode -> BlockMode
+pushTcoScope scopeItem mode = mode { tco = true, tcoScope = List.Cons scopeItem mode.tcoScope }
+
+pushTcoJoin :: LocalRef -> BlockMode -> BlockMode
+pushTcoJoin ref mode = mode { tcoJoins = Set.insert ref mode.tcoJoins }
+
+noTco :: BlockMode -> BlockMode
+noTco = _ { tco = false, tcoScope = List.Nil, tcoJoins = Set.empty }
 
 esCodegenBlockStatements :: forall a. BlockMode -> CodegenEnv -> TcoExpr -> Array (EsStatement (Dodo.Doc a))
-esCodegenBlockStatements mode = (\env expr -> go env [] expr)
+esCodegenBlockStatements = go []
   where
-  go env acc tcoExpr@(TcoExpr (TcoAnalysis analysis) expr) = case expr of
+  go acc mode env tcoExpr@(TcoExpr (TcoAnalysis analysis) expr) = case expr of
     LetRec lvl bindings body
-      | analysis.isTcoBinding
-      , Just tco <- getLocalTcoBinding bindings -> do
+      | Just tco <- toTcoBindings analysis.role bindings -> do
           let Tuple tcoIdent env' = freshName (Just tco.name) lvl env
-          let env'' = pushLocalTcoScope (Tuple tcoIdent (Set.singleton (Tuple tcoIdent lvl))) env'
-          let line = Statement $ esBinding tcoIdent $ esCodegenTcoBinding env'' tcoIdent tco
-          go env' (Array.snoc acc line) body
+          if isTcoJoin mode.tcoScope analysis.role then do
+            let mode' = pushTcoScope (Tuple tcoIdent (Set.singleton (TcoLocal (Just tcoIdent) lvl))) mode
+            let line = Statement $ esBinding tcoIdent $ esCodegenTcoLoopBinding mode' env' tcoIdent tco
+            go (Array.snoc acc line) (pushTcoJoin (Tuple (Just tco.name) lvl) mode) env' body
+          else do
+            let mode' = pushTcoScope (Tuple tcoIdent (Set.singleton (TcoLocal (Just tcoIdent) lvl))) (noTco mode)
+            let line = Statement $ esBinding tcoIdent $ esCodegenTcoLoopBinding mode' env' tcoIdent tco
+            go (Array.snoc acc line) mode env' body
       | otherwise -> do
           let result = freshBindingGroup lvl env bindings
           let lines = Statement <$> esCodegenBindingGroup result.accum { recursive: true, bindings: result.value }
-          go result.accum (acc <> lines) body
-    Let ident lvl binding body -> do
-      let Tuple newIdent env' = freshName ident lvl env
-      let lines = Statement <$> esCodegenBindingGroup env { recursive: false, bindings: [ Tuple newIdent binding ] }
-      go env' (acc <> lines) body
+          go (acc <> lines) mode result.accum  body
+    Let ident lvl binding body
+      | Just tco <- toTcoJoin mode.tcoScope analysis.role binding -> do
+          let Tuple tcoIdent env' = freshName ident lvl env
+          let line = Statement $ esCodegenTcoJoinBinding mode env tcoIdent tco
+          go (Array.snoc acc line) (pushTcoJoin (Tuple ident lvl) mode) env' body
+      | otherwise -> do
+          let Tuple newIdent env' = freshName ident lvl env
+          let line = Statement $ esCodegenBinding env newIdent binding
+          go (Array.snoc acc line) mode env' body
     Branch bs def ->
       Array.snoc acc (Control (esCodegenBlockBranches mode env bs def))
     Fail _ ->
@@ -314,44 +296,39 @@ esCodegenBlockStatements mode = (\env expr -> go env [] expr)
     EffectBind ident lvl (TcoExpr _ (UncurriedEffectApp a bs)) body | mode.effect -> do
       let Tuple newIdent env' = freshName ident lvl env
       let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs))
-      go env' (Array.snoc acc line) body
+      go (Array.snoc acc line) mode env' body
     EffectBind (Just (Ident "$__unused")) _ eff body | mode.effect -> do
       let line = Statement $ esApp (esCodegenExpr env eff) []
-      go env (Array.snoc acc line) body
+      go (Array.snoc acc line) mode env body
     EffectBind ident lvl eff body | mode.effect -> do
       let Tuple newIdent env' = freshName ident lvl env
       let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env eff) [])
-      go env' (Array.snoc acc line) body
+      go (Array.snoc acc line) mode env' body
     EffectPure expr' | mode.effect ->
-      case expr' of
-        TcoExpr _ (Lit (LitRecord _)) ->
-          Array.snoc acc (ReturnObject (esCodegenExpr env expr'))
-        _ ->
-          Array.snoc acc (Return (esCodegenExpr env expr'))
-    App (TcoExpr _ (Local (Just ident) lvl)) bs | Just tco <- isLocalTcoJump ident lvl =<< env.tcoScope ->
-      acc <>
-        [ Statement $ esCodegenTcoJump tco (esCodegenExpr (noTco env) <$> bs)
-        , Statement $ esContinue
-        -- TODO: handle nested tco loops
-        -- , if mode.tco && List.null (snd tco) then
-        --     Statement $ esContinue
-        --   else
-        --     ReturnUndefined
-        ]
-    App (TcoExpr _ (Var qual)) bs | Just tco <- isTopLevelTcoJump qual =<< env.tcoScope ->
-      acc <>
-        [ Statement $ esCodegenTcoJump tco (esCodegenExpr (noTco env) <$> bs)
-        , Statement $ esContinue
-        -- TODO: handle nested tco loops
-        -- , if mode.tco && List.null (snd tco) then
-        --     Statement $ esContinue
-        --   else
-        --     ReturnUndefined
-        ]
-    Lit (LitRecord _) ->
-      Array.snoc acc (ReturnObject (esCodegenExpr env tcoExpr))
+      acc <> esCodegenBlockReturn mode env expr'
+    App (TcoExpr _ (Local ident lvl)) bs
+      | Just tco <- Tco.popTcoScope (TcoLocal ident lvl) mode.tcoScope ->
+          acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> bs)
+      | Set.member (Tuple ident lvl) mode.tcoJoins ->
+          acc <> esCodegenTcoJoin mode (esCodegenExpr env tcoExpr)
+    App (TcoExpr _ (Var qual)) bs | Just tco <- Tco.popTcoScope (TcoTopLevel qual) mode.tcoScope ->
+      acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> bs)
     _ ->
-      Array.snoc acc (Return (esCodegenExpr env tcoExpr))
+      acc <> esCodegenBlockReturn mode env tcoExpr
+
+esCodegenBlockReturn :: forall a. BlockMode -> CodegenEnv -> TcoExpr -> Array (EsStatement (Dodo.Doc a))
+esCodegenBlockReturn mode env tcoExpr@(TcoExpr _ expr)
+  | Just tco <- Tco.unwindTcoScope mode.tcoScope =
+      esCodegenTcoReturn mode tco (esCodegenExpr env tcoExpr)
+  | otherwise = do
+      let doc = esCodegenExpr env tcoExpr
+      case expr of
+        Lit (LitRecord _) ->
+          [ ReturnObject doc ]
+        _ | mode.effect ->
+          [ Return (esApp doc []) ]
+        _ ->
+          [ Return doc ]
 
 esCodegenBlockBranches :: forall a. BlockMode -> CodegenEnv -> Array (Pair TcoExpr) -> Maybe TcoExpr -> Dodo.Doc a
 esCodegenBlockBranches mode env bs def = esBranches (go <$> bs) (esCodegenBlockStatements mode env <$> def)
@@ -359,25 +336,26 @@ esCodegenBlockBranches mode env bs def = esBranches (go <$> bs) (esCodegenBlockS
   go :: Pair TcoExpr -> Tuple (Dodo.Doc a) (Array (EsStatement (Dodo.Doc a)))
   go (Pair a b@(TcoExpr _ b')) = case b' of
     Branch next nextDef ->
-      Tuple (esCodegenExpr (noTco env) a) [ Control (esCodegenBlockBranches mode env next nextDef) ]
+      Tuple (esCodegenExpr env a) [ Control (esCodegenBlockBranches mode env next nextDef) ]
     _ ->
-      Tuple (esCodegenExpr (noTco env) a) (esCodegenBlockStatements mode env b)
+      Tuple (esCodegenExpr env a) (esCodegenBlockStatements mode env b)
 
 esCodegenTopLevelBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident NeutralExpr -> Array (Dodo.Doc a)
 esCodegenTopLevelBindingGroup env { recursive, bindings }
   | recursive = do
-      let bindings' = map TCO.analyze <$> bindings
-      let refsWithArity = (\(Tuple ident binding) -> Tuple (TCO.syntacticArity (TCO.unTcoExpr binding)) (Qualified (Just env.currentModule) ident)) <$> bindings'
-      case foldMap (TCO.isTopLevelTcoBinding refsWithArity <<< snd) bindings' *> getLocalTcoBinding bindings' of
+      let group = Tco.topLevelTcoEnvGroup env.currentModule bindings
+      let bindings' = map (Tco.analyze group) <$> bindings
+      let tcoRefBindings = Tco.topLevelTcoRefBindings env.currentModule bindings'
+      let isLoop = maybe false Tco.tcoRoleIsLoop tcoRefBindings
+      case guard isLoop *> Tco.toTcoBinding bindings' of
         Just tco -> do
-          let env' = pushTopLevelTcoScope (Tuple tco.name (Set.singleton (Qualified (Just env.currentModule) tco.name))) env
-          [ esBinding tco.name $ esCodegenTcoBinding env' tco.name tco
-          ]
+          let mode = pushTcoScope (Tuple tco.name (Set.singleton (TcoTopLevel (Qualified (Just env.currentModule) tco.name)))) pureMode
+          [ esBinding tco.name $ esCodegenTcoLoopBinding mode env tco.name tco ]
         Nothing -> do
           let fwdRefs = esFwdRef <<< fst <$> bindings
-          fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env (TCO.analyze b))) bindings
+          fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env b)) bindings'
   | otherwise =
-      map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env (TCO.analyze b))) bindings
+      map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env (Tco.analyze [] b))) bindings
 
 esCodegenBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident TcoExpr -> Array (Dodo.Doc a)
 esCodegenBindingGroup env { recursive, bindings }
@@ -385,10 +363,13 @@ esCodegenBindingGroup env { recursive, bindings }
       let fwdRefs = esFwdRef <<< fst <$> bindings
       fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env b)) bindings
   | otherwise =
-      map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env b)) bindings
+      uncurry (esCodegenBinding env) <$> bindings
 
-esCodegenTcoBinding :: forall a. CodegenEnv -> Ident -> TcoBinding -> Dodo.Doc a
-esCodegenTcoBinding env tcoIdent tco = do
+esCodegenBinding :: forall a. CodegenEnv -> Ident -> TcoExpr -> Dodo.Doc a
+esCodegenBinding env ident expr = esBinding ident (esCodegenExpr env expr)
+
+esCodegenTcoLoopBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> TcoBinding -> Dodo.Doc a
+esCodegenTcoLoopBinding mode env tcoIdent tco = do
   let
     result = mapAccumLWithIndex
       ( \ix env' (Tuple ident level) -> do
@@ -399,20 +380,49 @@ esCodegenTcoBinding env tcoIdent tco = do
       )
       env
       tco.arguments
-  esTcoFn1 (esTcoLoopIdent tcoIdent) (fst <$> result.value) $ Dodo.lines
+  esTcoFn tcoIdent (fst <$> result.value) $ Dodo.lines
     [ Dodo.lines $ map
         ( \(Tuple arg var) ->
             esLetBinding var (esCodegenIdent arg) <> Dodo.text ";"
         )
         result.value
-    , esBlockStatements $ esCodegenBlockStatements { tco: true, effect: false } result.accum tco.body
+    , esBlockStatements $ esCodegenBlockStatements (mode { tco = true }) result.accum tco.body
     ]
 
-esCodegenTcoJump :: forall a. Tuple Ident (List Ident) -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
-esCodegenTcoJump (Tuple tcoIdent stk) args =
-  Dodo.foldWithSeparator (Dodo.text ";" <> Dodo.break) $ Array.snoc
-    (flip esAssign (Dodo.text "false") <<< esTcoLoopIdent <$> List.toUnfoldable stk)
-    (esTcoApp tcoIdent args)
+esCodegenTcoJoinBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> TcoJoin -> Dodo.Doc a
+esCodegenTcoJoinBinding mode env tcoIdent tco = do
+  let result = freshNames env tco.arguments
+  esBinding tcoIdent $ esCurriedFn result.value (esCodegenBlockStatements (mode { tco = false }) result.accum tco.body)
+
+esCodegenTcoJump :: forall a. BlockMode -> Tuple Ident (List Ident) -> NonEmptyArray (Dodo.Doc a) -> Array (EsStatement (Dodo.Doc a))
+esCodegenTcoJump mode (Tuple tcoIdent stk) args =
+  stkStatements <>
+    [ Statement $ esTcoApp tcoIdent args
+    , Statement $ if mode.tco then esContinue else esReturn mempty
+    ]
+  where
+  stkStatements =
+    stk
+      # List.toUnfoldable
+      # map (Statement <<< flip esAssign (Dodo.text "false") <<< esTcoLoopIdent)
+
+esCodegenTcoReturn :: forall a. BlockMode -> Tuple Ident (List Ident) -> Dodo.Doc a -> Array (EsStatement (Dodo.Doc a))
+esCodegenTcoReturn mode (Tuple tcoIdent stk) doc =
+  stkStatements <>
+    [ Statement $ esAssign (esTcoReturnIdent tcoIdent) doc
+    , Statement $ if mode.tco then esContinue else esReturn mempty
+    ]
+  where
+  stkStatements =
+    List.Cons tcoIdent stk
+      # List.toUnfoldable
+      # map (Statement <<< flip esAssign (Dodo.text "false") <<< esTcoLoopIdent)
+
+esCodegenTcoJoin :: forall a. BlockMode -> Dodo.Doc a -> Array (EsStatement (Dodo.Doc a))
+esCodegenTcoJoin mode doc =
+  [ Statement doc
+  , Statement $ if mode.tco then esContinue else esReturn mempty
+  ]
 
 esCodegenTest :: forall a. Dodo.Doc a -> BackendGuard -> Dodo.Doc a
 esCodegenTest lhs = case _ of
@@ -660,7 +670,6 @@ esBlockStatements = Dodo.lines <<< map go
     Control a -> a
     Return a -> esReturn a <> Dodo.text ";"
     ReturnObject a -> esReturn a <> Dodo.text ";"
-    ReturnUndefined -> esReturn mempty <> Dodo.text ";"
 
 esFn :: forall a. Array Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esFn args stmts = Dodo.words
@@ -836,36 +845,31 @@ esError str = Dodo.words
   ]
 
 esTcoLoopIdent :: Ident -> Ident
-esTcoLoopIdent (Ident tcoIdent) = Ident (tcoIdent <> "$loop")
+esTcoLoopIdent (Ident tcoIdent) = Ident (tcoIdent <> "$c")
+
+esTcoReturnIdent :: Ident -> Ident
+esTcoReturnIdent (Ident tcoIdent) = Ident (tcoIdent <> "$r")
 
 esTcoArgIdent :: Ident -> Int -> Ident
 esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$" <> show ix)
 
-esTcoFn1 :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
-esTcoFn1 _ args body = esCurriedFn args
-  [ Statement $ Dodo.words
+esTcoFn :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
+esTcoFn tcoIdent args body = esCurriedFn args
+  [ Statement $ esLetBinding (esTcoLoopIdent tcoIdent) (Dodo.text "true")
+  , Statement $ esFwdRef (esTcoReturnIdent tcoIdent)
+  , Statement $ Dodo.words
       [ Dodo.text "while"
-      , Dodo.Common.jsParens (Dodo.text "true")
+      , Dodo.Common.jsParens (esCodegenIdent (esTcoLoopIdent tcoIdent))
       , Dodo.Common.jsCurlies body
       ]
+  , Return (esCodegenIdent (esTcoReturnIdent tcoIdent))
   ]
 
--- TODO: handle nested tco loops
--- [ Statement $ esLetBinding loopIdent (Dodo.text "true")
--- , Statement $ Dodo.words
---     [ Dodo.text "while"
---     , Dodo.Common.jsParens (esCodegenIdent loopIdent)
---     , Dodo.Common.jsCurlies body
---     ]
--- ]
-
 esTcoApp :: forall a. Ident -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
-esTcoApp tcoIdent args =
-  Dodo.foldWithSeparator (Dodo.text ";" <> Dodo.break) $ mapWithIndex
-    ( \ix arg ->
-        esAssign (esTcoArgIdent tcoIdent ix) arg
-    )
-    args
+esTcoApp tcoIdent args = esSepStatements $ mapWithIndex (\ix arg -> esAssign (esTcoArgIdent tcoIdent ix) arg) args
 
 esContinue :: forall a. Dodo.Doc a
 esContinue = Dodo.text "continue"
+
+esSepStatements :: forall f a. Foldable f => f (Dodo.Doc a) -> Dodo.Doc a
+esSepStatements = Dodo.foldWithSeparator (Dodo.text ";" <> Dodo.break)

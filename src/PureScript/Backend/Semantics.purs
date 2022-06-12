@@ -629,8 +629,6 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args =
     || (s.complexity <= Deref && s.size < 5)
     || (Array.length s.args <= Array.length args && s.size < 128)
 
--- || (not Array.null s.args && not Array.null args)
-
 shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
 shouldInlineExternLiteral = case _ of
   LitInt _ -> true

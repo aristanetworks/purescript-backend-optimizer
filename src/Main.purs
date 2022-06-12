@@ -139,7 +139,7 @@ compileModules dirName = case _ of
           unless (Array.null foreignIdents) do
             let foreignFileName =  esForeignModulePath name
             let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
-            let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".lua"
+            let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
             res <- attempt $ oneOf
               [ copyFile foreignSiblingPath foreignOutputPath
               , maybe empty (\dir -> copyFile (Path.concat [ dir, esModulePath name ]) foreignOutputPath) foreignDir

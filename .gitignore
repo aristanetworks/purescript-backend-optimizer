@@ -2,7 +2,6 @@
 /node_modules/
 /.pulp-cache/
 /output/
-/output-lua/
 /output-es/
 /examples-deps/
 /bundle/

@@ -56,12 +56,6 @@ test4 = do
  res2 <- get
  put (res2 + 1)
 
-test5 n =
-    if n < 100 then
-      test5 (n + 1)
-    else
-      n
-
 foreign import boolValue :: Boolean
 
 test6 = false && boolValue
