@@ -574,7 +574,7 @@ build ctx = case _ of
     build ctx (Branch (branches1 <> branches2) def)
   Branch [ pair ] (Just def) | Just expr <- isTestPred pair def ->
     expr
-  Test expr@(ExprSyntax _ (Test _ _)) (GuardBoolean true) ->
+  Test expr (GuardBoolean true) ->
     expr
   expr ->
     buildDefault ctx expr
