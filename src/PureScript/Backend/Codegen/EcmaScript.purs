@@ -306,7 +306,7 @@ esCodegenBlockStatements = go []
       let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env eff) [])
       go (Array.snoc acc line) mode env' body
     EffectPure expr' | mode.effect ->
-      acc <> esCodegenBlockReturn mode env expr'
+      acc <> esCodegenBlockReturn (mode { effect = false }) env expr'
     App (TcoExpr _ (Local ident lvl)) bs
       | Just tco <- Tco.popTcoScope (TcoLocal ident lvl) mode.tcoScope ->
           acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> bs)
