@@ -26,7 +26,7 @@ import Data.TraversableWithIndex (mapAccumLWithIndex)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoRef(..), TcoRole, TcoScope, unTcoExpr)
+import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoRef(..), TcoRole, TcoScope)
 import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
@@ -161,8 +161,10 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Lit lit ->
     esCodegenLit env lit
   App a bs
-    | [ Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined")) ] <- unTcoExpr <$> NonEmptyArray.toArray bs -> esApp (esCodegenExpr env a) []
-    | otherwise -> esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+    | [ TcoExpr _ (Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined"))) ] <- NonEmptyArray.toArray bs ->
+        esApp (esCodegenExpr env a) []
+    | otherwise ->
+        esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   Abs idents body
     | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
         esFn [] (esCodegenBlockStatements pureMode env body)
