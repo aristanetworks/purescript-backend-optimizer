@@ -23,7 +23,7 @@ test3 = go3
   go3 n =
     if n == 0 then
       n
-    else if n < 100 then
+    else if n <= 100 then
       go3 (n - 1)
     else do
       k3 (n - 1)
@@ -35,3 +35,6 @@ test3 = go3
         42
       else
         k3 (m - 1)
+
+test4 n = if n == 1 then n else test5 (n - 1)
+test5 m = if m == 2 then m else test4 (m - 2)

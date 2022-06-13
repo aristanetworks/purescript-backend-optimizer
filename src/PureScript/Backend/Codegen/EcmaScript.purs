@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, fold, foldMap, foldl, foldr)
+import Data.Foldable (class Foldable, fold, foldMap, foldl, foldr, maximum)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List)
 import Data.List as List
@@ -21,12 +21,11 @@ import Data.String as String
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
-import Data.Traversable (class Traversable, Accum, mapAccumL)
-import Data.TraversableWithIndex (mapAccumLWithIndex)
+import Data.Traversable (class Traversable, Accum, mapAccumL, traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoRef(..), TcoScope, TcoRole)
+import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoPop)
 import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
@@ -59,12 +58,10 @@ toTcoBinding name = case _ of
   _ ->
     Nothing
 
-toTcoBindings :: TcoRole -> Array (Tuple Ident TcoExpr) -> Maybe TcoBinding
-toTcoBindings role = case _ of
-  [ Tuple ident expr ] | role.isLoop ->
-    toTcoBinding ident expr
-  _ ->
-    Nothing
+toTcoBindings :: TcoRole -> Array (Tuple Ident TcoExpr) -> Maybe (Array TcoBinding)
+toTcoBindings role bindings = do
+  guard role.isLoop
+  traverse (uncurry toTcoBinding) bindings
 
 isTcoJoin :: TcoScope -> TcoRole -> Boolean
 isTcoJoin tcoScope role = Array.any (flip Tco.inTcoScope tcoScope) role.joins
@@ -250,7 +247,7 @@ pureMode = { effect: false, tco: false, tcoScope: List.Nil, tcoJoins: Set.empty 
 effectMode :: BlockMode
 effectMode = pureMode { effect = true }
 
-pushTcoScope :: Tuple Ident (Set TcoRef) -> BlockMode -> BlockMode
+pushTcoScope :: TcoScopeItem -> BlockMode -> BlockMode
 pushTcoScope scopeItem mode = mode { tco = true, tcoScope = List.Cons scopeItem mode.tcoScope }
 
 pushTcoJoin :: LocalRef -> BlockMode -> BlockMode
@@ -265,15 +262,18 @@ esCodegenBlockStatements = go []
   go acc mode env tcoExpr@(TcoExpr (TcoAnalysis analysis) expr) = case expr of
     LetRec lvl bindings body
       | Just tco <- toTcoBindings analysis.role bindings -> do
-          let Tuple tcoIdent env' = freshName (Just tco.name) lvl env
+          let locals = flip Tuple lvl <<< Just <<< _.name <$> tco
+          let tcoRefs = uncurry TcoLocal <$> locals
+          let Tuple tcoIdent env' = freshName (Just (esTcoMutualIdent (_.name <$> tco))) lvl env
+          let { value: tcoNames, accum: env'' } = freshNames env' locals
           if isTcoJoin mode.tcoScope analysis.role then do
-            let mode' = pushTcoScope (Tuple tcoIdent (Set.singleton (TcoLocal (Just tcoIdent) lvl))) mode
-            let line = Statement $ esBinding tcoIdent $ esCodegenTcoLoopBinding mode' env' tcoIdent tco
-            go (Array.snoc acc line) (pushTcoJoin (Tuple (Just tco.name) lvl) mode) env' body
+            let mode' = pushTcoScope (Tuple tcoIdent tcoRefs) mode
+            let line = Statement $ esCodegenTcoMutualLoopBinding mode' env'' tcoIdent (Array.zip tcoNames tco)
+            go (Array.snoc acc line) (foldr pushTcoJoin mode locals) env'' body
           else do
-            let mode' = pushTcoScope (Tuple tcoIdent (Set.singleton (TcoLocal (Just tcoIdent) lvl))) (noTco mode)
-            let line = Statement $ esBinding tcoIdent $ esCodegenTcoLoopBinding mode' env' tcoIdent tco
-            go (Array.snoc acc line) mode env' body
+            let mode' = pushTcoScope (Tuple tcoIdent tcoRefs) (noTco mode)
+            let line = Statement $ esCodegenTcoMutualLoopBinding mode' env'' tcoIdent (Array.zip tcoNames tco)
+            go (Array.snoc acc line) mode env'' body
       | otherwise -> do
           let result = freshBindingGroup lvl env bindings
           let lines = Statement <$> esCodegenBindingGroup result.accum { recursive: true, bindings: result.value }
@@ -348,12 +348,16 @@ esCodegenTopLevelBindingGroup env { recursive, bindings }
       let bindings' = map (Tco.analyze group) <$> bindings
       let tcoRefBindings = Tco.topLevelTcoRefBindings env.currentModule bindings'
       let isLoop = maybe false Tco.tcoRoleIsLoop tcoRefBindings
-      case guard isLoop *> Tco.toTcoBinding bindings' of
+      case toTcoBindings { isLoop, joins: [] } bindings' of
         Just tco -> do
-          let mode = pushTcoScope (Tuple tco.name (Set.singleton (TcoTopLevel (Qualified (Just env.currentModule) tco.name)))) pureMode
-          [ esBinding tco.name $ esCodegenTcoLoopBinding mode env tco.name tco ]
+          let tcoNames = _.name <$> tco
+          let tcoIdent = esTcoMutualIdent tcoNames
+          let tcoRefs = Tuple tcoIdent $ TcoTopLevel <<< Qualified (Just env.currentModule) <$> tcoNames
+          let mode = pushTcoScope tcoRefs pureMode
+          pure $ esCodegenTcoMutualLoopBinding mode (boundTopLevel tcoIdent env) tcoIdent (Array.zip tcoNames tco)
         Nothing -> do
-          let fwdRefs = esFwdRef <<< fst <$> bindings
+          let names = fst <$> bindings
+          let fwdRefs = esFwdRef <$> names
           fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env b)) bindings'
   | otherwise =
       map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env (Tco.analyze [] b))) bindings
@@ -369,25 +373,41 @@ esCodegenBindingGroup env { recursive, bindings }
 esCodegenBinding :: forall a. CodegenEnv -> Ident -> TcoExpr -> Dodo.Doc a
 esCodegenBinding env ident expr = esBinding ident (esCodegenExpr env expr)
 
+esCodegenTcoMutualLoopBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> Array (Tuple Ident TcoBinding) -> Dodo.Doc a
+esCodegenTcoMutualLoopBinding mode env tcoIdent = case _ of
+  [ Tuple ident tco ] -> esCodegenTcoLoopBinding mode env ident tco
+  bindings -> do
+    let maxArgs = fromMaybe 0 $ maximum $ NonEmptyArray.length <<< _.arguments <<< snd <$> bindings
+    let argIdents = esTcoArgIdent tcoIdent <$> Array.range 0 (maxArgs - 0)
+    let branchIdent = esTcoBranchIdent tcoIdent
+    esSepStatements $
+      [ esBinding tcoIdent $ esTcoFn tcoIdent (NonEmptyArray.cons' branchIdent argIdents) $ esBranches
+          ( mapWithIndex
+              ( \ix (Tuple _ tco) -> do
+                  let { value: argNames, accum: env' } = freshNames env tco.arguments
+                  Tuple (esCodegenTest (esCodegenIdent branchIdent) (GuardInt ix)) $ fold
+                    [ (\(Tuple arg var) -> Statement $ esLetBinding var (esCodegenIdent arg)) <$> Array.zip argIdents (NonEmptyArray.toArray argNames)
+                    , esCodegenBlockStatements (mode { tco = true }) env' tco.body
+                    ]
+              )
+              bindings
+          )
+          Nothing
+      ]
+        <>
+          mapWithIndex
+            (\ix (Tuple ident _) ->
+                esBinding ident $ esApp (esCodegenIdent tcoIdent) [ esInt ix ]
+            )
+            bindings
+
 esCodegenTcoLoopBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> TcoBinding -> Dodo.Doc a
 esCodegenTcoLoopBinding mode env tcoIdent tco = do
-  let
-    result = mapAccumLWithIndex
-      ( \ix env' (Tuple ident level) -> do
-          let Tuple ident' env'' = freshName ident level env'
-          { accum: env''
-          , value: Tuple (esTcoArgIdent tcoIdent ix) ident'
-          }
-      )
-      env
-      tco.arguments
-  esTcoFn tcoIdent (fst <$> result.value) $ Dodo.lines
-    [ Dodo.lines $ map
-        ( \(Tuple arg var) ->
-            esLetBinding var (esCodegenIdent arg) <> Dodo.text ";"
-        )
-        result.value
-    , esBlockStatements $ esCodegenBlockStatements (mode { tco = true }) result.accum tco.body
+  let { value: argNames, accum: env' } = freshNames env tco.arguments
+  let argIdents = mapWithIndex (Tuple <<< esTcoArgIdent tcoIdent) argNames
+  esBinding tcoIdent $ esTcoFn tcoIdent (fst <$> argIdents) $ Dodo.lines
+    [ esBlockStatements $ (\(Tuple arg var) -> Statement $ esLetBinding var (esCodegenIdent arg)) <$> argIdents
+    , esBlockStatements $ esCodegenBlockStatements (mode { tco = true }) env' tco.body
     ]
 
 esCodegenTcoJoinBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> TcoJoin -> Dodo.Doc a
@@ -395,15 +415,15 @@ esCodegenTcoJoinBinding mode env tcoIdent tco = do
   let result = freshNames env tco.arguments
   esBinding tcoIdent $ esCurriedFn result.value (esCodegenBlockStatements (mode { tco = false }) result.accum tco.body)
 
-esCodegenTcoJump :: forall a. BlockMode -> Tuple Ident (List Ident) -> NonEmptyArray (Dodo.Doc a) -> Array (EsStatement (Dodo.Doc a))
-esCodegenTcoJump mode (Tuple tcoIdent stk) args =
+esCodegenTcoJump :: forall a. BlockMode -> TcoPop -> NonEmptyArray (Dodo.Doc a) -> Array (EsStatement (Dodo.Doc a))
+esCodegenTcoJump mode pop args =
   stkStatements <>
-    [ Statement $ esTcoApp tcoIdent args
+    [ Statement $ esTcoApp pop args
     , Statement $ if mode.tco then esContinue else esReturn mempty
     ]
   where
   stkStatements =
-    stk
+    pop.stack
       # List.toUnfoldable
       # map (Statement <<< flip esAssign (Dodo.text "false") <<< esTcoLoopIdent)
 
@@ -663,7 +683,7 @@ esBlock stmts = esFn mempty stmts <> Dodo.text "()"
 esEffectBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esEffectBlock stmts = esFn mempty stmts
 
-esBlockStatements :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
+esBlockStatements :: forall f a. Foldable f => Functor f => f (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esBlockStatements = Dodo.lines <<< map go
   where
   go = case _ of
@@ -853,11 +873,19 @@ esError str = Dodo.words
   , esApp (Dodo.text "Error") [ esString str ]
   ]
 
+esTcoMutualIdent :: Array Ident -> Ident
+esTcoMutualIdent = case _ of
+  [ ident ] -> ident
+  idents -> Ident $ foldMap (String.take 5 <<< unwrap) idents
+
 esTcoLoopIdent :: Ident -> Ident
 esTcoLoopIdent (Ident tcoIdent) = Ident (tcoIdent <> "$c")
 
 esTcoReturnIdent :: Ident -> Ident
 esTcoReturnIdent (Ident tcoIdent) = Ident (tcoIdent <> "$r")
+
+esTcoBranchIdent :: Ident -> Ident
+esTcoBranchIdent (Ident tcoIdent) = Ident (tcoIdent <> "$b")
 
 esTcoArgIdent :: Ident -> Int -> Ident
 esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$" <> show ix)
@@ -874,8 +902,12 @@ esTcoFn tcoIdent args body = esCurriedFn args
   , Return (esCodegenIdent (esTcoReturnIdent tcoIdent))
   ]
 
-esTcoApp :: forall a. Ident -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
-esTcoApp tcoIdent args = esSepStatements $ mapWithIndex (\ix arg -> esAssign (esTcoArgIdent tcoIdent ix) arg) args
+esTcoApp :: forall a. TcoPop -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
+esTcoApp pop args = esSepStatements $ fold
+  [ Monoid.guard (Array.length pop.group > 1)
+      [ esAssign (esTcoBranchIdent pop.ident) (esInt pop.index) ]
+  , mapWithIndex (\ix arg -> esAssign (esTcoArgIdent pop.ident ix) arg) $ NonEmptyArray.toArray args
+  ]
 
 esContinue :: forall a. Dodo.Doc a
 esContinue = Dodo.text "continue"

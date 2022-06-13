@@ -4,7 +4,6 @@ import Prelude
 
 import Control.Alternative (guard)
 import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Bifunctor (bimap)
 import Data.Foldable (foldMap)
@@ -15,7 +14,6 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid as Monoid
 import Data.Newtype (class Newtype, unwrap)
-import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd)
@@ -26,7 +24,7 @@ import PureScript.CoreFn (Ident, ModuleName, Qualified(..))
 
 type LocalRef = Tuple (Maybe Ident) Level
 type TcoScope = List TcoScopeItem
-type TcoScopeItem = Tuple Ident (Set TcoRef)
+type TcoScopeItem = Tuple Ident (Array TcoRef)
 
 data TcoRef
   = TcoTopLevel (Qualified Ident)
@@ -35,15 +33,22 @@ data TcoRef
 derive instance Eq TcoRef
 derive instance Ord TcoRef
 
-popTcoScope :: TcoRef -> TcoScope -> Maybe (Tuple Ident (List Ident))
+type TcoPop =
+  { ident :: Ident
+  , group :: Array TcoRef
+  , index :: Int
+  , stack :: List Ident
+  }
+
+popTcoScope :: TcoRef -> TcoScope -> Maybe TcoPop
 popTcoScope ref = go List.Nil
   where
-  go pop = case _ of
-    List.Cons (Tuple tcoIdent tcoRefs) rest
-      | Set.member ref tcoRefs ->
-          Just (Tuple tcoIdent pop)
+  go stack = case _ of
+    List.Cons (Tuple ident group) rest
+      | Just index <- Array.findIndex (eq ref) group ->
+          Just { ident, group, index, stack }
       | otherwise ->
-        go (List.Cons tcoIdent pop) rest
+        go (List.Cons ident stack) rest
     _ ->
       Nothing
 
@@ -51,8 +56,8 @@ inTcoScope :: TcoRef -> TcoScope -> Boolean
 inTcoScope ref = go
   where
   go = case _ of
-    List.Cons (Tuple _ tcoRefs) rest
-      | Set.member ref tcoRefs ->
+    List.Cons (Tuple _ group) rest
+      | Array.elem ref group ->
           true
       | otherwise ->
           go rest
@@ -70,19 +75,6 @@ unwindTcoScope = go List.Nil
           go (List.Cons tcoIdent pop) rest
     List.Nil ->
       Nothing
-
-type TcoBinding =
-  { arguments :: NonEmptyArray (Tuple (Maybe Ident) Level)
-  , body :: TcoExpr
-  , name :: Ident
-  }
-
-toTcoBinding :: Array (Tuple Ident TcoExpr) -> Maybe TcoBinding
-toTcoBinding bindings = case bindings of
-  [ Tuple ident (TcoExpr _ (Abs arguments body)) ] ->
-    Just { arguments, body, name: ident }
-  _ ->
-    Nothing
 
 type TcoEnv = Array (Tuple TcoRef Int)
 
@@ -194,11 +186,7 @@ isTailCalledIn analysis group = do
   not (Array.null tailCalled) && Array.all identity tailCalled
 
 tcoRoleIsLoop :: Array TcoRefBinding -> Boolean
-tcoRoleIsLoop group = 
-  Array.all (isLoop <<< _.analysis) group
-  where
-  isLoop :: TcoAnalysis -> Boolean
-  isLoop = flip isTailCalledIn group
+tcoRoleIsLoop group = Array.all (flip isTailCalledIn group <<< _.analysis) group
 
 tcoRoleJoins :: TcoEnv -> TcoAnalysis -> Array TcoRefBinding -> Array TcoRef
 tcoRoleJoins env analysis group = do
