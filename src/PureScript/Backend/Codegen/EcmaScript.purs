@@ -463,7 +463,7 @@ esCodegenTest lhs = case _ of
   GuardTag (Qualified _ (Ident tag)) ->
     Dodo.words [ esIndex lhs 0, Dodo.text "==", esString tag ]
   GuardArrayLength len ->
-    Dodo.words [ lhs <> Dodo.text ".n", Dodo.text "==", esInt len ]
+    Dodo.words [ lhs <> Dodo.text ".length", Dodo.text "==", esInt len ]
 
 esCodegenAccessor :: forall a. Dodo.Doc a -> BackendAccessor -> Dodo.Doc a
 esCodegenAccessor lhs = case _ of
