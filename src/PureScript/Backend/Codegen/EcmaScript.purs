@@ -681,7 +681,7 @@ esUpdate :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
 esUpdate rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
 
 esBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esBlock stmts = Dodo.Common.jsParens (esFn mempty stmts) <> Dodo.text "()"
+esBlock stmts = Dodo.text "(" <> esFn mempty stmts <> Dodo.text ")" <> Dodo.text "()"
 
 esEffectBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esEffectBlock stmts = esFn mempty stmts
