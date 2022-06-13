@@ -157,8 +157,11 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenIdent (rename ident lvl env)
   Lit lit ->
     esCodegenLit env lit
-  App a bs ->
-    esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+  App a bs
+    | [ TcoExpr _ (Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined"))) ] <- NonEmptyArray.toArray bs ->
+        esApp (esCodegenExpr env a) []
+    | otherwise ->
+        esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   Abs idents body
     | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
         esFn [] (esCodegenBlockStatements pureMode env body)
@@ -678,7 +681,7 @@ esUpdate :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
 esUpdate rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
 
 esBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esBlock stmts = esFn mempty stmts <> Dodo.text "()"
+esBlock stmts = Dodo.Common.jsParens (esFn mempty stmts) <> Dodo.text "()"
 
 esEffectBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esEffectBlock stmts = esFn mempty stmts
@@ -864,7 +867,7 @@ esForeignModulePath :: ModuleName -> String
 esForeignModulePath (ModuleName mn) = "./" <> mn <> ".foreign.js"
 
 esUndefined :: forall a. Dodo.Doc a
-esUndefined = mempty
+esUndefined = Dodo.text "undefined"
 
 esError :: forall a. String -> Dodo.Doc a
 esError str = Dodo.words
