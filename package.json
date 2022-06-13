@@ -2,6 +2,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test-examples": "spago build && (cd examples; spago build -u \"-g corefn\") && node --stack-trace-limit=100 index.js build \"examples/output/*/corefn.json\""
+    "test-examples": "spago build && (cd examples; spago build -u \"-g corefn\") && node --stack-trace-limit=100 index.js build \"examples/output\""
   }
 }

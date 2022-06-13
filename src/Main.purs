@@ -37,7 +37,7 @@ import Node.FS.Perms as Perms
 import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.FS.Sync (mkdir')
-import Node.Glob.Basic (expandGlobsCwd)
+import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Process as Process
@@ -49,7 +49,7 @@ import PureScript.CoreFn.Json (decodeModule)
 
 data Args
   = Build
-      { globs :: Array String
+      { corefnDir :: String
       , outputDir :: String
       , foreignDir :: Maybe String
       }
@@ -66,10 +66,9 @@ argParser = ArgParser.choose "command"
       "Build a project from corefn modules."
       do
         ArgParser.fromRecord
-          { globs:
-              ArgParser.anyNotFlag "COREFN_GLOB"
-                "Globs for corefn.json files."
-                # ArgParser.unfolded1
+          { corefnDir:
+              ArgParser.anyNotFlag "COREFN_DIR"
+                "Directory for corefn.json files."
           , outputDir:
               ArgParser.argument [ "--output-dir" ]
                 "Output directory for backend files"
@@ -119,9 +118,9 @@ main dirName = do
 
 compileModules :: FilePath -> Args -> Aff Unit
 compileModules dirName = case _ of
-  Build { globs, outputDir, foreignDir } -> do
+  Build { corefnDir, outputDir, foreignDir } -> do
     coreFnModules <-
-      expandGlobsCwd globs >>=
+      expandGlobs corefnDir [ "*/corefn.json" ] >>=
         Array.fromFoldable
           >>> parTraverse readCoreFnModule
           >>> map (Array.catMaybes >>> Map.fromFoldable)
@@ -140,7 +139,8 @@ compileModules dirName = case _ of
           unless (Array.null foreignIdents) do
             let foreignFileName =  esForeignModulePath name
             let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
-            let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
+            let origPath = Path.concat [ corefnDir, "..", path ]
+            let foreignSiblingPath = fromMaybe origPath (String.stripSuffix (Pattern (Path.extname origPath)) origPath) <> ".js"
             res <- attempt $ oneOf
               [ copyFile foreignSiblingPath foreignOutputPath
               , maybe empty (\dir -> copyFile (Path.concat [ dir, esModulePath name ]) foreignOutputPath) foreignDir
