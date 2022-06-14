@@ -6,7 +6,7 @@ in  upstream
     { dependencies =
       [ "ansi", "foldable-traversable", "lists", "maybe", "strings" ]
     , repo = "https://github.com/natefaubion/purescript-dodo-printer.git"
-    , version = "v2.2.0"
+    , version = "v2.2.1"
     }
   with node-glob-basic =
     { dependencies =
