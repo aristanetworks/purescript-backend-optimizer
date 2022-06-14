@@ -4,10 +4,8 @@ You can edit this file as you like.
 -}
 { name = "my-project"
 , dependencies =
-  [ "arrays"
-  , "console"
+  [ "console"
   , "effect"
-  , "foldable-traversable"
   , "functions"
   , "minibench"
   , "prelude"
