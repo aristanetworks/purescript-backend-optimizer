@@ -73,6 +73,15 @@ test9 = do
 
 test10 = boolValue || (boolValue && test7)
 
+test11 = case _ of
+  true -> false
+  false -> true
+
+test12 a =
+  if test11 a then false else true
+
+test13 a = if a then true else false
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"
