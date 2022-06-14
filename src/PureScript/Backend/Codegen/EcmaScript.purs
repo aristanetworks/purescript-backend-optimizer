@@ -270,8 +270,11 @@ esCodegenBlockStatements = go []
       | Just tco <- toTcoBindings analysis.role bindings -> do
           let locals = flip Tuple lvl <<< Just <<< _.name <$> tco
           let tcoRefs = uncurry TcoLocal <$> locals
-          let Tuple tcoIdent env' = freshName (Just (esTcoMutualIdent (_.name <$> tco))) lvl env
-          let { value: tcoNames, accum: env'' } = freshNames env' locals
+          let { value: tcoNames, accum: env' } = freshNames env locals
+          let
+            Tuple tcoIdent env'' = case tcoNames of
+              [ tcoIdent ] -> Tuple tcoIdent env'
+              _ -> freshName (Just (esTcoMutualIdent (_.name <$> tco))) lvl env'
           if isTcoJoin mode.tcoScope analysis.role then do
             let mode' = pushTcoScope (Tuple tcoIdent tcoRefs) mode
             let line = Statement $ esCodegenTcoMutualLoopBinding mode' env'' tcoIdent (Array.zip tcoNames tco)
