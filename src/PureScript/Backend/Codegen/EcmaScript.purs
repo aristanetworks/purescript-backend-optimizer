@@ -30,7 +30,7 @@ import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), T
 import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendOperator(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), qualifiedModuleName, unQualified)
 
 data CodegenName = CodegenIdent Ident
@@ -189,13 +189,6 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCurriedFn fields [ Return (esCtor tag (esCodegenIdent <$> fields)) ]
   CtorSaturated _ (Ident tag) fields ->
     esCtor tag (esCodegenExpr env <<< snd <$> fields)
-  Test a b -> do
-    let lhs = esCodegenExpr env a
-    case a, b of
-      TcoExpr _ (Local _ _), GuardBoolean true ->
-        lhs
-      _, _ ->
-        esCodegenTest lhs b
   PrimOp op ->
     esCodegenPrimOp env op
   Fail str ->
@@ -394,7 +387,7 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent = case _ of
           ( mapWithIndex
               ( \ix (Tuple _ tco) -> do
                   let { value: argNames, accum: env' } = freshNames env tco.arguments
-                  Tuple (esCodegenTest (esCodegenIdent branchIdent) (GuardInt ix)) $ fold
+                  Tuple (Dodo.words [ esCodegenIdent branchIdent, Dodo.text "===", esInt ix ]) $ fold
                     [ (\(Tuple arg var) -> Statement $ esBinding var (esCodegenIdent arg)) <$> Array.zip argIdents (NonEmptyArray.toArray argNames)
                     , esCodegenBlockStatements (mode { tco = true }) env' tco.body
                     ]
@@ -454,26 +447,9 @@ esCodegenTcoJoin mode doc =
   , Statement $ if mode.tco then esContinue else esReturn mempty
   ]
 
-esCodegenTest :: forall a. Dodo.Doc a -> BackendGuard -> Dodo.Doc a
-esCodegenTest lhs = case _ of
-  GuardNumber n ->
-    Dodo.words [ lhs, Dodo.text "==", esNumber n ]
-  GuardInt n ->
-    Dodo.words [ lhs, Dodo.text "==", esInt n ]
-  GuardString str ->
-    Dodo.words [ lhs, Dodo.text "==", esString str ]
-  GuardBoolean bool ->
-    Dodo.words [ lhs, Dodo.text "==", esBoolean bool ]
-  GuardChar ch ->
-    Dodo.words [ lhs, Dodo.text "==", esChar ch ]
-  GuardTag (Qualified _ (Ident tag)) ->
-    Dodo.words [ esIndex lhs 0, Dodo.text "==", esString tag ]
-  GuardArrayLength len ->
-    Dodo.words [ lhs <> Dodo.text ".length", Dodo.text "==", esInt len ]
-
 data EsOperatorTree b a
-  = Binary (b -> b -> b) Int a a
-  | Unary (b -> b) Int a
+  = Binary (b -> b -> b) Int Int a a
+  | Unary (b -> b) Int Int a
   | Leaf a
 
 esCodegenPrimOp :: forall a. CodegenEnv -> BackendOperator TcoExpr -> Dodo.Doc a
@@ -481,24 +457,24 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
   where
   go :: Either Int Int -> CodegenEnv -> EsOperatorTree (Dodo.Doc a) TcoExpr -> Dodo.Doc a
   go prec env = case _ of
-    Binary op p lhs rhs -> do
+    Binary op p1 p2 lhs rhs -> do
       let
         doc = op
-          (go (Left p) env (fromExpr lhs))
-          (go (Right p) env (fromExpr rhs))
+          (go (Left p1) env (fromExpr lhs))
+          (go (Right p1) env (fromExpr rhs))
       case prec of
-        Left n | p >= n ->
+        Left n | p2 >= n ->
           doc
-        Right n | p > n ->
+        Right n | p2 > n ->
           doc
         _ ->
           Dodo.Common.jsParens doc
-    Unary op p val -> do
-      let doc = op (go (Right p) env (fromExpr val))
+    Unary op p1 p2 val -> do
+      let doc = op (go (Right p1) env (fromExpr val))
       case prec of
-        Left n | p > n ->
+        Left n | p2 > n ->
           doc
-        Right n | p >= n ->
+        Right n | p2 >= n ->
           doc
         _ ->
           Dodo.Common.jsParens doc
@@ -514,35 +490,41 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
 
   fromOperator :: BackendOperator TcoExpr -> EsOperatorTree (Dodo.Doc a) TcoExpr
   fromOperator = case _ of
-    OpBooleanAnd a b -> opAnd a b
-    OpBooleanNot a -> opNot a
-    OpBooleanOr a b -> opOr a b
-    OpBooleanOrd op a b -> opOrd op a b
-    OpCharOrd op a b -> opOrd op a b
-    OpIntBitAnd a b -> opBitAnd a b
-    OpIntBitNot a -> opBitNeg a
-    OpIntBitOr a b -> opBitOr a b
-    OpIntBitShiftLeft a b -> opShl a b
-    OpIntBitShiftRight a b -> opShr a b
-    OpIntBitXor a b -> opBitXor a b
-    OpIntBitZeroFillShiftRight a b -> opZshr a b
-    OpIntNegate a -> opNeg a
-    OpIntNum op a b -> opIntNum op a b
-    OpIntOrd op a b -> opOrd op a b
-    OpNumberNegate a -> opNeg a
-    OpNumberNum op a b -> opNum op a b
-    OpNumberOrd op a b -> opOrd op a b
-    OpStringAppend a b -> opAdd a b
-    OpStringOrd op a b -> opOrd op a b
+    Op1 op1 a ->
+      case op1 of
+        OpBooleanNot -> opNot a
+        OpIntBitNot -> opBitNeg a
+        OpIntNegate -> opNeg a
+        OpNumberNegate -> opNeg a
+        OpArrayLength -> opArrayLength a
+        OpIsTag op -> opIsTag op a
+    Op2 op2 a b ->
+      case op2 of
+        OpBooleanAnd -> opAnd a b
+        OpBooleanOr -> opOr a b
+        OpBooleanOrd op -> opOrd op a b
+        OpCharOrd op -> opOrd op a b
+        OpIntBitAnd -> opBitAnd a b
+        OpIntBitOr -> opBitOr a b
+        OpIntBitShiftLeft -> opShl a b
+        OpIntBitShiftRight -> opShr a b
+        OpIntBitXor -> opBitXor a b
+        OpIntBitZeroFillShiftRight -> opZshr a b
+        OpIntNum op -> opIntNum op a b
+        OpIntOrd op -> opOrd op a b
+        OpNumberNum op -> opNum op a b
+        OpNumberOrd op -> opOrd op a b
+        OpStringAppend -> opAdd a b
+        OpStringOrd op -> opOrd op a b
 
-  binary op = Binary \a b ->
-    Dodo.words [ a, Dodo.text op, b ]
+  binary op n =
+    Binary (\a b -> Dodo.words [ a, Dodo.text op, b ]) n n
 
-  binaryInt op = Binary \a b ->
-    Dodo.Common.jsParens $ Dodo.words [ a, Dodo.text op, b, Dodo.text "|", Dodo.text "0" ]
+  binaryInt op n =
+    Binary (\a b -> Dodo.words [ a, Dodo.text op, b, Dodo.text "|", Dodo.text "0" ]) n 3
 
-  unary op = Unary \a ->
-    Dodo.text op <> a
+  unary op n =
+    Unary (\a -> Dodo.text op <> a) n n
 
   opOr = binary "||" 1
   opAnd = binary "&&" 2
@@ -587,6 +569,19 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
     OpDivide -> opIntDiv
     OpMultiply -> opIntMul
     OpSubtract -> opIntSub
+
+  opArrayLength =
+    Unary (\a -> a <> Dodo.text ".length") top top
+
+  opIsTag (Qualified _ (Ident tag)) = Unary
+    ( \a -> Dodo.words
+        [ a <> Dodo.text "[0]"
+        , Dodo.text "==="
+        , esString tag
+        ]
+    )
+    top
+    6
 
 esCodegenAccessor :: forall a. Dodo.Doc a -> BackendAccessor -> Dodo.Doc a
 esCodegenAccessor lhs = case _ of

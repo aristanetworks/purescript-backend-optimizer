@@ -19,7 +19,7 @@ import Data.String as String
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
-import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendGuard(..), BackendOperator(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), Qualified, findProp, propKey)
 
 type Spine a = Array (Lazy a)
@@ -53,7 +53,6 @@ data BackendNeutral
   | NeutApp BackendSemantics (Spine BackendSemantics)
   | NeutAccessor BackendSemantics BackendAccessor
   | NeutUpdate BackendSemantics (Array (Prop BackendSemantics))
-  | NeutTest BackendSemantics BackendGuard
   | NeutLit (Literal BackendSemantics)
   | NeutFail String
   | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
@@ -172,10 +171,8 @@ instance Eval f => Eval (BackendSyntax f) where
       evalUpdate env (eval env lhs) (map (eval env) <$> updates)
     Branch branches def ->
       evalBranches (map (\b -> defer \_ -> eval env b) <$> branches) ((\b -> defer \_ -> eval env b) <$> def)
-    Test lhs guard ->
-      evalTest env (eval env lhs) guard
     PrimOp op ->
-      evalPrimOp (eval env <$> op)
+      evalPrimOp env (eval env <$> op)
     Lit lit ->
       SemNeutral (NeutLit (eval env <$> lit))
     Fail err ->
@@ -231,6 +228,7 @@ evalApp env hd spine
               go sem args
             Nothing ->
               go (SemExtern qual sp' (defer \_ -> neutralSpine qual sp')) args
+        -- TODO: Only reassoc the head
         SemLet ident val k, args ->
           SemLet ident val \nextVal ->
             SemLet Nothing (k nextVal) \nextFn ->
@@ -243,9 +241,6 @@ evalApp env hd spine
           fn
         fn, args ->
           SemNeutral $ NeutApp fn (List.toUnfoldable args)
-
--- SemLet Nothing fn \nextFn ->
---   evalApp env nextFn (List.toUnfoldable args)
 
 evalSpine :: Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
 evalSpine env = foldl go
@@ -276,51 +271,37 @@ neutralApp hd spine
         NeutApp (SemNeutral hd) spine
 
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
-evalAccessor env lhs accessor = case lhs of
-  SemExtern qual spine _ -> do
-    let spine' = Array.snoc spine (ExternAccessor accessor)
-    -- let _ = if qualifiedModuleName qual == Just (ModuleName "Effect") then trace { qual, spine' } \_ -> unit else unit
-    case evalExtern env qual spine' of
-      Just sem ->
-        sem
-      Nothing ->
-        SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
-  SemLet ident val k ->
-    SemLet ident val \nextVal ->
-      SemLet Nothing (k nextVal) \nextLhs ->
-        evalAccessor (bindLocal (bindLocal env (One nextVal)) (One nextLhs)) nextLhs accessor
-  SemNeutral (NeutLit (LitRecord props))
-    | GetProp prop <- accessor
-    , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
-        sem
-  SemNeutral (NeutLit (LitArray values))
-    | GetIndex n <- accessor
-    , Just sem <- Array.index values n ->
-        sem
-  SemNeutral (NeutData _ _ fields)
-    | GetOffset n <- accessor
-    , Just (Tuple _ sem) <- Array.index fields n ->
-        force sem
-  _ ->
-    SemNeutral (NeutAccessor lhs accessor)
-
--- _ ->
---   SemLet Nothing lhs \nextLhs ->
---     evalAccessor env nextLhs accessor
+evalAccessor initEnv initLhs accessor =
+  evalAssocLet initEnv initLhs \env lhs -> case lhs of
+    SemExtern qual spine _ -> do
+      let spine' = Array.snoc spine (ExternAccessor accessor)
+      case evalExtern env qual spine' of
+        Just sem ->
+          sem
+        Nothing ->
+          SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
+    SemNeutral (NeutLit (LitRecord props))
+      | GetProp prop <- accessor
+      , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
+          sem
+    SemNeutral (NeutLit (LitArray values))
+      | GetIndex n <- accessor
+      , Just sem <- Array.index values n ->
+          sem
+    SemNeutral (NeutData _ _ fields)
+      | GetOffset n <- accessor
+      , Just (Tuple _ sem) <- Array.index fields n ->
+          force sem
+    _ ->
+      SemNeutral (NeutAccessor lhs accessor)
 
 evalUpdate :: Env -> BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
-evalUpdate env lhs props = case lhs of
-  SemNeutral (NeutLit (LitRecord props')) ->
-    SemNeutral (NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))))
-  SemLet ident val k ->
-    SemLet ident val \nextVal ->
-      SemLet Nothing (k nextVal) \nextLhs ->
-        evalUpdate (bindLocal (bindLocal env (One nextVal)) (One nextLhs)) nextLhs props
-  _ ->
-    SemNeutral (NeutUpdate lhs props)
-
--- SemLet Nothing lhs \nextLhs ->
---   evalUpdate env nextLhs props
+evalUpdate initEnv initLhs props =
+  evalAssocLet initEnv initLhs \_ lhs -> case lhs of
+    SemNeutral (NeutLit (LitRecord props')) ->
+      SemNeutral (NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))))
+    _ ->
+      SemNeutral (NeutUpdate lhs props)
 
 evalBranches :: Array (Pair (Lazy BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
 evalBranches initBranches initDef = go [] initBranches initDef
@@ -351,82 +332,119 @@ evalBranches initBranches initDef = go [] initBranches initDef
       else
         SemBranch acc def
 
-evalTest :: Env -> BackendSemantics -> BackendGuard -> BackendSemantics
-evalTest env = case _, _ of
-  SemLet ident val k, test ->
-    SemLet ident val \nextVal ->
-      SemLet Nothing (k nextVal) \nextLhs ->
-        evalTest (bindLocal (bindLocal env (One nextVal)) (One nextLhs)) nextLhs test
-  SemNeutral (NeutLit (LitNumber n1)), GuardNumber n2 ->
-    liftBool (n1 == n2)
-  SemNeutral (NeutLit (LitInt n1)), GuardInt n2 ->
-    liftBool (n1 == n2)
-  SemNeutral (NeutLit (LitString n1)), GuardString n2 ->
-    liftBool (n1 == n2)
-  SemNeutral (NeutLit (LitBoolean n1)), GuardBoolean n2 ->
-    liftBool (n1 == n2)
-  SemNeutral (NeutLit (LitChar n1)), GuardChar n2 ->
-    liftBool (n1 == n2)
-  SemNeutral (NeutData n1 _ _), GuardTag n2 ->
-    liftBool (n1 == n2)
-  SemNeutral (NeutLit (LitArray arr)), GuardArrayLength n ->
-    liftBool (n == Array.length arr)
-  lhs, test ->
-    SemNeutral (NeutTest lhs test)
+evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
+evalAssocLet env sem go = case sem of
+  SemLet ident val k ->
+    SemLet ident val \nextVal1 ->
+      SemLet Nothing (k nextVal1) \nextVal2 ->
+        go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
+  _ ->
+    go env sem
 
--- SemLet Nothing lhs \nextLhs ->
---   evalTest env nextLhs test
+evalAssocLet2
+  :: Env
+  -> BackendSemantics
+  -> BackendSemantics
+  -> (Env -> BackendSemantics -> BackendSemantics -> BackendSemantics)
+  -> BackendSemantics
+evalAssocLet2 env sem1 sem2 go =
+  evalAssocLet env sem1 \env' sem1' ->
+    evalAssocLet env' sem2 \env'' sem2' ->
+      go env'' sem1' sem2'
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
-evalPrimOp :: BackendOperator BackendSemantics -> BackendSemantics
-evalPrimOp = case _ of
-  OpBooleanAnd a b ->
-    case a, b of
-      SemNeutral (NeutLit (LitBoolean false)), _ -> a
-      _, SemNeutral (NeutLit (LitBoolean false)) -> b
-      _, _ -> SemNeutral (NeutPrimOp (OpBooleanAnd a b))
-  OpBooleanNot a ->
-    case a of
-      SemNeutral (NeutLit (LitBoolean bool)) -> SemNeutral (NeutLit (LitBoolean (not bool)))
-      _ -> SemNeutral (NeutPrimOp (OpBooleanNot a))
-  OpBooleanOr a b ->
-    case a, b of
-      SemNeutral (NeutLit (LitBoolean false)), _ -> b
-      _, SemNeutral (NeutLit (LitBoolean false)) -> a
-      _, _ -> SemNeutral (NeutPrimOp (OpBooleanOr a b))
-  OpBooleanOrd op (SemNeutral (NeutLit (LitBoolean a))) (SemNeutral (NeutLit (LitBoolean b))) ->
-    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
-  OpCharOrd op (SemNeutral (NeutLit (LitChar a))) (SemNeutral (NeutLit (LitChar b))) ->
-    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
-  OpIntBitAnd (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
-    SemNeutral (NeutLit (LitInt (x .&. y)))
-  OpIntBitNot (SemNeutral (NeutLit (LitInt x))) ->
-    SemNeutral (NeutLit (LitInt (complement x)))
-  OpIntBitOr (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
-    SemNeutral (NeutLit (LitInt (x .|. y)))
-  OpIntBitShiftLeft (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
-    SemNeutral (NeutLit (LitInt (shl x y)))
-  OpIntBitShiftRight (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
-    SemNeutral (NeutLit (LitInt (shr x y)))
-  OpIntBitXor (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
-    SemNeutral (NeutLit (LitInt (xor x y)))
-  OpIntBitZeroFillShiftRight (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
-    SemNeutral (NeutLit (LitInt (zshr x y)))
-  OpIntNum op (SemNeutral (NeutLit (LitInt a))) (SemNeutral (NeutLit (LitInt b))) ->
-    SemNeutral (NeutLit (LitInt (evalPrimOpNum op a b)))
-  OpIntOrd op (SemNeutral (NeutLit (LitInt a))) (SemNeutral (NeutLit (LitInt b))) ->
-    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
-  OpNumberNum op (SemNeutral (NeutLit (LitNumber a))) (SemNeutral (NeutLit (LitNumber b))) ->
-    SemNeutral (NeutLit (LitNumber (evalPrimOpNum op a b)))
-  OpNumberOrd op (SemNeutral (NeutLit (LitNumber a))) (SemNeutral (NeutLit (LitNumber b))) ->
-    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
-  OpStringAppend (SemNeutral (NeutLit (LitString a))) (SemNeutral (NeutLit (LitString b))) ->
-    SemNeutral (NeutLit (LitString (a <> b)))
-  OpStringOrd op (SemNeutral (NeutLit (LitString a))) (SemNeutral (NeutLit (LitString b))) ->
-    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
-  other ->
-    SemNeutral (NeutPrimOp other)
+evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
+evalPrimOp env = case _ of
+  Op1 op1 x ->
+    case op1, x of
+      OpBooleanNot, SemNeutral (NeutLit (LitBoolean bool)) ->
+        liftBoolean (not bool)
+      OpIntBitNot, SemNeutral (NeutLit (LitInt a)) ->
+        liftInt (complement a)
+      OpIsTag a, SemNeutral (NeutData b _ _) ->
+        liftBoolean (a == b)
+      OpArrayLength, SemNeutral (NeutLit (LitArray arr)) ->
+        liftInt (Array.length arr)
+      _, _ ->
+        evalAssocLet env x \_ x'  ->
+          SemNeutral (NeutPrimOp (Op1 op1 x'))
+  Op2 op2 x y ->
+    case op2 of
+      OpBooleanAnd
+        | SemNeutral (NeutLit (LitBoolean false)) <- x ->
+            x
+        | SemNeutral (NeutLit (LitBoolean false)) <- y ->
+            y
+      OpBooleanOr
+        | SemNeutral (NeutLit (LitBoolean false)) <- x ->
+            y
+        | SemNeutral (NeutLit (LitBoolean false)) <- y ->
+            x
+      OpBooleanOrd OpEq
+        | SemNeutral (NeutLit (LitBoolean bool)) <- x ->
+            if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
+        | SemNeutral (NeutLit (LitBoolean bool)) <- y ->
+            if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
+      OpBooleanOrd op
+        | SemNeutral (NeutLit (LitBoolean a)) <- x
+        , SemNeutral (NeutLit (LitBoolean b)) <- y ->
+            liftBoolean (evalPrimOpOrd op a b)
+      OpCharOrd op
+        | SemNeutral (NeutLit (LitChar a)) <- x
+        , SemNeutral (NeutLit (LitChar b)) <- y ->
+            liftBoolean (evalPrimOpOrd op a b)
+      OpIntBitAnd
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (a .&. b)
+      OpIntBitOr
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (a .|. b)
+      OpIntBitShiftLeft
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (shl a b)
+      OpIntBitShiftRight
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (shr a b)
+      OpIntBitXor
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (xor a b)
+      OpIntBitZeroFillShiftRight
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (zshr a b)
+      OpIntNum op
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftInt (evalPrimOpNum op a b)
+      OpIntOrd op
+        | SemNeutral (NeutLit (LitInt a)) <- x
+        , SemNeutral (NeutLit (LitInt b)) <- y ->
+            liftBoolean (evalPrimOpOrd op a b)
+      OpNumberNum op
+        | SemNeutral (NeutLit (LitNumber a)) <- x
+        , SemNeutral (NeutLit (LitNumber b)) <- y ->
+            liftNumber (evalPrimOpNum op a b)
+      OpNumberOrd op
+        | SemNeutral (NeutLit (LitNumber a)) <- x
+        , SemNeutral (NeutLit (LitNumber b)) <- y ->
+            liftBoolean (evalPrimOpOrd op a b)
+      OpStringAppend
+        | SemNeutral (NeutLit (LitString a)) <- x
+        , SemNeutral (NeutLit (LitString b)) <- y ->
+            liftString (a <> b)
+      OpStringOrd op
+        | SemNeutral (NeutLit (LitString a)) <- x
+        , SemNeutral (NeutLit (LitString b)) <- y ->
+            liftBoolean (evalPrimOpOrd op a b)
+      _ ->
+        evalAssocLet2 env x y \_ x' y' ->
+          SemNeutral (NeutPrimOp (Op2 op2 x' y'))
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
@@ -479,8 +497,17 @@ evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
   _ ->
     Nothing
 
-liftBool :: Boolean -> BackendSemantics
-liftBool = SemNeutral <<< NeutLit <<< LitBoolean
+liftBoolean :: Boolean -> BackendSemantics
+liftBoolean = SemNeutral <<< NeutLit <<< LitBoolean
+
+liftInt :: Int -> BackendSemantics
+liftInt = SemNeutral <<< NeutLit <<< LitInt
+
+liftNumber :: Number -> BackendSemantics
+liftNumber = SemNeutral <<< NeutLit <<< LitNumber
+
+liftString :: String -> BackendSemantics
+liftString = SemNeutral <<< NeutLit <<< LitString
 
 foldr1Array :: forall a b. (a -> b -> b) -> (a -> b) -> NonEmptyArray a -> b
 foldr1Array f g arr = go (NonEmptyArray.length arr - 2) (g (NonEmptyArray.last arr))
@@ -586,11 +613,11 @@ quoteNeutral ctx = case _ of
   NeutCtorDef tag fields ->
     build ctx $ CtorDef tag fields
   NeutUncurriedApp hd spine -> do
-     let hd' = quote ctx hd
-     build ctx $ UncurriedApp hd' (quote ctx <$> spine)
+    let hd' = quote ctx hd
+    build ctx $ UncurriedApp hd' (quote ctx <$> spine)
   NeutUncurriedEffectApp hd spine -> do
-     let hd' = quote ctx hd
-     build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
+    let hd' = quote ctx hd
+    build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
   NeutApp hd spine -> do
     let hd' = quote ctx hd
     case NonEmptyArray.fromArray (quote ctx <<< force <$> spine) of
@@ -604,8 +631,6 @@ quoteNeutral ctx = case _ of
     build ctx $ Update (quote ctx lhs) (map (quote ctx) <$> props)
   NeutLit lit ->
     build ctx $ Lit (quote ctx <$> lit)
-  NeutTest lhs gd ->
-    build ctx $ Test (quote ctx lhs) gd
   NeutPrimOp op ->
     build ctx $ PrimOp (quote ctx <$> op)
   NeutFail err ->
@@ -646,15 +671,12 @@ build ctx = case _ of
     build ctx (Branch (branches1 <> branches2) def)
   Branch [ pair ] (Just def) | Just expr <- isTestPred pair def ->
     expr
-  Test expr (GuardBoolean true) ->
-    expr
   expr ->
     buildDefault ctx expr
 
 isTestPred :: Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
 isTestPred = case _, _ of
-  Pair expr@(ExprSyntax _ (Test _ _)) (ExprSyntax _ (Lit (LitBoolean true))),
-  ExprSyntax _ (Lit (LitBoolean false)) ->
+  Pair expr (ExprSyntax _ (Lit (LitBoolean true))), ExprSyntax _ (Lit (LitBoolean false)) ->
     Just expr
   _, _ ->
     Nothing
@@ -755,7 +777,6 @@ freeze init = Tuple (analysisOf init) (go init)
             Nothing ->
               go body
 
-
 evalMkFn :: Env -> Int -> BackendSemantics -> MkFn BackendSemantics
 evalMkFn env n sem
   | n == 0 = MkFnApplied sem
@@ -766,4 +787,4 @@ evalMkFn env n sem
         _ ->
           MkFnNext Nothing \nextArg -> do
             let env' = bindLocal env (One nextArg)
-            evalMkFn env' (n - 1) (evalApp env' sem [ defer \_ ->  nextArg ])
+            evalMkFn env' (n - 1) (evalApp env' sem [ defer \_ -> nextArg ])

@@ -201,8 +201,6 @@ analyze externAnalysis expr = case expr of
     complex NonTrivial $ analyzeDefault expr
   Branch _ _ ->
     complex NonTrivial $ analyzeDefault expr
-  Test _ _ ->
-    noTailCall $ complex NonTrivial $ analyzeDefault expr
   Fail _ ->
     noTailCall $ complex NonTrivial $ analyzeDefault expr
   PrimOp _ ->

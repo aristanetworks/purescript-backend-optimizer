@@ -25,7 +25,7 @@ import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Analysis (BackendAnalysis)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), ExternSpine, Impl(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
 
 type BackendBindingGroup a b =
@@ -277,17 +277,17 @@ toBackendExpr = case _ of
         BinderLit _ lit, List.Cons id _ -> do
           case lit of
             LitInt n ->
-              makeGuard id (GuardInt n) $ goBinders k store stk next
+              makeGuard id (guardInt n) $ goBinders k store stk next
             LitNumber n ->
-              makeGuard id (GuardNumber n) $ goBinders k store stk next
+              makeGuard id (guardNumber n) $ goBinders k store stk next
             LitString n ->
-              makeGuard id (GuardString n) $ goBinders k store stk next
+              makeGuard id (guardString n) $ goBinders k store stk next
             LitChar n ->
-              makeGuard id (GuardChar n) $ goBinders k store stk next
+              makeGuard id (guardChar n) $ goBinders k store stk next
             LitBoolean n ->
-              makeGuard id (GuardBoolean n) $ goBinders k store stk next
+              makeGuard id (guardBoolean n) $ goBinders k store stk next
             LitArray bs ->
-              makeGuard id (GuardArrayLength (Array.length bs)) $ goBinders k store stk $ foldrWithIndex
+              makeGuard id (guardArrayLength (Array.length bs)) $ goBinders k store stk $ foldrWithIndex
                 ( \ix b s ->
                     PatPush (GetIndex ix) $ PatBinder b $ PatPop s
                 )
@@ -303,7 +303,7 @@ toBackendExpr = case _ of
         BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ], _ ->
           goBinders k store stk (PatBinder b next)
         BinderConstructor _ _ tag bs, List.Cons id _ ->
-          makeGuard id (GuardTag tag) $ goBinders k store stk $ foldrWithIndex
+          makeGuard id (guardTag tag) $ goBinders k store stk $ foldrWithIndex
             ( \ix b s ->
                 PatPush (GetOffset ix) $ PatBinder b $ PatPop s
             )
@@ -339,9 +339,30 @@ toBackendExpr = case _ of
       Just ident ->
         make $ Let id lvl a (intro [ ident ] lvl (k lvl))
 
-  makeGuard :: Level -> BackendGuard -> ConvertM BackendExpr -> ConvertM BackendExpr
+  guardInt :: Int -> _
+  guardInt n lhs = PrimOp (Op2 (OpIntOrd OpEq) lhs (make (Lit (LitInt n))))
+
+  guardNumber :: Number -> _
+  guardNumber n lhs = PrimOp (Op2 (OpNumberOrd OpEq) lhs (make (Lit (LitNumber n))))
+
+  guardString :: String -> _
+  guardString n lhs = PrimOp (Op2 (OpStringOrd OpEq) lhs (make (Lit (LitString n))))
+
+  guardChar :: Char -> _
+  guardChar n lhs = PrimOp (Op2 (OpCharOrd OpEq) lhs (make (Lit (LitChar n))))
+
+  guardBoolean :: Boolean -> _
+  guardBoolean n lhs = PrimOp (Op2 (OpBooleanOrd OpEq) lhs (make (Lit (LitBoolean n))))
+
+  guardArrayLength :: Int -> _
+  guardArrayLength n lhs = guardInt n (make (PrimOp (Op1 OpArrayLength lhs)))
+
+  guardTag :: Qualified Ident -> _
+  guardTag n lhs = PrimOp (Op1 (OpIsTag n) lhs)
+
+  makeGuard :: Level -> _ -> ConvertM BackendExpr -> ConvertM BackendExpr
   makeGuard lvl g inner =
-    make $ Branch [ Pair (make (Test (make (Local Nothing lvl)) g)) inner ] Nothing
+    make $ Branch [ Pair (make (g (make (Local Nothing lvl)))) inner ] Nothing
 
   make :: BackendSyntax (ConvertM BackendExpr) -> ConvertM BackendExpr
   make a = buildM =<< sequence a

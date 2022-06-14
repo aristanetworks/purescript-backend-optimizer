@@ -10,7 +10,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Semantics (BackendNeutral(..), BackendSemantics(..), Env, ExternSpine(..), evalMkFn, evalPrimOp)
-import PureScript.Backend.Syntax (BackendOperator(..), BackendOperatorNum(..), BackendOperatorOrd(..))
+import PureScript.Backend.Syntax (BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
 
 type ForeignEval =
@@ -41,10 +41,13 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_eq_eqCharImpl
     , data_eq_eqStringImpl
     ]
-      <> map data_function_uncurried_mkFn [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-      <> map data_function_uncurried_runFn [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-      <> map effect_uncurried_mkEffectFn [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-      <> map effect_uncurried_runEffectFn [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+      <> map data_function_uncurried_mkFn oneToTen
+      <> map data_function_uncurried_runFn oneToTen
+      <> map effect_uncurried_mkEffectFn oneToTen
+      <> map effect_uncurried_runEffectFn oneToTen
+
+  oneToTen =
+    Array.range 1 10
 
 effect_bindE :: ForeignSemantics
 effect_bindE = Tuple (qualified "Effect" "bindE") go
@@ -65,10 +68,10 @@ effect_pureE = Tuple (qualified "Effect" "pureE") go
 data_ord_lessThanOrEq :: ForeignSemantics
 data_ord_lessThanOrEq = Tuple (qualified "Data.Ord" "lessThanOrEq") go
   where
-  go _ _ = case _ of
+  go env _ = case _ of
     [ ExternApp [ a, b, c ] ]
       | SemExtern (Qualified (Just (ModuleName "Data.Ord")) (Ident "ordInt")) [] _ <- Lazy.force a ->
-          Just $ evalPrimOp $ OpIntOrd OpLte (Lazy.force b) (Lazy.force c)
+          Just $ evalPrimOp env $ Op2 (OpIntOrd OpLte) (Lazy.force b) (Lazy.force c)
     _ ->
       Nothing
 
@@ -157,16 +160,16 @@ data_eq_eqCharImpl = Tuple (qualified "Data.Eq" "eqCharImpl") $ primBinaryOperat
 data_eq_eqStringImpl :: ForeignSemantics
 data_eq_eqStringImpl = Tuple (qualified "Data.Eq" "eqStringImpl") $ primBinaryOperator (OpStringOrd OpEq)
 
-primBinaryOperator :: (BackendSemantics -> BackendSemantics -> BackendOperator BackendSemantics) -> ForeignEval
-primBinaryOperator op _ _ = case _ of
+primBinaryOperator :: BackendOperator2 -> ForeignEval
+primBinaryOperator op env _ = case _ of
     [ ExternApp [ a, b ] ] ->
-      Just $ evalPrimOp (op (Lazy.force a) (Lazy.force b))
+      Just $ evalPrimOp env (Op2 op (Lazy.force a) (Lazy.force b))
     _ ->
       Nothing
 
-primUnaryOperator :: (BackendSemantics -> BackendOperator BackendSemantics) -> ForeignEval
-primUnaryOperator op _ _ = case _ of
+primUnaryOperator :: BackendOperator1 -> ForeignEval
+primUnaryOperator op env _ = case _ of
     [ ExternApp [ a ] ] ->
-      Just $ evalPrimOp (op (Lazy.force a))
+      Just $ evalPrimOp env (Op1 op (Lazy.force a))
     _ ->
       Nothing
