@@ -3,8 +3,6 @@ module PureScript.Backend.Semantics.Foreign where
 import Prelude
 
 import Data.Array as Array
-import Data.Lazy (force)
-import Data.Lazy as Lazy
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -53,8 +51,8 @@ effect_bindE :: ForeignSemantics
 effect_bindE = Tuple (qualified "Effect" "bindE") go
   where
   go _ _ = case _ of
-    [ ExternApp [ eff, k ] ] | SemLam ident next <- force k ->
-      Just $ SemEffectBind ident (force eff) next
+    [ ExternApp [ eff, SemLam ident next ] ] ->
+      Just $ SemEffectBind ident eff next
     _ -> Nothing
 
 effect_pureE :: ForeignSemantics
@@ -62,7 +60,7 @@ effect_pureE = Tuple (qualified "Effect" "pureE") go
   where
   go _ _ = case _ of
     [ ExternApp [ val ] ] ->
-      Just $ SemEffectPure (force val)
+      Just $ SemEffectPure val
     _ -> Nothing
 
 data_ord_lessThanOrEq :: ForeignSemantics
@@ -70,8 +68,8 @@ data_ord_lessThanOrEq = Tuple (qualified "Data.Ord" "lessThanOrEq") go
   where
   go env _ = case _ of
     [ ExternApp [ a, b, c ] ]
-      | SemExtern (Qualified (Just (ModuleName "Data.Ord")) (Ident "ordInt")) [] _ <- Lazy.force a ->
-          Just $ evalPrimOp env $ Op2 (OpIntOrd OpLte) (Lazy.force b) (Lazy.force c)
+      | SemExtern (Qualified (Just (ModuleName "Data.Ord")) (Ident "ordInt")) [] _ <- a ->
+          Just $ evalPrimOp env $ Op2 (OpIntOrd OpLte) b c
     _ ->
       Nothing
 
@@ -85,7 +83,7 @@ data_function_uncurried_mkFn :: Int -> ForeignSemantics
 data_function_uncurried_mkFn n = Tuple (qualified "Data.Function.Uncurried" ("mkFn" <> show n)) go
   where
   go env _ = case _ of
-    [ ExternApp [ f ] ] | sem <- Lazy.force f ->
+    [ ExternApp [ sem ] ] ->
       Just $ SemMkFn (evalMkFn env n sem)
     _ ->
       Nothing
@@ -97,7 +95,7 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items
       , Array.length tail == n ->
-          Just $ SemNeutral $ NeutUncurriedApp (Lazy.force head) (Lazy.force <$> tail)
+          Just $ SemNeutral $ NeutUncurriedApp head tail
     _ ->
       Nothing
 
@@ -105,7 +103,7 @@ effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
 effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn" <> show n)) go
   where
   go env _ = case _ of
-    [ ExternApp [ f ] ] | sem <- Lazy.force f ->
+    [ ExternApp [ sem ] ] ->
       Just $ SemMkEffectFn (evalMkFn env n sem)
     _ ->
       Nothing
@@ -117,7 +115,7 @@ effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffect
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items
       , Array.length tail == n ->
-          Just $ SemNeutral $ NeutUncurriedEffectApp (Lazy.force head) (Lazy.force <$> tail)
+          Just $ SemNeutral $ NeutUncurriedEffectApp head tail
     _ ->
       Nothing
 
@@ -135,12 +133,12 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
   where
   go _ _ = case _ of
     [ ExternApp [ a, b ] ]
-      | SemNeutral (NeutLit (LitBoolean false)) <- Lazy.force a ->
+      | SemNeutral (NeutLit (LitBoolean false)) <- a ->
           Just $ SemNeutral (NeutLit (LitBoolean true))
-      | SemNeutral (NeutLit (LitBoolean true)) <- Lazy.force b ->
+      | SemNeutral (NeutLit (LitBoolean true)) <- b ->
           Just $ SemNeutral (NeutLit (LitBoolean true))
-      | SemNeutral (NeutLit (LitBoolean x)) <- Lazy.force a
-      , SemNeutral (NeutLit (LitBoolean y)) <- Lazy.force b ->
+      | SemNeutral (NeutLit (LitBoolean x)) <- a
+      , SemNeutral (NeutLit (LitBoolean y)) <- b ->
           Just $ SemNeutral (NeutLit (LitBoolean (not x || y)))
     _ ->
       Nothing
@@ -163,13 +161,13 @@ data_eq_eqStringImpl = Tuple (qualified "Data.Eq" "eqStringImpl") $ primBinaryOp
 primBinaryOperator :: BackendOperator2 -> ForeignEval
 primBinaryOperator op env _ = case _ of
     [ ExternApp [ a, b ] ] ->
-      Just $ evalPrimOp env (Op2 op (Lazy.force a) (Lazy.force b))
+      Just $ evalPrimOp env (Op2 op a b)
     _ ->
       Nothing
 
 primUnaryOperator :: BackendOperator1 -> ForeignEval
 primUnaryOperator op env _ = case _ of
     [ ExternApp [ a ] ] ->
-      Just $ evalPrimOp env (Op1 op (Lazy.force a))
+      Just $ evalPrimOp env (Op1 op a)
     _ ->
       Nothing

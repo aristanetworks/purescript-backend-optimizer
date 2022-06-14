@@ -22,7 +22,7 @@ import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Comp
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), Qualified, findProp, propKey)
 
-type Spine a = Array (Lazy a)
+type Spine a = Array a
 
 type RecSpine a = Array (Tuple Ident (Lazy a))
 
@@ -48,7 +48,7 @@ data BackendSemantics
 data BackendNeutral
   = NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
-  | NeutData (Qualified Ident) Ident (Array (Tuple Ident (Lazy BackendSemantics)))
+  | NeutData (Qualified Ident) Ident (Array (Tuple Ident BackendSemantics))
   | NeutCtorDef Ident (Array Ident)
   | NeutApp BackendSemantics (Spine BackendSemantics)
   | NeutAccessor BackendSemantics BackendAccessor
@@ -127,7 +127,7 @@ instance Eval f => Eval (BackendSyntax f) where
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
     App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray ((\a -> defer \_ -> eval env a) <$> tl))
+      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
     UncurriedApp hd tl ->
       SemNeutral (NeutUncurriedApp (eval env hd) (eval env <$> tl))
     UncurriedAbs idents body -> do
@@ -180,7 +180,7 @@ instance Eval f => Eval (BackendSyntax f) where
     CtorDef tag fields ->
       SemNeutral (NeutCtorDef tag fields)
     CtorSaturated qual tag fields ->
-      SemNeutral (NeutData qual tag (map (\a -> defer \_ -> eval env a) <$> fields))
+      SemNeutral (NeutData qual tag (map (eval env) <$> fields))
 
 instance Eval BackendExpr where
   eval = go
@@ -205,7 +205,7 @@ instance Eval BackendExpr where
 instance Eval NeutralExpr where
   eval env (NeutralExpr a) = eval env a
 
-snocApp :: Array ExternSpine -> Lazy BackendSemantics -> Array ExternSpine
+snocApp :: Array ExternSpine -> BackendSemantics -> Array ExternSpine
 snocApp prev next = case Array.last prev of
   Just (ExternApp apps) ->
     Array.snoc (Array.dropEnd 1 prev) (ExternApp (Array.snoc apps next))
@@ -219,7 +219,7 @@ evalApp env hd spine
       where
       go = case _, _ of
         SemLam _ k, List.Cons arg args ->
-          SemLet Nothing (force arg) \nextArg ->
+          SemLet Nothing arg \nextArg ->
             go (k nextArg) args
         SemExtern qual sp _, List.Cons arg args -> do
           let sp' = snocApp sp arg
@@ -291,7 +291,7 @@ evalAccessor initEnv initLhs accessor =
     SemNeutral (NeutData _ _ fields)
       | GetOffset n <- accessor
       , Just (Tuple _ sem) <- Array.index fields n ->
-          force sem
+          sem
     _ ->
       SemNeutral (NeutAccessor lhs accessor)
 
@@ -609,7 +609,7 @@ quoteNeutral ctx = case _ of
   NeutData qual _ [] ->
     build ctx $ Var qual
   NeutData qual tag values ->
-    build ctx $ CtorSaturated qual tag (map (quote ctx <<< force) <$> values)
+    build ctx $ CtorSaturated qual tag (map (quote ctx) <$> values)
   NeutCtorDef tag fields ->
     build ctx $ CtorDef tag fields
   NeutUncurriedApp hd spine -> do
@@ -620,7 +620,7 @@ quoteNeutral ctx = case _ of
     build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
   NeutApp hd spine -> do
     let hd' = quote ctx hd
-    case NonEmptyArray.fromArray (quote ctx <<< force <$> spine) of
+    case NonEmptyArray.fromArray (quote ctx <$> spine) of
       Nothing ->
         hd'
       Just args ->
@@ -787,4 +787,4 @@ evalMkFn env n sem
         _ ->
           MkFnNext Nothing \nextArg -> do
             let env' = bindLocal env (One nextArg)
-            evalMkFn env' (n - 1) (evalApp env' sem [ defer \_ -> nextArg ])
+            evalMkFn env' (n - 1) (evalApp env' sem [ nextArg ])
