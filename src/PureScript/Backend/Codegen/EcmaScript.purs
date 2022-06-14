@@ -466,7 +466,7 @@ esCodegenTest lhs = case _ of
   GuardTag (Qualified _ (Ident tag)) ->
     Dodo.words [ esIndex lhs 0, Dodo.text "==", esString tag ]
   GuardArrayLength len ->
-    Dodo.words [ lhs <> Dodo.text ".n", Dodo.text "==", esInt len ]
+    Dodo.words [ lhs <> Dodo.text ".length", Dodo.text "==", esInt len ]
 
 data EsOperator a
   = Binary String Int a a
