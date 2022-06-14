@@ -6,6 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Foldable (class Foldable, fold, foldMap, foldl, foldr, maximum)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List)
@@ -29,7 +30,7 @@ import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), T
 import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Syntax (BackendAccessor(..), BackendGuard(..), BackendOperator(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), qualifiedModuleName, unQualified)
 
 data CodegenName = CodegenIdent Ident
@@ -195,6 +196,8 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
         lhs
       _, _ ->
         esCodegenTest lhs b
+  PrimOp op ->
+    esCodegenPrimOp env op
   Fail str ->
     esError str
   Branch _ _ ->
@@ -464,6 +467,106 @@ esCodegenTest lhs = case _ of
     Dodo.words [ esIndex lhs 0, Dodo.text "==", esString tag ]
   GuardArrayLength len ->
     Dodo.words [ lhs <> Dodo.text ".n", Dodo.text "==", esInt len ]
+
+data EsOperator a
+  = Binary String Int a a
+  | Unary String Int a
+  | Leaf a
+
+esCodegenPrimOp :: forall a. CodegenEnv -> BackendOperator TcoExpr -> Dodo.Doc a
+esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
+  where
+  go :: Either Int Int -> CodegenEnv -> EsOperator TcoExpr -> Dodo.Doc a
+  go prec env = case _ of
+    Binary op p lhs rhs -> do
+      let
+        doc = Dodo.words
+          [ go (Left p) env (fromExpr lhs)
+          , Dodo.text op
+          , go (Right p) env (fromExpr rhs)
+          ]
+      case prec of
+        Left n | p >= n ->
+          doc
+        Right n | p > n ->
+          doc
+        _ ->
+          Dodo.Common.jsParens doc
+    Unary op p val -> do
+      let doc = Dodo.text op <> go (Right p) env (fromExpr val)
+      case prec of
+        Left n | p > n ->
+          doc
+        Right n | p >= n ->
+          doc
+        _ ->
+          Dodo.Common.jsParens doc
+    Leaf expr ->
+      esCodegenExpr env expr
+
+  fromExpr :: TcoExpr -> EsOperator TcoExpr
+  fromExpr = case _ of
+    TcoExpr _ (PrimOp expr) ->
+      fromOperator expr
+    expr ->
+      Leaf expr
+
+  fromOperator :: BackendOperator TcoExpr -> EsOperator TcoExpr
+  fromOperator = case _ of
+    OpBooleanAnd a b -> opAnd a b
+    OpBooleanNot a -> opNot a
+    OpBooleanOr a b -> opOr a b
+    OpBooleanOrd op a b -> opOrd op a b
+    OpCharOrd op a b -> opOrd op a b
+    OpIntBitAnd a b -> opBitAnd a b
+    OpIntBitNot a -> opBitNeg a
+    OpIntBitOr a b -> opBitOr a b
+    OpIntBitShiftLeft a b -> opShl a b
+    OpIntBitShiftRight a b -> opShr a b
+    OpIntBitXor a b -> opBitXor a b
+    OpIntBitZeroFillShiftRight a b -> opZshr a b
+    OpIntNegate a -> opNeg a
+    OpIntNum op a b -> opNum op a b
+    OpIntOrd op a b -> opOrd op a b
+    OpNumberNegate a -> opNeg a
+    OpNumberNum op a b -> opNum op a b
+    OpNumberOrd op a b -> opOrd op a b
+    OpStringAppend a b -> opAdd a b
+    OpStringOrd op a b -> opOrd op a b
+
+  opOr = Binary "||" 1
+  opAnd = Binary "&&" 2
+  opBitOr = Binary "|" 3
+  opBitXor = Binary "|" 4
+  opBitAnd = Binary "&" 5
+  opEq = Binary "===" 6
+  opGt = Binary ">" 7
+  opGte = Binary ">=" 7
+  opLt = Binary "<" 7
+  opLte = Binary "<=" 7
+  opShl = Binary "<<" 8
+  opShr = Binary ">>" 8
+  opZshr = Binary ">>>" 8
+  opAdd = Binary "+" 9
+  opSub = Binary "-" 9
+  opDiv = Binary "/" 10
+  opMul = Binary "*" 10
+  opNeg = Unary "-" 11
+  opBitNeg = Unary "^" 11
+  opNot = Unary "!" 11
+
+  opNum = case _ of
+    OpAdd -> opAdd
+    OpDivide -> opDiv
+    OpMultiply -> opMul
+    OpSubtract -> opSub
+
+  opOrd = case _ of
+    OpEq -> opEq
+    OpGt -> opGt
+    OpGte -> opGte
+    OpLt -> opLt
+    OpLte -> opLte
 
 esCodegenAccessor :: forall a. Dodo.Doc a -> BackendAccessor -> Dodo.Doc a
 esCodegenAccessor lhs = case _ of

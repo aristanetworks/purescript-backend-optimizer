@@ -116,13 +116,17 @@ topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }
 
 makeExternEval :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
-makeExternEval conv env qual spine =
-  case Map.lookup qual conv.implementations of
-    Just impl ->
-      evalExternFromImpl (topEnv env) qual impl spine
-    _ -> do
+makeExternEval conv env qual spine = do
+  let
+    result = do
       fn <- Map.lookup qual coreForeignSemantics
       fn env qual spine
+  case result of
+    Nothing -> do
+      impl <- Map.lookup qual conv.implementations
+      evalExternFromImpl (topEnv env) qual impl spine
+    _ ->
+      result
 
 data PatternStk
   = PatBinder (Binder Ann) PatternStk

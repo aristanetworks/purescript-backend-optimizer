@@ -18,6 +18,7 @@ You can edit this file as you like.
   , "either"
   , "foldable-traversable"
   , "foreign-object"
+  , "integers"
   , "lazy"
   , "lists"
   , "maybe"

@@ -8,6 +8,7 @@ import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (foldMap, foldl)
 import Data.Foldable as Tuple
+import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map as Map
@@ -18,7 +19,7 @@ import Data.String as String
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
-import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendGuard(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendGuard(..), BackendOperator(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), Qualified, findProp, propKey)
 
 type Spine a = Array (Lazy a)
@@ -57,6 +58,7 @@ data BackendNeutral
   | NeutFail String
   | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
   | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
+  | NeutPrimOp (BackendOperator BackendSemantics)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
@@ -172,6 +174,8 @@ instance Eval f => Eval (BackendSyntax f) where
       evalBranches (map (\b -> defer \_ -> eval env b) <$> branches) ((\b -> defer \_ -> eval env b) <$> def)
     Test lhs guard ->
       evalTest env (eval env lhs) guard
+    PrimOp op ->
+      evalPrimOp (eval env <$> op)
     Lit lit ->
       SemNeutral (NeutLit (eval env <$> lit))
     Fail err ->
@@ -373,6 +377,72 @@ evalTest env = case _, _ of
 -- SemLet Nothing lhs \nextLhs ->
 --   evalTest env nextLhs test
 
+-- TODO: Check for overflow in Int ops since backends may not handle it the
+-- same was as the JS backend.
+evalPrimOp :: BackendOperator BackendSemantics -> BackendSemantics
+evalPrimOp = case _ of
+  OpBooleanAnd a b ->
+    case a, b of
+      SemNeutral (NeutLit (LitBoolean false)), _ -> a
+      _, SemNeutral (NeutLit (LitBoolean false)) -> b
+      _, _ -> SemNeutral (NeutPrimOp (OpBooleanAnd a b))
+  OpBooleanNot a ->
+    case a of
+      SemNeutral (NeutLit (LitBoolean bool)) -> SemNeutral (NeutLit (LitBoolean (not bool)))
+      _ -> SemNeutral (NeutPrimOp (OpBooleanNot a))
+  OpBooleanOr a b ->
+    case a, b of
+      SemNeutral (NeutLit (LitBoolean false)), _ -> b
+      _, SemNeutral (NeutLit (LitBoolean false)) -> a
+      _, _ -> SemNeutral (NeutPrimOp (OpBooleanOr a b))
+  OpBooleanOrd op (SemNeutral (NeutLit (LitBoolean a))) (SemNeutral (NeutLit (LitBoolean b))) ->
+    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
+  OpCharOrd op (SemNeutral (NeutLit (LitChar a))) (SemNeutral (NeutLit (LitChar b))) ->
+    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
+  OpIntBitAnd (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
+    SemNeutral (NeutLit (LitInt (x .&. y)))
+  OpIntBitNot (SemNeutral (NeutLit (LitInt x))) ->
+    SemNeutral (NeutLit (LitInt (complement x)))
+  OpIntBitOr (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
+    SemNeutral (NeutLit (LitInt (x .|. y)))
+  OpIntBitShiftLeft (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
+    SemNeutral (NeutLit (LitInt (shl x y)))
+  OpIntBitShiftRight (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
+    SemNeutral (NeutLit (LitInt (shr x y)))
+  OpIntBitXor (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
+    SemNeutral (NeutLit (LitInt (xor x y)))
+  OpIntBitZeroFillShiftRight (SemNeutral (NeutLit (LitInt x))) (SemNeutral (NeutLit (LitInt y))) ->
+    SemNeutral (NeutLit (LitInt (zshr x y)))
+  OpIntNum op (SemNeutral (NeutLit (LitInt a))) (SemNeutral (NeutLit (LitInt b))) ->
+    SemNeutral (NeutLit (LitInt (evalPrimOpNum op a b)))
+  OpIntOrd op (SemNeutral (NeutLit (LitInt a))) (SemNeutral (NeutLit (LitInt b))) ->
+    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
+  OpNumberNum op (SemNeutral (NeutLit (LitNumber a))) (SemNeutral (NeutLit (LitNumber b))) ->
+    SemNeutral (NeutLit (LitNumber (evalPrimOpNum op a b)))
+  OpNumberOrd op (SemNeutral (NeutLit (LitNumber a))) (SemNeutral (NeutLit (LitNumber b))) ->
+    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
+  OpStringAppend (SemNeutral (NeutLit (LitString a))) (SemNeutral (NeutLit (LitString b))) ->
+    SemNeutral (NeutLit (LitString (a <> b)))
+  OpStringOrd op (SemNeutral (NeutLit (LitString a))) (SemNeutral (NeutLit (LitString b))) ->
+    SemNeutral (NeutLit (LitBoolean (evalPrimOpOrd op a b)))
+  other ->
+    SemNeutral (NeutPrimOp other)
+
+evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
+evalPrimOpOrd op x y = case op of
+  OpEq -> x == y
+  OpGt -> x > y
+  OpGte -> x >= y
+  OpLt -> x < y
+  OpLte -> x <= y
+
+evalPrimOpNum :: forall a. EuclideanRing a => BackendOperatorNum -> a -> a -> a
+evalPrimOpNum op x y = case op of
+  OpAdd -> x + y
+  OpDivide -> x / y
+  OpMultiply -> x * y
+  OpSubtract -> x - y
+
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
 evalExtern env@(Env e) = e.evalExtern env
 
@@ -536,6 +606,8 @@ quoteNeutral ctx = case _ of
     build ctx $ Lit (quote ctx <$> lit)
   NeutTest lhs gd ->
     build ctx $ Test (quote ctx lhs) gd
+  NeutPrimOp op ->
+    build ctx $ PrimOp (quote ctx <$> op)
   NeutFail err ->
     build ctx $ Fail err
 
