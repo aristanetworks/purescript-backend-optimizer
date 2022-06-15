@@ -82,7 +82,9 @@ test12 a =
 
 test13 a = if a then true else false
 
-test15 a = a <= "foo"
+test15 a = case compare a 15 of
+  LT -> true
+  _ -> false
 
 main :: Effect Unit
 main = do

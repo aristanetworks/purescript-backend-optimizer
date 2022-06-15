@@ -41,12 +41,7 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemBranch (Array (Pair (Lazy BackendSemantics))) (Maybe (Lazy BackendSemantics))
   | SemBranchTry BackendSemantics (Array (Pair (Lazy BackendSemantics))) (Maybe (Lazy BackendSemantics))
-  | SemAccessor BackendSemantics BackendAccessor
-  | SemUpdate BackendSemantics (Array (Prop BackendSemantics))
-  | SemNeutral BackendNeutral
-
-data BackendNeutral
-  = NeutLocal (Maybe Ident) Level
+  | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutData (Qualified Ident) Ident (Array (Tuple Ident BackendSemantics))
   | NeutCtorDef Ident (Array Ident)
@@ -119,7 +114,7 @@ instance Eval f => Eval (BackendSyntax f) where
       case evalExtern env qual [] of
         Just sem -> sem
         Nothing ->
-          SemExtern qual [] (defer \_ -> SemNeutral (NeutVar qual))
+          SemExtern qual [] (defer \_ -> NeutVar qual)
     Local ident lvl ->
       case lookupLocal env lvl of
         Just (One sem) -> sem
@@ -130,7 +125,7 @@ instance Eval f => Eval (BackendSyntax f) where
     App hd tl ->
       evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
     UncurriedApp hd tl ->
-      SemNeutral (NeutUncurriedApp (eval env hd) (eval env <$> tl))
+      NeutUncurriedApp (eval env hd) (eval env <$> tl)
     UncurriedAbs idents body -> do
       let
         loop env' = case _ of
@@ -141,7 +136,7 @@ instance Eval f => Eval (BackendSyntax f) where
               loop (bindLocal env' (One nextArg)) as
       SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
     UncurriedEffectApp hd tl ->
-      SemNeutral (NeutUncurriedEffectApp (eval env hd) (eval env <$> tl))
+      NeutUncurriedEffectApp (eval env hd) (eval env <$> tl)
     UncurriedEffectAbs idents body -> do
       let
         loop env' = case _ of
@@ -175,13 +170,13 @@ instance Eval f => Eval (BackendSyntax f) where
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     Lit lit ->
-      SemNeutral (NeutLit (eval env <$> lit))
+      NeutLit (eval env <$> lit)
     Fail err ->
-      SemNeutral (NeutFail err)
+      NeutFail err
     CtorDef tag fields ->
-      SemNeutral (NeutCtorDef tag fields)
+      NeutCtorDef tag fields
     CtorSaturated qual tag fields ->
-      SemNeutral (NeutData qual tag (map (eval env) <$> fields))
+      NeutData qual tag (map (eval env) <$> fields)
 
 instance Eval BackendExpr where
   eval = go
@@ -234,14 +229,10 @@ evalApp env hd spine
           SemLet ident val \nextVal ->
             SemLet Nothing (k nextVal) \nextFn ->
               evalApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn (List.toUnfoldable args)
-        SemNeutral neut, List.Nil ->
-          SemNeutral neut
-        SemNeutral neut, args ->
-          SemNeutral (neutralApp neut (List.toUnfoldable args))
         fn, List.Nil ->
           fn
         fn, args ->
-          SemNeutral $ NeutApp fn (List.toUnfoldable args)
+          NeutApp fn (List.toUnfoldable args)
 
 evalSpine :: Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
 evalSpine env = foldl go
@@ -255,17 +246,17 @@ evalSpine env = foldl go
       evalPrimOp env (Op1 op1 hd)
 
 neutralSpine :: Qualified Ident -> Array ExternSpine -> BackendSemantics
-neutralSpine qual = foldl go (SemNeutral (NeutVar qual))
+neutralSpine qual = foldl go (NeutVar qual)
   where
   go hd = case _ of
     ExternApp apps ->
-      SemNeutral (NeutApp hd apps)
+      NeutApp hd apps
     ExternAccessor acc ->
-      SemNeutral (NeutAccessor hd acc)
+      NeutAccessor hd acc
     ExternPrimOp op1 ->
-      SemNeutral (NeutPrimOp (Op1 op1 hd))
+      NeutPrimOp (Op1 op1 hd)
 
-neutralApp :: BackendNeutral -> Spine BackendSemantics -> BackendNeutral
+neutralApp :: BackendSemantics -> Spine BackendSemantics -> BackendSemantics
 neutralApp hd spine
   | Array.null spine =
       hd
@@ -273,7 +264,7 @@ neutralApp hd spine
       NeutApp hd' spine' ->
         NeutApp hd' (spine' <> spine)
       _ ->
-        NeutApp (SemNeutral hd) spine
+        NeutApp hd spine
 
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
 evalAccessor initEnv initLhs accessor =
@@ -285,28 +276,28 @@ evalAccessor initEnv initLhs accessor =
           sem
         Nothing ->
           SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
-    SemNeutral (NeutLit (LitRecord props))
+    NeutLit (LitRecord props)
       | GetProp prop <- accessor
       , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
           sem
-    SemNeutral (NeutLit (LitArray values))
+    NeutLit (LitArray values)
       | GetIndex n <- accessor
       , Just sem <- Array.index values n ->
           sem
-    SemNeutral (NeutData _ _ fields)
+    NeutData _ _ fields
       | GetOffset n <- accessor
       , Just (Tuple _ sem) <- Array.index fields n ->
           sem
     _ ->
-      SemNeutral (NeutAccessor lhs accessor)
+      NeutAccessor lhs accessor
 
 evalUpdate :: Env -> BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
 evalUpdate initEnv initLhs props =
   evalAssocLet initEnv initLhs \_ lhs -> case lhs of
-    SemNeutral (NeutLit (LitRecord props')) ->
-      SemNeutral (NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))))
+    NeutLit (LitRecord props') ->
+      NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
     _ ->
-      SemNeutral (NeutUpdate lhs props)
+      NeutUpdate lhs props
 
 evalBranches :: Array (Pair (Lazy BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
 evalBranches initBranches initDef = go [] initBranches initDef
@@ -314,7 +305,7 @@ evalBranches initBranches initDef = go [] initBranches initDef
   go acc branches def = case Array.uncons branches of
     Just { head: Pair pred body, tail } ->
       case force pred of
-        SemNeutral (NeutLit (LitBoolean didMatch))
+        NeutLit (LitBoolean didMatch)
           | didMatch ->
               case force body of
                 SemBranch branches' (Just def') ->
@@ -363,15 +354,15 @@ evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
   Op1 op1 x ->
     case op1, x of
-      OpBooleanNot, SemNeutral (NeutLit (LitBoolean bool)) ->
+      OpBooleanNot, NeutLit (LitBoolean bool) ->
         liftBoolean (not bool)
-      OpBooleanNot, SemNeutral (NeutPrimOp op) ->
+      OpBooleanNot, NeutPrimOp op ->
         evalPrimOpNot op
-      OpIntBitNot, SemNeutral (NeutLit (LitInt a)) ->
+      OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, SemNeutral (NeutData b _ _) ->
+      OpIsTag a, NeutData b _ _ ->
         liftBoolean (a == b)
-      OpArrayLength, SemNeutral (NeutLit (LitArray arr)) ->
+      OpArrayLength, NeutLit (LitArray arr) ->
         liftInt (Array.length arr)
       _, SemExtern qual spine _ -> do
         let spine' = Array.snoc spine (ExternPrimOp op1)
@@ -382,83 +373,83 @@ evalPrimOp env = case _ of
             SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
       _, _ ->
         evalAssocLet env x \_ x'  ->
-          SemNeutral (NeutPrimOp (Op1 op1 x'))
+          NeutPrimOp (Op1 op1 x')
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
-        | SemNeutral (NeutLit (LitBoolean false)) <- x ->
+        | NeutLit (LitBoolean false) <- x ->
             x
-        | SemNeutral (NeutLit (LitBoolean false)) <- y ->
+        | NeutLit (LitBoolean false) <- y ->
             y
       OpBooleanOr
-        | SemNeutral (NeutLit (LitBoolean false)) <- x ->
+        | NeutLit (LitBoolean false) <- x ->
             y
-        | SemNeutral (NeutLit (LitBoolean false)) <- y ->
+        | NeutLit (LitBoolean false) <- y ->
             x
       OpBooleanOrd OpEq
-        | SemNeutral (NeutLit (LitBoolean bool)) <- x ->
+        | NeutLit (LitBoolean bool) <- x ->
             if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
-        | SemNeutral (NeutLit (LitBoolean bool)) <- y ->
+        | NeutLit (LitBoolean bool) <- y ->
             if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
       OpBooleanOrd op
-        | SemNeutral (NeutLit (LitBoolean a)) <- x
-        , SemNeutral (NeutLit (LitBoolean b)) <- y ->
+        | NeutLit (LitBoolean a) <- x
+        , NeutLit (LitBoolean b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpCharOrd op
-        | SemNeutral (NeutLit (LitChar a)) <- x
-        , SemNeutral (NeutLit (LitChar b)) <- y ->
+        | NeutLit (LitChar a) <- x
+        , NeutLit (LitChar b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpIntBitAnd
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (a .&. b)
       OpIntBitOr
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (a .|. b)
       OpIntBitShiftLeft
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (shl a b)
       OpIntBitShiftRight
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (shr a b)
       OpIntBitXor
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (xor a b)
       OpIntBitZeroFillShiftRight
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (zshr a b)
       OpIntNum op
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftInt (evalPrimOpNum op a b)
       OpIntOrd op
-        | SemNeutral (NeutLit (LitInt a)) <- x
-        , SemNeutral (NeutLit (LitInt b)) <- y ->
+        | NeutLit (LitInt a) <- x
+        , NeutLit (LitInt b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum op
-        | SemNeutral (NeutLit (LitNumber a)) <- x
-        , SemNeutral (NeutLit (LitNumber b)) <- y ->
+        | NeutLit (LitNumber a) <- x
+        , NeutLit (LitNumber b) <- y ->
             liftNumber (evalPrimOpNum op a b)
       OpNumberOrd op
-        | SemNeutral (NeutLit (LitNumber a)) <- x
-        , SemNeutral (NeutLit (LitNumber b)) <- y ->
+        | NeutLit (LitNumber a) <- x
+        , NeutLit (LitNumber b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
-        | SemNeutral (NeutLit (LitString a)) <- x
-        , SemNeutral (NeutLit (LitString b)) <- y ->
+        | NeutLit (LitString a) <- x
+        , NeutLit (LitString b) <- y ->
             liftString (a <> b)
       OpStringOrd op
-        | SemNeutral (NeutLit (LitString a)) <- x
-        , SemNeutral (NeutLit (LitString b)) <- y ->
+        | NeutLit (LitString a) <- x
+        , NeutLit (LitString b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       _ ->
         evalAssocLet2 env x y \_ x' y' ->
-          SemNeutral (NeutPrimOp (Op2 op2 x' y'))
+          NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
@@ -528,9 +519,9 @@ evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
   ImplCtor tag fields ->
     case fields, spine of
       [], [] ->
-        Just $ SemNeutral $ NeutData qual tag []
+        Just $ NeutData qual tag []
       _, [ ExternApp args ] | Array.length fields == Array.length args ->
-        Just $ SemNeutral $ NeutData qual tag $ Array.zip fields args
+        Just $ NeutData qual tag $ Array.zip fields args
       _, _ ->
         Nothing
   ImplDict props ->
@@ -545,22 +536,22 @@ evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
     Nothing
 
 liftBoolean :: Boolean -> BackendSemantics
-liftBoolean = SemNeutral <<< NeutLit <<< LitBoolean
+liftBoolean = NeutLit <<< LitBoolean
 
 liftInt :: Int -> BackendSemantics
-liftInt = SemNeutral <<< NeutLit <<< LitInt
+liftInt = NeutLit <<< LitInt
 
 liftNumber :: Number -> BackendSemantics
-liftNumber = SemNeutral <<< NeutLit <<< LitNumber
+liftNumber = NeutLit <<< LitNumber
 
 liftString :: String -> BackendSemantics
-liftString = SemNeutral <<< NeutLit <<< LitString
+liftString = NeutLit <<< LitString
 
 liftOp1 :: BackendOperator1 -> BackendSemantics -> BackendSemantics
-liftOp1 op a = SemNeutral $ NeutPrimOp (Op1 op a)
+liftOp1 op a = NeutPrimOp (Op1 op a)
 
 liftOp2 :: BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
-liftOp2 op a b = SemNeutral $ NeutPrimOp (Op2 op a b)
+liftOp2 op a b = NeutPrimOp (Op2 op a b)
 
 foldr1Array :: forall a b. (a -> b -> b) -> (a -> b) -> NonEmptyArray a -> b
 foldr1Array f g arr = go (NonEmptyArray.length arr - 2) (g (NonEmptyArray.last arr))
@@ -596,13 +587,13 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ SemNeutral $ NeutLocal ident level
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (SemNeutral (NeutLocal ident lvl)))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote ctx' body
       loop ctx [] pro
@@ -611,22 +602,22 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (SemNeutral (NeutLocal ident lvl)))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote ctx' body
       loop ctx [] pro
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote ctx binding) $ quote ctx' $ k $ SemNeutral $ NeutLocal ident level
+      build ctx $ Let ident level (quote ctx binding) $ quote ctx' $ k $ NeutLocal ident level
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> SemNeutral $ NeutLocal (Just ident) level) <$> bindings
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote ctx' $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ EffectBind ident level (quote ctx binding) $ quote ctx' $ k $ SemNeutral $ NeutLocal ident level
+      build ctx $ EffectBind ident level (quote ctx binding) $ quote ctx' $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote ctx sem)
     SemBranch branches def -> do
@@ -646,48 +637,39 @@ quote = go
           _ ->
             Just (Tuple branches def)
       quote (ctx { resumeBranches = resumeBranches }) body
-    SemAccessor sem accessor ->
-      build ctx $ Accessor (quote ctx sem) accessor
-    SemUpdate sem props ->
-      build ctx $ Update (quote ctx sem) (map (quote ctx) <$> props)
-    SemNeutral neut ->
-      quoteNeutral ctx neut
-
-quoteNeutral :: Ctx -> BackendNeutral -> BackendExpr
-quoteNeutral ctx = case _ of
-  NeutLocal ident level ->
-    build ctx $ Local ident level
-  NeutVar qual ->
-    build ctx $ Var qual
-  NeutData qual _ [] ->
-    build ctx $ Var qual
-  NeutData qual tag values ->
-    build ctx $ CtorSaturated qual tag (map (quote ctx) <$> values)
-  NeutCtorDef tag fields ->
-    build ctx $ CtorDef tag fields
-  NeutUncurriedApp hd spine -> do
-    let hd' = quote ctx hd
-    build ctx $ UncurriedApp hd' (quote ctx <$> spine)
-  NeutUncurriedEffectApp hd spine -> do
-    let hd' = quote ctx hd
-    build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
-  NeutApp hd spine -> do
-    let hd' = quote ctx hd
-    case NonEmptyArray.fromArray (quote ctx <$> spine) of
-      Nothing ->
-        hd'
-      Just args ->
-        build ctx $ App hd' args
-  NeutAccessor lhs accessor ->
-    build ctx $ Accessor (quote ctx lhs) accessor
-  NeutUpdate lhs props ->
-    build ctx $ Update (quote ctx lhs) (map (quote ctx) <$> props)
-  NeutLit lit ->
-    build ctx $ Lit (quote ctx <$> lit)
-  NeutPrimOp op ->
-    build ctx $ PrimOp (quote ctx <$> op)
-  NeutFail err ->
-    build ctx $ Fail err
+    NeutLocal ident level ->
+      build ctx $ Local ident level
+    NeutVar qual ->
+      build ctx $ Var qual
+    NeutData qual _ [] ->
+      build ctx $ Var qual
+    NeutData qual tag values ->
+      build ctx $ CtorSaturated qual tag (map (quote ctx) <$> values)
+    NeutCtorDef tag fields ->
+      build ctx $ CtorDef tag fields
+    NeutUncurriedApp hd spine -> do
+      let hd' = quote ctx hd
+      build ctx $ UncurriedApp hd' (quote ctx <$> spine)
+    NeutUncurriedEffectApp hd spine -> do
+      let hd' = quote ctx hd
+      build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
+    NeutApp hd spine -> do
+      let hd' = quote ctx hd
+      case NonEmptyArray.fromArray (quote ctx <$> spine) of
+        Nothing ->
+          hd'
+        Just args ->
+          build ctx $ App hd' args
+    NeutAccessor lhs accessor ->
+      build ctx $ Accessor (quote ctx lhs) accessor
+    NeutUpdate lhs props ->
+      build ctx $ Update (quote ctx lhs) (map (quote ctx) <$> props)
+    NeutLit lit ->
+      build ctx $ Lit (quote ctx <$> lit)
+    NeutPrimOp op ->
+      build ctx $ PrimOp (quote ctx <$> op)
+    NeutFail err ->
+      build ctx $ Fail err
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of

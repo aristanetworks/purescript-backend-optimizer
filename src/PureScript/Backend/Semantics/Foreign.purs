@@ -7,7 +7,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Semantics (BackendNeutral(..), BackendSemantics(..), Env, ExternSpine(..), evalMkFn, evalPrimOp)
+import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalMkFn, evalPrimOp)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
 
@@ -119,7 +119,7 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items
       , Array.length tail == n ->
-          Just $ SemNeutral $ NeutUncurriedApp head tail
+          Just $ NeutUncurriedApp head tail
     _ ->
       Nothing
 
@@ -139,7 +139,7 @@ effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffect
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items
       , Array.length tail == n ->
-          Just $ SemNeutral $ NeutUncurriedEffectApp head tail
+          Just $ NeutUncurriedEffectApp head tail
     _ ->
       Nothing
 
@@ -157,13 +157,13 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
   where
   go _ _ = case _ of
     [ ExternApp [ a, b ] ]
-      | SemNeutral (NeutLit (LitBoolean false)) <- a ->
-          Just $ SemNeutral (NeutLit (LitBoolean true))
-      | SemNeutral (NeutLit (LitBoolean true)) <- b ->
-          Just $ SemNeutral (NeutLit (LitBoolean true))
-      | SemNeutral (NeutLit (LitBoolean x)) <- a
-      , SemNeutral (NeutLit (LitBoolean y)) <- b ->
-          Just $ SemNeutral (NeutLit (LitBoolean (not x || y)))
+      | NeutLit (LitBoolean false) <- a ->
+          Just $ NeutLit (LitBoolean true)
+      | NeutLit (LitBoolean true) <- b ->
+          Just $ NeutLit (LitBoolean true)
+      | NeutLit (LitBoolean x) <- a
+      , NeutLit (LitBoolean y) <- b ->
+          Just $ NeutLit (LitBoolean (not x || y))
     _ ->
       Nothing
 
