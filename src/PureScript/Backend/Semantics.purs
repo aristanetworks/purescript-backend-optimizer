@@ -665,21 +665,35 @@ build ctx = case _ of
         hd
   EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
     build ctx $ Let ident level binding body
-  Branch [] (Just def) ->
-    def
-  Branch branches1 (Just (ExprSyntax _ (Branch branches2 def))) ->
-    build ctx (Branch (branches1 <> branches2) def)
-  Branch [ pair ] (Just def) | Just expr <- isTestPred pair def ->
+  Branch pairs (Just def) | Just expr <- simplifyBranches ctx pairs def ->
+    expr
+  PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr ->
     buildDefault ctx expr
 
-isTestPred :: Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
-isTestPred = case _, _ of
-  Pair expr (ExprSyntax _ (Lit (LitBoolean true))), ExprSyntax _ (Lit (LitBoolean false)) ->
-    Just expr
-  _, _ ->
-    Nothing
+simplifyBranches :: Ctx -> Array (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
+simplifyBranches ctx pairs def = case pairs of
+  [ a ]
+    | Pair expr (ExprSyntax _ (Lit (LitBoolean true))) <- a
+    , ExprSyntax _ (Lit (LitBoolean false)) <- def ->
+        Just expr
+    | Pair expr (ExprSyntax _ (Lit (LitBoolean false))) <- a
+    , ExprSyntax _ (Lit (LitBoolean true)) <- def ->
+        Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+  [ a, b ]
+    | Pair expr1@(ExprSyntax _ (Local _ lvl1)) body1 <- a
+    , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot (ExprSyntax _ (Local _ lvl2))))) body2 <- b
+    , ExprSyntax _ (Fail _) <- def
+    , lvl1 == lvl2 ->
+        Just $ build ctx $ Branch [ Pair expr1 body1 ] (Just body2)
+  [] ->
+    Just def
+  _
+    | ExprSyntax _ (Branch pairs2 def2) <- def ->
+        Just $ build ctx (Branch (pairs <> pairs2) def2)
+    | otherwise ->
+        Nothing
 
 buildDefault :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 buildDefault ctx expr = ExprSyntax (analyzeDefault ctx expr) expr
@@ -721,7 +735,7 @@ shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Sp
 shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity == Trivial && s.size < 5)
     || (s.complexity <= Deref && s.size < 5)
-    || (Array.length s.args <= Array.length args && s.size < 128)
+    || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 128)
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
 shouldInlineExternLiteral = case _ of
