@@ -3,9 +3,10 @@ module Benchmarks where
 import Prelude
 
 import Effect (Effect)
-import Performance.Minibench (benchWith)
 
 -- node --expose-gc --input-type=module -e "import { main } from \"./output-es/Benchmarks.js\"; main()"
+
+foreign import benchmark :: forall a. String -> Int -> (Unit -> a) -> Effect Unit
 
 data Nine = Nine Int Int Int Int Int Int Int Int Int
 
@@ -46,10 +47,10 @@ main = do
   let items = testData unit
 
   -- Partially apply a function of 9 arguments 3 at a time
-  benchWith 1000 \_ -> do
+  benchmark "Partially apply 3 at a time" 1000 \_ -> do
      let a = test1 items
      let b = test2 a
      test3 b
 
   -- Apply a function of 9 arguments all at once
-  benchWith 1000 \_ -> test4 items
+  benchmark "Saturated call of 9 arguments" 1000 \_ -> test4 items
