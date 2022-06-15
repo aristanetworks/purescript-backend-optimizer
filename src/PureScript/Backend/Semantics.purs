@@ -785,10 +785,13 @@ shouldInlineLet level a b = do
         || (isAbs a && (Map.isEmpty s1.usages || s1.size < 128))
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
-shouldInlineExternApp _ (BackendAnalysis s) _ args =
-  (s.complexity == Trivial && s.size < 5)
-    || (s.complexity <= Deref && s.size < 5)
-    || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 128)
+shouldInlineExternApp _ (BackendAnalysis s) _ args = 
+  if true then
+    (s.complexity == Trivial && s.size < 5)
+      || (s.complexity <= Deref && s.size < 5)
+      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 128)
+  else
+    false
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
 shouldInlineExternLiteral = case _ of
