@@ -47,10 +47,10 @@ main = do
   let items = testData unit
 
   -- Partially apply a function of 9 arguments 3 at a time
-  benchmark "Partially apply 3 at a time" 1000 \_ -> do
+  benchmark "Partially apply 3 at a time" 3000 \_ -> do
      let a = test1 items
      let b = test2 a
      test3 b
 
   -- Apply a function of 9 arguments all at once
-  benchmark "Saturated call of 9 arguments" 1000 \_ -> test4 items
+  benchmark "Saturated call of 9 arguments" 3000 \_ -> test4 items

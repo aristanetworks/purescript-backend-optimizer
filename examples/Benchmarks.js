@@ -1,5 +1,3 @@
-const average = arr => arr.reduce((a, b) => a + b) / arr.length;
-
 const benchmark = name => runs => f => () => {
   if (!global.gc) {
     console.log('Garbage collection is not exposed, run with --expose-gc');
@@ -7,8 +5,8 @@ const benchmark = name => runs => f => () => {
   }
 
   let counter = runs;
-  let timing = [];
-  let memory = [];
+  let timing = 0;
+  let memory = 0;
 
   while (counter > 0) {
     global.gc();
@@ -21,15 +19,15 @@ const benchmark = name => runs => f => () => {
     const memoryUsage = process.memoryUsage().rss / 1000000;
     const ms = (end[0]* 1000000000 + end[1]) / 1000000;
 
-    timing.push(ms);
-    memory.push(memoryUsage)
+    timing += ms; 
+    memory += memoryUsage;
 
     counter--;
   }
 
   console.log(`${name}: averages over ${runs} runs:`)
-  console.log(`\ttime: ${average(timing)} ms`);
-  console.log(`\tresident set size: ${average(memory)} mb`);
+  console.log(`\ttime: ${timing / runs} ms`);
+  console.log(`\tresident set size: ${memory / runs} mb`);
 }
 
 export { benchmark };
