@@ -211,24 +211,23 @@ snocApp prev next = case Array.last prev of
 evalApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
 evalApp env hd spine
   | Array.null spine = hd
-  | otherwise = go hd (List.fromFoldable spine)
+  | otherwise = go env hd (List.fromFoldable spine)
       where
-      go = case _, _ of
+      go env' = case _, _ of
         SemLam _ k, List.Cons arg args ->
           SemLet Nothing arg \nextArg ->
-            go (k nextArg) args
+            go env' (k nextArg) args
         SemExtern qual sp _, List.Cons arg args -> do
           let sp' = snocApp sp arg
           case evalExtern env qual sp' of
             Just sem ->
-              go sem args
+              go env' sem args
             Nothing ->
-              go (SemExtern qual sp' (defer \_ -> neutralSpine qual sp')) args
-        -- TODO: Only reassoc the head
+              go env' (SemExtern qual sp' (defer \_ -> neutralSpine qual sp')) args
         SemLet ident val k, args ->
           SemLet ident val \nextVal ->
             SemLet Nothing (k nextVal) \nextFn ->
-              evalApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn (List.toUnfoldable args)
+              go (bindLocal (bindLocal env' (One nextVal)) (One nextFn)) nextFn args
         fn, List.Nil ->
           fn
         fn, args ->
