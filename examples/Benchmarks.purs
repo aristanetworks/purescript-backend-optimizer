@@ -2,55 +2,41 @@ module Benchmarks where
 
 import Prelude
 
-import Effect (Effect)
+import Effect (Effect, forE)
 
 -- node --expose-gc --input-type=module -e "import { main } from \"./output-es/Benchmarks.js\"; main()"
 
-foreign import benchmark :: forall a. String -> Int -> (Unit -> a) -> Effect Unit
+foreign import benchmark :: forall a. String -> Int -> Effect a -> Effect Unit
 
-data Nine = Nine Int Int Int Int Int Int Int Int Int
+data TestNumber = One | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
 
-addNine :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int
-addNine a b c d e f g h i
-  | a < 10 = a
-  | b < 10 = b
-  | c < 10 = c
-  | d < 10 = d
-  | e < 10 = e
-  | f < 10 = f
-  | g < 10 = g
-  | h < 10 = h
-  | i < 10 = i
-  | otherwise = a
+data SixTuple a = SixTuple a a a a a a
 
-testData :: Unit -> Array Nine
-testData _ = go 1000 []
-  where
-  go n acc
-    | n <= 0 = acc
-    | otherwise = go (n - 1) (acc <> [ Nine n n n n n n n n n ])
+addNumber6 :: TestNumber -> TestNumber -> TestNumber -> TestNumber -> TestNumber -> TestNumber -> TestNumber
+addNumber6 a b c d e f = do
+  let
+    g = case a, b of
+      One, Two -> Two
+      _, _ -> Ten
 
-test1 :: Array Nine -> Array (Int -> Int -> Int -> Int -> Int -> Int -> Int)
-test1 = map (\(Nine a b c _ _ _ _ _ _) -> addNine a b c)
+  case g, c, d of
+    Two, Two, Two -> e
+    Ten, Two, One -> f
+    _, _, _ -> Ten
 
-test2 :: Array (Int -> Int -> Int -> Int -> Int -> Int -> Int) -> Array (Int -> Int -> Int -> Int)
-test2 = map (\f -> f 20 30 40)
-
-test3 :: Array (Int -> Int -> Int -> Int) -> Array Int
-test3 = map (\f -> f 50 60 70)
-
-test4 :: Array Nine -> Array Int
-test4 = map (\(Nine a b c d e f g h i) -> addNine a b c d e f g h i)
+testNumbers :: Array TestNumber
+testNumbers = [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten ]
 
 main :: Effect Unit
 main = do
-  let items = testData unit
+  benchmark "Repeated applications of 2 arguments" 3000 do
+    forE 0 3000 \_ -> do
+      let g = addNumber6 Five One
+      let h = g Two Four
+      let ans = h Nine Ten
+      pure ans $> unit
 
-  -- Partially apply a function of 9 arguments 3 at a time
-  benchmark "Partially apply 3 at a time" 3000 \_ -> do
-     let a = test1 items
-     let b = test2 a
-     test3 b
-
-  -- Apply a function of 9 arguments all at once
-  benchmark "Saturated call of 9 arguments" 3000 \_ -> test4 items
+  benchmark "Fully saturated application of 6 arguments" 3000 do
+    forE 0 3000 \_ -> do
+      let ans = addNumber6 Five Five Eight Three Nine Two
+      pure ans $> unit

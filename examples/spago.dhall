@@ -8,6 +8,9 @@ You can edit this file as you like.
   , "effect"
   , "functions"
   , "prelude"
+  , "arrays"
+  , "partial"
+  , "random"
   ]
 , packages = ../packages.dhall
 , sources = [ "./*.purs" ]

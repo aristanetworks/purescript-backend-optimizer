@@ -13,7 +13,7 @@ const benchmark = name => runs => f => () => {
 
     const start = process.hrtime();
 
-    f({});
+    f();
 
     const end = process.hrtime(start);
     const memoryUsage = process.memoryUsage().rss / 1000000;
