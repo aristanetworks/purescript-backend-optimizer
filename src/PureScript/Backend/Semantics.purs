@@ -219,7 +219,7 @@ evalApp env hd spine
             go env' (k nextArg) args
         SemExtern qual sp _, List.Cons arg args -> do
           let sp' = snocApp sp arg
-          case evalExtern env qual sp' of
+          case evalExtern env' qual sp' of
             Just sem ->
               go env' sem args
             Nothing ->
