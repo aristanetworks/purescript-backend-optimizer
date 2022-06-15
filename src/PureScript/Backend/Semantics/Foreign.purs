@@ -8,7 +8,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Semantics (BackendNeutral(..), BackendSemantics(..), Env, ExternSpine(..), evalMkFn, evalPrimOp)
-import PureScript.Backend.Syntax (BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
+import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
 
 type ForeignEval =
@@ -24,7 +24,11 @@ coreForeignSemantics :: Map (Qualified Ident) ForeignEval
 coreForeignSemantics = Map.fromFoldable semantics
   where
   semantics =
-    [ data_ord_lessThanOrEq
+    [ data_ord_ordInt
+    , data_ord_ordNumber
+    , data_ord_ordString
+    , data_ord_ordChar
+    , data_ord_ordBoolean
     , data_ring_intSub
     , data_semiring_intAdd
     , effect_bindE
@@ -63,15 +67,35 @@ effect_pureE = Tuple (qualified "Effect" "pureE") go
       Just $ SemEffectPure val
     _ -> Nothing
 
-data_ord_lessThanOrEq :: ForeignSemantics
-data_ord_lessThanOrEq = Tuple (qualified "Data.Ord" "lessThanOrEq") go
-  where
-  go env _ = case _ of
-    [ ExternApp [ a, b, c ] ]
-      | SemExtern (Qualified (Just (ModuleName "Data.Ord")) (Ident "ordInt")) [] _ <- a ->
-          Just $ evalPrimOp env $ Op2 (OpIntOrd OpLte) b c
-    _ ->
-      Nothing
+data_eq_eqBooleanImpl :: ForeignSemantics
+data_eq_eqBooleanImpl = Tuple (qualified "Data.Eq" "eqBooleanImpl") $ primBinaryOperator (OpBooleanOrd OpEq)
+
+data_eq_eqIntImpl :: ForeignSemantics
+data_eq_eqIntImpl = Tuple (qualified "Data.Eq" "eqIntImpl") $ primBinaryOperator (OpIntOrd OpEq)
+
+data_eq_eqNumberImpl :: ForeignSemantics
+data_eq_eqNumberImpl = Tuple (qualified "Data.Eq" "eqNumberImpl") $ primBinaryOperator (OpNumberOrd OpEq)
+
+data_eq_eqCharImpl :: ForeignSemantics
+data_eq_eqCharImpl = Tuple (qualified "Data.Eq" "eqCharImpl") $ primBinaryOperator (OpCharOrd OpEq)
+
+data_eq_eqStringImpl :: ForeignSemantics
+data_eq_eqStringImpl = Tuple (qualified "Data.Eq" "eqStringImpl") $ primBinaryOperator (OpStringOrd OpEq)
+
+data_ord_ordBoolean :: ForeignSemantics
+data_ord_ordBoolean = Tuple (qualified "Data.Ord" "ordBoolean") $ primOrdOperator OpBooleanOrd
+
+data_ord_ordInt :: ForeignSemantics
+data_ord_ordInt = Tuple (qualified "Data.Ord" "ordInt") $ primOrdOperator OpIntOrd
+
+data_ord_ordNumber :: ForeignSemantics
+data_ord_ordNumber = Tuple (qualified "Data.Ord" "ordNumber") $ primOrdOperator OpNumberOrd
+
+data_ord_ordChar :: ForeignSemantics
+data_ord_ordChar = Tuple (qualified "Data.Ord" "ordChar") $ primOrdOperator OpCharOrd
+
+data_ord_ordString :: ForeignSemantics
+data_ord_ordString = Tuple (qualified "Data.Ord" "ordString") $ primOrdOperator OpStringOrd
 
 data_semiring_intAdd :: ForeignSemantics
 data_semiring_intAdd = Tuple (qualified "Data.Semiring" "intAdd") $ primBinaryOperator (OpIntNum OpAdd)
@@ -143,21 +167,6 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
     _ ->
       Nothing
 
-data_eq_eqBooleanImpl :: ForeignSemantics
-data_eq_eqBooleanImpl = Tuple (qualified "Data.Eq" "eqBooleanImpl") $ primBinaryOperator (OpBooleanOrd OpEq)
-
-data_eq_eqIntImpl :: ForeignSemantics
-data_eq_eqIntImpl = Tuple (qualified "Data.Eq" "eqIntImpl") $ primBinaryOperator (OpIntOrd OpEq)
-
-data_eq_eqNumberImpl :: ForeignSemantics
-data_eq_eqNumberImpl = Tuple (qualified "Data.Eq" "eqNumberImpl") $ primBinaryOperator (OpNumberOrd OpEq)
-
-data_eq_eqCharImpl :: ForeignSemantics
-data_eq_eqCharImpl = Tuple (qualified "Data.Eq" "eqCharImpl") $ primBinaryOperator (OpCharOrd OpEq)
-
-data_eq_eqStringImpl :: ForeignSemantics
-data_eq_eqStringImpl = Tuple (qualified "Data.Eq" "eqStringImpl") $ primBinaryOperator (OpStringOrd OpEq)
-
 primBinaryOperator :: BackendOperator2 -> ForeignEval
 primBinaryOperator op env _ = case _ of
     [ ExternApp [ a, b ] ] ->
@@ -171,3 +180,22 @@ primUnaryOperator op env _ = case _ of
       Just $ evalPrimOp env (Op1 op a)
     _ ->
       Nothing
+
+primOrdOperator :: (BackendOperatorOrd -> BackendOperator2) -> ForeignEval
+primOrdOperator op env _ = case _ of
+  [ ExternAccessor (GetProp "compare"), ExternApp [ a, b ], ExternPrimOp (OpIsTag tag) ]
+    | isQualified "Data.Ordering" "LT" tag ->
+        Just $ evalPrimOp env $ Op2 (op OpLt) a b
+    | isQualified "Data.Ordering" "GT" tag ->
+        Just $ evalPrimOp env $ Op2 (op OpGt) a b
+    | isQualified "Data.Ordering" "EQ" tag ->
+        Just $ evalPrimOp env $ Op2 (op OpEq) a b
+  _ ->
+    Nothing
+
+isQualified :: String -> String -> Qualified Ident-> Boolean
+isQualified mod tag = case _ of
+  Qualified (Just (ModuleName mod')) (Ident tag') ->
+    mod == mod' && tag == tag'
+  _ ->
+    false

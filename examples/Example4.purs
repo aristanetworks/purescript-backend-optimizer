@@ -82,6 +82,8 @@ test12 a =
 
 test13 a = if a then true else false
 
+test15 a = a <= "foo"
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"

@@ -82,6 +82,7 @@ data BackendOperatorNum
 
 data BackendOperatorOrd
   = OpEq
+  | OpNotEq
   | OpGt
   | OpGte
   | OpLt

@@ -94,6 +94,7 @@ data LocalBinding a = One a | Group (Array (Tuple Ident (Lazy a)))
 data ExternSpine
   = ExternApp (Spine BackendSemantics)
   | ExternAccessor BackendAccessor
+  | ExternPrimOp BackendOperator1
 
 newtype Env = Env
   { currentModule :: ModuleName
@@ -250,6 +251,8 @@ evalSpine env = foldl go
       evalApp env hd spine
     ExternAccessor accessor ->
       evalAccessor env hd accessor
+    ExternPrimOp op1 ->
+      evalPrimOp env (Op1 op1 hd)
 
 neutralSpine :: Qualified Ident -> Array ExternSpine -> BackendSemantics
 neutralSpine qual = foldl go (SemNeutral (NeutVar qual))
@@ -259,6 +262,8 @@ neutralSpine qual = foldl go (SemNeutral (NeutVar qual))
       SemNeutral (NeutApp hd apps)
     ExternAccessor acc ->
       SemNeutral (NeutAccessor hd acc)
+    ExternPrimOp op1 ->
+      SemNeutral (NeutPrimOp (Op1 op1 hd))
 
 neutralApp :: BackendNeutral -> Spine BackendSemantics -> BackendNeutral
 neutralApp hd spine
@@ -360,12 +365,21 @@ evalPrimOp env = case _ of
     case op1, x of
       OpBooleanNot, SemNeutral (NeutLit (LitBoolean bool)) ->
         liftBoolean (not bool)
+      OpBooleanNot, SemNeutral (NeutPrimOp op) ->
+        evalPrimOpNot op
       OpIntBitNot, SemNeutral (NeutLit (LitInt a)) ->
         liftInt (complement a)
       OpIsTag a, SemNeutral (NeutData b _ _) ->
         liftBoolean (a == b)
       OpArrayLength, SemNeutral (NeutLit (LitArray arr)) ->
         liftInt (Array.length arr)
+      _, SemExtern qual spine _ -> do
+        let spine' = Array.snoc spine (ExternPrimOp op1)
+        case evalExtern env qual spine' of
+          Just sem ->
+            sem
+          Nothing ->
+            SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
       _, _ ->
         evalAssocLet env x \_ x'  ->
           SemNeutral (NeutPrimOp (Op1 op1 x'))
@@ -449,6 +463,7 @@ evalPrimOp env = case _ of
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
   OpEq -> x == y
+  OpNotEq -> x /= y
   OpGt -> x > y
   OpGte -> x >= y
   OpLt -> x < y
@@ -460,6 +475,38 @@ evalPrimOpNum op x y = case op of
   OpDivide -> x / y
   OpMultiply -> x * y
   OpSubtract -> x - y
+
+evalPrimOpNot :: BackendOperator BackendSemantics -> BackendSemantics
+evalPrimOpNot = case _ of
+  Op1 op x ->
+    case op of
+      OpBooleanNot ->
+        x
+      _ ->
+        liftOp1 OpBooleanNot (liftOp1 op x)
+  Op2 op x y ->
+    case op of
+      OpIntOrd ord ->
+        liftOp2 (OpIntOrd (primOpOrdNot ord)) x y
+      OpNumberOrd ord ->
+        liftOp2 (OpNumberOrd (primOpOrdNot ord)) x y
+      OpStringOrd ord ->
+        liftOp2 (OpStringOrd (primOpOrdNot ord)) x y
+      OpCharOrd ord ->
+        liftOp2 (OpCharOrd (primOpOrdNot ord)) x y
+      OpBooleanOrd ord ->
+        liftOp2 (OpBooleanOrd (primOpOrdNot ord)) x y
+      _ ->
+        liftOp1 OpBooleanNot (liftOp2 op x y)
+
+primOpOrdNot :: BackendOperatorOrd -> BackendOperatorOrd
+primOpOrdNot = case _ of
+  OpEq -> OpNotEq
+  OpNotEq -> OpEq
+  OpLt -> OpGte
+  OpLte -> OpGt
+  OpGt -> OpLte
+  OpGte -> OpLt
 
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
 evalExtern env@(Env e) = e.evalExtern env
@@ -508,6 +555,12 @@ liftNumber = SemNeutral <<< NeutLit <<< LitNumber
 
 liftString :: String -> BackendSemantics
 liftString = SemNeutral <<< NeutLit <<< LitString
+
+liftOp1 :: BackendOperator1 -> BackendSemantics -> BackendSemantics
+liftOp1 op a = SemNeutral $ NeutPrimOp (Op1 op a)
+
+liftOp2 :: BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+liftOp2 op a b = SemNeutral $ NeutPrimOp (Op2 op a b)
 
 foldr1Array :: forall a b. (a -> b -> b) -> (a -> b) -> NonEmptyArray a -> b
 foldr1Array f g arr = go (NonEmptyArray.length arr - 2) (g (NonEmptyArray.last arr))

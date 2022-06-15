@@ -532,6 +532,7 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
   opBitXor = binary "^" 4
   opBitAnd = binary "&" 5
   opEq = binary "===" 6
+  opNotEq = binary "!==" 6
   opGt = binary ">" 7
   opGte = binary ">=" 7
   opLt = binary "<" 7
@@ -559,6 +560,7 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
 
   opOrd = case _ of
     OpEq -> opEq
+    OpNotEq -> opNotEq
     OpGt -> opGt
     OpGte -> opGte
     OpLt -> opLt
