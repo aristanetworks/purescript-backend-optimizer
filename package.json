@@ -2,6 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test-examples": "spago build && (cd examples; spago build -u \"-g corefn\") && node --stack-trace-limit=100 index.js build \"examples/output\""
+    "test-examples": "spago build && (cd examples; spago build -u \"-g corefn\") && node --stack-trace-limit=100 index.js build \"examples/output\"",
+    "benchmark": "node --expose-gc --input-type=module -e \"import { main } from \\\"./output-es/Benchmarks.js\\\"; main()\""
   }
 }
