@@ -773,16 +773,18 @@ isReference = case _ of
   _ -> false
 
 shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
-shouldInlineLet level a b = do
-  let BackendAnalysis s1 = analysisOf a
-  let BackendAnalysis s2 = analysisOf b
-  case Map.lookup level s2.usages of
-    Nothing ->
-      true
-    Just (Usage { captured, count }) ->
-      (s1.complexity == Trivial && s1.size < 5)
-        || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
-        || (isAbs a && (Map.isEmpty s1.usages || s1.size < 128))
+shouldInlineLet level a b =
+  if true then do
+      let BackendAnalysis s1 = analysisOf a
+      let BackendAnalysis s2 = analysisOf b
+      case Map.lookup level s2.usages of
+        Nothing ->
+          true
+        Just (Usage { captured, count }) ->
+          (s1.complexity == Trivial && s1.size < 5)
+            || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
+            || (isAbs a && (Map.isEmpty s1.usages || s1.size < 128))
+  else false
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args = 
