@@ -735,7 +735,7 @@ shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Sp
 shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity == Trivial && s.size < 5)
     || (s.complexity <= Deref && s.size < 5)
-    || (Array.length s.args <= Array.length args && s.size < 128)
+    || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 128)
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
 shouldInlineExternLiteral = case _ of
