@@ -777,7 +777,7 @@ shouldInlineLet level a b =
         Just (Usage { captured, count }) ->
           (s1.complexity == Trivial && s1.size < 5)
             || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
-            || (isAbs a && (Map.isEmpty s1.usages || s1.size < 128))
+            || (isAbs a && (Map.isEmpty s1.usages || s1.size < 32))
   else false
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
@@ -785,7 +785,7 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args =
   if true then
     (s.complexity == Trivial && s.size < 5)
       || (s.complexity <= Deref && s.size < 5)
-      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 128)
+      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 32)
   else
     false
 
