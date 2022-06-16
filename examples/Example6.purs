@@ -2,6 +2,9 @@ module Example6 where
 
 import Prelude
 
+import Data.Array as Array
+import Data.Maybe (Maybe(..))
+
 test1 n =
   if n == 0 then
     n
@@ -38,3 +41,12 @@ test3 = go3
 
 test4 n = if n == 1 then n else test5 (n - 1)
 test5 m = if m == 2 then m else test4 (m - 2)
+
+-- minimized from Data.Array
+-- let binding in loop
+span p arr = go 0
+  where
+  go i =
+    case Array.index arr i of
+      Just x -> if p x then go (i + 1) else Just i
+      Nothing -> Nothing

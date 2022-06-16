@@ -230,8 +230,8 @@ analyze env (NeutralExpr expr) = case expr of
         let analysis = rb.analysis <> tcoAnalysisOf body'
         TcoExpr (withTcoRole role analysis) expr'
       _ -> do
-        let analysis = tcoAnalysisOf binding' <> tcoAnalysisOf body'
-        TcoExpr (tcoNoTailCalls analysis) expr'
+        let analysis = tcoNoTailCalls (tcoAnalysisOf binding') <> tcoAnalysisOf body'
+        TcoExpr analysis expr'
   LetRec level bindings body -> do
     let group = localTcoEnvGroup level bindings
     let env' = group <> env
@@ -245,8 +245,8 @@ analyze env (NeutralExpr expr) = case expr of
       let analysis = foldMap (foldMap _.analysis) refBindings <> tcoAnalysisOf body'
       TcoExpr (withTcoRole role analysis) expr'
     else do
-      let analysis = foldMap (foldMap tcoAnalysisOf) bindings' <> tcoAnalysisOf body'
-      TcoExpr (tcoNoTailCalls analysis) expr'
+      let analysis = tcoNoTailCalls (foldMap (foldMap tcoAnalysisOf) bindings') <> tcoAnalysisOf body'
+      TcoExpr analysis expr'
   _ -> do
     let expr' = analyze env <$> expr
     TcoExpr (tcoNoTailCalls (foldMap tcoAnalysisOf expr')) expr'

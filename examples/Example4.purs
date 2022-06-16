@@ -86,6 +86,8 @@ test15 a = case compare a 15 of
   LT -> true
   _ -> false
 
+test16 a = if not a then 12 else 15
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"

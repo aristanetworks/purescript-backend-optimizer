@@ -9,6 +9,7 @@ You can edit this file as you like.
   , "effect"
   , "functions"
   , "lists"
+  , "maybe"
   , "partial"
   , "prelude"
   , "random"
