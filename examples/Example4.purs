@@ -88,6 +88,8 @@ test15 a = case compare a 15 of
 
 test16 a = if not a then 12 else 15
 
+test17 (Tuple a b) = a + b
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"

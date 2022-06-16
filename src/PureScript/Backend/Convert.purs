@@ -26,7 +26,7 @@ import PureScript.Backend.Analysis (BackendAnalysis)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), ExternSpine, Impl(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -302,13 +302,19 @@ toBackendExpr = case _ of
                 ps
         BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ], _ ->
           goBinders k store stk (PatBinder b next)
-        BinderConstructor _ _ tag bs, List.Cons id _ ->
-          makeGuard id (guardTag tag) $ goBinders k store stk $ foldrWithIndex
-            ( \ix b s ->
-                PatPush (GetOffset ix) $ PatBinder b $ PatPop s
-            )
-            next
-            bs
+        BinderConstructor (Ann { meta }) _ tag bs, List.Cons id _ -> do
+          let
+            nextBinders = goBinders k store stk $ foldrWithIndex
+              ( \ix b s ->
+                  PatPush (GetOffset ix) $ PatBinder b $ PatPop s
+              )
+              next
+              bs
+          case meta of
+            Just (IsConstructor SumType _) ->
+              makeGuard id (guardTag tag) nextBinders
+            _ ->
+              nextBinders
         _, _ ->
           unsafeCrashWith "impossible: goBinders (binder)"
     PatPush accessor next ->
