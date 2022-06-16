@@ -33,6 +33,8 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_semiring_intAdd
     , effect_bindE
     , effect_pureE
+    , control_monad_st_internal_bind
+    , control_monad_st_internal_pure
     , data_heytingAlgebra_boolConj
     , data_heytingAlgebra_boolDisj
     , data_heytingAlgebra_boolNot
@@ -52,20 +54,16 @@ coreForeignSemantics = Map.fromFoldable semantics
     Array.range 1 10
 
 effect_bindE :: ForeignSemantics
-effect_bindE = Tuple (qualified "Effect" "bindE") go
-  where
-  go _ _ = case _ of
-    [ ExternApp [ eff, SemLam ident next ] ] ->
-      Just $ SemEffectBind ident eff next
-    _ -> Nothing
+effect_bindE = Tuple (qualified "Effect" "bindE") effectBind
 
 effect_pureE :: ForeignSemantics
-effect_pureE = Tuple (qualified "Effect" "pureE") go
-  where
-  go _ _ = case _ of
-    [ ExternApp [ val ] ] ->
-      Just $ SemEffectPure val
-    _ -> Nothing
+effect_pureE = Tuple (qualified "Effect" "pureE") effectPure
+
+control_monad_st_internal_bind :: ForeignSemantics
+control_monad_st_internal_bind = Tuple (qualified "Control.Monad.ST.Internal" "bind_") effectBind
+
+control_monad_st_internal_pure :: ForeignSemantics
+control_monad_st_internal_pure = Tuple (qualified "Control.Monad.ST.Internal" "pure_") effectPure
 
 data_eq_eqBooleanImpl :: ForeignSemantics
 data_eq_eqBooleanImpl = Tuple (qualified "Data.Eq" "eqBooleanImpl") $ primBinaryOperator (OpBooleanOrd OpEq)
@@ -169,17 +167,17 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
 
 primBinaryOperator :: BackendOperator2 -> ForeignEval
 primBinaryOperator op env _ = case _ of
-    [ ExternApp [ a, b ] ] ->
-      Just $ evalPrimOp env (Op2 op a b)
-    _ ->
-      Nothing
+  [ ExternApp [ a, b ] ] ->
+    Just $ evalPrimOp env (Op2 op a b)
+  _ ->
+    Nothing
 
 primUnaryOperator :: BackendOperator1 -> ForeignEval
 primUnaryOperator op env _ = case _ of
-    [ ExternApp [ a ] ] ->
-      Just $ evalPrimOp env (Op1 op a)
-    _ ->
-      Nothing
+  [ ExternApp [ a ] ] ->
+    Just $ evalPrimOp env (Op1 op a)
+  _ ->
+    Nothing
 
 primOrdOperator :: (BackendOperatorOrd -> BackendOperator2) -> ForeignEval
 primOrdOperator op env _ = case _ of
@@ -193,7 +191,19 @@ primOrdOperator op env _ = case _ of
   _ ->
     Nothing
 
-isQualified :: String -> String -> Qualified Ident-> Boolean
+effectBind :: ForeignEval
+effectBind _ _ = case _ of
+  [ ExternApp [ eff, SemLam ident next ] ] ->
+    Just $ SemEffectBind ident eff next
+  _ -> Nothing
+
+effectPure :: ForeignEval
+effectPure _ _ = case _ of
+  [ ExternApp [ val ] ] ->
+    Just $ SemEffectPure val
+  _ -> Nothing
+
+isQualified :: String -> String -> Qualified Ident -> Boolean
 isQualified mod tag = case _ of
   Qualified (Just (ModuleName mod')) (Ident tag') ->
     mod == mod' && tag == tag'
