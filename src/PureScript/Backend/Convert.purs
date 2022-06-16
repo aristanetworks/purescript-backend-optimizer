@@ -295,7 +295,7 @@ toBackendExpr = case _ of
                 next
                 bs
             LitRecord ps ->
-              goBinders k store stk $ foldr
+              makeStep $ goBinders k store stk $ foldr
                 ( \(Prop ix b) s ->
                     PatPush (GetProp ix) $ PatBinder b $ PatPop s
                 )
@@ -315,7 +315,7 @@ toBackendExpr = case _ of
             Just (IsConstructor SumType _) ->
               makeGuard id (guardTag tag) nextBinders
             _ ->
-              nextBinders
+              makeStep nextBinders
         _, _ ->
           unsafeCrashWith "impossible: goBinders (binder)"
     PatPush accessor next ->
@@ -370,6 +370,10 @@ toBackendExpr = case _ of
   makeGuard :: Level -> _ -> ConvertM BackendExpr -> ConvertM BackendExpr
   makeGuard lvl g inner =
     make $ Branch [ Pair (make (g (make (Local Nothing lvl)))) inner ] Nothing
+
+  makeStep :: ConvertM BackendExpr -> ConvertM BackendExpr
+  makeStep inner =
+    make $ Branch [ Pair (make (Lit (LitBoolean true))) inner ] Nothing
 
   make :: BackendSyntax (ConvertM BackendExpr) -> ConvertM BackendExpr
   make a = buildM =<< sequence a

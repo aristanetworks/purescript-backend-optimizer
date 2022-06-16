@@ -50,3 +50,11 @@ span p arr = go 0
     case Array.index arr i of
       Just x -> if p x then go (i + 1) else Just i
       Nothing -> Nothing
+
+class Loop n where
+  loop :: n -> n
+
+instance Loop Int where
+  loop n =
+    if n <= 0 then n
+    else loop (n - 1)

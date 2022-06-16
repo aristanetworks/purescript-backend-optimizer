@@ -13,7 +13,7 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Monoid as Monoid
 import Data.Newtype (unwrap)
 import Data.Set (Set)
@@ -142,7 +142,7 @@ esCodegenModule mod@{ name: ModuleName this } = do
     [ (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
     , map Statement $ esCodegenTopLevelBindingGroup codegenEnv =<< moduleBindings
-    , map (Statement <<< uncurry (maybe esExports esExportsFrom)) exportsByPath
+    , map (Statement <<< uncurry (maybe (esExports Nothing) (esExports <<< Just))) exportsByPath
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esExportAllFrom (esForeignModulePath mod.name)) ]
     ]
 
@@ -153,7 +153,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Var (Qualified (Just mn) ident) | mn == env.currentModule ->
     esCodegenIdent ident
   Var var ->
-    esCodegenQualified esCodegenIdent var
+    esCodegenQualified var
   Local ident lvl ->
     esCodegenIdent (rename ident lvl env)
   Lit lit ->
@@ -305,7 +305,13 @@ esCodegenBlockStatements = go []
       go (Array.snoc acc line) mode env body
     EffectBind ident lvl eff body | mode.effect -> do
       let Tuple newIdent env' = freshName ident lvl env
-      let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env eff) [])
+      let
+        -- TODO: handle left associated effect binddings
+        line = Statement $ esBinding newIdent $ case eff of
+          TcoExpr _ (EffectBind _ _ _ _) ->
+            esApp (Dodo.text "(" <> esCodegenExpr env eff <> Dodo.text ")") []
+          _ ->
+            esApp (esCodegenExpr env eff) []
       go (Array.snoc acc line) mode env' body
     EffectPure expr' | mode.effect ->
       acc <> esCodegenBlockReturn (mode { effect = false }) env expr'
@@ -604,10 +610,10 @@ esLocalIdent mb (Level lvl) = case mb of
 esCodegenIdent :: forall a. Ident -> Dodo.Doc a
 esCodegenIdent (Ident a) = Dodo.text (esEscapeIdent a)
 
-esCodegenQualified :: forall a b. (a -> Dodo.Doc b) -> Qualified a -> Dodo.Doc b
-esCodegenQualified codegenInner (Qualified qual inner) = case qual of
-  Nothing -> codegenInner inner
-  Just mn -> esCodegenModuleName mn <> Dodo.text "." <> codegenInner inner
+esCodegenQualified :: forall a. Qualified Ident -> Dodo.Doc a
+esCodegenQualified (Qualified qual ident) = case qual of
+  Nothing -> esCodegenIdent ident
+  Just mn -> esCodegenModuleName mn <> Dodo.text "." <> Dodo.text (esEscapeSpecial (unwrap ident))
 
 esCodegenModuleName :: forall a. ModuleName -> Dodo.Doc a
 esCodegenModuleName (ModuleName mn) = Dodo.text (esEscapeIdent mn)
@@ -616,137 +622,139 @@ esEscapeIdent :: String -> String
 esEscapeIdent = escapeReserved
   where
   escapeReserved str
-    | Set.member str reservedNames =
+    | Set.member str esReservedNames =
         "$$" <> str
     | otherwise =
-        escapeSpecial str
+        esEscapeSpecial str
 
-  escapeSpecial =
-    String.replaceAll (String.Pattern "'") (String.Replacement "$p")
-      >>> String.replaceAll (String.Pattern ".") (String.Replacement "$d")
+esEscapeSpecial :: String -> String
+esEscapeSpecial =
+  String.replaceAll (String.Pattern "'") (String.Replacement "$p")
+    >>> String.replaceAll (String.Pattern ".") (String.Replacement "$d")
 
-  reservedNames = Set.fromFoldable
-    [ "AggregateError"
-    , "Array"
-    , "ArrayBuffer"
-    , "AsyncFunction"
-    , "AsyncGenerator"
-    , "AsyncGeneratorFunction"
-    , "Atomics"
-    , "BigInt"
-    , "BigInt64Array"
-    , "BigUint64Array"
-    , "Boolean"
-    , "Boolean"
-    , "DataView"
-    , "Date"
-    , "Error"
-    , "EvalError"
-    , "Float32Array"
-    , "Float64Array"
-    , "Function"
-    , "Generator"
-    , "GeneratorFunction"
-    , "Infinity"
-    , "Int16Array"
-    , "Int32Array"
-    , "Int8Array"
-    , "Intl"
-    , "JSON"
-    , "Map"
-    , "Math"
-    , "NaN"
-    , "Number"
-    , "Object"
-    , "Promise"
-    , "Proxy"
-    , "RangeError"
-    , "ReferenceError"
-    , "Reflect"
-    , "RegExp"
-    , "Set"
-    , "SharedArrayBuffer"
-    , "String"
-    , "Symbol"
-    , "SyntaxError"
-    , "TypeError"
-    , "URIError"
-    , "Uint16Array"
-    , "Uint32Array"
-    , "Uint8Array"
-    , "Uint8ClampedArray"
-    , "WeakMap"
-    , "WeakSet"
-    , "WebAssembly"
-    , "abstract"
-    , "arguments"
-    , "await"
-    , "boolean"
-    , "break"
-    , "byte"
-    , "case"
-    , "catch"
-    , "char"
-    , "class"
-    , "const"
-    , "continue"
-    , "debugger"
-    , "default"
-    , "delete"
-    , "do"
-    , "double"
-    , "else"
-    , "enum"
-    , "eval"
-    , "export"
-    , "extends"
-    , "false"
-    , "final"
-    , "finally"
-    , "float"
-    , "for"
-    , "function"
-    , "get"
-    , "globalThis"
-    , "goto"
-    , "if"
-    , "implements"
-    , "import"
-    , "in"
-    , "instanceof"
-    , "int"
-    , "interface"
-    , "let"
-    , "long"
-    , "native"
-    , "new"
-    , "null"
-    , "package"
-    , "private"
-    , "protected"
-    , "public"
-    , "return"
-    , "set"
-    , "short"
-    , "static"
-    , "super"
-    , "switch"
-    , "synchronized"
-    , "this"
-    , "throw"
-    , "throws"
-    , "transient"
-    , "true"
-    , "try"
-    , "typeof"
-    , "undefined"
-    , "var"
-    , "void"
-    , "volatile"
-    , "while"
-    , "with"
-    , "yield"
-    ]
+esReservedNames :: Set String
+esReservedNames = Set.fromFoldable
+  [ "AggregateError"
+  , "Array"
+  , "ArrayBuffer"
+  , "AsyncFunction"
+  , "AsyncGenerator"
+  , "AsyncGeneratorFunction"
+  , "Atomics"
+  , "BigInt"
+  , "BigInt64Array"
+  , "BigUint64Array"
+  , "Boolean"
+  , "Boolean"
+  , "DataView"
+  , "Date"
+  , "Error"
+  , "EvalError"
+  , "Float32Array"
+  , "Float64Array"
+  , "Function"
+  , "Generator"
+  , "GeneratorFunction"
+  , "Infinity"
+  , "Int16Array"
+  , "Int32Array"
+  , "Int8Array"
+  , "Intl"
+  , "JSON"
+  , "Map"
+  , "Math"
+  , "NaN"
+  , "Number"
+  , "Object"
+  , "Promise"
+  , "Proxy"
+  , "RangeError"
+  , "ReferenceError"
+  , "Reflect"
+  , "RegExp"
+  , "Set"
+  , "SharedArrayBuffer"
+  , "String"
+  , "Symbol"
+  , "SyntaxError"
+  , "TypeError"
+  , "URIError"
+  , "Uint16Array"
+  , "Uint32Array"
+  , "Uint8Array"
+  , "Uint8ClampedArray"
+  , "WeakMap"
+  , "WeakSet"
+  , "WebAssembly"
+  , "abstract"
+  , "arguments"
+  , "await"
+  , "boolean"
+  , "break"
+  , "byte"
+  , "case"
+  , "catch"
+  , "char"
+  , "class"
+  , "const"
+  , "continue"
+  , "debugger"
+  , "default"
+  , "delete"
+  , "do"
+  , "double"
+  , "else"
+  , "enum"
+  , "eval"
+  , "export"
+  , "extends"
+  , "false"
+  , "final"
+  , "finally"
+  , "float"
+  , "for"
+  , "function"
+  , "get"
+  , "globalThis"
+  , "goto"
+  , "if"
+  , "implements"
+  , "import"
+  , "in"
+  , "instanceof"
+  , "int"
+  , "interface"
+  , "let"
+  , "long"
+  , "native"
+  , "new"
+  , "null"
+  , "package"
+  , "private"
+  , "protected"
+  , "public"
+  , "return"
+  , "set"
+  , "short"
+  , "static"
+  , "super"
+  , "switch"
+  , "synchronized"
+  , "this"
+  , "throw"
+  , "throws"
+  , "transient"
+  , "true"
+  , "try"
+  , "typeof"
+  , "undefined"
+  , "var"
+  , "void"
+  , "volatile"
+  , "while"
+  , "with"
+  , "yield"
+  ]
 
 esFwdRef :: forall a. Ident -> Dodo.Doc a
 esFwdRef ident = Dodo.text "let" <> Dodo.space <> esCodegenIdent ident
@@ -889,11 +897,17 @@ esChar = Dodo.text <<< show
 esBoolean :: forall a. Boolean -> Dodo.Doc a
 esBoolean = Dodo.text <<< show
 
-esApp :: forall f a. Foldable f => Dodo.Doc a -> f (Dodo.Doc a) -> Dodo.Doc a
-esApp a bs = a <> Dodo.Common.jsParens (Dodo.foldWithSeparator Dodo.Common.trailingComma bs)
+esApp :: forall a. Dodo.Doc a -> Array (Dodo.Doc a) -> Dodo.Doc a
+esApp a bs =
+  if Array.length bs == 1 then
+    a <> Dodo.text "(" <> Dodo.flexGroup args <> Dodo.text ")"
+  else
+    a <> Dodo.Common.jsParens args
+  where
+  args = Dodo.foldWithSeparator Dodo.Common.trailingComma bs
 
 esCurriedApp :: forall a. Dodo.Doc a -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
-esCurriedApp = foldl (\a b -> a <> Dodo.Common.jsParens b)
+esCurriedApp = foldl (\a b -> esApp a [ b ])
 
 esIfElse :: forall f a. Foldable f => f (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
 esIfElse conds default = Dodo.lines
@@ -948,34 +962,34 @@ esImport mn path = Dodo.words
   , Dodo.text (show path)
   ]
 
-esExports :: forall a. NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
-esExports exports = Dodo.words
+
+esExports :: forall a. Maybe String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
+esExports mbPath exports = Dodo.words
   [ Dodo.text "export"
   , Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ map
-      ( \(Tuple id1 id2) ->
-          if id1 == id2 then
-            esCodegenIdent id1
+      ( \(Tuple id1 id2) -> do
+          let id1' = esEscapeSpecial (unwrap id1)
+          let id2' = esEscapeIdent (unwrap id2)
+          if id1' == id2' || isJust mbPath then
+            Dodo.text id1'
           else
             Dodo.words
-              [ esCodegenIdent id2
+              [ Dodo.text id2'
               , Dodo.text "as"
-              , esCodegenIdent id1
+              , Dodo.text id1'
               ]
       )
       exports
+  , flip foldMap mbPath \path -> Dodo.words
+      [ Dodo.text "from"
+      , Dodo.text (show path)
+      ]
   ]
 
 esExportAllFrom :: forall a. String -> Dodo.Doc a
 esExportAllFrom path = Dodo.words
   [ Dodo.text "export"
   , Dodo.text "*"
-  , Dodo.text "from"
-  , Dodo.text (show path)
-  ]
-
-esExportsFrom :: forall a. String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
-esExportsFrom path exports = Dodo.words
-  [ esExports exports
   , Dodo.text "from"
   , Dodo.text (show path)
   ]

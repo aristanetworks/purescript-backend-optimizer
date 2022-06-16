@@ -7,6 +7,8 @@ import Effect (Effect)
 import Effect.Class.Console as Effect.Class.Console
 import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn4, mkEffectFn1, mkEffectFn2, mkEffectFn4, runEffectFn1, runEffectFn2, runEffectFn4)
 
+foreign import rand :: Effect Int
+
 test1 :: Fn2 Int Int Int
 test1 = mkFn2 const
 
@@ -69,3 +71,12 @@ test14 :: Effect Int
 test14 = do
   x <- runEffectFn2 effectFn2 10 10
   runEffectFn2 effectFn2 10 x
+
+test15 :: Effect Int
+test15 = do
+  n <- do
+    x <- rand
+    y <- rand
+    pure $ x + y
+  m <- rand
+  pure (n - m)

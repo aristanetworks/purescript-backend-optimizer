@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Function.Uncurried (mkFn2, Fn2)
 import Data.HeytingAlgebra as Data.HeytingAlgebra
+import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Class.Console as Effect.Class.Console
 
@@ -89,6 +90,25 @@ test15 a = case compare a 15 of
 test16 a = if not a then 12 else 15
 
 test17 (Tuple a b) = a + b
+
+test18 = case _ of
+  { value: Foo } ->
+    Just $ 42
+  _ -> Nothing
+
+test18' = case _ of
+  Tuple Foo _ ->
+    Just $ 42
+  _ -> Nothing
+
+test19 = case _ of
+  Just Foo ->
+    Just $ 42
+  _ -> Nothing
+
+test20 { value } = case value of
+  Foo -> Just 42
+  _ -> Nothing
 
 main :: Effect Unit
 main = do
