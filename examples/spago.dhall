@@ -4,12 +4,13 @@ You can edit this file as you like.
 -}
 { name = "my-project"
 , dependencies =
-  [ "console"
+  [ "arrays"
+  , "console"
   , "effect"
   , "functions"
-  , "prelude"
-  , "arrays"
+  , "lists"
   , "partial"
+  , "prelude"
   , "random"
   ]
 , packages = ../packages.dhall

@@ -44,6 +44,9 @@ data BackendAccessor
   | GetIndex Int
   | GetOffset Int
 
+derive instance Eq BackendAccessor
+derive instance Ord BackendAccessor
+
 data BackendOperator a
   = Op1 BackendOperator1 a
   | Op2 BackendOperator2 a a

@@ -88,7 +88,7 @@ toBackendTopLevelBindingGroup env = case _ of
 
   go recGroup env' (Binding _ ident cfn) = do
     let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
-    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [] }
+    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [], stop: Set.empty }
     let Tuple impl expr' = toImpl recGroup (optimize (getCtx env') evalEnv $ toBackendExpr cfn env')
     { accum: env'
         { implementations = Map.insert (Qualified (Just env'.currentModule) ident) impl env'.implementations
@@ -99,9 +99,9 @@ toBackendTopLevelBindingGroup env = case _ of
 
 toImpl :: Maybe (Array (Qualified Ident)) -> BackendExpr -> Tuple (Tuple BackendAnalysis Impl) NeutralExpr
 toImpl = case _, _ of
-  _, ExprSyntax analysis (Lit (LitRecord props)) -> do
+  group, ExprSyntax analysis (Lit (LitRecord props)) -> do
     let propsWithAnalysis = map freeze <$> props
-    Tuple (Tuple analysis (ImplDict propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
+    Tuple (Tuple analysis (ImplDict (fold group) propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
   _, expr@(ExprSyntax _ (CtorDef tag fields)) -> do
     let Tuple analysis expr' = freeze expr
     Tuple (Tuple analysis (ImplCtor tag fields)) expr'
@@ -148,7 +148,7 @@ fromImpl :: Impl -> Maybe NeutralExpr
 fromImpl = case _ of
   ImplExpr a -> Just a
   ImplRec _ a -> Just a
-  ImplDict _ -> Nothing
+  ImplDict _ _ -> Nothing
   ImplCtor _ _ -> Nothing
 
 levelUp :: forall a. ConvertM a -> ConvertM a

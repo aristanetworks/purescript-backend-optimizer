@@ -15,6 +15,8 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set (Set)
+import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
@@ -43,6 +45,7 @@ data BackendSemantics
   | SemBranchTry BackendSemantics (Array (Pair (Lazy BackendSemantics))) (Maybe (Lazy BackendSemantics))
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
+  | NeutStop (Qualified Ident)
   | NeutData (Qualified Ident) Ident (Array (Tuple Ident BackendSemantics))
   | NeutCtorDef Ident (Array Ident)
   | NeutApp BackendSemantics (Spine BackendSemantics)
@@ -67,11 +70,12 @@ type LetBindingAssoc a =
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
+  | RewriteStop (Qualified Ident)
 
 data Impl
   = ImplExpr NeutralExpr
   | ImplRec (Array (Qualified Ident)) NeutralExpr
-  | ImplDict (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
+  | ImplDict (Array (Qualified Ident)) (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
   | ImplCtor Ident (Array Ident)
 
 instance HasAnalysis BackendExpr where
@@ -91,10 +95,12 @@ data ExternSpine
   | ExternAccessor BackendAccessor
   | ExternPrimOp BackendOperator1
 
+
 newtype Env = Env
   { currentModule :: ModuleName
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
+  , stop :: Set (Tuple (Qualified Ident) (Maybe BackendAccessor))
   }
 
 derive instance Newtype Env _
@@ -105,16 +111,16 @@ lookupLocal (Env { locals }) (Level lvl) = Array.index locals lvl
 bindLocal :: Env -> LocalBinding BackendSemantics -> Env
 bindLocal (Env env) sem = Env env { locals = Array.snoc env.locals sem }
 
+addStop :: Env -> Qualified Ident -> Maybe BackendAccessor -> Env
+addStop (Env env) qual acc  = Env env { stop = Set.insert (Tuple qual acc) env.stop }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
   eval env = case _ of
     Var qual ->
-      case evalExtern env qual [] of
-        Just sem -> sem
-        Nothing ->
-          SemExtern qual [] (defer \_ -> NeutVar qual)
+      evalExtern env qual []
     Local ident lvl ->
       case lookupLocal env lvl of
         Just (One sem) -> sem
@@ -195,6 +201,8 @@ instance Eval BackendExpr where
                   SemLet b.ident (eval env' b.binding) \nextBinding ->
                     goBinding (bindLocal env (One nextBinding)) bs
             goBinding env (List.fromFoldable bindings)
+          RewriteStop qual ->
+            NeutStop qual
       ExprSyntax _ expr ->
         eval env expr
 
@@ -218,12 +226,7 @@ evalApp env hd spine
           SemLet Nothing arg \nextArg ->
             go env' (k nextArg) args
         SemExtern qual sp _, List.Cons arg args -> do
-          let sp' = snocApp sp arg
-          case evalExtern env' qual sp' of
-            Just sem ->
-              go env' sem args
-            Nothing ->
-              go env' (SemExtern qual sp' (defer \_ -> neutralSpine qual sp')) args
+          go env' (evalExtern env' qual (snocApp sp arg)) args
         SemLet ident val k, args ->
           SemLet ident val \nextVal ->
             SemLet Nothing (k nextVal) \nextFn ->
@@ -244,8 +247,8 @@ evalSpine env = foldl go
     ExternPrimOp op1 ->
       evalPrimOp env (Op1 op1 hd)
 
-neutralSpine :: Qualified Ident -> Array ExternSpine -> BackendSemantics
-neutralSpine qual = foldl go (NeutVar qual)
+neutralSpine :: BackendSemantics -> Array ExternSpine -> BackendSemantics
+neutralSpine = foldl go
   where
   go hd = case _ of
     ExternApp apps ->
@@ -268,13 +271,8 @@ neutralApp hd spine
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
 evalAccessor initEnv initLhs accessor =
   evalAssocLet initEnv initLhs \env lhs -> case lhs of
-    SemExtern qual spine _ -> do
-      let spine' = Array.snoc spine (ExternAccessor accessor)
-      case evalExtern env qual spine' of
-        Just sem ->
-          sem
-        Nothing ->
-          SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
+    SemExtern qual spine _ ->
+      evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
     NeutLit (LitRecord props)
       | GetProp prop <- accessor
       , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
@@ -363,13 +361,8 @@ evalPrimOp env = case _ of
         liftBoolean (a == b)
       OpArrayLength, NeutLit (LitArray arr) ->
         liftInt (Array.length arr)
-      _, SemExtern qual spine _ -> do
-        let spine' = Array.snoc spine (ExternPrimOp op1)
-        case evalExtern env qual spine' of
-          Just sem ->
-            sem
-          Nothing ->
-            SemExtern qual spine' (defer \_ -> neutralSpine qual spine')
+      _, SemExtern qual spine _ ->
+        evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
       _, _ ->
         evalAssocLet env x \_ x'  ->
           NeutPrimOp (Op1 op1 x')
@@ -498,8 +491,18 @@ primOpOrdNot = case _ of
   OpGt -> OpLte
   OpGte -> OpLt
 
-evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
-evalExtern env@(Env e) = e.evalExtern env
+evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
+evalExtern env@(Env e) qual spine = case spine of
+  [] | Set.member (Tuple qual Nothing) e.stop ->
+    NeutStop qual
+  [ ExternAccessor acc ] | Set.member (Tuple qual (Just acc)) e.stop ->
+    neutralSpine (NeutStop qual) spine
+  _ ->
+    case e.evalExtern env qual spine of
+      Just sem ->
+        sem
+      Nothing ->
+        SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis Impl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
@@ -523,12 +526,17 @@ evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
         Just $ NeutData qual tag $ Array.zip fields args
       _, _ ->
         Nothing
-  ImplDict props ->
+  ImplDict _ props ->
     case spine of
-      [ ExternAccessor (GetProp prop), ExternApp args ]
+      [ ExternAccessor acc@(GetProp prop), ExternApp args ]
         | Just (Tuple analysis' body) <- findProp prop props
-        , shouldInlineExternApp qual analysis' body args ->
-            Just (evalApp env (eval env body) args)
+        , shouldInlineExternApp qual analysis' body args -> do
+            let env' = addStop env qual (Just acc)
+            Just $ evalApp env (eval env' body) args
+      [ ExternAccessor acc@(GetProp prop) ]
+        | Just (Tuple analysis' body) <- findProp prop props
+        , shouldInlineExternAccessor qual analysis' body acc ->
+            Just $ eval (addStop env qual (Just acc)) body
       _ ->
         Nothing
   _ ->
@@ -640,6 +648,8 @@ quote = go
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
+    NeutStop qual ->
+      buildStop ctx qual
     NeutData qual _ [] ->
       build ctx $ Var qual
     NeutData qual tag values ->
@@ -729,6 +739,9 @@ simplifyBranches ctx pairs def = case pairs of
     | otherwise ->
         Nothing
 
+buildStop :: Ctx -> Qualified Ident -> BackendExpr
+buildStop ctx stop = ExprRewrite (analyzeDefault ctx (Var stop)) (RewriteStop stop)
+
 buildDefault :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 buildDefault ctx expr = ExprSyntax (analyzeDefault ctx expr) expr
 
@@ -776,6 +789,14 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args =
   else
     false
 
+shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Boolean
+shouldInlineExternAccessor _ (BackendAnalysis s) _ _ =
+  if true then
+    (s.complexity == Trivial && s.size < 5)
+      || (s.complexity <= Deref && s.size < 5)
+  else
+    false
+
 shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
 shouldInlineExternLiteral = case _ of
   LitInt _ -> true
@@ -814,6 +835,8 @@ freeze init = Tuple (analysisOf init) (go init)
       case rewrite of
         RewriteInline ident level binding body ->
           NeutralExpr $ Let ident level (go binding) (go body)
+        RewriteStop qual ->
+          NeutralExpr $ Var qual
         RewriteLetAssoc bindings body ->
           case NonEmptyArray.fromArray bindings of
             Just bindings' -> do
