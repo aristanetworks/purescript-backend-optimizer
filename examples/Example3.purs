@@ -1,46 +1,24 @@
 module Example3 where
 
-foreign import add :: Int -> Int -> Int
+import Prelude
+
+import Effect (Effect)
 
 foreign import wat :: forall x. x
 
 foreign import foo :: forall a. Int -> a -> a
 
-foreign import data Effect :: Type -> Type
-
-foreign import effectBind :: forall a b. Effect a -> (a -> Effect b) -> Effect b
-
-foreign import effectPure :: forall a. a -> Effect a
-
 foreign import random :: Effect Int
 
 foreign import randomST :: ST Int
 
-class Semigroupoid f where
-  compose :: forall a b c. f b c -> f a b -> f a c
-
-instance Semigroupoid Function where
-  compose f g a = f (g a)
-
-class Applicative f where
-  pure :: forall a. a -> f a
-
-class Bind f where
-  bind :: forall a b. f a -> (a -> f b) -> f b
-
-instance Bind (Function r) where
-  bind k1 k2 r = k2 (k1 r) r
-
-instance Applicative Effect where
-  pure = effectPure
-
-instance Bind Effect where
-  bind = effectBind
-
 newtype ST a = ST (Effect a)
 
+derive newtype instance Functor ST
+derive newtype instance Apply ST
 derive newtype instance Applicative ST
 derive newtype instance Bind ST
+derive newtype instance Monad ST
 
 c :: forall a b c. (b -> c) -> (a -> b) -> a -> c
 c f g a = f (g a)

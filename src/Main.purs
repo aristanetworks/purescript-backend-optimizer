@@ -44,6 +44,9 @@ import Node.Process as Process
 import Node.Stream as Stream
 import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esForeignModulePath, esModulePath)
 import PureScript.Backend.Convert (toBackendModule)
+import PureScript.Backend.Semantics (EvalRef(..), InlineDirective(..))
+import PureScript.Backend.Semantics.Foreign (qualified)
+import PureScript.Backend.Syntax (BackendAccessor(..))
 import PureScript.CoreFn (Ann, Import(..), Module(..), ModuleName(..))
 import PureScript.CoreFn.Json (decodeModule)
 
@@ -101,6 +104,11 @@ argParser = ArgParser.choose "command"
           }
   ]
 
+defaultDirectives :: Map EvalRef InlineDirective
+defaultDirectives = Map.fromFoldable
+  [ Tuple (EvalExtern (qualified "Control.Semigroupoid" "semigroupoidFn") (Just (GetProp "compose"))) (InlineArity 2)
+  ]
+
 main :: FilePath -> Effect Unit
 main dirName = do
   args <- Array.drop 2 <$> Process.argv
@@ -133,7 +141,7 @@ compileModules dirName = case _ of
         List.Cons coreFnMod@(Module { name, foreign: foreignIdents, path }) mods -> do
           Console.log $ unwrap name
           let modPath = Path.concat [ outputDir, esModulePath name ]
-          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty }
+          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty, directives: defaultDirectives }
           let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 0.5 }) $ esCodegenModule backendMod
           writeTextFile UTF8 modPath formatted
           unless (Array.null foreignIdents) do

@@ -11,12 +11,11 @@ import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
-import Data.Set (Set)
-import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
@@ -95,12 +94,23 @@ data ExternSpine
   | ExternAccessor BackendAccessor
   | ExternPrimOp BackendOperator1
 
+data EvalRef
+  = EvalExtern (Qualified Ident) (Maybe BackendAccessor)
+  | EvalLocal (Maybe Ident) Level
+
+derive instance Eq EvalRef
+derive instance Ord EvalRef
+
+data InlineDirective
+  = InlineNever
+  | InlineAlways
+  | InlineArity Int
 
 newtype Env = Env
   { currentModule :: ModuleName
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
-  , stop :: Set (Tuple (Qualified Ident) (Maybe BackendAccessor))
+  , directives :: Map EvalRef InlineDirective
   }
 
 derive instance Newtype Env _
@@ -111,8 +121,20 @@ lookupLocal (Env { locals }) (Level lvl) = Array.index locals lvl
 bindLocal :: Env -> LocalBinding BackendSemantics -> Env
 bindLocal (Env env) sem = Env env { locals = Array.snoc env.locals sem }
 
-addStop :: Env -> Qualified Ident -> Maybe BackendAccessor -> Env
-addStop (Env env) qual acc  = Env env { stop = Set.insert (Tuple qual acc) env.stop }
+addDirective :: Env -> EvalRef -> InlineDirective -> Env
+addDirective (Env env) ref dir = Env env { directives = Map.insert ref dir env.directives }
+
+addStop :: Env -> EvalRef -> Env
+addStop (Env env) ref = Env env
+  { directives = Map.alter
+      case _ of
+        Just InlineAlways ->
+          Just InlineAlways
+        _ ->
+          Just InlineNever
+      ref
+      env.directives
+  }
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -493,9 +515,9 @@ primOpOrdNot = case _ of
 
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
 evalExtern env@(Env e) qual spine = case spine of
-  [] | Set.member (Tuple qual Nothing) e.stop ->
+  [] | Just InlineNever <- Map.lookup (EvalExtern qual Nothing) e.directives ->
     NeutStop qual
-  [ ExternAccessor acc ] | Set.member (Tuple qual (Just acc)) e.stop ->
+  [ ExternAccessor acc ] | Just InlineNever <- Map.lookup (EvalExtern qual (Just acc)) e.directives ->
     neutralSpine (NeutStop qual) spine
   _ ->
     case e.evalExtern env qual spine of
@@ -505,16 +527,15 @@ evalExtern env@(Env e) qual spine = case spine of
         SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis Impl -> Array ExternSpine -> Maybe BackendSemantics
-evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
-  ImplExpr expr ->
+evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
+  ImplExpr expr -> do
+    let directive = Map.lookup (EvalExtern qual Nothing) e.directives
     case expr, spine of
       NeutralExpr (Var _), [] ->
         Just $ eval env expr
-      NeutralExpr (Lit lit), [] | shouldInlineExternLiteral lit ->
+      NeutralExpr (Lit lit), [] | shouldInlineExternLiteral lit directive ->
         Just $ eval env expr
-      NeutralExpr (Lit (LitRecord props)), [ ExternAccessor (GetProp prop) ] ->
-        eval env <$> findProp prop props
-      body, [ ExternApp args ] | shouldInlineExternApp qual analysis body args ->
+      body, [ ExternApp args ] | shouldInlineExternApp qual analysis body args directive ->
         Just $ evalApp env (eval env body) args
       _, _ ->
         Nothing
@@ -526,21 +547,44 @@ evalExternFromImpl env qual (Tuple analysis impl) spine = case impl of
         Just $ NeutData qual tag $ Array.zip fields args
       _, _ ->
         Nothing
-  ImplDict _ props ->
+  ImplDict group props ->
     case spine of
-      [ ExternAccessor acc@(GetProp prop), ExternApp args ]
-        | Just (Tuple analysis' body) <- findProp prop props
-        , shouldInlineExternApp qual analysis' body args -> do
-            let env' = addStop env qual (Just acc)
-            Just $ evalApp env (eval env' body) args
-      [ ExternAccessor acc@(GetProp prop) ]
-        | Just (Tuple analysis' body) <- findProp prop props
-        , shouldInlineExternAccessor qual analysis' body acc ->
-            Just $ eval (addStop env qual (Just acc)) body
+      [ ExternAccessor acc@(GetProp prop), ExternApp args ] | Just (Tuple analysis' body) <- findProp prop props -> do
+        let ref = EvalExtern qual (Just acc)
+        let directive = Map.lookup ref e.directives
+        if shouldInlineExternApp qual analysis' body args directive then do
+          let env' = if Array.null group then env else addStop env ref
+          Just $ evalApp env (eval env' body) args
+        else
+          Nothing
+      [ ExternAccessor acc@(GetProp prop) ] | Just (Tuple analysis' body) <- findProp prop props -> do
+        let ref = EvalExtern qual (Just acc)
+        let directive = Map.lookup ref e.directives
+        if shouldInlineExternAccessor qual analysis' body acc directive then do
+          let env' = if Array.null group then env else addStop env ref
+          Just $ eval env' body
+        else
+          Nothing
       _ ->
         Nothing
   _ ->
     Nothing
+
+externRefFromSpine :: Qualified Ident -> Array ExternSpine -> EvalRef
+externRefFromSpine qual spine = case Array.head spine of
+  Just (ExternAccessor acc) ->
+    EvalExtern qual (Just acc)
+  _ ->
+    EvalExtern qual Nothing
+
+analysisFromDirective :: BackendAnalysis -> InlineDirective -> BackendAnalysis
+analysisFromDirective (BackendAnalysis analysis) = case _ of
+  InlineAlways ->
+    mempty
+  InlineNever ->
+    BackendAnalysis analysis { complexity = NonTrivial, size = top }
+  InlineArity n ->
+    BackendAnalysis analysis { args = Array.take n analysis.args }
 
 liftBoolean :: Boolean -> BackendSemantics
 liftBoolean = NeutLit <<< LitBoolean
@@ -780,32 +824,45 @@ shouldInlineLet level a b =
             || (isAbs a && (Map.isEmpty s1.usages || s1.size < 32))
   else false
 
-shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
-shouldInlineExternApp _ (BackendAnalysis s) _ args = 
-  if true then
-    (s.complexity == Trivial && s.size < 5)
-      || (s.complexity <= Deref && s.size < 5)
-      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 32)
-  else
-    false
+shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
+shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
+  Just dir ->
+    case dir of
+      InlineAlways -> true
+      InlineNever -> false
+      InlineArity n -> Array.length args == n
+  _ ->
+    if true then
+      (s.complexity == Trivial && s.size < 5)
+        || (s.complexity <= Deref && s.size < 5)
+        || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 32)
+    else
+      false
 
-shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Boolean
-shouldInlineExternAccessor _ (BackendAnalysis s) _ _ =
-  if true then
-    (s.complexity == Trivial && s.size < 5)
-      || (s.complexity <= Deref && s.size < 5)
-  else
-    false
+shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Maybe InlineDirective -> Boolean
+shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of
+  Just InlineAlways -> true
+  Just InlineNever -> false
+  _ ->
+    if true then
+      (s.complexity == Trivial && s.size < 5)
+        || (s.complexity <= Deref && s.size < 5)
+    else
+      false
 
-shouldInlineExternLiteral :: Literal NeutralExpr -> Boolean
-shouldInlineExternLiteral = case _ of
-  LitInt _ -> true
-  LitNumber _ -> true
-  LitString s -> String.length s <= 32
-  LitChar _ -> true
-  LitBoolean _ -> true
-  LitArray a -> Array.null a
-  LitRecord r -> Array.null r
+shouldInlineExternLiteral :: Literal NeutralExpr -> Maybe InlineDirective -> Boolean
+shouldInlineExternLiteral lit = case _ of
+  Just InlineAlways -> true
+  Just InlineNever -> false
+  _ ->
+    case lit of
+      LitInt _ -> true
+      LitNumber _ -> true
+      LitString s -> String.length s <= 32
+      LitChar _ -> true
+      LitBoolean _ -> true
+      LitArray a -> Array.null a
+      LitRecord r -> Array.null r
 
 isAbs :: BackendExpr -> Boolean
 isAbs = syntaxOf >>> case _ of

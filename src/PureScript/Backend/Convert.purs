@@ -23,7 +23,7 @@ import Effect.Class.Console as Console
 import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Analysis (BackendAnalysis)
-import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), ExternSpine, Impl(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef, ExternSpine, Impl(..), InlineDirective, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
@@ -48,6 +48,7 @@ type ConvertEnv =
   , toLevel :: Map Ident Level
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis Impl)
   , deps :: Set ModuleName
+  , directives :: Map EvalRef InlineDirective
   }
 
 type ConvertM = Function ConvertEnv
@@ -88,7 +89,7 @@ toBackendTopLevelBindingGroup env = case _ of
 
   go recGroup env' (Binding _ ident cfn) = do
     let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
-    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [], stop: Set.empty }
+    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [], directives: env'.directives }
     let Tuple impl expr' = toImpl recGroup (optimize (getCtx env') evalEnv $ toBackendExpr cfn env')
     { accum: env'
         { implementations = Map.insert (Qualified (Just env'.currentModule) ident) impl env'.implementations
