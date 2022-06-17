@@ -110,6 +110,28 @@ test20 { value } = case value of
   Foo -> Just 42
   _ -> Nothing
 
+test21 a = do
+  1
+  2
+  3
+  a
+  4
+  5
+  []
+  where
+  discard a k =
+    [ a ] <> k unit
+
+test22 a = do
+  "a"
+  "b"
+  "wat " <> a
+  "c"
+  "d"
+  where
+  discard a k =
+    a <> "\n" <> k unit
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"

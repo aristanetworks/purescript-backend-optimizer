@@ -3,6 +3,7 @@ module PureScript.Backend.Semantics.Foreign where
 import Prelude
 
 import Data.Array as Array
+import Data.Lazy as Lazy
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -30,6 +31,8 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_ord_ordChar
     , data_ord_ordBoolean
     , data_ring_intSub
+    , data_semigroup_concatArray
+    , data_semigroup_concatString
     , data_semiring_intAdd
     , effect_bindE
     , effect_pureE
@@ -209,3 +212,88 @@ isQualified mod tag = case _ of
     mod == mod' && tag == tag'
   _ ->
     false
+
+assocBinaryOperatorL
+  :: forall a
+   . (BackendSemantics -> Maybe a)
+  -> (Env -> a -> a -> BackendSemantics)
+  -> (Env -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics)
+  -> ForeignEval
+assocBinaryOperatorL match op def env ident = case _ of
+  [ ExternApp [ a, b ] ] ->
+    case rewrite of
+      Just _ ->
+        rewrite
+      Nothing ->
+        def env a b
+    where
+    rewrite = case match a of
+      Just lhs ->
+        case match b of
+          Just rhs ->
+            Just $ op env lhs rhs
+          Nothing ->
+            case b of
+              SemExtern ident' [ ExternApp [ x, y ] ] _ | ident == ident' ->
+                case match x of
+                  Just rhs -> do
+                    let result = op env lhs rhs
+                    Just $ externApp ident [ result, y ]
+                  Nothing ->
+                    case x of
+                      SemExtern ident'' [ ExternApp [ v, w ] ] _ | ident == ident'' ->
+                        case match v of
+                          Just rhs -> do
+                            let result = op env lhs rhs
+                            Just $ externApp ident [ externApp ident [ result, w ], y ]
+                          Nothing ->
+                            Nothing
+                      _ ->
+                        Nothing
+              _ ->
+                Nothing
+      Nothing ->
+        case match b of
+          Just rhs ->
+            case a of
+              SemExtern ident' [ ExternApp [ v, w ] ] _ | ident == ident' ->
+                case match w of
+                  Just lhs -> do
+                    let result = op env lhs rhs
+                    Just $ externApp ident [ v, result ]
+                  Nothing ->
+                    case w of
+                      SemExtern ident'' [ ExternApp [ x, y ] ] _ | ident == ident'' ->
+                        case match y of
+                          Just lhs -> do
+                            let result = op env lhs rhs
+                            Just $ externApp ident [ externApp ident [ v, x ], result ]
+                          Nothing ->
+                            Nothing
+                      _ ->
+                        Nothing
+              _ ->
+                Nothing
+          Nothing ->
+            Nothing
+  _ ->
+    Nothing
+
+data_semigroup_concatArray :: ForeignSemantics
+data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") $ assocBinaryOperatorL match op default
+  where
+  match = case _ of
+    NeutLit (LitArray a) -> Just a
+    _ -> Nothing
+
+  op _ a b =
+    NeutLit (LitArray (a <> b))
+
+  default _ _ _ =
+    Nothing
+
+data_semigroup_concatString :: ForeignSemantics
+data_semigroup_concatString = Tuple (qualified "Data.Semigroup" "concatString") $ primBinaryOperator OpStringAppend
+
+externApp :: Qualified Ident -> Array BackendSemantics -> BackendSemantics
+externApp ident spine = SemExtern ident [ ExternApp spine ] (Lazy.defer \_ -> NeutApp (NeutVar ident) spine)

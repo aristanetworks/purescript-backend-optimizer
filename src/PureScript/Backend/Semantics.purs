@@ -453,17 +453,52 @@ evalPrimOp env = case _ of
         | NeutLit (LitNumber a) <- x
         , NeutLit (LitNumber b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
-      OpStringAppend
-        | NeutLit (LitString a) <- x
-        , NeutLit (LitString b) <- y ->
-            liftString (a <> b)
       OpStringOrd op
         | NeutLit (LitString a) <- x
         , NeutLit (LitString b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
+      OpStringAppend
+        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
+            result
       _ ->
         evalAssocLet2 env x y \_ x' y' ->
           NeutPrimOp (Op2 op2 x' y')
+
+evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
+evalPrimOpAssocL op match combine a b = case match a of
+  Just lhs
+    | Just rhs <- match b ->
+        Just $ combine lhs rhs
+    | Just (Tuple x y) <- decompose b ->
+        case match x of
+          Just rhs ->
+            Just $ liftOp2 op (combine lhs rhs) y
+          Nothing
+            | Just (Tuple v w) <- decompose x
+            , Just rhs <- match v ->
+                Just $ liftOp2 op (liftOp2 op (combine lhs rhs) w) y
+          _ ->
+            Nothing
+  Nothing
+    | Just rhs <- match b
+    , Just (Tuple v w) <- decompose a ->
+        case match w of
+          Just lhs ->
+            Just $ liftOp2 op v (combine lhs rhs)
+          Nothing
+            | Just (Tuple x y) <- decompose w
+            , Just lhs <- match y ->
+                Just $ liftOp2 op (liftOp2 op v x) (combine lhs rhs)
+          _ ->
+            Nothing
+  _ ->
+    Nothing
+  where
+  decompose = case _ of
+    NeutPrimOp (Op2 op' x y) | op == op' ->
+      Just (Tuple x y)
+    _ ->
+      Nothing
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
@@ -603,6 +638,11 @@ liftOp1 op a = NeutPrimOp (Op1 op a)
 
 liftOp2 :: BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
 liftOp2 op a b = NeutPrimOp (Op2 op a b)
+
+caseString :: BackendSemantics -> Maybe String
+caseString = case _ of
+  NeutLit (LitString a) -> Just a
+  _ -> Nothing
 
 foldr1Array :: forall a b. (a -> b -> b) -> (a -> b) -> NonEmptyArray a -> b
 foldr1Array f g arr = go (NonEmptyArray.length arr - 2) (g (NonEmptyArray.last arr))

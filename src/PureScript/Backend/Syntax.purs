@@ -59,6 +59,9 @@ data BackendOperator1
   | OpArrayLength
   | OpIsTag (Qualified Ident)
 
+derive instance Eq BackendOperator1
+derive instance Ord BackendOperator1
+
 data BackendOperator2
   = OpBooleanAnd
   | OpBooleanOr
@@ -77,11 +80,17 @@ data BackendOperator2
   | OpStringAppend
   | OpStringOrd BackendOperatorOrd
 
+derive instance Eq BackendOperator2
+derive instance Ord BackendOperator2
+
 data BackendOperatorNum
   = OpAdd
   | OpDivide
   | OpMultiply
   | OpSubtract
+
+derive instance Eq BackendOperatorNum
+derive instance Ord BackendOperatorNum
 
 data BackendOperatorOrd
   = OpEq
@@ -90,6 +99,9 @@ data BackendOperatorOrd
   | OpGte
   | OpLt
   | OpLte
+
+derive instance Eq BackendOperatorOrd
+derive instance Ord BackendOperatorOrd
 
 derive instance Functor BackendSyntax
 
