@@ -47,6 +47,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_eq_eqNumberImpl
     , data_eq_eqCharImpl
     , data_eq_eqStringImpl
+    , unsafe_coerce_unsafeCoerce
     ]
       <> map data_function_uncurried_mkFn oneToTen
       <> map data_function_uncurried_runFn oneToTen
@@ -165,6 +166,15 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
       | NeutLit (LitBoolean x) <- a
       , NeutLit (LitBoolean y) <- b ->
           Just $ NeutLit (LitBoolean (not x || y))
+    _ ->
+      Nothing
+
+unsafe_coerce_unsafeCoerce :: ForeignSemantics
+unsafe_coerce_unsafeCoerce = Tuple (qualified "Unsafe.Coerce" "unsafeCoerce") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ a ] ] ->
+      Just a
     _ ->
       Nothing
 

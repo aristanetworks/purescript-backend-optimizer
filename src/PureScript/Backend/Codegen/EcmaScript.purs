@@ -16,6 +16,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Monoid as Monoid
 import Data.Newtype (unwrap)
+import Data.Semigroup.Foldable (maximumBy)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
@@ -31,7 +32,7 @@ import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule)
 import PureScript.Backend.Semantics (NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), qualifiedModuleName, unQualified)
+import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), qualifiedModuleName, unQualified)
 
 data CodegenName = CodegenIdent Ident
 
@@ -128,6 +129,17 @@ esCodegenModule mod@{ name: ModuleName this } = do
     moduleBindings =
       Array.cons { recursive: false, bindings: foreignBindings } mod.bindings
 
+    ctorSizes =
+      (moduleBindings >>= _.bindings)
+        # Array.mapMaybe case _ of
+            Tuple _ (NeutralExpr (CtorDef ty _ fields)) ->
+              Just (Tuple ty (Array.length fields))
+            _ ->
+              Nothing
+        # Array.groupAllBy (comparing fst)
+        # map (maximumBy (comparing snd))
+
+    codegenEnv :: CodegenEnv
     codegenEnv =
       { currentModule: mod.name
       , bound: Map.empty
@@ -135,12 +147,14 @@ esCodegenModule mod@{ name: ModuleName this } = do
       }
 
     exportsByPath = mod.exports
+      # append ((\ty -> Tuple (esCtorIdent ty) (Qualified Nothing (esCtorIdent ty))) <<< fst <$> ctorSizes)
       # Array.groupAllBy (comparing (qualifiedModuleName <<< snd))
       # map (\as -> Tuple (esModulePath <$> qualifiedModuleName (snd (NonEmptyArray.head as))) (map unQualified <$> as))
 
   esBlockStatements $ fold
     [ (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
+    , map (Statement <<< uncurry esCtorForType) ctorSizes
     , map Statement $ esCodegenTopLevelBindingGroup codegenEnv =<< moduleBindings
     , map (Statement <<< uncurry (maybe (esExports Nothing) (esExports <<< Just))) exportsByPath
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esExportAllFrom (esForeignModulePath mod.name)) ]
@@ -183,12 +197,14 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
     esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
-  CtorDef (Ident tag) [] ->
-    esCtor tag []
-  CtorDef (Ident tag) fields ->
-    esCurriedFn fields [ Return (esCtor tag (esCodegenIdent <$> fields)) ]
-  CtorSaturated _ (Ident tag) fields ->
-    esCtor tag (esCodegenExpr env <<< snd <$> fields)
+  CtorDef ty (Ident tag) [] ->
+    esCtor (Qualified Nothing (esCtorIdent ty)) tag []
+  CtorDef ty (Ident tag) fields ->
+    esCurriedFn fields [ Return (esCtor (Qualified Nothing (esCtorIdent ty)) tag (esCodegenIdent <$> fields)) ]
+  CtorSaturated (Qualified (Just mn) _) ty (Ident tag) fields | mn == env.currentModule ->
+    esCtor (Qualified Nothing (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
+  CtorSaturated (Qualified qual _) ty (Ident tag) fields ->
+    esCtor (Qualified qual (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
   PrimOp op ->
     esCodegenPrimOp env op
   Fail str ->
@@ -279,7 +295,7 @@ esCodegenBlockStatements = go []
       | otherwise -> do
           let result = freshBindingGroup lvl env bindings
           let lines = Statement <$> esCodegenBindingGroup result.accum { recursive: true, bindings: result.value }
-          go (acc <> lines) mode result.accum  body
+          go (acc <> lines) mode result.accum body
     Let ident lvl binding body
       | Just tco <- toTcoJoin mode.tcoScope analysis.role binding -> do
           let Tuple tcoIdent env' = freshName ident lvl env
@@ -404,7 +420,7 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent = case _ of
       ]
         <>
           mapWithIndex
-            (\ix (Tuple ident _) ->
+            ( \ix (Tuple ident _) ->
                 esBinding ident $ esApp (esCodegenIdent tcoIdent) [ esInt ix ]
             )
             bindings
@@ -583,7 +599,7 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
 
   opIsTag (Qualified _ (Ident tag)) = Unary
     ( \a -> Dodo.words
-        [ a <> Dodo.text "[0]"
+        [ a <> Dodo.text ".tag"
         , Dodo.text "==="
         , esString tag
         ]
@@ -803,7 +819,7 @@ esIndex :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
 esIndex expr ix = expr <> Dodo.text "[" <> Dodo.text (show ix) <> Dodo.text "]"
 
 esOffset :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
-esOffset expr ix = expr <> Dodo.text "[" <> Dodo.text (show (ix + 1)) <> Dodo.text "]"
+esOffset expr ix = expr <> Dodo.text "._" <> Dodo.text (show (ix + 1))
 
 esUpdate :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
 esUpdate rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
@@ -878,9 +894,26 @@ esEscapeProp = \prop ->
   where
   safeRegex = unsafeRegex """^[a-zA-Z_$][a-zA-Z0-9_$]*$""" noFlags
 
-esCtor :: forall a. String -> Array (Dodo.Doc a) -> Dodo.Doc a
-esCtor tag vals = Dodo.Common.jsSquares $
-  Dodo.foldWithSeparator Dodo.Common.trailingComma (Array.cons (esString tag) vals)
+esCtorIdent :: ProperName -> Ident
+esCtorIdent (ProperName name) = Ident ("$" <> name)
+
+esCtorForType :: forall a. ProperName -> Int -> Dodo.Doc a
+esCtorForType name len =
+  esBinding (esCtorIdent name) $ esFn args
+    [ ReturnObject $ Dodo.Common.jsCurlies
+        $ Dodo.foldWithSeparator Dodo.Common.trailingComma
+        $ esCodegenIdent <$> args
+    ]
+  where
+  args =
+    Array.cons (Ident "tag") fields
+
+  fields
+    | len > 0 = Ident <<< append "_" <<< show <$> Array.range 1 len
+    | otherwise = []
+
+esCtor :: forall a. Qualified Ident -> String -> Array (Dodo.Doc a) -> Dodo.Doc a
+esCtor fn tag vals = esApp (esCodegenQualified fn) $ Array.cons (esString tag) vals
 
 esString :: forall a. String -> Dodo.Doc a
 esString = Dodo.text <<< show
@@ -961,7 +994,6 @@ esImport mn path = Dodo.words
   , Dodo.text "from"
   , Dodo.text (show path)
   ]
-
 
 esExports :: forall a. Maybe String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
 esExports mbPath exports = Dodo.words

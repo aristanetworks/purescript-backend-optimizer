@@ -21,7 +21,7 @@ import Data.Tuple (Tuple(..), fst, uncurry)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
-import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), Qualified, findProp, propKey)
+import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
 type Spine a = Array a
 
@@ -45,8 +45,8 @@ data BackendSemantics
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
-  | NeutData (Qualified Ident) Ident (Array (Tuple Ident BackendSemantics))
-  | NeutCtorDef Ident (Array Ident)
+  | NeutData (Qualified Ident) ProperName Ident (Array (Tuple Ident BackendSemantics))
+  | NeutCtorDef (Qualified Ident) ProperName Ident (Array Ident)
   | NeutApp BackendSemantics (Spine BackendSemantics)
   | NeutAccessor BackendSemantics BackendAccessor
   | NeutUpdate BackendSemantics (Array (Prop BackendSemantics))
@@ -75,7 +75,7 @@ data Impl
   = ImplExpr NeutralExpr
   | ImplRec (Array (Qualified Ident)) NeutralExpr
   | ImplDict (Array (Qualified Ident)) (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
-  | ImplCtor Ident (Array Ident)
+  | ImplCtor ProperName Ident (Array Ident)
 
 instance HasAnalysis BackendExpr where
   analysisOf = case _ of
@@ -201,10 +201,10 @@ instance Eval f => Eval (BackendSyntax f) where
       NeutLit (eval env <$> lit)
     Fail err ->
       NeutFail err
-    CtorDef tag fields ->
-      NeutCtorDef tag fields
-    CtorSaturated qual tag fields ->
-      NeutData qual tag (map (eval env) <$> fields)
+    CtorDef ty tag fields ->
+      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ty tag fields
+    CtorSaturated qual ty tag fields ->
+      NeutData qual ty tag (map (eval env) <$> fields)
 
 instance Eval BackendExpr where
   eval = go
@@ -303,7 +303,7 @@ evalAccessor initEnv initLhs accessor =
       | GetIndex n <- accessor
       , Just sem <- Array.index values n ->
           sem
-    NeutData _ _ fields
+    NeutData _ _ _ fields
       | GetOffset n <- accessor
       , Just (Tuple _ sem) <- Array.index fields n ->
           sem
@@ -379,7 +379,7 @@ evalPrimOp env = case _ of
         evalPrimOpNot op
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, NeutData b _ _ ->
+      OpIsTag a, NeutData b _ _ _ ->
         liftBoolean (a == b)
       OpArrayLength, NeutLit (LitArray arr) ->
         liftInt (Array.length arr)
@@ -574,12 +574,12 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
         Just $ evalApp env (eval env body) args
       _, _ ->
         Nothing
-  ImplCtor tag fields ->
+  ImplCtor ty tag fields ->
     case fields, spine of
       [], [] ->
-        Just $ NeutData qual tag []
+        Just $ NeutData qual ty tag []
       _, [ ExternApp args ] | Array.length fields == Array.length args ->
-        Just $ NeutData qual tag $ Array.zip fields args
+        Just $ NeutData qual ty tag $ Array.zip fields args
       _, _ ->
         Nothing
   ImplDict group props ->
@@ -734,12 +734,12 @@ quote = go
       build ctx $ Var qual
     NeutStop qual ->
       buildStop ctx qual
-    NeutData qual _ [] ->
+    NeutData qual _ _ [] ->
       build ctx $ Var qual
-    NeutData qual tag values ->
-      build ctx $ CtorSaturated qual tag (map (quote ctx) <$> values)
-    NeutCtorDef tag fields ->
-      build ctx $ CtorDef tag fields
+    NeutData qual ty tag values ->
+      build ctx $ CtorSaturated qual ty tag (map (quote ctx) <$> values)
+    NeutCtorDef _ ty tag fields ->
+      build ctx $ CtorDef ty tag fields
     NeutUncurriedApp hd spine -> do
       let hd' = quote ctx hd
       build ctx $ UncurriedApp hd' (quote ctx <$> spine)
@@ -785,12 +785,12 @@ build ctx = case _ of
         rewriteInline ident level binding body
   -- TODO: Multi argument eta reduction?
   -- TODO: Don't eta reduce recursive bindings.
-  Abs args (ExprSyntax _ (App hd@(ExprSyntax _ fn) spine))
-    | isReference fn
-    , [ Tuple _ lvl1 ] <- NonEmptyArray.toArray args
-    , [ ExprSyntax _ (Local _ lvl2) ] <- NonEmptyArray.toArray spine
-    , lvl1 == lvl2 ->
-        hd
+  -- Abs args (ExprSyntax _ (App hd@(ExprSyntax _ fn) spine))
+  --   | isReference fn
+  --   , [ Tuple _ lvl1 ] <- NonEmptyArray.toArray args
+  --   , [ ExprSyntax _ (Local _ lvl2) ] <- NonEmptyArray.toArray spine
+  --   , lvl1 == lvl2 ->
+  --       hd
   EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
     build ctx $ Let ident level binding body
   Branch pairs (Just def) | Just expr <- simplifyBranches ctx pairs def ->

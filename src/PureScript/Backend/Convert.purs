@@ -103,9 +103,9 @@ toImpl = case _, _ of
   group, ExprSyntax analysis (Lit (LitRecord props)) -> do
     let propsWithAnalysis = map freeze <$> props
     Tuple (Tuple analysis (ImplDict (fold group) propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
-  _, expr@(ExprSyntax _ (CtorDef tag fields)) -> do
+  _, expr@(ExprSyntax _ (CtorDef ty tag fields)) -> do
     let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ImplCtor tag fields)) expr'
+    Tuple (Tuple analysis (ImplCtor ty tag fields)) expr'
   Just group, expr -> do
     let Tuple analysis expr' = freeze expr
     Tuple (Tuple analysis (ImplRec group expr')) expr'
@@ -150,7 +150,7 @@ fromImpl = case _ of
   ImplExpr a -> Just a
   ImplRec _ a -> Just a
   ImplDict _ _ -> Nothing
-  ImplCtor _ _ -> Nothing
+  ImplCtor _ _ _ -> Nothing
 
 levelUp :: forall a. ConvertM a -> ConvertM a
 levelUp f env = f (env { currentLevel = env.currentLevel + 1 })
@@ -179,8 +179,8 @@ toBackendExpr = case _ of
         buildM (Var qi)
   ExprLit _ lit ->
     buildM <<< Lit =<< traverse toBackendExpr lit
-  ExprConstructor _ _ name fields ->
-    buildM (CtorDef name fields)
+  ExprConstructor _ ty name fields ->
+    buildM (CtorDef ty name fields)
   ExprAccessor _ a field ->
     buildM <<< flip Accessor (GetProp field) =<< toBackendExpr a
   ExprUpdate _ a bs ->
