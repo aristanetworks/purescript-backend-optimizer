@@ -63,7 +63,8 @@ derive instance Eq BackendOperator1
 derive instance Ord BackendOperator1
 
 data BackendOperator2
-  = OpBooleanAnd
+  = OpArrayIndex
+  | OpBooleanAnd
   | OpBooleanOr
   | OpBooleanOrd BackendOperatorOrd
   | OpCharOrd BackendOperatorOrd

@@ -8,7 +8,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalMkFn, evalPrimOp)
+import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalApp, evalMkFn, evalPrimOp)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
 
@@ -25,28 +25,36 @@ coreForeignSemantics :: Map (Qualified Ident) ForeignEval
 coreForeignSemantics = Map.fromFoldable semantics
   where
   semantics =
-    [ data_ord_ordInt
+    [ control_monad_st_internal_map
+    , control_monad_st_internal_bind
+    , control_monad_st_internal_pure
+    , data_array_unsafeIndexImpl
+    , data_eq_eqBooleanImpl
+    , data_eq_eqCharImpl
+    , data_eq_eqIntImpl
+    , data_eq_eqNumberImpl
+    , data_eq_eqStringImpl
+    , data_euclideanRing_numDiv
+    , data_heytingAlgebra_boolConj
+    , data_heytingAlgebra_boolDisj
+    , data_heytingAlgebra_boolImplies
+    , data_heytingAlgebra_boolNot
+    , data_ord_ordBoolean
+    , data_ord_ordChar
+    , data_ord_ordInt
     , data_ord_ordNumber
     , data_ord_ordString
-    , data_ord_ordChar
-    , data_ord_ordBoolean
     , data_ring_intSub
+    , data_ring_numSub
     , data_semigroup_concatArray
     , data_semigroup_concatString
     , data_semiring_intAdd
+    , data_semiring_intMul
+    , data_semiring_numAdd
+    , data_semiring_numMul
     , effect_bindE
     , effect_pureE
-    , control_monad_st_internal_bind
-    , control_monad_st_internal_pure
-    , data_heytingAlgebra_boolConj
-    , data_heytingAlgebra_boolDisj
-    , data_heytingAlgebra_boolNot
-    , data_heytingAlgebra_boolImplies
-    , data_eq_eqBooleanImpl
-    , data_eq_eqIntImpl
-    , data_eq_eqNumberImpl
-    , data_eq_eqCharImpl
-    , data_eq_eqStringImpl
+    , partial_unsafe_unsafePartial
     , unsafe_coerce_unsafeCoerce
     ]
       <> map data_function_uncurried_mkFn oneToTen
@@ -66,8 +74,20 @@ effect_pureE = Tuple (qualified "Effect" "pureE") effectPure
 control_monad_st_internal_bind :: ForeignSemantics
 control_monad_st_internal_bind = Tuple (qualified "Control.Monad.ST.Internal" "bind_") effectBind
 
+control_monad_st_internal_map :: ForeignSemantics
+control_monad_st_internal_map = Tuple (qualified "Control.Monad.ST.Internal" "map_") effectMap
+
 control_monad_st_internal_pure :: ForeignSemantics
 control_monad_st_internal_pure = Tuple (qualified "Control.Monad.ST.Internal" "pure_") effectPure
+
+data_array_unsafeIndexImpl :: ForeignSemantics
+data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ a, b ] ] ->
+      Just $ NeutPrimOp (Op2 OpArrayIndex a b)
+    _ ->
+      Nothing
 
 data_eq_eqBooleanImpl :: ForeignSemantics
 data_eq_eqBooleanImpl = Tuple (qualified "Data.Eq" "eqBooleanImpl") $ primBinaryOperator (OpBooleanOrd OpEq)
@@ -102,8 +122,23 @@ data_ord_ordString = Tuple (qualified "Data.Ord" "ordString") $ primOrdOperator 
 data_semiring_intAdd :: ForeignSemantics
 data_semiring_intAdd = Tuple (qualified "Data.Semiring" "intAdd") $ primBinaryOperator (OpIntNum OpAdd)
 
+data_semiring_intMul :: ForeignSemantics
+data_semiring_intMul = Tuple (qualified "Data.Semiring" "intMul") $ primBinaryOperator (OpIntNum OpMultiply)
+
+data_semiring_numAdd :: ForeignSemantics
+data_semiring_numAdd = Tuple (qualified "Data.Semiring" "numAdd") $ primBinaryOperator (OpNumberNum OpAdd)
+
+data_semiring_numMul :: ForeignSemantics
+data_semiring_numMul = Tuple (qualified "Data.Semiring" "numMul") $ primBinaryOperator (OpNumberNum OpMultiply)
+
 data_ring_intSub :: ForeignSemantics
 data_ring_intSub = Tuple (qualified "Data.Ring" "intSub") $ primBinaryOperator (OpIntNum OpSubtract)
+
+data_ring_numSub :: ForeignSemantics
+data_ring_numSub = Tuple (qualified "Data.Ring" "numSub") $ primBinaryOperator (OpNumberNum OpSubtract)
+
+data_euclideanRing_numDiv :: ForeignSemantics
+data_euclideanRing_numDiv = Tuple (qualified "Data.EuclideanRing" "numDiv") $ primBinaryOperator (OpNumberNum OpDivide)
 
 data_function_uncurried_mkFn :: Int -> ForeignSemantics
 data_function_uncurried_mkFn n = Tuple (qualified "Data.Function.Uncurried" ("mkFn" <> show n)) go
@@ -210,6 +245,13 @@ effectBind _ _ = case _ of
     Just $ SemEffectBind ident eff next
   _ -> Nothing
 
+effectMap :: ForeignEval
+effectMap env _ = case _ of
+  [ ExternApp [ fn, val ] ] ->
+    Just $ SemEffectBind Nothing val \nextVal ->
+      SemEffectPure (evalApp env fn [ nextVal ])
+  _ -> Nothing
+
 effectPure :: ForeignEval
 effectPure _ _ = case _ of
   [ ExternApp [ val ] ] ->
@@ -307,3 +349,12 @@ data_semigroup_concatString = Tuple (qualified "Data.Semigroup" "concatString") 
 
 externApp :: Qualified Ident -> Array BackendSemantics -> BackendSemantics
 externApp ident spine = SemExtern ident [ ExternApp spine ] (Lazy.defer \_ -> NeutApp (NeutVar ident) spine)
+
+partial_unsafe_unsafePartial :: ForeignSemantics
+partial_unsafe_unsafePartial = Tuple (qualified "Partial.Unsafe" "_unsafePartial") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ SemLam _ k ] ] ->
+      Just $ k (NeutLit (LitRecord []))
+    _ ->
+      Nothing

@@ -538,6 +538,7 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
         OpNumberOrd op -> opOrd op a b
         OpStringAppend -> opAdd a b
         OpStringOrd op -> opOrd op a b
+        OpArrayIndex -> opArrayIndex a b
 
   binary op n =
     Binary (\a b -> Dodo.words [ a, Dodo.text op, b ]) n n
@@ -596,6 +597,9 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
 
   opArrayLength =
     Unary (\a -> a <> Dodo.text ".length") top top
+
+  opArrayIndex =
+    Binary (\a b -> a <> Dodo.text "[" <> b <> Dodo.text "]") top top
 
   opIsTag (Qualified _ (Ident tag)) = Unary
     ( \a -> Dodo.words
