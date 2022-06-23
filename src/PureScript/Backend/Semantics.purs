@@ -395,10 +395,16 @@ evalPrimOp env = case _ of
             x
         | NeutLit (LitBoolean false) <- y ->
             y
+        | NeutLit (LitBoolean true) <- x
+        , NeutLit (LitBoolean true) <- y ->
+            x
       OpBooleanOr
         | NeutLit (LitBoolean false) <- x ->
             y
         | NeutLit (LitBoolean false) <- y ->
+            x
+        | NeutLit (LitBoolean true) <- x
+        , NeutLit (LitBoolean true) <- y ->
             x
       OpBooleanOrd OpEq
         | NeutLit (LitBoolean bool) <- x ->
