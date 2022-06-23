@@ -59,6 +59,10 @@ test4 = do
 
 foreign import boolValue :: Boolean
 
+test5a = true && true
+
+test5b = true || true
+
 test6 = false && boolValue
 
 test7 = (false || true) && (10 == 12)
