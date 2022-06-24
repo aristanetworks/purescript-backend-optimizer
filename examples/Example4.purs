@@ -61,7 +61,9 @@ foreign import boolValue :: Boolean
 
 test5a = true && true
 
-test5b = true || true
+test5c = true || false
+
+test5d = false || true
 
 test6 = false && boolValue
 
