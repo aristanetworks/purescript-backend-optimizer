@@ -734,7 +734,7 @@ quote = go
       build ctx $ Branch (quoteCond <<< force <$> branches) (quote ctx <<< force <$> def)
       where
       quoteCond (SemConditional a k) =
-        Pair (quote ctx a) (quote ctx (k Nothing))
+        buildPair ctx (quote ctx a) (quote ctx (k Nothing))
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
@@ -806,6 +806,13 @@ build ctx = case _ of
     expr
   expr ->
     buildDefault ctx expr
+
+buildPair :: Ctx -> BackendExpr -> BackendExpr -> Pair BackendExpr
+buildPair ctx p1 = case _ of
+  ExprSyntax _ (Branch [ Pair p2 b ] Nothing) ->
+    Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
+  p2 ->
+    Pair p1 p2
 
 simplifyBranches :: Ctx -> Array (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
 simplifyBranches ctx pairs def = case pairs of
