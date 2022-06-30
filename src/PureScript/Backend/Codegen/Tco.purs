@@ -4,6 +4,7 @@ import Prelude
 
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Bifunctor (bimap)
 import Data.Foldable (foldMap)
@@ -24,7 +25,7 @@ import PureScript.CoreFn (Ident, ModuleName, Qualified(..))
 
 type LocalRef = Tuple (Maybe Ident) Level
 type TcoScope = List TcoScopeItem
-type TcoScopeItem = Tuple Ident (Array TcoRef)
+type TcoScopeItem = Tuple Ident (NonEmptyArray TcoRef)
 
 data TcoRef
   = TcoTopLevel (Qualified Ident)
@@ -35,7 +36,7 @@ derive instance Ord TcoRef
 
 type TcoPop =
   { ident :: Ident
-  , group :: Array TcoRef
+  , group :: NonEmptyArray TcoRef
   , index :: Int
   , stack :: List Ident
   }
@@ -45,7 +46,7 @@ popTcoScope ref = go List.Nil
   where
   go stack = case _ of
     List.Cons (Tuple ident group) rest
-      | Just index <- Array.findIndex (eq ref) group ->
+      | Just index <- NonEmptyArray.findIndex (eq ref) group ->
           Just { ident, group, index, stack }
       | otherwise ->
         go (List.Cons ident stack) rest
@@ -57,7 +58,7 @@ inTcoScope ref = go
   where
   go = case _ of
     List.Cons (Tuple _ group) rest
-      | Array.elem ref group ->
+      | NonEmptyArray.elem ref group ->
           true
       | otherwise ->
           go rest
@@ -160,35 +161,35 @@ tcoRefBinding ref (TcoExpr _ expr) = case expr of
   _ ->
     Nothing
 
-tcoRefBindings :: (Ident -> TcoRef) -> Array (Tuple Ident TcoExpr) -> Maybe (Array TcoRefBinding)
+tcoRefBindings :: (Ident -> TcoRef) -> NonEmptyArray (Tuple Ident TcoExpr) -> Maybe (NonEmptyArray TcoRefBinding)
 tcoRefBindings toTcoRef = traverse \(Tuple ident expr) -> tcoRefBinding (toTcoRef ident) expr
 
-tcoEnvGroup :: (Ident -> TcoRef) -> Array (Tuple Ident NeutralExpr) -> TcoEnv
+tcoEnvGroup :: (Ident -> TcoRef) -> NonEmptyArray (Tuple Ident NeutralExpr) -> TcoEnv
 tcoEnvGroup toTcoRef bindings = do
-  let env = bimap toTcoRef (syntacticArity <<< unwrap) <$> bindings
+  let env = bimap toTcoRef (syntacticArity <<< unwrap) <$> NonEmptyArray.toArray bindings
   Monoid.guard (Array.all (not <<< eq 0 <<< snd) env) env
 
-localTcoRefBindings :: Level -> Array (Tuple Ident TcoExpr) -> Maybe (Array TcoRefBinding)
+localTcoRefBindings :: Level -> NonEmptyArray (Tuple Ident TcoExpr) -> Maybe (NonEmptyArray TcoRefBinding)
 localTcoRefBindings level = tcoRefBindings \ident -> TcoLocal (Just ident) level
 
-localTcoEnvGroup :: Level -> Array (Tuple Ident NeutralExpr) -> TcoEnv
+localTcoEnvGroup :: Level -> NonEmptyArray (Tuple Ident NeutralExpr) -> TcoEnv
 localTcoEnvGroup level = tcoEnvGroup \ident -> TcoLocal (Just ident) level
 
-topLevelTcoRefBindings :: ModuleName -> Array (Tuple Ident TcoExpr) -> Maybe (Array TcoRefBinding)
+topLevelTcoRefBindings :: ModuleName -> NonEmptyArray (Tuple Ident TcoExpr) -> Maybe (NonEmptyArray TcoRefBinding)
 topLevelTcoRefBindings mod = tcoRefBindings (TcoTopLevel <<< Qualified (Just mod))
 
-topLevelTcoEnvGroup :: ModuleName -> Array (Tuple Ident NeutralExpr) -> TcoEnv
+topLevelTcoEnvGroup :: ModuleName -> NonEmptyArray (Tuple Ident NeutralExpr) -> TcoEnv
 topLevelTcoEnvGroup mod = tcoEnvGroup (TcoTopLevel <<< Qualified (Just mod))
 
-isTailCalledIn :: TcoAnalysis -> Array TcoRefBinding -> Boolean
+isTailCalledIn :: TcoAnalysis -> NonEmptyArray TcoRefBinding -> Boolean
 isTailCalledIn analysis group = do
-  let tailCalled = Array.mapMaybe (\b -> isUniformTailCall analysis b.ref b.arity) group
+  let tailCalled = NonEmptyArray.mapMaybe (\b -> isUniformTailCall analysis b.ref b.arity) group
   not (Array.null tailCalled) && Array.all identity tailCalled
 
-tcoRoleIsLoop :: Array TcoRefBinding -> Boolean
-tcoRoleIsLoop group = Array.all (flip isTailCalledIn group <<< _.analysis) group
+tcoRoleIsLoop :: NonEmptyArray TcoRefBinding -> Boolean
+tcoRoleIsLoop group = NonEmptyArray.all (flip isTailCalledIn group <<< _.analysis) group
 
-tcoRoleJoins :: TcoEnv -> TcoAnalysis -> Array TcoRefBinding -> Array TcoRef
+tcoRoleJoins :: TcoEnv -> TcoAnalysis -> NonEmptyArray TcoRefBinding -> Array TcoRef
 tcoRoleJoins env analysis group = do
   guard (isTailCalledIn analysis group)
   Array.nub $ foldMap (\b -> Array.mapMaybe (\(Tuple ref arity) -> ref <$ (guard =<< isUniformTailCall b.analysis ref arity)) env) group

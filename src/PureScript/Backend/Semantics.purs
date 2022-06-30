@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (foldMap, foldl)
+import Data.Foldable (foldMap, foldl, foldr)
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
@@ -25,7 +25,7 @@ import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), ProperName, 
 
 type Spine a = Array a
 
-type RecSpine a = Array (Tuple Ident (Lazy a))
+type RecSpine a = NonEmptyArray (Tuple Ident (Lazy a))
 
 data MkFn a
   = MkFnApplied a
@@ -37,10 +37,10 @@ data BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
-  | SemLetRec (Array (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
+  | SemLetRec (NonEmptyArray (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemEffectPure BackendSemantics
-  | SemBranch (Array (Lazy (SemConditional BackendSemantics))) (Maybe (Lazy BackendSemantics))
+  | SemBranch (NonEmptyArray (Lazy (SemConditional BackendSemantics))) (Maybe (Lazy BackendSemantics))
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
@@ -90,7 +90,7 @@ instance HasSyntax BackendExpr where
     ExprSyntax _ s -> Just s
     _ -> Nothing
 
-data LocalBinding a = One a | Group (Array (Tuple Ident (Lazy a)))
+data LocalBinding a = One a | Group (NonEmptyArray (Tuple Ident (Lazy a)))
 
 data ExternSpine
   = ExternApp (Spine BackendSemantics)
@@ -210,7 +210,7 @@ instance Eval f => Eval (BackendSyntax f) where
             Nothing ->
               evalBranches conds1 Nothing
             Just (Tuple conds2 def') ->
-              evalBranches (conds1 <> conds2) def'
+              evalBranches (NonEmptyArray.appendArray conds1 conds2) def'
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     Lit lit ->
@@ -334,8 +334,8 @@ evalUpdate initEnv initLhs props =
     _ ->
       NeutUpdate lhs props
 
-evalBranches :: Array (Lazy (SemConditional BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
-evalBranches initConds initDef = go [] initConds initDef
+evalBranches :: NonEmptyArray (Lazy (SemConditional BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
+evalBranches initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
   where
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
@@ -348,14 +348,15 @@ evalBranches initConds initDef = go [] initConds initDef
         _ ->
           go (Array.snoc acc head) tail def
     Nothing ->
-      if Array.null acc then
-        case def of
-          Just sem ->
-            force sem
-          Nothing ->
-            NeutFail "Failed pattern match"
-      else
-        SemBranch acc def
+      case NonEmptyArray.fromArray acc of
+        Just bs ->
+          SemBranch bs def
+        Nothing ->
+          case def of
+            Just sem ->
+              force sem
+            Nothing ->
+              NeutFail "Failed pattern match"
 
 evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
 evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (flip eval b <<< addTry env)
@@ -809,13 +810,14 @@ build ctx = case _ of
 
 buildPair :: Ctx -> BackendExpr -> BackendExpr -> Pair BackendExpr
 buildPair ctx p1 = case _ of
-  ExprSyntax _ (Branch [ Pair p2 b ] Nothing) ->
-    Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
+  ExprSyntax _ (Branch bs Nothing)
+    | [ Pair p2 b ] <- NonEmptyArray.toArray bs ->
+        Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
   p2 ->
     Pair p1 p2
 
-simplifyBranches :: Ctx -> Array (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranches ctx pairs def = case pairs of
+simplifyBranches :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
+simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs of
   [ a ]
     | Pair expr (ExprSyntax _ (Lit (LitBoolean true))) <- a
     , ExprSyntax _ (Lit (LitBoolean false)) <- def ->
@@ -828,9 +830,7 @@ simplifyBranches ctx pairs def = case pairs of
     , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot (ExprSyntax _ (Local _ lvl2))))) body2 <- b
     , ExprSyntax _ (Fail _) <- def
     , lvl1 == lvl2 ->
-        Just $ build ctx $ Branch [ Pair expr1 body1 ] (Just body2)
-  [] ->
-    Just def
+        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) (Just body2)
   _
     | ExprSyntax _ (Branch pairs2 def2) <- def ->
         Just $ build ctx (Branch (pairs <> pairs2) def2)

@@ -23,11 +23,11 @@ data BackendSyntax a
   | Update a (Array (Prop a))
   | CtorSaturated (Qualified Ident) ProperName Ident (Array (Tuple Ident a))
   | CtorDef ProperName Ident (Array Ident)
-  | LetRec Level (Array (Tuple Ident a)) a
+  | LetRec Level (NonEmptyArray (Tuple Ident a)) a
   | Let (Maybe Ident) Level a a
   | EffectBind (Maybe Ident) Level a a
   | EffectPure a
-  | Branch (Array (Pair a)) (Maybe a)
+  | Branch (NonEmptyArray (Pair a)) (Maybe a)
   | PrimOp (BackendOperator a)
   | Fail String
 

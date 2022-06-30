@@ -198,14 +198,16 @@ toBackendExpr = case _ of
     foldr go (toBackendExpr body) binds
     where
     go bind' next = case bind' of
-      Rec bindings -> do
-        lvl <- currentLevel
-        let idents = (\(Binding _ ident _) -> ident) <$> bindings
-        join $ (\x y -> buildM (LetRec lvl x y))
-          <$> intro idents lvl (traverse toBackendBinding bindings)
-          <*> intro idents lvl next
       NonRec (Binding _ ident expr) ->
         makeLet (Just ident) (toBackendExpr expr) \_ -> next
+      Rec bindings | Just bindings' <- NonEmptyArray.fromArray bindings -> do
+        lvl <- currentLevel
+        let idents = (\(Binding _ ident _) -> ident) <$> bindings'
+        join $ (\x y -> buildM (LetRec lvl x y))
+          <$> intro idents lvl (traverse toBackendBinding bindings')
+          <*> intro idents lvl next
+      Rec _ ->
+        unsafeCrashWith "CoreFn empty Rec binding group"
   ExprCase _ exprs alts -> do
     foldr
       ( \expr next idents ->
@@ -256,8 +258,10 @@ toBackendExpr = case _ of
   goCaseGuard = case _ of
     Unconditional expr ->
       toBackendExpr expr
-    Guarded gs ->
-      buildM <<< flip Branch Nothing =<< traverse (\(Guard a b) -> Pair <$> toBackendExpr a <*> toBackendExpr b) gs
+    Guarded gs | Just gs' <- NonEmptyArray.fromArray gs ->
+      buildM <<< flip Branch Nothing =<< traverse (\(Guard a b) -> Pair <$> toBackendExpr a <*> toBackendExpr b) gs'
+    Guarded _ ->
+      unsafeCrashWith "CoreFn empty guarded"
 
   goBinders
     :: (List (Tuple Ident Level) -> ConvertM BackendExpr)
@@ -368,11 +372,11 @@ toBackendExpr = case _ of
 
   makeGuard :: Level -> _ -> ConvertM BackendExpr -> ConvertM BackendExpr
   makeGuard lvl g inner =
-    make $ Branch [ Pair (make (g (make (Local Nothing lvl)))) inner ] Nothing
+    make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) Nothing
 
   makeStep :: ConvertM BackendExpr -> ConvertM BackendExpr
   makeStep inner =
-    make $ Branch [ Pair (make (Lit (LitBoolean true))) inner ] Nothing
+    make $ Branch (NonEmptyArray.singleton (Pair (make (Lit (LitBoolean true))) inner)) Nothing
 
   make :: BackendSyntax (ConvertM BackendExpr) -> ConvertM BackendExpr
   make a = buildM =<< sequence a
