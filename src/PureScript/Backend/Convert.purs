@@ -89,7 +89,7 @@ toBackendTopLevelBindingGroup env = case _ of
 
   go recGroup env' (Binding _ ident cfn) = do
     let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
-    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [], directives: env'.directives }
+    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [], directives: env'.directives, try: Nothing }
     let Tuple impl expr' = toImpl recGroup (optimize (getCtx env') evalEnv $ toBackendExpr cfn env')
     { accum: env'
         { implementations = Map.insert (Qualified (Just env'.currentModule) ident) impl env'.implementations
@@ -142,7 +142,6 @@ getCtx :: ConvertEnv -> Ctx
 getCtx env =
   { currentLevel: env.currentLevel
   , lookupExtern: traverse fromImpl <=< flip Map.lookup env.implementations
-  , resumeBranches: Nothing
   }
 
 fromImpl :: Impl -> Maybe NeutralExpr

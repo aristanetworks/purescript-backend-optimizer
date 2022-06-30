@@ -13,11 +13,11 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isNothing)
+import Data.Maybe (Maybe(..))
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String as String
-import Data.Tuple (Tuple(..), fst, uncurry)
+import Data.Tuple (Tuple(..), fst)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
@@ -40,8 +40,7 @@ data BackendSemantics
   | SemLetRec (Array (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemEffectPure BackendSemantics
-  | SemBranch (Array (Pair (Lazy BackendSemantics))) (Maybe (Lazy BackendSemantics))
-  | SemBranchTry BackendSemantics (Array (Pair (Lazy BackendSemantics))) (Maybe (Lazy BackendSemantics))
+  | SemBranch (Array (Lazy (SemConditional BackendSemantics))) (Maybe (Lazy BackendSemantics))
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
@@ -55,6 +54,10 @@ data BackendSemantics
   | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
   | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
   | NeutPrimOp (BackendOperator BackendSemantics)
+
+data SemConditional a = SemConditional a (Maybe (SemTry a) -> a)
+
+type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Maybe (Lazy a))
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
@@ -111,6 +114,7 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: Map EvalRef InlineDirective
+  , try :: Maybe (SemTry BackendSemantics)
   }
 
 derive instance Newtype Env _
@@ -135,6 +139,9 @@ addStop (Env env) ref = Env env
       ref
       env.directives
   }
+
+addTry :: Env -> Maybe (SemTry BackendSemantics) -> Env
+addTry (Env env) try = Env env { try = try }
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -193,8 +200,17 @@ instance Eval f => Eval (BackendSyntax f) where
       evalAccessor env (eval env lhs) accessor
     Update lhs updates ->
       evalUpdate env (eval env lhs) (map (eval env) <$> updates)
-    Branch branches def ->
-      evalBranches (map (\b -> defer \_ -> eval env b) <$> branches) ((\b -> defer \_ -> eval env b) <$> def)
+    Branch branches def -> do
+      let conds1 = evalPair env <$> branches
+      case def of
+        Just def' ->
+          evalBranches conds1 (Just (defer \_ -> eval env def'))
+        Nothing ->
+          case (unwrap env).try of
+            Nothing ->
+              evalBranches conds1 Nothing
+            Just (Tuple conds2 def') ->
+              evalBranches (conds1 <> conds2) def'
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     Lit lit ->
@@ -318,34 +334,31 @@ evalUpdate initEnv initLhs props =
     _ ->
       NeutUpdate lhs props
 
-evalBranches :: Array (Pair (Lazy BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
-evalBranches initBranches initDef = go [] initBranches initDef
+evalBranches :: Array (Lazy (SemConditional BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
+evalBranches initConds initDef = go [] initConds initDef
   where
-  go acc branches def = case Array.uncons branches of
-    Just { head: Pair pred body, tail } ->
-      case force pred of
-        NeutLit (LitBoolean didMatch)
-          | didMatch ->
-              case force body of
-                SemBranch branches' (Just def') ->
-                  go acc branches' (Just def')
-                SemBranch branches' _ ->
-                  go acc (tail <> branches') def
-                other ->
-                  SemBranch acc $ Just $ defer \_ -> SemBranchTry other branches def
-          | otherwise ->
-              go acc tail def
+  go acc conds def = case Array.uncons conds of
+    Just { head, tail } ->
+      case force head of
+        SemConditional (NeutLit (LitBoolean didMatch)) k ->
+          if didMatch then
+            go acc [] (Just (defer \_ -> k (Just (Tuple tail def))))
+          else
+            go acc tail def
         _ ->
-          go (Array.snoc acc (Pair pred body)) tail def
+          go (Array.snoc acc head) tail def
     Nothing ->
       if Array.null acc then
         case def of
           Just sem ->
             force sem
           Nothing ->
-            SemBranch initBranches Nothing
+            NeutFail "Failed pattern match"
       else
         SemBranch acc def
+
+evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
+evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (flip eval b <<< addTry env)
 
 evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 evalAssocLet env sem go = case sem of
@@ -671,7 +684,6 @@ foldl1Array f g arr = go 0 (g (NonEmptyArray.head arr))
 type Ctx =
   { currentLevel :: Int
   , lookupExtern :: Qualified Ident -> Maybe (Tuple BackendAnalysis NeutralExpr)
-  , resumeBranches :: Maybe (Tuple (Array (Pair (Lazy BackendSemantics))) (Maybe (Lazy BackendSemantics)))
   }
 
 nextLevel :: Ctx -> Tuple Level Ctx
@@ -718,23 +730,11 @@ quote = go
       build ctx $ EffectBind ident level (quote ctx binding) $ quote ctx' $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote ctx sem)
-    SemBranch branches def -> do
-      let
-        ctx' = ctx { resumeBranches = Nothing }
-        def' = case def of
-          Nothing ->
-            quote ctx' <<< uncurry evalBranches <$> ctx.resumeBranches
-          Just sem ->
-            Just (quote ctx' (force sem))
-      build ctx' $ Branch (map (quote ctx' <<< force) <$> branches) def'
-    SemBranchTry body branches def -> do
-      let
-        resumeBranches = case ctx.resumeBranches of
-          Just (Tuple prevBranches prevDef) | isNothing def ->
-            Just (Tuple (branches <> prevBranches) prevDef)
-          _ ->
-            Just (Tuple branches def)
-      quote (ctx { resumeBranches = resumeBranches }) body
+    SemBranch branches def ->
+      build ctx $ Branch (quoteCond <<< force <$> branches) (quote ctx <<< force <$> def)
+      where
+      quoteCond (SemConditional a k) =
+        Pair (quote ctx a) (quote ctx (k Nothing))
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
