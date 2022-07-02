@@ -138,6 +138,12 @@ test22 a = do
   discard a k =
     a <> "\n" <> k unit
 
+test23 = case _, _ of
+  _, n | n < 12 -> ""
+  s, n -> case s of
+    Just a -> a
+    Nothing -> show (n - 1)
+
 main :: Effect Unit
 main = do
   Effect.Class.Console.log "Hello"

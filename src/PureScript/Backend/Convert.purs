@@ -273,11 +273,11 @@ toBackendExpr = case _ of
     PatBinder binder next ->
       case binder, stk of
         BinderNull _, _ ->
-          goBinders k store stk next
+          makeStep $ goBinders k store stk next
         BinderVar _ a, List.Cons id _ ->
-          goBinders k (List.Cons (Tuple a id) store) stk next
+          makeStep $ goBinders k (List.Cons (Tuple a id) store) stk next
         BinderNamed _ a b, List.Cons id _ ->
-          goBinders k (List.Cons (Tuple a id) store) stk (PatBinder b next)
+          makeStep $ goBinders k (List.Cons (Tuple a id) store) stk (PatBinder b next)
         BinderLit _ lit, List.Cons id _ -> do
           case lit of
             LitInt n ->

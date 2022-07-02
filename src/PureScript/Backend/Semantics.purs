@@ -893,18 +893,16 @@ isReference = case _ of
   _ -> false
 
 shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
-shouldInlineLet level a b =
-  if true then do
-    let BackendAnalysis s1 = analysisOf a
-    let BackendAnalysis s2 = analysisOf b
-    case Map.lookup level s2.usages of
-      Nothing ->
-        true
-      Just (Usage { captured, count }) ->
-        (s1.complexity == Trivial && s1.size < 5)
-          || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
-          || (isAbs a && (Map.isEmpty s1.usages || s1.size < 32))
-  else false
+shouldInlineLet level a b = do
+  let BackendAnalysis s1 = analysisOf a
+  let BackendAnalysis s2 = analysisOf b
+  case Map.lookup level s2.usages of
+    Nothing ->
+      true
+    Just (Usage { captured, count }) ->
+      (s1.complexity == Trivial && s1.size < 5)
+        || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
+        || (isAbs a && (Map.isEmpty s1.usages || s1.size < 32))
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
@@ -914,23 +912,17 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
       InlineNever -> false
       InlineArity n -> Array.length args == n
   _ ->
-    if true then
-      (s.complexity == Trivial && s.size < 5)
-        || (s.complexity <= Deref && s.size < 5)
-        || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 32)
-    else
-      false
+    (s.complexity == Trivial && s.size < 5)
+      || (s.complexity <= Deref && s.size < 5)
+      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 32)
 
 shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Maybe InlineDirective -> Boolean
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of
   Just InlineAlways -> true
   Just InlineNever -> false
   _ ->
-    if true then
-      (s.complexity == Trivial && s.size < 5)
-        || (s.complexity <= Deref && s.size < 5)
-    else
-      false
+    (s.complexity == Trivial && s.size < 5)
+      || (s.complexity <= Deref && s.size < 5)
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Maybe InlineDirective -> Boolean
 shouldInlineExternLiteral lit = case _ of
