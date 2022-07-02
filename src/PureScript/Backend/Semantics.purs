@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (foldMap, foldl, foldr)
+import Data.Foldable (foldMap, foldl)
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
@@ -204,13 +204,13 @@ instance Eval f => Eval (BackendSyntax f) where
       let conds1 = evalPair env <$> branches
       case def of
         Just def' ->
-          evalBranches conds1 (Just (defer \_ -> eval env def'))
+          evalBranches env conds1 (Just (defer \_ -> eval env def'))
         Nothing ->
           case (unwrap env).try of
             Nothing ->
-              evalBranches conds1 Nothing
+              evalBranches env conds1 Nothing
             Just (Tuple conds2 def') ->
-              evalBranches (NonEmptyArray.appendArray conds1 conds2) def'
+              evalBranches env (NonEmptyArray.appendArray conds1 conds2) def'
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     Lit lit ->
@@ -334,8 +334,8 @@ evalUpdate initEnv initLhs props =
     _ ->
       NeutUpdate lhs props
 
-evalBranches :: NonEmptyArray (Lazy (SemConditional BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
-evalBranches initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
+evalBranches :: Env -> NonEmptyArray (Lazy (SemConditional BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
+evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
   where
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
@@ -731,11 +731,14 @@ quote = go
       build ctx $ EffectBind ident level (quote ctx binding) $ quote ctx' $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote ctx sem)
-    SemBranch branches def ->
-      build ctx $ Branch (quoteCond <<< force <$> branches) (quote ctx <<< force <$> def)
-      where
-      quoteCond (SemConditional a k) =
-        buildPair ctx (quote ctx a) (quote ctx (k Nothing))
+    SemBranch branches def -> do
+      let quoteCond (SemConditional a k) = buildPair ctx (quote ctx a) (quote ctx (k Nothing))
+      let branches' = quoteCond <<< force <$> branches
+      case quote ctx <<< force <$> def of
+        Just def' ->
+          foldr1Array (buildBranchCond ctx) (flip (buildBranchCond ctx) def') branches'
+        Nothing ->
+          build ctx $ Branch branches' Nothing
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
@@ -815,6 +818,31 @@ buildPair ctx p1 = case _ of
         Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
   p2 ->
     Pair p1 p2
+
+buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
+buildBranchCond ctx (Pair a b) c = case b of
+  ExprSyntax _ (Lit (LitBoolean bool1))
+    | ExprSyntax _ (Lit (LitBoolean bool2)) <- c ->
+        if bool1 then
+          if bool2 then c
+          else a
+        else if bool2 then c
+        else build ctx (PrimOp (Op1 OpBooleanNot a))
+    | ExprSyntax _ x <- c, isBooleanTail x ->
+        if bool1 then
+          build ctx (PrimOp (Op2 OpBooleanOr a c))
+        else
+          build ctx (PrimOp (Op2 OpBooleanOr (build ctx (PrimOp (Op1 OpBooleanNot a))) c))
+  _ ->
+    build ctx (Branch (NonEmptyArray.singleton (Pair a b)) (Just c))
+
+isBooleanTail :: forall a. BackendSyntax a -> Boolean
+isBooleanTail = case _ of
+  Lit _ -> true
+  Var _ -> true
+  Local _ _ -> true
+  PrimOp _ -> true
+  _ -> false
 
 simplifyBranches :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
 simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs of
