@@ -9,12 +9,14 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (fold)
 import Data.FoldableWithIndex (foldrWithIndex)
 import Data.Function (on)
+import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, mapAccumL, sequence, traverse)
@@ -26,7 +28,7 @@ import PureScript.Backend.Analysis (BackendAnalysis)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef, ExternSpine, Impl(..), InlineDirective, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -36,15 +38,27 @@ type BackendBindingGroup a b =
 type BackendModule =
   { name :: ModuleName
   , imports :: Array ModuleName
+  , dataTypes :: Map ProperName DataTypeMeta
   , bindings :: Array (BackendBindingGroup Ident NeutralExpr)
   , exports :: Array (Tuple Ident (Qualified Ident))
   , foreign :: Array Ident
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis Impl)
   }
 
+type DataTypeMeta =
+  { constructors :: Map Ident CtorMeta
+  , size :: Int
+  }
+
+type CtorMeta =
+  { fields :: Array String
+  , tag :: Int
+  }
+
 type ConvertEnv =
   { currentLevel :: Int
   , currentModule :: ModuleName
+  , dataTypes :: Map ProperName DataTypeMeta
   , toLevel :: Map Ident Level
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis Impl)
   , deps :: Set ModuleName
@@ -55,9 +69,33 @@ type ConvertM = Function ConvertEnv
 
 toBackendModule :: Module Ann -> ConvertM BackendModule
 toBackendModule (Module mod) env = do
-  let moduleBindings = toBackendTopLevelBindingGroups mod.decls env
+  let
+    ctors = do
+      Binding _ _ value <- mod.decls >>= case _ of
+        Rec bindings -> bindings
+        NonRec binding -> pure binding
+      case value of
+        ExprConstructor _ dataTy ctor fields ->
+          pure $ Tuple dataTy (Tuple ctor fields)
+        _ -> []
+
+    dataTypes = ctors
+      # Array.groupAllBy (comparing fst)
+      # map
+          ( \group -> do
+              let proper = fst $ NonEmptyArray.head group
+              let constructors = Map.fromFoldable $ mapWithIndex (\tag (Tuple _ (Tuple ctor fields)) -> Tuple ctor { fields, tag }) group
+              let sizes = Array.length <<< snd <<< snd <$> group
+              Tuple proper { constructors, size: maximum sizes }
+          )
+      # Map.fromFoldable
+
+    moduleBindings =
+      toBackendTopLevelBindingGroups mod.decls env { dataTypes = dataTypes }
+
   { name: mod.name
   , imports: Array.filter (not <<< (eq mod.name || eq (ModuleName "Prim"))) $ Set.toUnfoldable moduleBindings.accum.deps
+  , dataTypes
   , bindings: moduleBindings.value
   , exports: fold
       [ map (\a -> Tuple a (Qualified Nothing a)) mod.exports
@@ -103,9 +141,9 @@ toImpl = case _, _ of
   group, ExprSyntax analysis (Lit (LitRecord props)) -> do
     let propsWithAnalysis = map freeze <$> props
     Tuple (Tuple analysis (ImplDict (fold group) propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
-  _, expr@(ExprSyntax _ (CtorDef ty tag fields)) -> do
+  _, expr@(ExprSyntax _ (CtorDef ct ty tag fields)) -> do
     let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ImplCtor ty tag fields)) expr'
+    Tuple (Tuple analysis (ImplCtor ct ty tag fields)) expr'
   Just group, expr -> do
     let Tuple analysis expr' = freeze expr
     Tuple (Tuple analysis (ImplRec group expr')) expr'
@@ -149,7 +187,7 @@ fromImpl = case _ of
   ImplExpr a -> Just a
   ImplRec _ a -> Just a
   ImplDict _ _ -> Nothing
-  ImplCtor _ _ _ -> Nothing
+  ImplCtor _ _ _ _ -> Nothing
 
 levelUp :: forall a. ConvertM a -> ConvertM a
 levelUp f env = f (env { currentLevel = env.currentLevel + 1 })
@@ -178,8 +216,13 @@ toBackendExpr = case _ of
         buildM (Var qi)
   ExprLit _ lit ->
     buildM <<< Lit =<< traverse toBackendExpr lit
-  ExprConstructor _ ty name fields ->
-    buildM (CtorDef ty name fields)
+  ExprConstructor _ ty name fields -> do
+    { dataTypes } <- ask
+    let
+      ct = case Map.lookup ty dataTypes of
+        Just { constructors } | Map.size constructors == 1 -> ProductType
+        _ -> SumType
+    buildM (CtorDef ct ty name fields)
   ExprAccessor _ a field ->
     buildM <<< flip Accessor (GetProp field) =<< toBackendExpr a
   ExprUpdate _ a bs ->

@@ -108,7 +108,7 @@ derive instance functorBinding :: Functor Binding
 data Expr a
   = ExprVar a (Qualified Ident)
   | ExprLit a (Literal (Expr a))
-  | ExprConstructor a ProperName Ident (Array Ident)
+  | ExprConstructor a ProperName Ident (Array String)
   | ExprAccessor a (Expr a) String
   | ExprUpdate a (Expr a) (Array (Prop (Expr a)))
   | ExprAbs a Ident (Expr a)

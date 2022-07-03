@@ -7,7 +7,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Traversable (class Foldable, class Traversable, foldMap, foldlDefault, foldrDefault, sequenceDefault, traverse)
 import Data.Tuple (Tuple)
-import PureScript.CoreFn (Ident, Literal(..), Prop, ProperName, Qualified)
+import PureScript.CoreFn (ConstructorType, Ident, Literal(..), Prop, ProperName, Qualified)
 
 data BackendSyntax a
   = Var (Qualified Ident)
@@ -21,8 +21,8 @@ data BackendSyntax a
   | UncurriedEffectAbs (Array (Tuple (Maybe Ident) Level)) a
   | Accessor a BackendAccessor
   | Update a (Array (Prop a))
-  | CtorSaturated (Qualified Ident) ProperName Ident (Array (Tuple Ident a))
-  | CtorDef ProperName Ident (Array Ident)
+  | CtorSaturated (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
+  | CtorDef ConstructorType ProperName Ident (Array String)
   | LetRec Level (NonEmptyArray (Tuple Ident a)) a
   | Let (Maybe Ident) Level a a
   | EffectBind (Maybe Ident) Level a a
@@ -131,8 +131,8 @@ instance Foldable BackendSyntax where
     EffectPure a -> f a
     Branch as b -> foldMap (foldMap f) as <> foldMap f b
     PrimOp a -> foldMap f a
-    CtorSaturated _ _ _ ds -> foldMap (foldMap f) ds
-    CtorDef _ _ _ -> mempty
+    CtorSaturated _ _ _ _ es -> foldMap (foldMap f) es
+    CtorDef _ _ _ _ -> mempty
     Fail _ -> mempty
 
 instance Traversable BackendSyntax where
@@ -167,10 +167,10 @@ instance Traversable BackendSyntax where
       flip Accessor b <$> f a
     Update a bs ->
       Update <$> f a <*> traverse (traverse f) bs
-    CtorDef a b cs ->
-      pure (CtorDef a b cs)
-    CtorSaturated a b c ds ->
-      CtorSaturated a b c <$> traverse (traverse f) ds
+    CtorDef a b c ds ->
+      pure (CtorDef a b c ds)
+    CtorSaturated a b c d es ->
+      CtorSaturated a b c d <$> traverse (traverse f) es
     LetRec lvl as b ->
       LetRec lvl <$> traverse (traverse f) as <*> f b
     Let ident lvl b c ->

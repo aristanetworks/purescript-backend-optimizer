@@ -195,9 +195,9 @@ analyze externAnalysis expr = case expr of
     analysis = noTailCall $ complex NonTrivial $ analyzeDefault expr
   Update _ _ ->
     noTailCall $ complex NonTrivial $ analyzeDefault expr
-  CtorSaturated (Qualified mn _) _ _ cs ->
+  CtorSaturated (Qualified mn _) _ _ _ cs ->
     noTailCall $ bump (foldMap (foldMap analysisOf) cs <> foldMap usedDep mn)
-  CtorDef _ _ _ ->
+  CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Branch _ _ ->
     complex NonTrivial $ analyzeDefault expr

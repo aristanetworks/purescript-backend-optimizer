@@ -21,7 +21,7 @@ import Data.Tuple (Tuple(..), fst)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
-import PureScript.CoreFn (Ident, Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
+import PureScript.CoreFn (ConstructorType, Ident, Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
 type Spine a = Array a
 
@@ -44,8 +44,8 @@ data BackendSemantics
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
-  | NeutData (Qualified Ident) ProperName Ident (Array (Tuple Ident BackendSemantics))
-  | NeutCtorDef (Qualified Ident) ProperName Ident (Array Ident)
+  | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
+  | NeutCtorDef (Qualified Ident) ConstructorType ProperName Ident (Array String)
   | NeutApp BackendSemantics (Spine BackendSemantics)
   | NeutAccessor BackendSemantics BackendAccessor
   | NeutUpdate BackendSemantics (Array (Prop BackendSemantics))
@@ -78,7 +78,7 @@ data Impl
   = ImplExpr NeutralExpr
   | ImplRec (Array (Qualified Ident)) NeutralExpr
   | ImplDict (Array (Qualified Ident)) (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
-  | ImplCtor ProperName Ident (Array Ident)
+  | ImplCtor ConstructorType ProperName Ident (Array String)
 
 instance HasAnalysis BackendExpr where
   analysisOf = case _ of
@@ -217,10 +217,10 @@ instance Eval f => Eval (BackendSyntax f) where
       NeutLit (eval env <$> lit)
     Fail err ->
       NeutFail err
-    CtorDef ty tag fields ->
-      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ty tag fields
-    CtorSaturated qual ty tag fields ->
-      NeutData qual ty tag (map (eval env) <$> fields)
+    CtorDef ct ty tag fields ->
+      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
+    CtorSaturated qual ct ty tag fields ->
+      NeutData qual ct ty tag (map (eval env) <$> fields)
 
 instance Eval BackendExpr where
   eval = go
@@ -319,7 +319,7 @@ evalAccessor initEnv initLhs accessor =
       | GetIndex n <- accessor
       , Just sem <- Array.index values n ->
           sem
-    NeutData _ _ _ fields
+    NeutData _ _ _ _ fields
       | GetOffset n <- accessor
       , Just (Tuple _ sem) <- Array.index fields n ->
           sem
@@ -393,7 +393,7 @@ evalPrimOp env = case _ of
         evalPrimOpNot op
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, NeutData b _ _ _ ->
+      OpIsTag a, NeutData b _ _ _ _ ->
         liftBoolean (a == b)
       OpArrayLength, NeutLit (LitArray arr) ->
         liftInt (Array.length arr)
@@ -595,12 +595,12 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
         Just $ evalApp env (eval env body) args
       _, _ ->
         Nothing
-  ImplCtor ty tag fields ->
+  ImplCtor ct ty tag fields ->
     case fields, spine of
       [], [] ->
-        Just $ NeutData qual ty tag []
+        Just $ NeutData qual ct ty tag []
       _, [ ExternApp args ] | Array.length fields == Array.length args ->
-        Just $ NeutData qual ty tag $ Array.zip fields args
+        Just $ NeutData qual ct ty tag $ Array.zip fields args
       _, _ ->
         Nothing
   ImplDict group props ->
@@ -745,12 +745,12 @@ quote = go
       build ctx $ Var qual
     NeutStop qual ->
       buildStop ctx qual
-    NeutData qual _ _ [] ->
+    NeutData qual _ _ _ [] ->
       build ctx $ Var qual
-    NeutData qual ty tag values ->
-      build ctx $ CtorSaturated qual ty tag (map (quote ctx) <$> values)
-    NeutCtorDef _ ty tag fields ->
-      build ctx $ CtorDef ty tag fields
+    NeutData qual ct ty tag values ->
+      build ctx $ CtorSaturated qual ct ty tag (map (quote ctx) <$> values)
+    NeutCtorDef _ ct ty tag fields ->
+      build ctx $ CtorDef ct ty tag fields
     NeutUncurriedApp hd spine -> do
       let hd' = quote ctx hd
       build ctx $ UncurriedApp hd' (quote ctx <$> spine)
@@ -902,7 +902,7 @@ shouldInlineLet level a b = do
     Just (Usage { captured, count }) ->
       (s1.complexity == Trivial && s1.size < 5)
         || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
-        || (isAbs a && (Map.isEmpty s1.usages || s1.size < 32))
+        || (isAbs a && (count == 1 || Map.isEmpty s1.usages || s1.size < 16))
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
@@ -914,7 +914,7 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
   _ ->
     (s.complexity == Trivial && s.size < 5)
       || (s.complexity <= Deref && s.size < 5)
-      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 32)
+      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 16)
 
 shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Maybe InlineDirective -> Boolean
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of

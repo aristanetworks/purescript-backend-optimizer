@@ -143,7 +143,7 @@ compileModules dirName = case _ of
         List.Cons coreFnMod@(Module { name, foreign: foreignIdents, path }) mods -> do
           Console.log $ unwrap name
           let modPath = Path.concat [ outputDir, esModulePath name ]
-          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty, directives: defaultDirectives }
+          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty, directives: defaultDirectives, dataTypes: Map.empty }
           let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 0.5 }) $ esCodegenModule backendMod
           writeTextFile UTF8 modPath formatted
           unless (Array.null foreignIdents) do
