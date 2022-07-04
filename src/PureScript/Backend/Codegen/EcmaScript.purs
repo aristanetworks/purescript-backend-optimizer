@@ -312,13 +312,7 @@ esCodegenBlockStatements = go []
       go (Array.snoc acc line) mode env body
     EffectBind ident lvl eff body | mode.effect -> do
       let Tuple newIdent env' = freshName ident lvl env
-      let
-        -- TODO: handle left associated effect binddings
-        line = Statement $ esBinding newIdent $ case eff of
-          TcoExpr _ (EffectBind _ _ _ _) ->
-            esApp (Dodo.text "(" <> esCodegenExpr env eff <> Dodo.text ")") []
-          _ ->
-            esApp (esCodegenExpr env eff) []
+      let line = Statement $ esBinding newIdent $ esApp (esCodegenExpr env eff) []
       go (Array.snoc acc line) mode env' body
     EffectPure expr' | mode.effect ->
       acc <> esCodegenBlockReturn (mode { effect = false }) env expr'
