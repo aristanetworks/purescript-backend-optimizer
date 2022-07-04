@@ -128,19 +128,24 @@ esCodegenModule mod@{ name: ModuleName this } = do
     moduleBindings =
       Array.cons { recursive: false, bindings: foreignBindings } mod.bindings
 
+    allExports = fold
+      [ map ((\ty -> Tuple (esCtorIdent ty) (Qualified Nothing (esCtorIdent ty))) <<< fst) dataTypes
+      , map (\(Tuple ident _) -> Tuple ident (Qualified Nothing ident)) (_.bindings =<< moduleBindings)
+      , Array.filter (\(Tuple _ (Qualified mn _)) -> maybe false (notEq mod.name) mn) mod.exports
+      ]
+
+    exportsByPath = allExports
+      # Array.groupAllBy (comparing (qualifiedModuleName <<< snd))
+      # map (\as -> Tuple (esModulePath <$> qualifiedModuleName (snd (NonEmptyArray.head as))) (map unQualified <$> as))
+
+    dataTypes = Map.toUnfoldable mod.dataTypes
+
     codegenEnv :: CodegenEnv
     codegenEnv =
       { currentModule: mod.name
       , bound: Map.empty
       , names: Map.empty
       }
-
-    exportsByPath = mod.exports
-      # append ((\ty -> Tuple (esCtorIdent ty) (Qualified Nothing (esCtorIdent ty))) <<< fst <$> dataTypes)
-      # Array.groupAllBy (comparing (qualifiedModuleName <<< snd))
-      # map (\as -> Tuple (esModulePath <$> qualifiedModuleName (snd (NonEmptyArray.head as))) (map unQualified <$> as))
-
-    dataTypes = Map.toUnfoldable mod.dataTypes
 
   esBlockStatements $ fold
     [ (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
