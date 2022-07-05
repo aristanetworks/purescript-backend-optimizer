@@ -205,6 +205,8 @@ analyze externAnalysis expr = case expr of
     noTailCall $ complex NonTrivial $ analyzeDefault expr
   PrimOp _ ->
     noTailCall $ complex NonTrivial $ analyzeDefault expr
+  PrimEffect _ ->
+    noTailCall $ complex NonTrivial $ analyzeDefault expr
   Accessor _ _ ->
     noTailCall $ complex Deref $ analyzeDefault expr
   Lit _ ->

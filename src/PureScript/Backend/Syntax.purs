@@ -29,6 +29,7 @@ data BackendSyntax a
   | EffectPure a
   | Branch (NonEmptyArray (Pair a)) (Maybe a)
   | PrimOp (BackendOperator a)
+  | PrimEffect (BackendEffect a)
   | Fail String
 
 newtype Level = Level Int
@@ -104,6 +105,11 @@ data BackendOperatorOrd
 derive instance Eq BackendOperatorOrd
 derive instance Ord BackendOperatorOrd
 
+data BackendEffect a
+  = EffectRefNew a
+  | EffectRefRead a
+  | EffectRefWrite a a
+
 derive instance Functor BackendSyntax
 
 instance Foldable BackendSyntax where
@@ -131,6 +137,7 @@ instance Foldable BackendSyntax where
     EffectPure a -> f a
     Branch as b -> foldMap (foldMap f) as <> foldMap f b
     PrimOp a -> foldMap f a
+    PrimEffect a -> foldMap f a
     CtorSaturated _ _ _ _ es -> foldMap (foldMap f) es
     CtorDef _ _ _ _ -> mempty
     Fail _ -> mempty
@@ -183,6 +190,8 @@ instance Traversable BackendSyntax where
       Branch <$> traverse (traverse f) as <*> traverse f b
     PrimOp a ->
       PrimOp <$> traverse f a
+    PrimEffect a ->
+      PrimEffect <$> traverse f a
     Fail a ->
       pure (Fail a)
 
@@ -211,6 +220,23 @@ instance Traversable BackendOperator where
   traverse f = case _ of
     Op1 a b -> Op1 a <$> f b
     Op2 a b c -> Op2 a <$> f b <*> f c
+
+derive instance Functor BackendEffect
+
+instance Foldable BackendEffect where
+  foldr a = foldrDefault a
+  foldl a = foldlDefault a
+  foldMap f = case _ of
+    EffectRefNew a -> f a
+    EffectRefRead a -> f a
+    EffectRefWrite a b -> f a <> f b
+
+instance Traversable BackendEffect where
+  sequence a = sequenceDefault a
+  traverse f = case _ of
+    EffectRefNew a -> EffectRefNew <$> f a
+    EffectRefRead a -> EffectRefRead <$> f a
+    EffectRefWrite a b -> EffectRefWrite <$> f a <*> f b
 
 class HasSyntax a where
   syntaxOf :: a -> Maybe (BackendSyntax a)

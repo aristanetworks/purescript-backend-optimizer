@@ -26,11 +26,12 @@ import Data.Traversable (class Traversable, Accum, mapAccumL, traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoPop)
+import PureScript.Backend.Analysis (Usage(..))
+import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule, DataTypeMeta)
 import PureScript.Backend.Semantics (NeutralExpr(..))
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), qualifiedModuleName, unQualified)
 
 data CodegenName = CodegenIdent Ident
@@ -203,6 +204,8 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCtor ct (Qualified qual (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
   PrimOp op ->
     esCodegenPrimOp env op
+  PrimEffect _ ->
+    esCodegenEffectBlock env tcoExpr
   Fail str ->
     esError str
   Branch _ _ ->
@@ -215,6 +218,24 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenEffectBlock env tcoExpr
   EffectPure _ ->
     esCodegenEffectBlock env tcoExpr
+
+esCodegenBindEffect :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
+esCodegenBindEffect env expr@(TcoExpr _ expr') = case expr' of
+  UncurriedEffectApp a bs ->
+    esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+  PrimEffect a ->
+    esCodegenPrimEffect env a
+  _ ->
+    esApp (esCodegenExpr env expr) []
+
+esCodegenPrimEffect :: forall a. CodegenEnv -> BackendEffect TcoExpr -> Dodo.Doc a
+esCodegenPrimEffect env = case _ of
+  EffectRefNew a ->
+    esRecord [ Prop "value" (esCodegenExpr env a) ]
+  EffectRefRead a ->
+    esAccessor (esCodegenExpr env a) "value"
+  EffectRefWrite a b ->
+    esAssignRef (esCodegenExpr env a) (esCodegenExpr env b)
 
 esCodegenLit :: forall a. CodegenEnv -> Literal TcoExpr -> Dodo.Doc a
 esCodegenLit env = case _ of
@@ -308,17 +329,15 @@ esCodegenBlockStatements = go []
     UncurriedEffectApp a bs | mode.effect -> do
       let line = esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
       Array.snoc acc (Return line)
-    EffectBind ident lvl (TcoExpr _ (UncurriedEffectApp a bs)) body | mode.effect -> do
-      let Tuple newIdent env' = freshName ident lvl env
-      let line = Statement $ esBinding newIdent (esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs))
-      go (Array.snoc acc line) mode env' body
-    EffectBind (Just (Ident "$__unused")) _ eff body | mode.effect -> do
-      let line = Statement $ esApp (esCodegenExpr env eff) []
-      go (Array.snoc acc line) mode env body
-    EffectBind ident lvl eff body | mode.effect -> do
-      let Tuple newIdent env' = freshName ident lvl env
-      let line = Statement $ esBinding newIdent $ esApp (esCodegenExpr env eff) []
-      go (Array.snoc acc line) mode env' body
+    EffectBind ident lvl eff body@(TcoExpr (TcoAnalysis { usages }) _) | mode.effect -> do
+      let binding = esCodegenBindEffect env eff
+      case Map.lookup (TcoLocal ident lvl) usages of
+        Just (Usage { count }) | count > 0 -> do
+          let Tuple newIdent env' = freshName ident lvl env
+          let line = Statement $ esBinding newIdent binding
+          go (Array.snoc acc line) mode env' body
+        _ -> do
+          go (Array.snoc acc (Statement binding)) mode env body
     EffectPure expr' | mode.effect ->
       acc <> esCodegenBlockReturn (mode { effect = false }) env expr'
     App (TcoExpr _ (Local ident lvl)) bs
@@ -335,15 +354,23 @@ esCodegenBlockReturn :: forall a. BlockMode -> CodegenEnv -> TcoExpr -> Array (E
 esCodegenBlockReturn mode env tcoExpr@(TcoExpr _ expr)
   | Just tco <- Tco.unwindTcoScope mode.tcoScope =
       esCodegenTcoReturn mode tco (esCodegenExpr env tcoExpr)
-  | otherwise = do
-      let doc = esCodegenExpr env tcoExpr
-      case expr of
-        Lit (LitRecord _) ->
-          [ ReturnObject doc ]
-        _ | mode.effect ->
-          [ Return (esApp doc []) ]
-        _ ->
-          [ Return doc ]
+  | otherwise = case expr of
+      PrimEffect eff | mode.effect -> do
+        let doc = esCodegenPrimEffect env eff
+        case eff of
+          EffectRefNew _ ->
+            [ ReturnObject doc ]
+          _ ->
+            [ Return doc ]
+      _ -> do
+        let doc = esCodegenExpr env tcoExpr
+        case expr of
+          Lit (LitRecord _) ->
+            [ ReturnObject doc ]
+          _ | mode.effect ->
+            [ Return (esApp doc []) ]
+          _ ->
+            [ Return doc ]
 
 esCodegenBlockBranches :: forall a. BlockMode -> CodegenEnv -> NonEmptyArray (Pair TcoExpr) -> Maybe TcoExpr -> Dodo.Doc a
 esCodegenBlockBranches mode env bs def = esBranches (go <$> bs) (esCodegenBlockStatements mode env <$> def)
@@ -801,6 +828,16 @@ esAssignProp ident (Prop prop val) = fold
   , Dodo.text "="
   , Dodo.space
   , val
+  ]
+
+esAssignRef :: forall a. Dodo.Doc a -> Dodo.Doc a -> Dodo.Doc a
+esAssignRef lhs rhs = fold
+  [ lhs
+  , Dodo.text ".value"
+  , Dodo.space
+  , Dodo.text "="
+  , Dodo.space
+  , rhs
   ]
 
 esAccessor :: forall a. Dodo.Doc a -> String -> Dodo.Doc a

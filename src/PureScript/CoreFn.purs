@@ -59,6 +59,7 @@ data Meta
   | IsTypeClassConstructor
   | IsForeign
   | IsWhere
+  | IsSyntheticApp
 
 derive instance eqMeta :: Eq Meta
 derive instance ordMeta :: Ord Meta

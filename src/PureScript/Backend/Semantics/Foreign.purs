@@ -9,7 +9,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalApp, evalMkFn, evalPrimOp)
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
+import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
 
 type ForeignEval =
@@ -28,6 +28,10 @@ coreForeignSemantics = Map.fromFoldable semantics
     [ control_monad_st_internal_map
     , control_monad_st_internal_bind
     , control_monad_st_internal_pure
+    , control_monad_st_internal_new
+    , control_monad_st_internal_read
+    , control_monad_st_internal_write
+    , control_monad_st_internal_modify
     , data_array_unsafeIndexImpl
     , data_eq_eqBooleanImpl
     , data_eq_eqCharImpl
@@ -54,6 +58,10 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_semiring_numMul
     , effect_bindE
     , effect_pureE
+    , effect_ref_new
+    , effect_ref_read
+    , effect_ref_write
+    , effect_ref_modify
     , partial_unsafe_unsafePartial
     , unsafe_coerce_unsafeCoerce
     ]
@@ -71,6 +79,18 @@ effect_bindE = Tuple (qualified "Effect" "bindE") effectBind
 effect_pureE :: ForeignSemantics
 effect_pureE = Tuple (qualified "Effect" "pureE") effectPure
 
+effect_ref_new :: ForeignSemantics
+effect_ref_new = Tuple (qualified "Effect.Ref" "_new") effectRefNew
+
+effect_ref_read :: ForeignSemantics
+effect_ref_read = Tuple (qualified "Effect.Ref" "read") effectRefRead
+
+effect_ref_write :: ForeignSemantics
+effect_ref_write = Tuple (qualified "Effect.Ref" "write") effectRefWrite
+
+effect_ref_modify :: ForeignSemantics
+effect_ref_modify = Tuple (qualified "Effect.Ref" "modify") effectRefModify
+
 control_monad_st_internal_bind :: ForeignSemantics
 control_monad_st_internal_bind = Tuple (qualified "Control.Monad.ST.Internal" "bind_") effectBind
 
@@ -79,6 +99,18 @@ control_monad_st_internal_map = Tuple (qualified "Control.Monad.ST.Internal" "ma
 
 control_monad_st_internal_pure :: ForeignSemantics
 control_monad_st_internal_pure = Tuple (qualified "Control.Monad.ST.Internal" "pure_") effectPure
+
+control_monad_st_internal_new :: ForeignSemantics
+control_monad_st_internal_new = Tuple (qualified "Control.Monad.ST.Internal" "new") effectRefNew
+
+control_monad_st_internal_read :: ForeignSemantics
+control_monad_st_internal_read = Tuple (qualified "Control.Monad.ST.Internal" "read") effectRefRead
+
+control_monad_st_internal_write :: ForeignSemantics
+control_monad_st_internal_write = Tuple (qualified "Control.Monad.ST.Internal" "write") effectRefWrite
+
+control_monad_st_internal_modify :: ForeignSemantics
+control_monad_st_internal_modify = Tuple (qualified "Control.Monad.ST.Internal" "modify") effectRefModify
 
 data_array_unsafeIndexImpl :: ForeignSemantics
 data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") go
@@ -257,6 +289,33 @@ effectPure _ _ = case _ of
   [ ExternApp [ val ] ] ->
     Just $ SemEffectPure val
   _ -> Nothing
+
+effectRefNew :: ForeignEval
+effectRefNew _ _ = case _ of
+  [ ExternApp [ val ] ] ->
+    Just $ NeutPrimEffect $ EffectRefNew val
+  _ -> Nothing
+
+effectRefRead :: ForeignEval
+effectRefRead _ _ = case _ of
+  [ ExternApp [ val ] ] ->
+    Just $ NeutPrimEffect $ EffectRefRead val
+  _ -> Nothing
+
+effectRefWrite :: ForeignEval
+effectRefWrite _ _ = case _ of
+  [ ExternApp [ val, ref ] ] ->
+    Just $ NeutPrimEffect $ EffectRefWrite ref val
+  _ -> Nothing
+
+effectRefModify :: ForeignEval
+effectRefModify env _ = case _ of
+  [ ExternApp [ fn, ref ] ] ->
+    Just $ SemLet Nothing ref \ref' ->
+      SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
+        NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn [ val ])
+  _ ->
+    Nothing
 
 isQualified :: String -> String -> Qualified Ident -> Boolean
 isQualified mod tag = case _ of

@@ -20,7 +20,7 @@ import Data.String as String
 import Data.Tuple (Tuple(..), fst)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
-import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (ConstructorType, Ident, Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
 type Spine a = Array a
@@ -54,6 +54,7 @@ data BackendSemantics
   | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
   | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
   | NeutPrimOp (BackendOperator BackendSemantics)
+  | NeutPrimEffect (BackendEffect BackendSemantics)
 
 data SemConditional a = SemConditional a (Maybe (SemTry a) -> a)
 
@@ -214,6 +215,8 @@ instance Eval f => Eval (BackendSyntax f) where
               evalBranches env (NonEmptyArray.appendArray conds1 conds2) def'
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
+    PrimEffect eff ->
+      NeutPrimEffect $ eval env <$> eff
     Lit lit ->
       NeutLit (eval env <$> lit)
     Fail err ->
@@ -597,9 +600,9 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
   ImplExpr expr -> do
     let directive = Map.lookup (EvalExtern qual Nothing) e.directives
     case expr, spine of
-      NeutralExpr (Var _), [] ->
-        Just $ eval env expr
       NeutralExpr (Lit lit), [] | shouldInlineExternLiteral lit directive ->
+        Just $ eval env expr
+      _, [] | shouldInlineExternReference qual analysis expr directive ->
         Just $ eval env expr
       body, [ ExternApp args ] | shouldInlineExternApp qual analysis body args directive ->
         Just $ evalApp env (eval env body) args
@@ -782,6 +785,8 @@ quote = go
       build ctx $ Lit (quote ctx <$> lit)
     NeutPrimOp op ->
       build ctx $ PrimOp (quote ctx <$> op)
+    NeutPrimEffect eff ->
+      build ctx $ PrimEffect (quote ctx <$> eff)
     NeutFail err ->
       build ctx $ Fail err
 
@@ -924,6 +929,16 @@ shouldInlineLet level a b = do
         || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
         || (isAbs a && (count == 1 || Map.isEmpty s1.usages || s1.size < 16))
 
+shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Maybe InlineDirective -> Boolean
+shouldInlineExternReference _ (BackendAnalysis s) _ = case _ of
+  Just dir ->
+    case dir of
+      InlineAlways -> true
+      InlineNever -> false
+      InlineArity _ -> false
+  _ ->
+    s.complexity <= Deref && s.size < 16
+
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
   Just dir ->
@@ -932,17 +947,14 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
       InlineNever -> false
       InlineArity n -> Array.length args == n
   _ ->
-    (s.complexity == Trivial && s.size < 5)
-      || (s.complexity <= Deref && s.size < 5)
+    (s.complexity <= Deref && s.size < 16)
       || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 16)
 
 shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Maybe InlineDirective -> Boolean
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of
   Just InlineAlways -> true
   Just InlineNever -> false
-  _ ->
-    (s.complexity == Trivial && s.size < 5)
-      || (s.complexity <= Deref && s.size < 5)
+  _ -> s.complexity <= Deref && s.size < 16
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Maybe InlineDirective -> Boolean
 shouldInlineExternLiteral lit = case _ of

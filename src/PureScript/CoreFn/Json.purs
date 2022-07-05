@@ -76,6 +76,8 @@ decodeMeta json = do
       pure IsForeign
     "IsWhere" ->
       pure IsWhere
+    "IsSyntheticApp" ->
+      pure IsSyntheticApp
     _ ->
       throwError $ TypeMismatch "Meta"
 
