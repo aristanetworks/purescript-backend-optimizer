@@ -7,7 +7,7 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Either (Either(..))
-import Data.Foldable (class Foldable, fold, foldMap, foldl, foldr, maximum)
+import Data.Foldable (class Foldable, any, fold, foldMap, foldl, foldr, maximum)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List)
 import Data.List as List
@@ -127,11 +127,42 @@ esCodegenModule mod@{ name: ModuleName this } = do
       mod.foreign
 
     moduleBindings =
-      Array.cons { recursive: false, bindings: foreignBindings } mod.bindings
+      Array.cons { recursive: false, bindings: foreignBindings } mod.bindings >>= case _ of
+        group@{ recursive: true } ->
+          [ group ]
+        { recursive: false, bindings } ->
+          { recursive: false, bindings: _ } <<< pure <$> bindings
+
+    codegenEnv :: CodegenEnv
+    codegenEnv =
+      { currentModule: mod.name
+      , bound: Map.empty
+      , names: Map.empty
+      }
+
+    exported = Set.fromFoldable $ map
+      ( \(Tuple _ qual) -> case qual of
+          Qualified Nothing ident -> Qualified (Just mod.name) ident
+          _ -> qual
+      )
+      mod.exports
+
+    docBindings =
+      esCodegenTopLevelBindingGroup codegenEnv <$> moduleBindings
+
+    usedBindings = foldr
+      ( \{ group, used, lines } acc ->
+          if any (flip Set.member exported) group || any (flip Set.member acc.used) group then
+            { used: used <> acc.used, lines: lines <> acc.lines }
+          else
+            acc
+      )
+      { used: Set.empty, lines: [] }
+      docBindings
 
     allExports = fold
       [ map ((\ty -> Tuple (esCtorIdent ty) (Qualified Nothing (esCtorIdent ty))) <<< fst) dataTypes
-      , map (\(Tuple ident _) -> Tuple ident (Qualified Nothing ident)) (_.bindings =<< moduleBindings)
+      , Array.mapMaybe (\(Qualified qual ident) -> guard (maybe true (eq mod.name) qual) $> Tuple ident (Qualified Nothing ident)) $ Set.toUnfoldable (usedBindings.used <> exported)
       , Array.filter (\(Tuple _ (Qualified mn _)) -> maybe false (notEq mod.name) mn) mod.exports
       ]
 
@@ -141,18 +172,11 @@ esCodegenModule mod@{ name: ModuleName this } = do
 
     dataTypes = Map.toUnfoldable mod.dataTypes
 
-    codegenEnv :: CodegenEnv
-    codegenEnv =
-      { currentModule: mod.name
-      , bound: Map.empty
-      , names: Map.empty
-      }
-
   esBlockStatements $ fold
     [ (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
     , map (Statement <<< uncurry esCtorForType) dataTypes
-    , map Statement $ esCodegenTopLevelBindingGroup codegenEnv =<< moduleBindings
+    , map Statement usedBindings.lines
     , map (Statement <<< uncurry (maybe (esExports Nothing) (esExports <<< Just))) exportsByPath
     , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esExportAllFrom (esForeignModulePath mod.name)) ]
     ]
@@ -382,26 +406,44 @@ esCodegenBlockBranches mode env bs def = esBranches (go <$> bs) (esCodegenBlockS
     _ ->
       Tuple (esCodegenExpr env a) (esCodegenBlockStatements mode env b)
 
-esCodegenTopLevelBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident NeutralExpr -> Array (Dodo.Doc a)
+type TopLevelBindingGroup a =
+  { used :: Set (Qualified Ident)
+  , group :: Set (Qualified Ident)
+  , lines :: Array (Dodo.Doc a)
+  }
+
+esCodegenTopLevelBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident NeutralExpr -> TopLevelBindingGroup a
 esCodegenTopLevelBindingGroup env { recursive, bindings }
   | recursive, Just bindings' <- NonEmptyArray.fromArray bindings = do
       let group = Tco.topLevelTcoEnvGroup env.currentModule bindings'
       let bindings'' = map (Tco.analyze group) <$> bindings'
       let tcoRefBindings = Tco.topLevelTcoRefBindings env.currentModule bindings''
       let isLoop = maybe false Tco.tcoRoleIsLoop tcoRefBindings
+      let used = foldMap (Tco.usedTopLevel <<< Tco.tcoAnalysisOf <<< snd) bindings''
+      let groupNames = Set.fromFoldable $ map (Qualified (Just env.currentModule) <<< fst) bindings'
       case toTcoBindings { isLoop, joins: [] } bindings'' of
         Just tco -> do
           let tcoNames = _.name <$> tco
           let tcoIdent = esTcoMutualIdent tcoNames
           let tcoRefs = Tuple tcoIdent $ TcoTopLevel <<< Qualified (Just env.currentModule) <$> tcoNames
           let mode = pushTcoScope tcoRefs pureMode
-          pure $ esCodegenTcoMutualLoopBinding mode (boundTopLevel tcoIdent env) tcoIdent (NonEmptyArray.zip tcoNames tco)
+          { used: Set.difference used groupNames
+          , group: groupNames
+          , lines: pure $ esCodegenTcoMutualLoopBinding mode (boundTopLevel tcoIdent env) tcoIdent (NonEmptyArray.zip tcoNames tco)
+          }
         Nothing -> do
           let names = fst <$> bindings'
           let fwdRefs = esFwdRef <$> names
-          NonEmptyArray.toArray $ fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env b)) bindings''
-  | otherwise =
-      map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env (Tco.analyze [] b))) bindings
+          { used: Set.difference used groupNames
+          , group: groupNames
+          , lines: NonEmptyArray.toArray $ fwdRefs <> map (\(Tuple ident b) -> esAssign ident (esCodegenExpr env b)) bindings''
+          }
+  | otherwise = do
+      let bindings' = map (Tco.analyze []) <$> bindings
+      { used: foldMap (Tco.usedTopLevel <<< Tco.tcoAnalysisOf <<< snd) bindings'
+      , group: Set.fromFoldable $ map (Qualified (Just env.currentModule) <<< fst) bindings'
+      , lines: map (\(Tuple ident b) -> esBinding ident (esCodegenExpr env b)) bindings'
+      }
 
 esCodegenBindingGroup :: forall a. CodegenEnv -> BackendBindingGroup Ident TcoExpr -> Array (Dodo.Doc a)
 esCodegenBindingGroup env { recursive, bindings }

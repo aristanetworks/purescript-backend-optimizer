@@ -25,7 +25,7 @@ import Effect.Class.Console as Console
 import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Analysis (BackendAnalysis)
-import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef, ExternSpine, Impl(..), InlineDirective, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef, ExternSpine, ExternImpl(..), InlineDirective, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
@@ -42,7 +42,7 @@ type BackendModule =
   , bindings :: Array (BackendBindingGroup Ident NeutralExpr)
   , exports :: Array (Tuple Ident (Qualified Ident))
   , foreign :: Array Ident
-  , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis Impl)
+  , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
   }
 
 type DataTypeMeta =
@@ -60,7 +60,7 @@ type ConvertEnv =
   , currentModule :: ModuleName
   , dataTypes :: Map ProperName DataTypeMeta
   , toLevel :: Map Ident Level
-  , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis Impl)
+  , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
   , deps :: Set ModuleName
   , directives :: Map EvalRef InlineDirective
   }
@@ -118,38 +118,38 @@ toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (Bac
 toBackendTopLevelBindingGroup env = case _ of
   Rec bindings -> do
     let group = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
-    overValue { recursive: true, bindings: _ } $ mapAccumL (go (Just group)) env bindings
+    mapAccumL (toTopLevelBackendBinding group) env bindings
+      # overValue { recursive: true, bindings: _ }
   NonRec binding ->
-    overValue { recursive: false, bindings: _ } $ mapAccumL (go Nothing) env (pure binding)
+    mapAccumL (toTopLevelBackendBinding []) env [ binding ]
+      # overValue { recursive: false, bindings: _ }
   where
   overValue f a =
     a { value = f a.value }
 
-  go recGroup env' (Binding _ ident cfn) = do
-    let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
-    let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env', locals: [], directives: env'.directives, try: Nothing }
-    let Tuple impl expr' = toImpl recGroup (optimize (getCtx env') evalEnv $ toBackendExpr cfn env')
-    { accum: env'
-        { implementations = Map.insert (Qualified (Just env'.currentModule) ident) impl env'.implementations
-        , deps = Set.union (unwrap (fst impl)).deps env'.deps
-        }
-    , value: Tuple ident expr'
-    }
+toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv ->  Binding Ann -> Accum ConvertEnv (Tuple Ident NeutralExpr)
+toTopLevelBackendBinding group env (Binding _ ident cfn) = do
+  let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
+  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, try: Nothing }
+  let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv $ toBackendExpr cfn env)
+  { accum: env
+      { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
+      , deps = Set.union (unwrap (fst impl)).deps env.deps
+      }
+  , value: Tuple ident expr'
+  }
 
-toImpl :: Maybe (Array (Qualified Ident)) -> BackendExpr -> Tuple (Tuple BackendAnalysis Impl) NeutralExpr
-toImpl = case _, _ of
-  group, ExprSyntax analysis (Lit (LitRecord props)) -> do
+toExternImpl :: Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr
+toExternImpl group expr = case expr of
+  ExprSyntax analysis (Lit (LitRecord props)) -> do
     let propsWithAnalysis = map freeze <$> props
-    Tuple (Tuple analysis (ImplDict (fold group) propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
-  _, expr@(ExprSyntax _ (CtorDef ct ty tag fields)) -> do
+    Tuple (Tuple analysis (ExternDict group propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
+  ExprSyntax _ (CtorDef ct ty tag fields) -> do
     let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ImplCtor ct ty tag fields)) expr'
-  Just group, expr -> do
+    Tuple (Tuple analysis (ExternCtor ct ty tag fields)) expr'
+  _ -> do
     let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ImplRec group expr')) expr'
-  Nothing, expr -> do
-    let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ImplExpr expr')) expr'
+    Tuple (Tuple analysis (ExternExpr group expr')) expr'
 
 topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }
@@ -179,15 +179,14 @@ buildM a env = build (getCtx env) a
 getCtx :: ConvertEnv -> Ctx
 getCtx env =
   { currentLevel: env.currentLevel
-  , lookupExtern: traverse fromImpl <=< flip Map.lookup env.implementations
+  , lookupExtern: traverse fromExternImpl <=< flip Map.lookup env.implementations
   }
 
-fromImpl :: Impl -> Maybe NeutralExpr
-fromImpl = case _ of
-  ImplExpr a -> Just a
-  ImplRec _ a -> Just a
-  ImplDict _ _ -> Nothing
-  ImplCtor _ _ _ _ -> Nothing
+fromExternImpl :: ExternImpl -> Maybe NeutralExpr
+fromExternImpl = case _ of
+  ExternExpr _ a -> Just a
+  ExternDict _ _ -> Nothing
+  ExternCtor _ _ _ _ -> Nothing
 
 levelUp :: forall a. ConvertM a -> ConvertM a
 levelUp f env = f (env { currentLevel = env.currentLevel + 1 })
@@ -212,6 +211,8 @@ toBackendExpr = case _ of
         buildM (Local (Just ident) lvl)
       Qualified (Just mn) ident | mn == currentModule, Just lvl <- Map.lookup ident toLevel ->
         buildM (Local (Just ident) lvl)
+      Qualified Nothing ident ->
+        buildM (Var (Qualified (Just currentModule) ident))
       _ ->
         buildM (Var qi)
   ExprLit _ lit ->

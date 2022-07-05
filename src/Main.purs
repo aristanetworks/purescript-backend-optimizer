@@ -106,7 +106,7 @@ argParser = ArgParser.choose "command"
 
 defaultDirectives :: Map EvalRef InlineDirective
 defaultDirectives = Map.fromFoldable
-  [ Tuple (EvalExtern (qualified "Control.Semigroupoid" "semigroupoidFn") (Just (GetProp "compose"))) InlineAlways
+  [ Tuple (EvalExtern (qualified "Control.Semigroupoid" "semigroupoidFn") (Just (GetProp "compose"))) (InlineArity 1)
   , Tuple (EvalExtern (qualified "Control.Category" "categoryFn") (Just (GetProp "identity"))) InlineAlways
   , Tuple (EvalExtern (qualified "Data.Function" "const") Nothing) (InlineArity 1)
   , Tuple (EvalExtern (qualified "Effect.Ref" "modify") Nothing) (InlineArity 2)

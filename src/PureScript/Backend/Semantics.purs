@@ -76,11 +76,10 @@ data BackendRewrite
   | RewriteEffectBindAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
 
-data Impl
-  = ImplExpr NeutralExpr
-  | ImplRec (Array (Qualified Ident)) NeutralExpr
-  | ImplDict (Array (Qualified Ident)) (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
-  | ImplCtor ConstructorType ProperName Ident (Array String)
+data ExternImpl
+  = ExternExpr (Array (Qualified Ident)) NeutralExpr
+  | ExternDict (Array (Qualified Ident)) (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
+  | ExternCtor ConstructorType ProperName Ident (Array String)
 
 instance HasAnalysis BackendExpr where
   analysisOf = case _ of
@@ -595,9 +594,9 @@ evalExtern env@(Env e) qual spine = case spine of
       Nothing ->
         SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
 
-evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis Impl -> Array ExternSpine -> Maybe BackendSemantics
+evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
-  ImplExpr expr -> do
+  ExternExpr [] expr -> do
     let directive = Map.lookup (EvalExtern qual Nothing) e.directives
     case expr, spine of
       NeutralExpr (Lit lit), [] | shouldInlineExternLiteral lit directive ->
@@ -608,7 +607,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
         Just $ evalApp env (eval env body) args
       _, _ ->
         Nothing
-  ImplCtor ct ty tag fields ->
+  ExternCtor ct ty tag fields ->
     case fields, spine of
       [], [] ->
         Just $ NeutData qual ct ty tag []
@@ -616,7 +615,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
         Just $ NeutData qual ct ty tag $ Array.zip fields args
       _, _ ->
         Nothing
-  ImplDict group props ->
+  ExternDict group props ->
     case spine of
       [ ExternAccessor acc@(GetProp prop), ExternApp args ] | Just (Tuple analysis' body) <- findProp prop props -> do
         let ref = EvalExtern qual (Just acc)
@@ -925,7 +924,8 @@ shouldInlineLet level a b = do
     Nothing ->
       true
     Just (Usage { captured, count }) ->
-      (s1.complexity == Trivial && s1.size < 5)
+      (s1.complexity <= Trivial && s1.size < 5)
+        || (s1.complexity == TopLevelDeref)
         || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
         || (isAbs a && (count == 1 || Map.isEmpty s1.usages || s1.size < 16))
 

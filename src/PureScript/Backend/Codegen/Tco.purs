@@ -15,6 +15,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid as Monoid
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd)
@@ -105,6 +106,13 @@ type TcoRole =
   { joins :: Array TcoRef
   , isLoop :: Boolean
   }
+
+usedTopLevel :: TcoAnalysis -> Set (Qualified Ident)
+usedTopLevel (TcoAnalysis { usages }) = usages
+  # Map.keys
+  # Set.mapMaybe case _ of
+      TcoTopLevel qual -> Just qual
+      TcoLocal _ _ -> Nothing
 
 noTcoRole :: TcoRole
 noTcoRole = { joins: [], isLoop: false }

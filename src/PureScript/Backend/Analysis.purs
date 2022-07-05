@@ -10,7 +10,6 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, over)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.Set.NonEmpty as NonEmptySet
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Syntax (class HasSyntax, BackendSyntax(..), Level, syntaxOf)
@@ -34,7 +33,7 @@ instance Semigroup Usage where
 instance Monoid Usage where
   mempty = Usage { count: 0, captured: false, arities: Set.empty }
 
-data Complexity = Trivial | Deref | NonTrivial
+data Complexity = Trivial | TopLevelDeref | Deref | NonTrivial
 
 derive instance Eq Complexity
 derive instance Ord Complexity
@@ -43,6 +42,8 @@ instance Semigroup Complexity where
   append = case _, _ of
     Trivial, a -> a
     b, Trivial -> b
+    TopLevelDeref, a -> a
+    b, TopLevelDeref -> b
     Deref, a -> a
     b, Deref -> b
     _, _ -> NonTrivial
@@ -57,7 +58,6 @@ newtype BackendAnalysis = BackendAnalysis
   , args :: Array Usage
   , rewrite :: Boolean
   , deps :: Set ModuleName
-  , tailCalls :: Map Level Int
   }
 
 derive instance Newtype BackendAnalysis _
@@ -70,7 +70,6 @@ instance Semigroup BackendAnalysis where
     , args: []
     , rewrite: a.rewrite || b.rewrite
     , deps: Set.union a.deps b.deps
-    , tailCalls: Map.unionWith add a.tailCalls b.tailCalls
     }
 
 instance Monoid BackendAnalysis where
@@ -81,7 +80,6 @@ instance Monoid BackendAnalysis where
     , args: []
     , rewrite: false
     , deps: Set.empty
-    , tailCalls: Map.empty
     }
 
 bound :: Level -> BackendAnalysis -> BackendAnalysis
@@ -126,25 +124,6 @@ callArity lvl arity (BackendAnalysis s) = BackendAnalysis s
   { usages = Map.update (Just <<< over Usage (\us -> us { arities = Set.insert arity us.arities })) lvl s.usages
   }
 
-tailCalled :: Level -> BackendAnalysis -> BackendAnalysis
-tailCalled level (BackendAnalysis s) = BackendAnalysis s { tailCalls = Map.alter go level s.tailCalls }
-  where
-  go = case _ of
-    Nothing -> Just 1
-    Just n -> Just (n + 1)
-
-noTailCall :: BackendAnalysis -> BackendAnalysis
-noTailCall (BackendAnalysis s) = BackendAnalysis s { tailCalls = Map.empty }
-
-isUniformTailCall :: Level -> BackendAnalysis -> Maybe Int
-isUniformTailCall level (BackendAnalysis s) = do
-  Usage { count, arities } <- Map.lookup level s.usages
-  tailCalls <- Map.lookup level s.tailCalls
-  { head, tail } <- Array.uncons <<< NonEmptySet.toUnfoldable =<< NonEmptySet.fromSet arities
-  case tail of
-    [] | count == tailCalls -> Just head
-    _ -> Nothing
-
 class HasAnalysis a where
   analysisOf :: a -> BackendAnalysis
 
@@ -156,61 +135,69 @@ analyze externAnalysis expr = case expr of
   Local _ lvl ->
     bump (used lvl)
   Let _ lvl a b ->
-    bump (complex NonTrivial (noTailCall (analysisOf a) <> bound lvl (analysisOf b)))
+    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
   LetRec lvl as b ->
-    bump (complex NonTrivial (bound lvl (foldMap (noTailCall <<< analysisOf <<< snd) as <> analysisOf b)))
+    bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
   EffectBind _ lvl a b ->
-    noTailCall $ bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
   EffectPure a ->
-    noTailCall $ bump (analysisOf a)
+    bump (analysisOf a)
   Abs args _ ->
-    noTailCall $ complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedAbs args _ ->
-    noTailCall $ complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedApp hd tl | BackendAnalysis { args } <- analysisOf hd ->
     withArgs (Array.drop (Array.length tl) args) case syntaxOf hd of
       Just (Local _ lvl) ->
-        tailCalled lvl $ callArity lvl (Array.length tl) analysis
+        callArity lvl (Array.length tl) analysis
       _ ->
         analysis
     where
-    analysis = noTailCall $ complex NonTrivial $ analyzeDefault expr
+    analysis = complex NonTrivial $ analyzeDefault expr
   UncurriedEffectAbs args _ ->
-    noTailCall $ complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedEffectApp hd tl | BackendAnalysis { args } <- analysisOf hd ->
     withArgs (Array.drop (Array.length tl) args) case syntaxOf hd of
       Just (Local _ lvl) ->
-        tailCalled lvl $ callArity lvl (Array.length tl) analysis
+        callArity lvl (Array.length tl) analysis
       _ ->
         analysis
     where
-    analysis = noTailCall $ complex NonTrivial $ analyzeDefault expr
+    analysis = complex NonTrivial $ analyzeDefault expr
   App hd tl | BackendAnalysis { args } <- analysisOf hd ->
     withArgs (Array.drop (NonEmptyArray.length tl) args) case syntaxOf hd of
       Just (Local _ lvl) ->
-        tailCalled lvl $ callArity lvl (NonEmptyArray.length tl) analysis
+        callArity lvl (NonEmptyArray.length tl) analysis
       _ ->
         analysis
     where
-    analysis = noTailCall $ complex NonTrivial $ analyzeDefault expr
+    analysis = complex NonTrivial $ analyzeDefault expr
   Update _ _ ->
-    noTailCall $ complex NonTrivial $ analyzeDefault expr
+    complex NonTrivial $ analyzeDefault expr
   CtorSaturated (Qualified mn _) _ _ _ cs ->
-    noTailCall $ bump (foldMap (foldMap analysisOf) cs <> foldMap usedDep mn)
+    bump (foldMap (foldMap analysisOf) cs <> foldMap usedDep mn)
   CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Branch _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Fail _ ->
-    noTailCall $ complex NonTrivial $ analyzeDefault expr
+    complex NonTrivial $ analyzeDefault expr
   PrimOp _ ->
-    noTailCall $ complex NonTrivial $ analyzeDefault expr
+    complex NonTrivial $ analyzeDefault expr
   PrimEffect _ ->
-    noTailCall $ complex NonTrivial $ analyzeDefault expr
-  Accessor _ _ ->
-    noTailCall $ complex Deref $ analyzeDefault expr
+    complex NonTrivial $ analyzeDefault expr
+  Accessor hd _ ->
+    case syntaxOf hd of
+      Just (Accessor _ _) ->
+        analysis
+      Just (Var _) ->
+        complex TopLevelDeref analysis
+      _ ->
+        complex Deref analysis
+    where
+    analysis = analyzeDefault expr
   Lit _ ->
-    noTailCall $ analyzeDefault expr
+    analyzeDefault expr
 
 analyzeDefault :: forall a. HasAnalysis a => BackendSyntax a -> BackendAnalysis
 analyzeDefault = bump <<< foldMap analysisOf
