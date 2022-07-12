@@ -19,6 +19,7 @@ You can edit this file as you like.
   , "foldable-traversable"
   , "foreign-object"
   , "integers"
+  , "language-cst-parser"
   , "lazy"
   , "lists"
   , "maybe"
