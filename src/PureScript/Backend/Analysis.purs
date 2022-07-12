@@ -13,7 +13,7 @@ import Data.Set as Set
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Syntax (class HasSyntax, BackendSyntax(..), Level, syntaxOf)
-import PureScript.CoreFn (Ident, ModuleName, Qualified(..))
+import PureScript.CoreFn (Ident, Literal(..), ModuleName, Qualified(..))
 
 newtype Usage = Usage
   { count :: Int
@@ -33,20 +33,13 @@ instance Semigroup Usage where
 instance Monoid Usage where
   mempty = Usage { count: 0, captured: false, arities: Set.empty }
 
-data Complexity = Trivial | TopLevelDeref | Deref | NonTrivial
+data Complexity = Trivial | Deref | Known | NonTrivial
 
 derive instance Eq Complexity
 derive instance Ord Complexity
 
 instance Semigroup Complexity where
-  append = case _, _ of
-    Trivial, a -> a
-    b, Trivial -> b
-    TopLevelDeref, a -> a
-    b, TopLevelDeref -> b
-    Deref, a -> a
-    b, Deref -> b
-    _, _ -> NonTrivial
+  append = max
 
 instance Monoid Complexity where
   mempty = Trivial
@@ -114,7 +107,7 @@ bump :: BackendAnalysis -> BackendAnalysis
 bump (BackendAnalysis s) = BackendAnalysis s { size = s.size + 1 }
 
 complex :: Complexity -> BackendAnalysis -> BackendAnalysis
-complex complexity (BackendAnalysis s) = BackendAnalysis s { complexity = complexity }
+complex complexity (BackendAnalysis s) = BackendAnalysis s { complexity = s.complexity <> complexity }
 
 capture :: BackendAnalysis -> BackendAnalysis
 capture (BackendAnalysis s) = BackendAnalysis s { usages = over Usage _ { captured = true } <$> s.usages }
@@ -146,8 +139,8 @@ analyze externAnalysis expr = case expr of
     complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedAbs args _ ->
     complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
-  UncurriedApp hd tl | BackendAnalysis { args } <- analysisOf hd ->
-    withArgs (Array.drop (Array.length tl) args) case syntaxOf hd of
+  UncurriedApp hd tl ->
+    case syntaxOf hd of
       Just (Local _ lvl) ->
         callArity lvl (Array.length tl) analysis
       _ ->
@@ -156,8 +149,8 @@ analyze externAnalysis expr = case expr of
     analysis = complex NonTrivial $ analyzeDefault expr
   UncurriedEffectAbs args _ ->
     complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
-  UncurriedEffectApp hd tl | BackendAnalysis { args } <- analysisOf hd ->
-    withArgs (Array.drop (Array.length tl) args) case syntaxOf hd of
+  UncurriedEffectApp hd tl ->
+    case syntaxOf hd of
       Just (Local _ lvl) ->
         callArity lvl (Array.length tl) analysis
       _ ->
@@ -165,13 +158,19 @@ analyze externAnalysis expr = case expr of
     where
     analysis = complex NonTrivial $ analyzeDefault expr
   App hd tl | BackendAnalysis { args } <- analysisOf hd ->
-    withArgs (Array.drop (NonEmptyArray.length tl) args) case syntaxOf hd of
+    withArgs remainingArgs case syntaxOf hd of
       Just (Local _ lvl) ->
         callArity lvl (NonEmptyArray.length tl) analysis
       _ ->
         analysis
     where
-    analysis = complex NonTrivial $ analyzeDefault expr
+    remainingArgs =
+      Array.drop (NonEmptyArray.length tl) args
+    analysis
+      | Array.null remainingArgs =
+          complex NonTrivial $ analyzeDefault expr
+      | otherwise =
+          analyzeDefault expr
   Update _ _ ->
     complex NonTrivial $ analyzeDefault expr
   CtorSaturated (Qualified mn _) _ _ _ cs ->
@@ -191,13 +190,23 @@ analyze externAnalysis expr = case expr of
       Just (Accessor _ _) ->
         analysis
       Just (Var _) ->
-        complex TopLevelDeref analysis
+        complex Trivial analysis
       _ ->
         complex Deref analysis
     where
     analysis = analyzeDefault expr
-  Lit _ ->
-    analyzeDefault expr
+  Lit lit ->
+    case lit of
+      LitArray as | Array.length as > 0 ->
+        complex Known analysis
+      LitRecord ps | Array.length ps > 0 ->
+        complex Known analysis
+      LitString _ ->
+        complex Known analysis
+      _ ->
+        complex Trivial analysis
+    where
+    analysis = analyzeDefault expr
 
 analyzeDefault :: forall a. HasAnalysis a => BackendSyntax a -> BackendAnalysis
 analyzeDefault = bump <<< foldMap analysisOf

@@ -25,7 +25,7 @@ import Effect.Class.Console as Console
 import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Analysis (BackendAnalysis)
-import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef, ExternSpine, ExternImpl(..), InlineDirective, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
@@ -131,10 +131,19 @@ toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv ->  Binding An
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, try: Nothing }
-  let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv $ toBackendExpr cfn env)
+  let backendExpr = toBackendExpr cfn env
+  let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv backendExpr)
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
       , deps = Set.union (unwrap (fst impl)).deps env.deps
+      , directives = case impl of
+          Tuple _ (ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)))
+            | Just (InlineArity n) <- Map.lookup (EvalExtern qual Nothing) env.directives
+            , arity <- NonEmptyArray.length args
+            , arity < n ->
+                Map.insert (EvalExtern (Qualified (Just env.currentModule) ident) Nothing) (InlineArity (n - arity)) env.directives
+          _ ->
+            env.directives
       }
   , value: Tuple ident expr'
   }

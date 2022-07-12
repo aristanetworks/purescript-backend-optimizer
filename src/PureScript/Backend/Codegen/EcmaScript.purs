@@ -193,11 +193,16 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenIdent (rename ident lvl env)
   Lit lit ->
     esCodegenLit env lit
-  App a bs
-    | [ TcoExpr _ (Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined"))) ] <- NonEmptyArray.toArray bs ->
-        esApp (esCodegenExpr env a) []
-    | otherwise ->
-        esCurriedApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+  App a bs ->
+    foldl
+      ( \hd -> case _ of
+          TcoExpr _ (Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined"))) ->
+            esApp hd []
+          arg ->
+            esApp hd [ esCodegenExpr env arg ]
+      )
+      (esCodegenExpr env a)
+      bs
   Abs idents body
     | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
         esFn [] (esCodegenBlockStatements pureMode env body)
@@ -390,6 +395,8 @@ esCodegenBlockReturn mode env tcoExpr@(TcoExpr _ expr)
         let doc = esCodegenExpr env tcoExpr
         case expr of
           Lit (LitRecord _) ->
+            [ ReturnObject doc ]
+          Update _ _ ->
             [ ReturnObject doc ]
           _ | mode.effect ->
             [ Return (esApp doc []) ]
@@ -1023,9 +1030,6 @@ esApp a bs =
     a <> Dodo.Common.jsParens args
   where
   args = Dodo.foldWithSeparator Dodo.Common.trailingComma bs
-
-esCurriedApp :: forall a. Dodo.Doc a -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
-esCurriedApp = foldl (\a b -> esApp a [ b ])
 
 esIfElse :: forall f a. Foldable f => f (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
 esIfElse conds default = Dodo.lines

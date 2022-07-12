@@ -343,6 +343,8 @@ evalUpdate initEnv initLhs props =
   evalAssocLet initEnv initLhs \_ lhs -> case lhs of
     NeutLit (LitRecord props') ->
       NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
+    NeutUpdate r props' ->
+      NeutUpdate r (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))
     _ ->
       NeutUpdate lhs props
 
@@ -924,9 +926,9 @@ shouldInlineLet level a b = do
     Nothing ->
       true
     Just (Usage { captured, count }) ->
-      (s1.complexity <= Trivial && s1.size < 5)
-        || (s1.complexity == TopLevelDeref)
+      (s1.complexity == Trivial)
         || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
+        || (s1.complexity == Known && count == 1)
         || (isAbs a && (count == 1 || Map.isEmpty s1.usages || s1.size < 16))
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Maybe InlineDirective -> Boolean
@@ -973,6 +975,8 @@ shouldInlineExternLiteral lit = case _ of
 isAbs :: BackendExpr -> Boolean
 isAbs = syntaxOf >>> case _ of
   Just (Abs _ _) -> true
+  Just (UncurriedAbs _ _) -> true
+  Just (UncurriedEffectAbs _ _) -> true
   _ -> false
 
 newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
@@ -980,13 +984,17 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 derive instance Newtype NeutralExpr _
 
 optimize :: Ctx -> Env -> BackendExpr -> BackendExpr
-optimize ctx env expr1 = do
-  let expr2 = quote ctx (eval env expr1)
-  case expr2 of
-    ExprSyntax (BackendAnalysis { rewrite }) _ | not rewrite ->
-      expr2
-    _ ->
-      optimize ctx env expr2
+optimize ctx env = go 10000
+  where
+  go n expr1
+    | n == 0 = expr1 -- unsafeCrashWith "Possible infinite optimization loop."
+    | otherwise = do
+        let expr2 = quote ctx (eval env expr1)
+        case expr2 of
+          ExprSyntax (BackendAnalysis { rewrite }) _ | not rewrite ->
+            expr2
+          _ ->
+            go (n - 1) expr2
 
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) (go init)

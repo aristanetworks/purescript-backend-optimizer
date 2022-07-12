@@ -13,6 +13,9 @@ You can edit this file as you like.
   , "partial"
   , "prelude"
   , "random"
+  , "record"
+  , "heterogeneous"
+  , "variant"
   ]
 , packages = ../packages.dhall
 , sources = [ "./*.purs" ]

@@ -8,9 +8,9 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalApp, evalMkFn, evalPrimOp)
+import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUpdate, liftBoolean)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
-import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Qualified(..))
+import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
 
 type ForeignEval =
   Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
@@ -25,13 +25,13 @@ coreForeignSemantics :: Map (Qualified Ident) ForeignEval
 coreForeignSemantics = Map.fromFoldable semantics
   where
   semantics =
-    [ control_monad_st_internal_map
-    , control_monad_st_internal_bind
-    , control_monad_st_internal_pure
+    [ control_monad_st_internal_bind
+    , control_monad_st_internal_map
+    , control_monad_st_internal_modify
     , control_monad_st_internal_new
+    , control_monad_st_internal_pure
     , control_monad_st_internal_read
     , control_monad_st_internal_write
-    , control_monad_st_internal_modify
     , data_array_unsafeIndexImpl
     , data_eq_eqBooleanImpl
     , data_eq_eqCharImpl
@@ -58,11 +58,20 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_semiring_numMul
     , effect_bindE
     , effect_pureE
+    , effect_ref_modify
     , effect_ref_new
     , effect_ref_read
     , effect_ref_write
-    , effect_ref_modify
     , partial_unsafe_unsafePartial
+    , record_builder_copyRecord
+    , record_builder_unsafeDelete
+    , record_builder_unsafeInsert
+    , record_builder_unsafeModify
+    , record_builder_unsafeRename
+    , record_unsafe_unsafeDelete
+    , record_unsafe_unsafeGet
+    , record_unsafe_unsafeHas
+    , record_unsafe_unsafeSet
     , unsafe_coerce_unsafeCoerce
     ]
       <> map data_function_uncurried_mkFn oneToTen
@@ -415,5 +424,124 @@ partial_unsafe_unsafePartial = Tuple (qualified "Partial.Unsafe" "_unsafePartial
   go _ _ = case _ of
     [ ExternApp [ SemLam _ k ] ] ->
       Just $ k (NeutLit (LitRecord []))
+    _ ->
+      Nothing
+
+record_builder_copyRecord :: ForeignSemantics
+record_builder_copyRecord = Tuple (qualified "Record.Builder" "copyRecord") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ r@(NeutLit (LitRecord _)) ] ] ->
+      Just r
+    [ ExternApp [ r@(NeutUpdate _ _) ] ] ->
+      Just r
+    _ ->
+      Nothing
+
+record_builder_unsafeInsert :: ForeignSemantics
+record_builder_unsafeInsert = Tuple (qualified "Record.Builder" "unsafeInsert") go
+  where
+  go env _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), value, NeutLit (LitRecord props) ] ] ->
+      Just $ NeutLit (LitRecord (Array.snoc props (Prop prop value)))
+    [ ExternApp [ NeutLit (LitString prop), value, r@(NeutUpdate _ _) ] ] ->
+      Just $ evalUpdate env r [ Prop prop value ]
+    [ ExternApp [ NeutLit (LitString prop), value, other ] ] | Just r <- viewCopyRecord other ->
+      Just $ evalUpdate env r [ Prop prop value ]
+    _ ->
+      Nothing
+
+record_builder_unsafeDelete :: ForeignSemantics
+record_builder_unsafeDelete = Tuple (qualified "Record.Builder" "unsafeDelete") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), NeutLit (LitRecord props) ] ] ->
+      Just $ NeutLit (LitRecord (Array.filter (not <<< eq prop <<< propKey) props))
+    _ ->
+      Nothing
+
+record_builder_unsafeModify :: ForeignSemantics
+record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") go
+  where
+  go env _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), fn, NeutLit (LitRecord props) ] ] -> do
+      let
+        props' = map
+          ( \(Prop prop' value) ->
+              if prop == prop' then
+                Prop prop' (evalApp env fn [ value ])
+              else
+                Prop prop' value
+          )
+          props
+      Just $ NeutLit (LitRecord props')
+    [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _) _) ] ] -> do
+      let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
+      Just $ evalUpdate env r [ update ]
+    [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
+      Just $ SemLet Nothing r \r' -> do
+        let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
+        evalUpdate env r [ update ]
+    _ ->
+      Nothing
+
+viewCopyRecord :: BackendSemantics -> Maybe BackendSemantics
+viewCopyRecord = case _ of
+  SemExtern (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord")) [ ExternApp [ value ] ] _ ->
+    Just value
+  _ ->
+    Nothing
+
+record_builder_unsafeRename :: ForeignSemantics
+record_builder_unsafeRename = Tuple (qualified "Record.Builder" "unsafeRename") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop1), NeutLit (LitString prop2), NeutLit (LitRecord props) ] ] -> do
+      let
+        props' = map
+          ( \(Prop prop' value) ->
+              if prop1 == prop' then
+                Prop prop2 value
+              else
+                Prop prop' value
+          )
+          props
+      Just $ NeutLit (LitRecord props')
+    _ ->
+      Nothing
+
+record_unsafe_unsafeGet :: ForeignSemantics
+record_unsafe_unsafeGet = Tuple (qualified "Record.Unsafe" "unsafeGet") go
+  where
+  go env _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), r ] ] ->
+      Just $ evalAccessor env r $ GetProp prop
+    _ ->
+      Nothing
+
+record_unsafe_unsafeHas :: ForeignSemantics
+record_unsafe_unsafeHas = Tuple (qualified "Record.Unsafe" "unsafeHas") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), NeutLit (LitRecord props) ] ] ->
+      Just $ liftBoolean $ Array.any (eq prop <<< propKey) props
+    _ ->
+      Nothing
+
+record_unsafe_unsafeSet :: ForeignSemantics
+record_unsafe_unsafeSet = Tuple (qualified "Record.Unsafe" "unsafeSet") go
+  where
+  go env _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), value, r@(NeutLit (LitRecord _)) ] ] ->
+      Just $ evalUpdate env r [ Prop prop value ]
+    _ ->
+      Nothing
+
+record_unsafe_unsafeDelete :: ForeignSemantics
+record_unsafe_unsafeDelete = Tuple (qualified "Record.Unsafe" "unsafeDelete") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ NeutLit (LitString prop), NeutLit (LitRecord props) ] ] ->
+      Just $ NeutLit (LitRecord (Array.filter (not <<< eq prop <<< propKey) props))
     _ ->
       Nothing

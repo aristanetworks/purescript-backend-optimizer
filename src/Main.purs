@@ -106,11 +106,20 @@ argParser = ArgParser.choose "command"
 
 defaultDirectives :: Map EvalRef InlineDirective
 defaultDirectives = Map.fromFoldable
-  [ Tuple (EvalExtern (qualified "Control.Semigroupoid" "semigroupoidFn") (Just (GetProp "compose"))) (InlineArity 1)
+  [ Tuple (EvalExtern (qualified "Control.Apply" "applyFirst") Nothing) (InlineArity 2)
+  , Tuple (EvalExtern (qualified "Control.Apply" "applySecond") Nothing) (InlineArity 2)
   , Tuple (EvalExtern (qualified "Control.Category" "categoryFn") (Just (GetProp "identity"))) InlineAlways
-  , Tuple (EvalExtern (qualified "Data.Function" "const") Nothing) (InlineArity 1)
-  , Tuple (EvalExtern (qualified "Effect.Ref" "modify") Nothing) (InlineArity 2)
   , Tuple (EvalExtern (qualified "Control.Monad.ST.Internal" "modify") Nothing) (InlineArity 2)
+  , Tuple (EvalExtern (qualified "Control.Semigroupoid" "composeFlipped") Nothing) (InlineArity 3)
+  , Tuple (EvalExtern (qualified "Control.Semigroupoid" "semigroupoidFn") (Just (GetProp "compose"))) (InlineArity 2)
+  , Tuple (EvalExtern (qualified "Data.Function" "const") Nothing) (InlineArity 1)
+  , Tuple (EvalExtern (qualified "Data.Variant" "on") Nothing) (InlineArity 4)
+  , Tuple (EvalExtern (qualified "Effect.Ref" "modify") Nothing) (InlineArity 2)
+  , Tuple (EvalExtern (qualified "Heterogeneous.Mapping" "hmapRecord") Nothing) (InlineArity 2)
+  , Tuple (EvalExtern (qualified "Heterogeneous.Mapping" "mapRecordWithIndexCons") Nothing) (InlineArity 5)
+  , Tuple (EvalExtern (qualified "Heterogeneous.Mapping" "mapRecordWithIndexNil") (Just (GetProp "mapRecordWithIndexBuilder"))) (InlineArity 2)
+  , Tuple (EvalExtern (qualified "Record.Builder" "build") Nothing) (InlineArity 1)
+  , Tuple (EvalExtern (qualified "Record.Builder" "rename") Nothing) (InlineArity 8)
   ]
 
 main :: FilePath -> Effect Unit
@@ -146,7 +155,7 @@ compileModules dirName = case _ of
           Console.log $ unwrap name
           let modPath = Path.concat [ outputDir, esModulePath name ]
           let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty, directives: defaultDirectives, dataTypes: Map.empty }
-          let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 0.5 }) $ esCodegenModule backendMod
+          let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule backendMod
           writeTextFile UTF8 modPath formatted
           unless (Array.null foreignIdents) do
             let foreignFileName =  esForeignModulePath name
