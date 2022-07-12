@@ -140,9 +140,11 @@ esCodegenModule mod@{ name: ModuleName this } = do
       , names: Map.empty
       }
 
+    exported :: Set (Qualified Ident)
     exported = Set.fromFoldable $ map
       ( \(Tuple _ qual) -> case qual of
-          Qualified Nothing ident -> Qualified (Just mod.name) ident
+          Qualified Nothing ident ->
+            Qualified (Just mod.name) ident
           _ -> qual
       )
       mod.exports
@@ -162,8 +164,14 @@ esCodegenModule mod@{ name: ModuleName this } = do
 
     allExports = fold
       [ map ((\ty -> Tuple (esCtorIdent ty) (Qualified Nothing (esCtorIdent ty))) <<< fst) dataTypes
-      , Array.mapMaybe (\(Qualified qual ident) -> guard (maybe true (eq mod.name) qual) $> Tuple ident (Qualified Nothing ident)) $ Set.toUnfoldable (usedBindings.used <> exported)
-      , Array.filter (\(Tuple _ (Qualified mn _)) -> maybe false (notEq mod.name) mn) mod.exports
+      , Array.mapMaybe
+          ( case _ of
+              Qualified (Just mn) ident | mn == mod.name ->
+                Just $ Tuple ident $ Qualified Nothing ident
+              _ ->
+                Nothing
+          )
+          (Set.toUnfoldable (usedBindings.used <> exported))
       ]
 
     exportsByPath = allExports
