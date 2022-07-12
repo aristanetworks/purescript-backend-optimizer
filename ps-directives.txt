@@ -1,0 +1,28 @@
+-- Syntax: 
+-- Path.To.Module.identifier <directive>
+-- Path.To.Module.typeClassInstanceName.memberName <directive>
+--
+-- where <directive> is
+--  'always' - always inline
+--  'never' - never inline
+--  <positive-int> - inline once <positive-int> args have been passed to function
+ExampleDirectives.inlineNever never
+ExampleDirectives.inlineAlways always
+ExampleDirectives.inlineArity3 3
+ExampleDirectives.classNameBoxNever.classMember never
+ExampleDirectives.classNameBoxAlways.classMember always
+ExampleDirectives.classNameBoxArity3.classMember 3
+ExampleDirectives.classNameSuperBoxNever.classMember never
+
+-- Since this dictionary takes a dictionary as an argument,
+-- we need to inline the call to that function
+-- in addition to its member's call.
+ExampleDirectives.classNameSuperBoxAlways always
+ExampleDirectives.classNameSuperBoxAlways.classMember always
+
+-- Adding the `InlineArity 3` directive to `classNameSuperBoxArity3` does nothing
+-- because it only takes 1 arg.
+-- We would need 2 more args before the inlining would trigger.
+-- We could fix this by changing the arity to 1.
+ExampleDirectives.classNameSuperBoxArity3 3
+ExampleDirectives.classNameSuperBoxArity3.classMember 3

@@ -20,6 +20,7 @@ import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.String (Pattern(..))
 import Data.String as String
+import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
 import Effect (Effect)
@@ -33,6 +34,7 @@ import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (writeTextFile)
 import Node.FS.Aff as FS
+import Node.FS.Aff as FSA
 import Node.FS.Perms as Perms
 import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
@@ -44,6 +46,7 @@ import Node.Process as Process
 import Node.Stream as Stream
 import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esForeignModulePath, esModulePath)
 import PureScript.Backend.Convert (toBackendModule)
+import PureScript.Backend.Directives (parseDirective)
 import PureScript.Backend.Semantics (EvalRef(..), InlineDirective(..))
 import PureScript.Backend.Semantics.Foreign (qualified)
 import PureScript.Backend.Syntax (BackendAccessor(..))
@@ -55,6 +58,7 @@ data Args
       { corefnDir :: String
       , outputDir :: String
       , foreignDir :: Maybe String
+      , directivesFile :: Maybe String
       }
   | Run
       { main :: String
@@ -79,6 +83,10 @@ argParser = ArgParser.choose "command"
           , foreignDir:
               ArgParser.argument [ "--foreign-dir" ]
                 "Directory for foreign module implementations"
+                # ArgParser.optional
+          , directivesFile:
+              ArgParser.argument [ "--directives" ]
+                "Path to file that defines external inline directives"
                 # ArgParser.optional
           }
           <* ArgParser.flagHelp
@@ -130,7 +138,7 @@ main dirName = do
 
 compileModules :: FilePath -> Args -> Aff Unit
 compileModules dirName = case _ of
-  Build { corefnDir, outputDir, foreignDir } -> do
+  Build { corefnDir, outputDir, foreignDir, directivesFile } -> do
     coreFnModules <-
       expandGlobs corefnDir [ "*/corefn.json" ] >>=
         Array.fromFoldable
@@ -139,17 +147,22 @@ compileModules dirName = case _ of
     liftEffect $ mkdir' outputDir { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
     writeTextFile UTF8 (Path.concat [ outputDir, "package.json" ]) $ Json.stringify do
       Json.jsonSingletonObject "type" (Json.fromString "module")
+    mbExternalDirectives <- for directivesFile \filePath -> do
+      annFileContent <- FSA.readTextFile UTF8 filePath
+      pure $ parseDirective $ String.split (Pattern "\n") annFileContent
     let
+      -- We use `const` here to ensure external directives don't override the default ones
+      allDirectives = maybe defaultDirectives (\exDirs -> Map.unionWith const defaultDirectives exDirs) mbExternalDirectives
       go implementations = case _ of
         List.Nil -> pure unit
         List.Cons coreFnMod@(Module { name, foreign: foreignIdents, path }) mods -> do
           Console.log $ unwrap name
           let modPath = Path.concat [ outputDir, esModulePath name ]
-          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty, directives: defaultDirectives, dataTypes: Map.empty }
+          let backendMod = toBackendModule coreFnMod { currentModule: name, currentLevel: 0, toLevel: Map.empty, implementations, deps: Set.empty, directives: allDirectives, dataTypes: Map.empty }
           let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 0.5 }) $ esCodegenModule backendMod
           writeTextFile UTF8 modPath formatted
           unless (Array.null foreignIdents) do
-            let foreignFileName =  esForeignModulePath name
+            let foreignFileName = esForeignModulePath name
             let foreignOutputPath = Path.concat [ outputDir, foreignFileName ]
             let origPath = Path.concat [ corefnDir, "..", path ]
             let foreignSiblingPath = fromMaybe origPath (String.stripSuffix (Pattern (Path.extname origPath)) origPath) <> ".js"
@@ -168,7 +181,7 @@ compileModules dirName = case _ of
     let modulePath = esModulePath (ModuleName mainModule)
     let script = "require('runtime');require('" <> modulePath <> "').main()"
     buffer <- liftEffect $ ChildProcess.execSync
-      (String.joinWith " " ([bin,  "-e", show script ] <> args))
+      (String.joinWith " " ([ bin, "-e", show script ] <> args))
       defaultExecSyncOptions
         { env = Just $ Object.fromFoldable
             [ Tuple "LUA_PATH" $ String.joinWith ";" $ Array.catMaybes
