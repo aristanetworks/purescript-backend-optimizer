@@ -12,26 +12,32 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Syntax (class HasSyntax, BackendSyntax(..), Level, syntaxOf)
+import PureScript.Backend.Syntax (class HasSyntax, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Qualified(..))
 
 newtype Usage = Usage
-  { count :: Int
+  { total :: Int
   , captured :: Boolean
   , arities :: Set Int
+  , call :: Int
+  , access :: Int
+  , case :: Int
   }
 
 derive instance Newtype Usage _
 
 instance Semigroup Usage where
   append (Usage a) (Usage b) = Usage
-    { count: a.count + b.count
+    { total: a.total + b.total
     , captured: a.captured || b.captured
     , arities: Set.union a.arities b.arities
+    , call: a.call + b.call
+    , access: a.access + b.access
+    , case: a.case + b.case
     }
 
 instance Monoid Usage where
-  mempty = Usage { count: 0, captured: false, arities: Set.empty }
+  mempty = Usage { total: 0, captured: false, arities: Set.empty, call: 0, access: 0, case: 0 }
 
 data Complexity = Trivial | Deref | Known | NonTrivial
 
@@ -95,7 +101,19 @@ used :: Level -> BackendAnalysis
 used level = do
   let BackendAnalysis s = mempty
   BackendAnalysis s
-    { usages = Map.singleton level (Usage { count: 1, captured: false, arities: Set.empty })
+    { usages = Map.singleton level (Usage { total: 1, captured: false, arities: Set.empty, call: 0, access: 0, case: 0 })
+    }
+
+accessed :: Level -> BackendAnalysis -> BackendAnalysis
+accessed level (BackendAnalysis s) = do
+  BackendAnalysis s
+    { usages = Map.update (Just <<< over Usage (\us -> us { access = us.access + 1 })) level  s.usages
+    }
+
+cased :: Level -> BackendAnalysis -> BackendAnalysis
+cased level (BackendAnalysis s) = do
+  BackendAnalysis s
+    { usages = Map.update (Just <<< over Usage (\us -> us { case = us.case + 1 })) level  s.usages
     }
 
 usedDep :: ModuleName -> BackendAnalysis
@@ -114,7 +132,7 @@ capture (BackendAnalysis s) = BackendAnalysis s { usages = over Usage _ { captur
 
 callArity :: Level -> Int -> BackendAnalysis -> BackendAnalysis
 callArity lvl arity (BackendAnalysis s) = BackendAnalysis s
-  { usages = Map.update (Just <<< over Usage (\us -> us { arities = Set.insert arity us.arities })) lvl s.usages
+  { usages = Map.update (Just <<< over Usage (\us -> us { arities = Set.insert arity us.arities, call = us.call + 1 })) lvl s.usages
   }
 
 class HasAnalysis a where
@@ -181,14 +199,22 @@ analyze externAnalysis expr = case expr of
     complex NonTrivial $ analyzeDefault expr
   Fail _ ->
     complex NonTrivial $ analyzeDefault expr
-  PrimOp _ ->
-    complex NonTrivial $ analyzeDefault expr
+  PrimOp op ->
+    case op of
+      Op1 (OpIsTag _) b | Just (Local _ lvl) <- syntaxOf b ->
+        cased lvl analysis
+      _ ->
+        analysis
+    where
+    analysis = complex NonTrivial $ analyzeDefault expr
   PrimEffect _ ->
     complex NonTrivial $ analyzeDefault expr
   Accessor hd _ ->
     case syntaxOf hd of
       Just (Accessor _ _) ->
         analysis
+      Just (Local _ lvl) ->
+        accessed lvl analysis
       Just (Var _) ->
         complex Trivial analysis
       _ ->

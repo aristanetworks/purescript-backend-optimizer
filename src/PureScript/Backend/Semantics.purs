@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (foldMap, foldl)
+import Data.Foldable (foldMap, foldl, foldr)
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
@@ -16,10 +16,11 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, withRewrite)
+import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, bump, complex, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (ConstructorType, Ident, Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
@@ -75,6 +76,7 @@ data BackendRewrite
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
+  | RewriteUnpackRecord (Maybe Ident) Level (Array (Prop BackendExpr)) BackendExpr
 
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
@@ -253,6 +255,15 @@ instance Eval BackendExpr where
             goBinding env (List.fromFoldable bindings)
           RewriteStop qual ->
             NeutStop qual
+          RewriteUnpackRecord _ _ props body ->
+            foldr
+              ( \(Prop prop expr) next props' ->
+                  SemLet Nothing (eval env expr) \val ->
+                    next (Array.snoc props' (Prop prop val))
+              )
+              (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitRecord)
+              props
+              []
       ExprSyntax _ expr ->
         eval env expr
 
@@ -818,6 +829,8 @@ build ctx = case _ of
   Let ident level binding body
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
+  Let ident level binding body | Just props <- shouldUnpackRecord level binding body ->
+    rewriteUnpackRecord ident level props body
   expr@(EffectBind ident1 level1 (ExprSyntax _ (EffectBind ident2 level2 binding2 body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
       [ { ident: ident2, level: level2, binding: binding2 }
@@ -905,18 +918,34 @@ rewriteInline ident level binding body = do
   let
     s2 = analysisOf body
     powAnalysis = case Map.lookup level (unwrap s2).usages of
-      Just (Usage { count }) ->
+      Just (Usage { total }) ->
         -- TODO: There may be more work to be done here wrt size.
-        s2 <> power (analysisOf binding) count
+        s2 <> power (analysisOf binding) total
       Nothing ->
         s2
   ExprRewrite (withRewrite (bound level powAnalysis)) $ RewriteInline ident level binding body
+
+rewriteUnpackRecord :: Maybe Ident -> Level -> Array (Prop BackendExpr) -> BackendExpr -> BackendExpr
+rewriteUnpackRecord ident level props body = do
+  let analysis = foldr (const bump) (complex NonTrivial (bound level (analysisOf body))) props
+  ExprRewrite (withRewrite analysis) $ RewriteUnpackRecord ident level props body
 
 isReference :: forall a. BackendSyntax a -> Boolean
 isReference = case _ of
   Var _ -> true
   Local _ _ -> true
   _ -> false
+
+shouldUnpackRecord :: Level -> BackendExpr -> BackendExpr -> Maybe (Array (Prop BackendExpr))
+shouldUnpackRecord level a b = do
+  let BackendAnalysis s2 = analysisOf b
+  case a of
+    ExprSyntax _ (Lit (LitRecord props))
+      | Just (Usage us) <- Map.lookup level s2.usages
+      , us.total == us.access ->
+          Just props
+    _ ->
+      Nothing
 
 shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
 shouldInlineLet level a b = do
@@ -925,11 +954,11 @@ shouldInlineLet level a b = do
   case Map.lookup level s2.usages of
     Nothing ->
       true
-    Just (Usage { captured, count }) ->
+    Just (Usage { captured, total }) ->
       (s1.complexity == Trivial)
-        || (not captured && (count == 1 || (s1.complexity <= Deref && s1.size < 5)))
-        || (s1.complexity == Known && count == 1)
-        || (isAbs a && (count == 1 || Map.isEmpty s1.usages || s1.size < 16))
+        || (not captured && (total == 1 || (s1.complexity <= Deref && s1.size < 5)))
+        || (s1.complexity == Known && total == 1)
+        || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Maybe InlineDirective -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ = case _ of
@@ -951,6 +980,7 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
   _ ->
     (s.complexity <= Deref && s.size < 16)
       || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 16)
+      || (Map.isEmpty s.usages && Set.isEmpty s.deps && s.size < 64)
 
 shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Maybe InlineDirective -> Boolean
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of
@@ -1012,6 +1042,8 @@ freeze init = Tuple (analysisOf init) (go init)
           reassocBindings Let go bindings body
         RewriteEffectBindAssoc bindings body ->
           reassocBindings EffectBind go bindings body
+        RewriteUnpackRecord ident level props body ->
+          NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
 
 reassocBindings
   :: (Maybe Ident -> Level -> NeutralExpr -> NeutralExpr -> BackendSyntax NeutralExpr)

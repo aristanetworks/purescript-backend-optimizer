@@ -63,3 +63,15 @@ test6 =
   , b: 42.0
   , c: true
   }
+
+test7 :: { a :: Int, b :: Number, c :: Boolean } -> _
+test7 = zipRecord
+  { a: add 1
+  , b: Tuple "bar"
+  , c: \a -> not a
+  }
+
+test8 = do
+  let bar = { bar: "world" }
+  let wat = { foo: "hello", bar }
+  \_ -> wat.foo <> ", " <> wat.bar.bar

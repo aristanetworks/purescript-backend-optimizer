@@ -361,7 +361,7 @@ esCodegenBlockStatements = go []
     EffectBind ident lvl eff body@(TcoExpr (TcoAnalysis { usages }) _) | mode.effect -> do
       let binding = esCodegenBindEffect env eff
       case Map.lookup (TcoLocal ident lvl) usages of
-        Just (Usage { count }) | count > 0 -> do
+        Just (Usage { total }) | total > 0 -> do
           let Tuple newIdent env' = freshName ident lvl env
           let line = Statement $ esBinding newIdent binding
           go (Array.snoc acc line) mode env' body
