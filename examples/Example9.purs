@@ -2,8 +2,11 @@ module Example9 where
 
 import Prelude
 
+import Data.Symbol (class IsSymbol)
+import Data.Tuple (Tuple(..))
 import Data.Variant (match, on)
-import Heterogeneous.Mapping (hmap)
+import Heterogeneous.Mapping (hmap, hmapWithIndex, class MappingWithIndex)
+import Prim.Row as Row
 import Record as Record
 import Record.Builder as Record.Builder
 import Type.Proxy (Proxy(..))
@@ -40,3 +43,23 @@ test4 =
 
 test5 :: { foo :: Int , bar :: Int } -> { foo :: String, bar :: String }
 test5 = hmap (show :: Int -> String)
+
+newtype ZipProps fns = ZipProps { | fns }
+
+instance zipProps ::
+  (IsSymbol sym, Row.Cons sym (a -> b) x fns) =>
+  MappingWithIndex (ZipProps fns) (Proxy sym) a b where
+  mappingWithIndex (ZipProps fns) prop = Record.get prop fns
+
+zipRecord = hmapWithIndex <<< ZipProps
+
+test6 =
+  { a: add 1
+  , b: Tuple "bar"
+  , c: \a -> not a
+  }
+  `zipRecord`
+  { a: 12
+  , b: 42.0
+  , c: true
+  }

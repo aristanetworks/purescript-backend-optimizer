@@ -16,6 +16,7 @@ You can edit this file as you like.
   , "record"
   , "heterogeneous"
   , "variant"
+  , "tuples"
   ]
 , packages = ../packages.dhall
 , sources = [ "./*.purs" ]

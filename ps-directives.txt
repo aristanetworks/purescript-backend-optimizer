@@ -26,3 +26,9 @@ ExampleDirectives.classNameSuperBoxAlways.classMember always
 -- We could fix this by changing the arity to 1.
 ExampleDirectives.classNameSuperBoxArity3 3
 ExampleDirectives.classNameSuperBoxArity3.classMember 3
+
+Data.Variant.on 4
+Heterogeneous.Mapping.hmapRecord 2
+Heterogeneous.Mapping.hmapWithIndexRecord 2
+Heterogeneous.Mapping.mapRecordWithIndexCons 5
+Heterogeneous.Mapping.mapRecordWithIndexNil.mapRecordWithIndexBuilder 2

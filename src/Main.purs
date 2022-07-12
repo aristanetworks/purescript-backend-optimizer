@@ -121,11 +121,7 @@ defaultDirectives = Map.fromFoldable
   , Tuple (EvalExtern (qualified "Control.Semigroupoid" "composeFlipped") Nothing) (InlineArity 3)
   , Tuple (EvalExtern (qualified "Control.Semigroupoid" "semigroupoidFn") (Just (GetProp "compose"))) (InlineArity 2)
   , Tuple (EvalExtern (qualified "Data.Function" "const") Nothing) (InlineArity 1)
-  , Tuple (EvalExtern (qualified "Data.Variant" "on") Nothing) (InlineArity 4)
   , Tuple (EvalExtern (qualified "Effect.Ref" "modify") Nothing) (InlineArity 2)
-  , Tuple (EvalExtern (qualified "Heterogeneous.Mapping" "hmapRecord") Nothing) (InlineArity 2)
-  , Tuple (EvalExtern (qualified "Heterogeneous.Mapping" "mapRecordWithIndexCons") Nothing) (InlineArity 5)
-  , Tuple (EvalExtern (qualified "Heterogeneous.Mapping" "mapRecordWithIndexNil") (Just (GetProp "mapRecordWithIndexBuilder"))) (InlineArity 2)
   , Tuple (EvalExtern (qualified "Record.Builder" "build") Nothing) (InlineArity 1)
   , Tuple (EvalExtern (qualified "Record.Builder" "rename") Nothing) (InlineArity 8)
   ]
