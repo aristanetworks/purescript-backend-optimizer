@@ -1,3 +1,24 @@
+-- @inline ExampleDirectives.inlineNever never
+-- @inline ExampleDirectives.inlineAlways always
+-- @inline ExampleDirectives.inlineArity3 arity=3
+-- @inline ExampleDirectives.classNameBoxNever.classMember never
+-- @inline ExampleDirectives.classNameBoxAlways.classMember always
+-- @inline ExampleDirectives.classNameBoxArity3.classMember arity=3
+-- @inline ExampleDirectives.classNameSuperBoxNever.classMember never
+
+-- Since this dictionary takes a dictionary as an argument,
+-- we need to inline the call to that function
+-- in addition to its member's call.
+-- @inline ExampleDirectives.classNameSuperBoxAlways always
+-- @inline ExampleDirectives.classNameSuperBoxAlways.classMember always
+
+-- Adding the `InlineArity 3` directive to `classNameSuperBoxArity3` does nothing
+-- because it only takes 1 arg.
+-- We would need 2 more args before the inlining would trigger.
+-- We could fix this by changing the arity to 1.
+-- @inline ExampleDirectives.classNameSuperBoxArity3 arity=3
+-- @inline ExampleDirectives.classNameSuperBoxArity3.classMember arity=3
+
 module ExampleDirectives where
 
 import Prelude

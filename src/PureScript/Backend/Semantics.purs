@@ -22,7 +22,7 @@ import Data.Tuple (Tuple(..), fst)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, bump, complex, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
-import PureScript.CoreFn (ConstructorType, Ident, Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
+import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
 type Spine a = Array a
 
@@ -108,7 +108,8 @@ derive instance Eq EvalRef
 derive instance Ord EvalRef
 
 data InlineDirective
-  = InlineNever
+  = InlineDefault
+  | InlineNever
   | InlineAlways
   | InlineArity Int
 
@@ -666,6 +667,8 @@ analysisFromDirective (BackendAnalysis analysis) = case _ of
     BackendAnalysis analysis { complexity = NonTrivial, size = top }
   InlineArity n ->
     BackendAnalysis analysis { args = Array.take n analysis.args }
+  InlineDefault ->
+    BackendAnalysis analysis
 
 liftBoolean :: Boolean -> BackendSemantics
 liftBoolean = NeutLit <<< LitBoolean
@@ -962,21 +965,17 @@ shouldInlineLet level a b = do
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Maybe InlineDirective -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ = case _ of
-  Just dir ->
-    case dir of
-      InlineAlways -> true
-      InlineNever -> false
-      InlineArity _ -> false
+  Just InlineAlways -> true
+  Just InlineNever -> false
+  Just (InlineArity _) -> false
   _ ->
     s.complexity <= Deref && s.size < 16
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
-  Just dir ->
-    case dir of
-      InlineAlways -> true
-      InlineNever -> false
-      InlineArity n -> Array.length args == n
+  Just InlineAlways -> true
+  Just InlineNever -> false
+  Just (InlineArity n) -> Array.length args == n
   _ ->
     (s.complexity <= Deref && s.size < 16)
       || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 16)
@@ -1013,11 +1012,13 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-optimize :: Ctx -> Env -> BackendExpr -> BackendExpr
-optimize ctx env = go 10000
+optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
+optimize ctx env (Qualified mn (Ident id)) = go
   where
   go n expr1
-    | n == 0 = expr1 -- unsafeCrashWith "Possible infinite optimization loop."
+    | n == 0 = do
+        let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
+        unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
         case expr2 of

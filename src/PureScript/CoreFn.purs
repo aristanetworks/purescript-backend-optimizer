@@ -87,6 +87,9 @@ newtype Module a = Module
   , comments :: Array Comment
   }
 
+moduleName :: forall a. Module a -> ModuleName
+moduleName (Module mod) = mod.name
+
 data Import a = Import a ModuleName
 
 derive instance functorImport :: Functor Import

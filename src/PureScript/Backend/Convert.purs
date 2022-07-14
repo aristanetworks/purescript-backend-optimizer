@@ -21,10 +21,9 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, mapAccumL, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import Effect.Class.Console as Console
-import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Analysis (BackendAnalysis)
+import PureScript.Backend.Directives (parseDirectiveHeader)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
@@ -43,6 +42,7 @@ type BackendModule =
   , exports :: Array (Tuple Ident (Qualified Ident))
   , foreign :: Array Ident
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+  , directives :: Map EvalRef InlineDirective
   }
 
 type DataTypeMeta =
@@ -63,6 +63,7 @@ type ConvertEnv =
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
   , deps :: Set ModuleName
   , directives :: Map EvalRef InlineDirective
+  , rewriteLimit :: Int
   }
 
 type ConvertM = Function ConvertEnv
@@ -70,6 +71,9 @@ type ConvertM = Function ConvertEnv
 toBackendModule :: Module Ann -> ConvertM BackendModule
 toBackendModule (Module mod) env = do
   let
+    directives =
+      parseDirectiveHeader mod.name mod.comments
+
     ctors = do
       Binding _ _ value <- mod.decls >>= case _ of
         Rec bindings -> bindings
@@ -91,7 +95,10 @@ toBackendModule (Module mod) env = do
       # Map.fromFoldable
 
     moduleBindings =
-      toBackendTopLevelBindingGroups mod.decls env { dataTypes = dataTypes }
+      toBackendTopLevelBindingGroups mod.decls env
+        { dataTypes = dataTypes
+        , directives = Map.union directives.locals env.directives
+        }
 
   { name: mod.name
   , imports: Array.filter (not <<< (eq mod.name || eq (ModuleName "Prim"))) $ Set.toUnfoldable moduleBindings.accum.deps
@@ -102,6 +109,7 @@ toBackendModule (Module mod) env = do
       , map (\(ReExport mn a) -> Tuple a (Qualified (Just mn) a)) mod.reExports
       ]
   , implementations: moduleBindings.accum.implementations
+  , directives: directives.exports
   , foreign: mod.foreign
   }
 
@@ -129,10 +137,9 @@ toBackendTopLevelBindingGroup env = case _ of
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv ->  Binding Ann -> Accum ConvertEnv (Tuple Ident NeutralExpr)
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let _ = unsafePerformEffect $ Console.log ("  " <> unwrap ident)
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, try: Nothing }
   let backendExpr = toBackendExpr cfn env
-  let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv backendExpr)
+  let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
       , deps = Set.union (unwrap (fst impl)).deps env.deps

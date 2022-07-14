@@ -16,6 +16,7 @@ You can edit this file as you like.
   , "dodo-printer"
   , "effect"
   , "either"
+  , "filterable"
   , "foldable-traversable"
   , "foreign-object"
   , "integers"

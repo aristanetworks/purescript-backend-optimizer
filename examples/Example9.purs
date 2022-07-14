@@ -1,3 +1,8 @@
+-- @inline Data.Variant.on arity=4
+-- @inline Heterogeneous.Mapping.hmapRecord arity=2
+-- @inline Heterogeneous.Mapping.hmapWithIndexRecord arity=2
+-- @inline Heterogeneous.Mapping.mapRecordWithIndexCons arity=5
+-- @inline Heterogeneous.Mapping.mapRecordWithIndexNil.mapRecordWithIndexBuilder arity=2
 module Example9 where
 
 import Prelude

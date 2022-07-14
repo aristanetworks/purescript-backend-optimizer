@@ -211,11 +211,11 @@ decodeBinder decAnn json = do
   ann <- getField decAnn obj "annotation"
   typ <- getField decodeString obj "binderType"
   case typ of
-    "NullBinder" -> 
+    "NullBinder" ->
       pure $ BinderNull ann
     "VarBinder" ->
       BinderVar ann <$> getField decodeIdent obj "identifier"
-    "LiteralBinder" -> 
+    "LiteralBinder" ->
       BinderLit ann <$> getField (decodeLiteral (decodeBinder decAnn)) obj "literal"
     "ConstructorBinder" -> do
       tyn <- getField (decodeQualified decodeProperName) obj "typeName"
@@ -238,7 +238,7 @@ decodeLiteral dec json = do
       LitInt <$> getField decodeInt obj "value"
     "NumberLiteral" ->
       LitNumber <$> getField decodeNumber obj "value"
-    "StringLiteral" -> 
+    "StringLiteral" ->
       LitString <$> getField decodeString obj "value"
     "CharLiteral" -> do
       str <- getField decodeString obj "value"
@@ -247,7 +247,7 @@ decodeLiteral dec json = do
         Array.head $ SCU.toCharArray str
     "BooleanLiteral" ->
       LitBoolean <$> getField decodeBoolean obj "value"
-    "ArrayLiteral" -> 
+    "ArrayLiteral" ->
       LitArray <$> getField (decodeArray dec) obj "value"
     "ObjectLiteral" ->
       LitRecord <$> getField (decodeRecord dec) obj "value"
