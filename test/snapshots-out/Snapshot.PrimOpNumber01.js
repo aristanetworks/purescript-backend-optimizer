@@ -1,0 +1,16 @@
+import * as Snapshot$dPrimOpNumber01$foreign from "./Snapshot.PrimOpNumber01.foreign.js";
+const a = Snapshot$dPrimOpNumber01$foreign.a;
+const b = Snapshot$dPrimOpNumber01$foreign.b;
+const test9 = a * b;
+const test8 = a >= b;
+const test7 = a <= b;
+const test6 = a > b;
+const test5 = a < b;
+const test4 = a !== b;
+const test3 = a === b;
+const test2 = a - b;
+const test11 = -a;
+const test10 = a / b;
+const test1 = a + b;
+export {a, b, test1, test10, test11, test2, test3, test4, test5, test6, test7, test8, test9};
+export * from "./Snapshot.PrimOpNumber01.foreign.js";

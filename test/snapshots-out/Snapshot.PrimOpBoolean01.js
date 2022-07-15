@@ -1,0 +1,14 @@
+import * as Snapshot$dPrimOpBoolean01$foreign from "./Snapshot.PrimOpBoolean01.foreign.js";
+const a = Snapshot$dPrimOpBoolean01$foreign.a;
+const b = Snapshot$dPrimOpBoolean01$foreign.b;
+const test9 = !a;
+const test8 = a >= b;
+const test7 = a <= b;
+const test6 = a > b;
+const test5 = a < b;
+const test4 = a !== b;
+const test3 = a === b;
+const test2 = a || b;
+const test1 = a && b;
+export {a, b, test1, test2, test3, test4, test5, test6, test7, test8, test9};
+export * from "./Snapshot.PrimOpBoolean01.foreign.js";

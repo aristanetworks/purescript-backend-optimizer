@@ -2,17 +2,18 @@
 , dependencies =
   [ "arrays"
   , "console"
+  , "convertable-options"
   , "effect"
   , "functions"
+  , "heterogeneous"
   , "lists"
   , "maybe"
   , "partial"
   , "prelude"
   , "random"
   , "record"
-  , "heterogeneous"
-  , "variant"
   , "tuples"
+  , "variant"
   ]
 , packages = ./packages.dhall
 , sources = [ "./*.purs", "./*/*.purs" ]

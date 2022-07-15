@@ -39,7 +39,6 @@ You can edit this file as you like.
   , "partial"
   , "posix-types"
   , "prelude"
-  , "psci-support"
   , "refs"
   , "safe-coerce"
   , "strings"

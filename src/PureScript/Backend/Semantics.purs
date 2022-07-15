@@ -77,6 +77,7 @@ data BackendRewrite
   | RewriteEffectBindAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
   | RewriteUnpackRecord (Maybe Ident) Level (Array (Prop BackendExpr)) BackendExpr
+  | RewriteUnpackData (Maybe Ident) Level (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr)) BackendExpr
 
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
@@ -265,6 +266,15 @@ instance Eval BackendExpr where
               (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitRecord)
               props
               []
+          RewriteUnpackData _ _ qual ct ty tag fields body ->
+            foldr
+              ( \(Tuple field expr) next props' ->
+                  SemLet Nothing (eval env expr) \val ->
+                    next (Array.snoc props' (Tuple field val))
+              )
+              (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
+              fields
+              []
       ExprSyntax _ expr ->
         eval env expr
 
@@ -423,6 +433,10 @@ evalPrimOp env = case _ of
         liftBoolean (a == b)
       OpArrayLength, NeutLit (LitArray arr) ->
         liftInt (Array.length arr)
+      OpIntNegate, NeutLit (LitInt a) ->
+        liftInt (negate a)
+      OpNumberNegate, NeutLit (LitNumber a) ->
+        liftNumber (negate a)
       _, SemExtern qual spine _ ->
         evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
       _, _ ->
@@ -484,6 +498,9 @@ evalPrimOp env = case _ of
         | NeutLit (LitInt a) <- x
         , NeutLit (LitInt b) <- y ->
             liftInt (zshr a b)
+      OpIntNum OpSubtract
+        | NeutLit (LitInt 0) <- x ->
+            evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
         | NeutLit (LitInt a) <- x
         , NeutLit (LitInt b) <- y ->
@@ -492,6 +509,9 @@ evalPrimOp env = case _ of
         | NeutLit (LitInt a) <- x
         , NeutLit (LitInt b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
+      OpNumberNum OpSubtract
+        | NeutLit (LitNumber 0.0) <- x ->
+            evalPrimOp env (Op1 OpNumberNegate y)
       OpNumberNum op
         | NeutLit (LitNumber a) <- x
         , NeutLit (LitNumber b) <- y ->
@@ -829,11 +849,12 @@ build ctx = case _ of
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
       (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
       body1
-  Let ident level binding body
-    | shouldInlineLet level binding body ->
-        rewriteInline ident level binding body
-  Let ident level binding body | Just props <- shouldUnpackRecord level binding body ->
-    rewriteUnpackRecord ident level props body
+  Let ident level binding body | shouldInlineLet level binding body ->
+    rewriteInline ident level binding body
+  Let ident level binding body | Just expr' <- shouldUnpackRecord ident level binding body ->
+    expr'
+  Let ident level binding body | Just expr' <- shouldUnpackCtor ident level binding body ->
+    expr'
   expr@(EffectBind ident1 level1 (ExprSyntax _ (EffectBind ident2 level2 binding2 body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
       [ { ident: ident2, level: level2, binding: binding2 }
@@ -863,18 +884,19 @@ buildPair ctx p1 = case _ of
 
 buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
 buildBranchCond ctx (Pair a b) c = case b of
-  ExprSyntax _ (Lit (LitBoolean bool1))
-    | ExprSyntax _ (Lit (LitBoolean bool2)) <- c ->
-        if bool1 then
-          if bool2 then c
-          else a
-        else if bool2 then c
-        else build ctx (PrimOp (Op1 OpBooleanNot a))
-    | ExprSyntax _ x <- c, isBooleanTail x ->
-        if bool1 then
-          build ctx (PrimOp (Op2 OpBooleanOr a c))
-        else
-          build ctx (PrimOp (Op2 OpBooleanOr (build ctx (PrimOp (Op1 OpBooleanNot a))) c))
+  -- TODO: This is broken.
+  -- ExprSyntax _ (Lit (LitBoolean bool1))
+  --   | ExprSyntax _ (Lit (LitBoolean bool2)) <- c ->
+  --       if bool1 then
+  --         if bool2 then c
+  --         else a
+  --       else if bool2 then c
+  --       else build ctx (PrimOp (Op1 OpBooleanNot a))
+  --   | ExprSyntax _ x <- c, isBooleanTail x ->
+  --       if bool1 then
+  --         build ctx (PrimOp (Op2 OpBooleanOr a c))
+  --       else
+  --         build ctx (PrimOp (Op2 OpBooleanOr (build ctx (PrimOp (Op1 OpBooleanNot a))) c))
   _ ->
     build ctx (Branch (NonEmptyArray.singleton (Pair a b)) (Just c))
 
@@ -928,25 +950,33 @@ rewriteInline ident level binding body = do
         s2
   ExprRewrite (withRewrite (bound level powAnalysis)) $ RewriteInline ident level binding body
 
-rewriteUnpackRecord :: Maybe Ident -> Level -> Array (Prop BackendExpr) -> BackendExpr -> BackendExpr
-rewriteUnpackRecord ident level props body = do
-  let analysis = foldr (const bump) (complex NonTrivial (bound level (analysisOf body))) props
-  ExprRewrite (withRewrite analysis) $ RewriteUnpackRecord ident level props body
-
 isReference :: forall a. BackendSyntax a -> Boolean
 isReference = case _ of
   Var _ -> true
   Local _ _ -> true
   _ -> false
 
-shouldUnpackRecord :: Level -> BackendExpr -> BackendExpr -> Maybe (Array (Prop BackendExpr))
-shouldUnpackRecord level a b = do
-  let BackendAnalysis s2 = analysisOf b
+shouldUnpackCtor :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldUnpackCtor ident level a body = do
+  let BackendAnalysis s2 = analysisOf body
+  case a of
+    ExprSyntax _ (CtorSaturated qual ct ty tag fields)
+      | Just (Usage us) <- Map.lookup level s2.usages
+      , us.total == us.access + us.case -> do
+          let analysis = foldr (const bump) (complex NonTrivial (bound level (BackendAnalysis s2))) fields
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackData ident level qual ct ty tag fields body
+    _ ->
+      Nothing
+
+shouldUnpackRecord :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldUnpackRecord ident level a body = do
+  let BackendAnalysis s2 = analysisOf body
   case a of
     ExprSyntax _ (Lit (LitRecord props))
       | Just (Usage us) <- Map.lookup level s2.usages
-      , us.total == us.access ->
-          Just props
+      , us.total == us.access -> do
+          let analysis = foldr (const bump) (complex NonTrivial (bound level (BackendAnalysis s2))) props
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackRecord ident level props body
     _ ->
       Nothing
 
@@ -1017,8 +1047,9 @@ optimize ctx env (Qualified mn (Ident id)) = go
   where
   go n expr1
     | n == 0 = do
-        let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
-        unsafeCrashWith $ name <> ": Possible infinite optimization loop."
+        expr1
+        -- let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
+        -- unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
         case expr2 of
@@ -1045,6 +1076,8 @@ freeze init = Tuple (analysisOf init) (go init)
           reassocBindings EffectBind go bindings body
         RewriteUnpackRecord ident level props body ->
           NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
+        RewriteUnpackData ident level qual ct ty tag values body ->
+          NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
 
 reassocBindings
   :: (Maybe Ident -> Level -> NeutralExpr -> NeutralExpr -> BackendSyntax NeutralExpr)
