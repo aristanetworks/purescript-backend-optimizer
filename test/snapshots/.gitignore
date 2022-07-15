@@ -5,5 +5,4 @@
 /.purs*
 /.psa*
 /.spago
-/*.purs*
 /**/.DS_Store
