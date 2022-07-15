@@ -256,8 +256,10 @@ unsafe_coerce_unsafeCoerce = Tuple (qualified "Unsafe.Coerce" "unsafeCoerce") go
 
 primBinaryOperator :: BackendOperator2 -> ForeignEval
 primBinaryOperator op env _ = case _ of
-  [ ExternApp [ a, b ] ] ->
-    Just $ evalPrimOp env (Op2 op a b)
+  [ ExternApp [ a ] ] ->
+    Just $ SemLet Nothing a \a' ->
+      SemLam Nothing \ b' ->
+        evalPrimOp env (Op2 op a' b')
   _ ->
     Nothing
 
