@@ -5,6 +5,7 @@ You can edit this file as you like.
 { name = "my-project"
 , dependencies =
   [ "aff"
+  , "ansi"
   , "argonaut"
   , "argonaut-codecs"
   , "argparse-basic"
@@ -36,13 +37,15 @@ You can edit this file as you like.
   , "ordered-collections"
   , "parallel"
   , "partial"
+  , "posix-types"
   , "prelude"
   , "psci-support"
+  , "refs"
   , "safe-coerce"
   , "strings"
   , "transformers"
   , "tuples"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/**/*.purs" ]
+, sources = [ "src/**/*.purs", "test/*.purs" ]
 }

@@ -19,6 +19,7 @@ import Effect.Class.Console as Console
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (writeTextFile)
 import Node.FS.Aff as FS
+import Node.FS.Perms as Perms
 import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.Path (FilePath)
@@ -33,13 +34,9 @@ main = basicCliMain
   { name: "purs-backend-es"
   , description: "A PureScript backend for modern ECMAScript."
   , defaultOutputDir: Path.concat [ ".", "output-es" ]
-  , onCodegenBefore: mempty
+  , onCodegenBefore: \args -> FS.mkdir' args.outputDir { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
   , onCodegenAfter: mempty
-  , onCodegenModule: \args build (Module coreFnMod) backendMod -> do
-      let total = show build.moduleCount
-      let index = show (build.moduleIndex + 1)
-      let padding = power " " (SCU.length total - SCU.length index)
-      Console.log $ "[" <> padding <> index <>  " of " <> total <> "] Building " <> unwrap backendMod.name
+  , onCodegenModule: \args _ (Module coreFnMod) backendMod -> do
       let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule backendMod
       let modPath = Path.concat [ args.outputDir, esModulePath backendMod.name ]
       writeTextFile UTF8 modPath formatted
@@ -54,6 +51,12 @@ main = basicCliMain
           ]
         unless (isRight res) do
           Console.log $ "  Foreign implementation missing."
+  , onPrepareModule: \_ build coreFnMod@(Module { name }) -> do
+      let total = show build.moduleCount
+      let index = show (build.moduleIndex + 1)
+      let padding = power " " (SCU.length total - SCU.length index)
+      Console.log $ "[" <> padding <> index <>  " of " <> total <> "] Building " <> unwrap name
+      pure coreFnMod
   }
 
 copyFile :: FilePath -> FilePath -> Aff Unit

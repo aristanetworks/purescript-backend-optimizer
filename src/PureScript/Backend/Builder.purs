@@ -43,6 +43,7 @@ type BuildEnv =
 
 type BuildOptions =
   { directives :: Map EvalRef InlineDirective
+  , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
   }
 
@@ -69,9 +70,11 @@ buildModules options coreFnModules =
   void $ foldM go { directives: options.directives, implementations: Map.empty, moduleIndex: 0 } (sortModules coreFnModules)
   where
   moduleCount = List.length coreFnModules
-  go { directives, implementations, moduleIndex } coreFnMod@(Module { name }) = do
+  go { directives, implementations, moduleIndex } coreFnModule = do
+    let buildEnv = { implementations, moduleCount, moduleIndex }
+    coreFnModule'@(Module { name }) <- options.onPrepareModule buildEnv coreFnModule
     let
-      backendMod = toBackendModule coreFnMod
+      backendMod = toBackendModule coreFnModule'
         { currentModule: name
         , currentLevel: 0
         , toLevel: Map.empty
@@ -81,7 +84,7 @@ buildModules options coreFnModules =
         , dataTypes: Map.empty
         , rewriteLimit: 10000
         }
-    options.onCodegenModule { implementations, moduleCount, moduleIndex } coreFnMod backendMod
+    options.onCodegenModule buildEnv coreFnModule' backendMod
     pure
       { directives: Map.union directives backendMod.directives
       , implementations: Map.union backendMod.implementations implementations

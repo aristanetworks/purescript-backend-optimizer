@@ -1,0 +1,9 @@
+/output/
+/output-es
+/.psc-package/
+/.psc*
+/.purs*
+/.psa*
+/.spago
+/*.purs*
+/**/.DS_Store

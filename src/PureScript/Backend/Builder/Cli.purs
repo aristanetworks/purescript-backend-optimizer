@@ -61,6 +61,7 @@ basicCliMain
      , onCodegenBefore :: BasicCliArgs -> Aff Unit
      , onCodegenAfter :: BasicCliArgs -> Aff Unit
      , onCodegenModule :: BasicCliArgs -> BuildEnv -> Module Ann -> BackendModule -> Aff Unit
+     , onPrepareModule :: BasicCliArgs -> BuildEnv -> Module Ann -> Aff (Module Ann)
      }
   -> Effect Unit
 basicCliMain options = do
@@ -91,5 +92,9 @@ basicCliMain options = do
           liftEffect $ Process.exit 1
         Right coreFnModules -> do
           options.onCodegenBefore args
-          buildModules { directives: allDirectives, onCodegenModule: options.onCodegenModule args } coreFnModules
+          coreFnModules # buildModules
+            { directives: allDirectives
+            , onCodegenModule: options.onCodegenModule args
+            , onPrepareModule: options.onPrepareModule args
+            }
           options.onCodegenAfter args
