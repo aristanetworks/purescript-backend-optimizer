@@ -317,14 +317,15 @@ effectBind _ _ = case _ of
 effectMap :: ForeignEval
 effectMap env _ = case _ of
   [ ExternApp [ fn, val ] ] ->
-    Just $ SemEffectBind Nothing val \nextVal ->
-      SemEffectPure (evalApp env fn [ nextVal ])
+    Just $ SemLet Nothing fn \fn' ->
+      SemEffectBind Nothing val \nextVal ->
+        SemEffectPure (evalApp env fn' [ nextVal ])
   _ -> Nothing
 
 effectPure :: ForeignEval
 effectPure _ _ = case _ of
   [ ExternApp [ val ] ] ->
-    Just $ SemEffectPure val
+    Just $ SemLet Nothing val SemEffectPure
   _ -> Nothing
 
 effectRefNew :: ForeignEval

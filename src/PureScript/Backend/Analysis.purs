@@ -15,9 +15,20 @@ import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Syntax (class HasSyntax, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Qualified(..))
 
+data Capture = CaptureNone | CaptureBranch | CaptureClosure
+
+derive instance Eq Capture
+derive instance Ord Capture
+
+instance Semigroup Capture where
+  append = max
+
+instance Monoid Capture where
+  mempty = CaptureNone
+
 newtype Usage = Usage
   { total :: Int
-  , captured :: Boolean
+  , captured :: Capture
   , arities :: Set Int
   , call :: Int
   , access :: Int
@@ -29,7 +40,7 @@ derive instance Newtype Usage _
 instance Semigroup Usage where
   append (Usage a) (Usage b) = Usage
     { total: a.total + b.total
-    , captured: a.captured || b.captured
+    , captured: a.captured <> b.captured
     , arities: Set.union a.arities b.arities
     , call: a.call + b.call
     , access: a.access + b.access
@@ -37,7 +48,7 @@ instance Semigroup Usage where
     }
 
 instance Monoid Usage where
-  mempty = Usage { total: 0, captured: false, arities: Set.empty, call: 0, access: 0, case: 0 }
+  mempty = Usage { total: 0, captured: mempty, arities: Set.empty, call: 0, access: 0, case: 0 }
 
 data Complexity = Trivial | Deref | Known | NonTrivial
 
@@ -101,7 +112,7 @@ used :: Level -> BackendAnalysis
 used level = do
   let BackendAnalysis s = mempty
   BackendAnalysis s
-    { usages = Map.singleton level (Usage { total: 1, captured: false, arities: Set.empty, call: 0, access: 0, case: 0 })
+    { usages = Map.singleton level (Usage { total: 1, captured: mempty, arities: Set.empty, call: 0, access: 0, case: 0 })
     }
 
 accessed :: Level -> BackendAnalysis -> BackendAnalysis
@@ -127,8 +138,8 @@ bump (BackendAnalysis s) = BackendAnalysis s { size = s.size + 1 }
 complex :: Complexity -> BackendAnalysis -> BackendAnalysis
 complex complexity (BackendAnalysis s) = BackendAnalysis s { complexity = s.complexity <> complexity }
 
-capture :: BackendAnalysis -> BackendAnalysis
-capture (BackendAnalysis s) = BackendAnalysis s { usages = over Usage _ { captured = true } <$> s.usages }
+capture :: Capture -> BackendAnalysis -> BackendAnalysis
+capture cap (BackendAnalysis s) = BackendAnalysis s { usages = over Usage _ { captured = cap } <$> s.usages }
 
 callArity :: Level -> Int -> BackendAnalysis -> BackendAnalysis
 callArity lvl arity (BackendAnalysis s) = BackendAnalysis s
@@ -150,13 +161,13 @@ analyze externAnalysis expr = case expr of
   LetRec lvl as b ->
     bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
   EffectBind _ lvl a b ->
-    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+    bump (complex NonTrivial (analysisOf a <> capture CaptureClosure (bound lvl (analysisOf b))))
   EffectPure a ->
-    bump (analysisOf a)
+    capture CaptureClosure $ bump (analysisOf a)
   Abs args _ ->
-    complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    complex NonTrivial $ capture CaptureClosure $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedAbs args _ ->
-    complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    complex NonTrivial $ capture CaptureClosure $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedApp hd tl ->
     case syntaxOf hd of
       Just (Local _ lvl) ->
@@ -166,7 +177,7 @@ analyze externAnalysis expr = case expr of
     where
     analysis = complex NonTrivial $ analyzeDefault expr
   UncurriedEffectAbs args _ ->
-    complex NonTrivial $ capture $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    complex NonTrivial $ capture CaptureClosure $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedEffectApp hd tl ->
     case syntaxOf hd of
       Just (Local _ lvl) ->
@@ -196,7 +207,7 @@ analyze externAnalysis expr = case expr of
   CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Branch _ _ ->
-    complex NonTrivial $ analyzeDefault expr
+    complex NonTrivial $ capture CaptureBranch $ analyzeDefault expr
   Fail _ ->
     complex NonTrivial $ analyzeDefault expr
   PrimOp op ->
@@ -233,6 +244,19 @@ analyze externAnalysis expr = case expr of
         complex Trivial analysis
     where
     analysis = analyzeDefault expr
+
+analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Qualified Ident -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+analyzeEffectBlock externAnalysis expr = case expr of
+  Let _ lvl a b ->
+    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+  LetRec lvl as b ->
+    bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
+  EffectBind _ lvl a b ->
+    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+  EffectPure a ->
+    bump (analysisOf a)
+  _ ->
+    analyze externAnalysis expr
 
 analyzeDefault :: forall a. HasAnalysis a => BackendSyntax a -> BackendAnalysis
 analyzeDefault = bump <<< foldMap analysisOf

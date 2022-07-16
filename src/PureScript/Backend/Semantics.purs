@@ -20,7 +20,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Complexity(..), Usage(..), analysisOf, analyze, bound, bump, complex, withRewrite)
+import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
@@ -733,6 +733,7 @@ foldl1Array f g arr = go 0 (g (NonEmptyArray.head arr))
 type Ctx =
   { currentLevel :: Int
   , lookupExtern :: Qualified Ident -> Maybe (Tuple BackendAnalysis NeutralExpr)
+  , effect :: Boolean
   }
 
 nextLevel :: Ctx -> Tuple Level Ctx
@@ -765,28 +766,16 @@ quote = go
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote ctx' body
       loop ctx [] pro
-    SemLet ident binding k -> do
-      let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote ctx binding) $ quote ctx' $ k $ NeutLocal ident level
-    SemLetRec bindings k -> do
-      let Tuple level ctx' = nextLevel ctx
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
-      build ctx $ LetRec level
-        (map (\b -> quote ctx' $ b neutBindings) <$> bindings)
-        (quote ctx' $ k neutBindings)
-    SemEffectBind ident binding k -> do
-      let Tuple level ctx' = nextLevel ctx
-      build ctx $ EffectBind ident level (quote ctx binding) $ quote ctx' $ k $ NeutLocal ident level
-    SemEffectPure sem ->
-      build ctx $ EffectPure (quote ctx sem)
-    SemBranch branches def -> do
-      let quoteCond (SemConditional a k) = buildPair ctx (quote ctx a) (quote ctx (k Nothing))
-      let branches' = quoteCond <<< force <$> branches
-      case quote ctx <<< force <$> def of
-        Just def' ->
-          foldr1Array (buildBranchCond ctx) (flip (buildBranchCond ctx) def') branches'
-        Nothing ->
-          build ctx $ Branch branches' Nothing
+    sem@(SemLet _ _ _) ->
+      goBlock ctx sem
+    sem@(SemLetRec _ _) ->
+      goBlock ctx sem
+    sem@(SemEffectBind _ _ _) ->
+      goBlock (ctx { effect = true }) sem
+    sem@(SemEffectPure _) ->
+      goBlock ctx sem
+    sem@(SemBranch _ _) ->
+      goBlock ctx sem
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
@@ -824,6 +813,33 @@ quote = go
       build ctx $ PrimEffect (quote ctx <$> eff)
     NeutFail err ->
       build ctx $ Fail err
+
+  goBlock ctx = case _ of
+    SemLet ident binding k -> do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+    SemLetRec bindings k -> do
+      let Tuple level ctx' = nextLevel ctx
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
+      build ctx $ LetRec level
+        (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
+        (quote ctx' $ k neutBindings)
+    SemEffectBind ident binding k -> do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ EffectBind ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+    SemEffectPure sem ->
+      build ctx $ EffectPure (quote (ctx { effect = false }) sem)
+    SemBranch branches def -> do
+      let ctx' = ctx { effect = false }
+      let quoteCond (SemConditional a k) = buildPair ctx' (quote ctx' a) (quote ctx (k Nothing))
+      let branches' = quoteCond <<< force <$> branches
+      case quote ctx <<< force <$> def of
+        Just def' ->
+          foldr1Array (buildBranchCond ctx) (flip (buildBranchCond ctx) def') branches'
+        Nothing ->
+          build ctx $ Branch branches' Nothing
+    _ ->
+      unsafeCrashWith "goBlock: impossible"
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of
@@ -936,7 +952,7 @@ buildDefault :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 buildDefault ctx expr = ExprSyntax (analyzeDefault ctx expr) expr
 
 analyzeDefault :: Ctx -> BackendSyntax BackendExpr -> BackendAnalysis
-analyzeDefault ctx = analyze (foldMap fst <<< ctx.lookupExtern)
+analyzeDefault ctx = (if ctx.effect then analyzeEffectBlock else analyze) (foldMap fst <<< ctx.lookupExtern)
 
 rewriteInline :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> BackendExpr
 rewriteInline ident level binding body = do
@@ -989,7 +1005,7 @@ shouldInlineLet level a b = do
       true
     Just (Usage { captured, total }) ->
       (s1.complexity == Trivial)
-        || (not captured && (total == 1 || (s1.complexity <= Deref && s1.size < 5)))
+        || (captured == CaptureNone && (total == 1 || (s1.complexity <= Deref && s1.size < 5)))
         || (s1.complexity == Known && total == 1)
         || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
 

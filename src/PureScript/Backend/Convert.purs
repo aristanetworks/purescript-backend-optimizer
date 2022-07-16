@@ -196,6 +196,7 @@ getCtx :: ConvertEnv -> Ctx
 getCtx env =
   { currentLevel: env.currentLevel
   , lookupExtern: traverse fromExternImpl <=< flip Map.lookup env.implementations
+  , effect: false
   }
 
 fromExternImpl :: ExternImpl -> Maybe NeutralExpr
