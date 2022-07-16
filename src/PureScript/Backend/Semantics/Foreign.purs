@@ -32,6 +32,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , control_monad_st_internal_pure
     , control_monad_st_internal_read
     , control_monad_st_internal_write
+    , data_array_length
     , data_array_unsafeIndexImpl
     , data_eq_eqBooleanImpl
     , data_eq_eqCharImpl
@@ -43,6 +44,13 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_heytingAlgebra_boolDisj
     , data_heytingAlgebra_boolImplies
     , data_heytingAlgebra_boolNot
+    , data_int_bits_and
+    , data_int_bits_complement
+    , data_int_bits_or
+    , data_int_bits_shl
+    , data_int_bits_shr
+    , data_int_bits_xor
+    , data_int_bits_zshr
     , data_ord_ordBoolean
     , data_ord_ordChar
     , data_ord_ordInt
@@ -122,13 +130,10 @@ control_monad_st_internal_modify :: ForeignSemantics
 control_monad_st_internal_modify = Tuple (qualified "Control.Monad.ST.Internal" "modify") effectRefModify
 
 data_array_unsafeIndexImpl :: ForeignSemantics
-data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") go
-  where
-  go _ _ = case _ of
-    [ ExternApp [ a, b ] ] ->
-      Just $ NeutPrimOp (Op2 OpArrayIndex a b)
-    _ ->
-      Nothing
+data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") $ primBinaryOperator OpArrayIndex
+
+data_array_length :: ForeignSemantics
+data_array_length = Tuple (qualified "Data.Array" "length") $ primUnaryOperator OpArrayLength
 
 data_eq_eqBooleanImpl :: ForeignSemantics
 data_eq_eqBooleanImpl = Tuple (qualified "Data.Eq" "eqBooleanImpl") $ primBinaryOperator (OpBooleanOrd OpEq)
@@ -180,6 +185,27 @@ data_ring_numSub = Tuple (qualified "Data.Ring" "numSub") $ primBinaryOperator (
 
 data_euclideanRing_numDiv :: ForeignSemantics
 data_euclideanRing_numDiv = Tuple (qualified "Data.EuclideanRing" "numDiv") $ primBinaryOperator (OpNumberNum OpDivide)
+
+data_int_bits_and :: ForeignSemantics
+data_int_bits_and = Tuple (qualified "Data.Int.Bits" "and") $ primBinaryOperator OpIntBitAnd
+
+data_int_bits_complement :: ForeignSemantics
+data_int_bits_complement = Tuple (qualified "Data.Int.Bits" "complement") $ primUnaryOperator OpIntBitNot
+
+data_int_bits_or :: ForeignSemantics
+data_int_bits_or = Tuple (qualified "Data.Int.Bits" "or") $ primBinaryOperator OpIntBitOr
+
+data_int_bits_shl :: ForeignSemantics
+data_int_bits_shl = Tuple (qualified "Data.Int.Bits" "shl") $ primBinaryOperator OpIntBitShiftLeft
+
+data_int_bits_shr :: ForeignSemantics
+data_int_bits_shr = Tuple (qualified "Data.Int.Bits" "shr") $ primBinaryOperator OpIntBitShiftRight
+
+data_int_bits_xor :: ForeignSemantics
+data_int_bits_xor = Tuple (qualified "Data.Int.Bits" "xor") $ primBinaryOperator OpIntBitXor
+
+data_int_bits_zshr :: ForeignSemantics
+data_int_bits_zshr = Tuple (qualified "Data.Int.Bits" "zshr") $ primBinaryOperator OpIntBitZeroFillShiftRight
 
 data_function_uncurried_mkFn :: Int -> ForeignSemantics
 data_function_uncurried_mkFn n = Tuple (qualified "Data.Function.Uncurried" ("mkFn" <> show n)) go

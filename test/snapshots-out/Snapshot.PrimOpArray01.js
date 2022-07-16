@@ -1,0 +1,10 @@
+import * as Data$dArray from "./Data.Array.js";
+import * as Snapshot$dPrimOpArray01$foreign from "./Snapshot.PrimOpArray01.foreign.js";
+const a = Snapshot$dPrimOpArray01$foreign.a;
+const b = Snapshot$dPrimOpArray01$foreign.b;
+const test4 = b[2];
+const test3 = b.length;
+const test2 = a[2];
+const test1 = a.length;
+export {a, b, test1, test2, test3, test4};
+export * from "./Snapshot.PrimOpArray01.foreign.js";

@@ -6,6 +6,7 @@
   , "effect"
   , "functions"
   , "heterogeneous"
+  , "integers"
   , "lists"
   , "maybe"
   , "partial"
