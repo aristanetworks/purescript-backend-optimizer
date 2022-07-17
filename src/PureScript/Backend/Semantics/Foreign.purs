@@ -221,11 +221,18 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
   where
   go _ _ = case _ of
     [ ExternApp items ]
-      | Just { head, tail } <- Array.uncons items
-      , Array.length tail == n ->
-          Just $ NeutUncurriedApp head tail
+      | Just { head, tail } <- Array.uncons items ->
+          Just $ goRunFn (n - Array.length tail) head tail
     _ ->
       Nothing
+
+  goRunFn n' head tail
+    | n' <= 0 =
+        NeutUncurriedApp head tail
+    | otherwise =
+        SemLam Nothing \val ->
+          goRunFn (n' - 1) head (Array.snoc tail val)
+
 
 effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
 effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn" <> show n)) go

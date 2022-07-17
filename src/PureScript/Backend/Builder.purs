@@ -82,7 +82,7 @@ buildModules options coreFnModules =
         , deps: Set.empty
         , directives
         , dataTypes: Map.empty
-        , rewriteLimit: 10000
+        , rewriteLimit: 10_000
         }
     options.onCodegenModule buildEnv coreFnModule' backendMod
     pure

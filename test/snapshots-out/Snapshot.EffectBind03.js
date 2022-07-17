@@ -1,4 +1,3 @@
-import * as Control$dMonad from "./Control.Monad.js";
 import * as Data$dSemiring from "./Data.Semiring.js";
 import * as Effect from "./Effect.js";
 import * as Snapshot$dEffectBind03$foreign from "./Snapshot.EffectBind03.foreign.js";
@@ -22,7 +21,14 @@ bindMyEffect = {
   },
   Apply0: () => applyMyEffect
 };
-applyMyEffect = {apply: Control$dMonad.ap(monadMyEffect), Functor0: () => functorMyEffect};
+applyMyEffect = {
+  apply: f => a => () => {
+    const a$p = f();
+    const a$p_1 = a();
+    return applicativeMyEffect.pure(a$p(a$p_1))();
+  },
+  Functor0: () => functorMyEffect
+};
 applicativeMyEffect = {pure: x => () => x, Apply0: () => applyMyEffect};
 const test = () => {
   const a$p = random();

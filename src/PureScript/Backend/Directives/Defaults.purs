@@ -6,7 +6,7 @@ defaultDirectives =
   Control.Apply.applyFirst arity=2
   Control.Apply.applySecond arity=2
   Control.Category.categoryFn.identity always
-  Control.Monad.ap arity=2
+  Control.Monad.ap arity=1
   Control.Monad.ST.Internal.modify arity=2
   Control.Semigroupoid.composeFlipped arity=2
   Control.Semigroupoid.semigroupoidFn.compose arity=2

@@ -4,6 +4,7 @@
   , "console"
   , "convertable-options"
   , "effect"
+  , "either"
   , "functions"
   , "heterogeneous"
   , "integers"

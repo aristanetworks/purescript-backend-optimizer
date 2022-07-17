@@ -98,6 +98,7 @@ data LocalBinding a = One a | Group (NonEmptyArray (Tuple Ident (Lazy a)))
 
 data ExternSpine
   = ExternApp (Spine BackendSemantics)
+  | ExternUncurriedApp (Spine BackendSemantics)
   | ExternAccessor BackendAccessor
   | ExternPrimOp BackendOperator1
 
@@ -165,7 +166,7 @@ instance Eval f => Eval (BackendSyntax f) where
     App hd tl ->
       evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
     UncurriedApp hd tl ->
-      NeutUncurriedApp (eval env hd) (eval env <$> tl)
+      evalUncurriedApp env (eval env hd) (eval env <$> tl)
     UncurriedAbs idents body -> do
       let
         loop env' = case _ of
@@ -308,12 +309,38 @@ evalApp env hd spine
         fn, args ->
           NeutApp fn (List.toUnfoldable args)
 
+evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
+evalUncurriedApp env hd spine = case hd of
+  SemMkFn mk ->
+    go mk (List.fromFoldable spine)
+    where
+    go = case _, _ of
+      MkFnNext _ k, List.Cons arg args ->
+        SemLet Nothing arg \nextArg ->
+          go (k nextArg) args
+      MkFnNext _ _, _ ->
+        unsafeCrashWith "Uncurried function applied to too few arguments"
+      MkFnApplied a, List.Nil ->
+        a
+      MkFnApplied a, args ->
+        NeutUncurriedApp a (List.toUnfoldable args)
+  SemExtern qual sp _ ->
+    evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine))
+  SemLet ident val k ->
+    SemLet ident val \nextVal ->
+      SemLet Nothing (k nextVal) \nextFn ->
+        evalUncurriedApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn spine
+  _ ->
+    NeutUncurriedApp hd spine
+
 evalSpine :: Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
 evalSpine env = foldl go
   where
   go hd = case _ of
     ExternApp spine ->
       evalApp env hd spine
+    ExternUncurriedApp spine ->
+      evalUncurriedApp env hd spine
     ExternAccessor accessor ->
       evalAccessor env hd accessor
     ExternPrimOp op1 ->
@@ -325,6 +352,8 @@ neutralSpine = foldl go
   go hd = case _ of
     ExternApp apps ->
       NeutApp hd apps
+    ExternUncurriedApp apps ->
+      NeutUncurriedApp hd apps
     ExternAccessor acc ->
       NeutAccessor hd acc
     ExternPrimOp op1 ->
@@ -502,9 +531,8 @@ evalPrimOp env = case _ of
         | NeutLit (LitInt 0) <- x ->
             evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
-            liftInt (evalPrimOpNum op a b)
+        | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
+            result
       OpIntOrd op
         | NeutLit (LitInt a) <- x
         , NeutLit (LitInt b) <- y ->
@@ -513,9 +541,8 @@ evalPrimOp env = case _ of
         | NeutLit (LitNumber 0.0) <- x ->
             evalPrimOp env (Op1 OpNumberNegate y)
       OpNumberNum op
-        | NeutLit (LitNumber a) <- x
-        , NeutLit (LitNumber b) <- y ->
-            liftNumber (evalPrimOpNum op a b)
+        | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
+            result
       OpNumberOrd op
         | NeutLit (LitNumber a) <- x
         , NeutLit (LitNumber b) <- y ->
@@ -576,12 +603,31 @@ evalPrimOpOrd op x y = case op of
   OpLt -> x < y
   OpLte -> x <= y
 
-evalPrimOpNum :: forall a. EuclideanRing a => BackendOperatorNum -> a -> a -> a
-evalPrimOpNum op x y = case op of
-  OpAdd -> x + y
-  OpDivide -> x / y
-  OpMultiply -> x * y
-  OpSubtract -> x - y
+evalPrimOpNum
+  :: forall a
+   . EuclideanRing a
+  => (BackendOperatorNum -> BackendOperator2)
+  -> (a -> BackendSemantics)
+  -> (BackendSemantics -> Maybe a)
+  -> BackendOperatorNum
+  -> BackendSemantics
+  -> BackendSemantics
+  -> Maybe BackendSemantics
+evalPrimOpNum injOp inj prj op x y = case op of
+  OpAdd ->
+    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a + b)) x y
+  OpMultiply ->
+    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a * b)) x y
+  OpSubtract
+    | Just a <- prj x
+    , Just b <- prj y ->
+        Just $ inj (a - b)
+  OpDivide
+    | Just a <- prj x
+    , Just b <- prj y ->
+        Just $ inj (a / b)
+  _ ->
+    Nothing
 
 evalPrimOpNot :: BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOpNot = case _ of
@@ -711,6 +757,16 @@ liftOp2 op a b = NeutPrimOp (Op2 op a b)
 caseString :: BackendSemantics -> Maybe String
 caseString = case _ of
   NeutLit (LitString a) -> Just a
+  _ -> Nothing
+
+caseInt :: BackendSemantics -> Maybe Int
+caseInt = case _ of
+  NeutLit (LitInt a) -> Just a
+  _ -> Nothing
+
+caseNumber :: BackendSemantics -> Maybe Number
+caseNumber = case _ of
+  NeutLit (LitNumber a) -> Just a
   _ -> Nothing
 
 foldr1Array :: forall a b. (a -> b -> b) -> (a -> b) -> NonEmptyArray a -> b
@@ -891,10 +947,11 @@ build ctx = case _ of
     buildDefault ctx expr
 
 buildPair :: Ctx -> BackendExpr -> BackendExpr -> Pair BackendExpr
-buildPair ctx p1 = case _ of
-  ExprSyntax _ (Branch bs Nothing)
-    | [ Pair p2 b ] <- NonEmptyArray.toArray bs ->
-        Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
+buildPair _ p1 = case _ of
+  -- TODO: This results in redundant `true`s sometimes.
+  -- ExprSyntax _ (Branch bs Nothing)
+  --   | [ Pair p2 b ] <- NonEmptyArray.toArray bs ->
+  --       Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
   p2 ->
     Pair p1 p2
 
@@ -1059,7 +1116,7 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 derive instance Newtype NeutralExpr _
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified mn (Ident id)) = go
+optimize ctx env (Qualified _ (Ident _)) = go
   where
   go n expr1
     | n == 0 = do
