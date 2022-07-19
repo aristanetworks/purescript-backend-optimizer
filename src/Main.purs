@@ -29,12 +29,14 @@ import PureScript.Backend.Builder.Cli (basicCliMain)
 import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esForeignModulePath, esModulePath)
 import PureScript.CoreFn (Module(..))
 
-main :: Effect Unit
-main = basicCliMain
+main :: FilePath -> Effect Unit
+main cliRoot = basicCliMain
   { name: "purs-backend-es"
   , description: "A PureScript backend for modern ECMAScript."
   , defaultOutputDir: Path.concat [ ".", "output-es" ]
-  , onCodegenBefore: \args -> FS.mkdir' args.outputDir { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
+  , onCodegenBefore: \args -> do
+      FS.mkdir' args.outputDir { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
+      copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
   , onCodegenAfter: mempty
   , onCodegenModule: \args _ (Module coreFnMod) backendMod -> do
       let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule backendMod

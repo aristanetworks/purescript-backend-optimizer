@@ -1,3 +1,4 @@
+import * as $runtime from "./runtime.js";
 import * as Effect from "./Effect.js";
 import * as Effect$dClass from "./Effect.Class.js";
 import * as Effect$dClass$dConsole from "./Effect.Class.Console.js";

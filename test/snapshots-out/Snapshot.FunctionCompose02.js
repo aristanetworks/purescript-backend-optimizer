@@ -1,3 +1,4 @@
+import * as $runtime from "./runtime.js";
 import * as Control$dSemigroupoid from "./Control.Semigroupoid.js";
 import * as Snapshot$dFunctionCompose02$foreign from "./Snapshot.FunctionCompose02.foreign.js";
 const f = Snapshot$dFunctionCompose02$foreign.f;

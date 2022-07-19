@@ -1,3 +1,4 @@
+import * as $runtime from "./runtime.js";
 import * as Control$dSemigroupoid from "./Control.Semigroupoid.js";
 const g = v => "b";
 const f = v => "a";

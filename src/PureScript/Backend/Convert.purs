@@ -27,7 +27,7 @@ import PureScript.Backend.Directives (parseDirectiveHeader)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -36,6 +36,7 @@ type BackendBindingGroup a b =
 
 type BackendModule =
   { name :: ModuleName
+  , comments :: Array Comment
   , imports :: Array ModuleName
   , dataTypes :: Map ProperName DataTypeMeta
   , bindings :: Array (BackendBindingGroup Ident NeutralExpr)
@@ -101,6 +102,7 @@ toBackendModule (Module mod) env = do
         }
 
   { name: mod.name
+  , comments: mod.comments
   , imports: Array.filter (not <<< (eq mod.name || eq (ModuleName "Prim"))) $ Set.toUnfoldable moduleBindings.accum.deps
   , dataTypes
   , bindings: moduleBindings.value

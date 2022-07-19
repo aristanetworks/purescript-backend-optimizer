@@ -1,3 +1,4 @@
+import * as $runtime from "./runtime.js";
 import * as Data$dSemiring from "./Data.Semiring.js";
 import * as Effect from "./Effect.js";
 import * as Snapshot$dEffectBind02$foreign from "./Snapshot.EffectBind02.foreign.js";

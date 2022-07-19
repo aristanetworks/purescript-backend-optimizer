@@ -1,10 +1,13 @@
+// @inline Data.Maybe.maybe arity=2
+// @inline Data.Maybe.maybe' arity=2
+import * as $runtime from "./runtime.js";
 import * as Data$dSemiring from "./Data.Semiring.js";
 import * as Data$dUnit from "./Data.Unit.js";
 import * as Snapshot$dInlineCase01$foreign from "./Snapshot.InlineCase01.foreign.js";
 const a = Snapshot$dInlineCase01$foreign.a;
 const f = Snapshot$dInlineCase01$foreign.f;
 const g = Snapshot$dInlineCase01$foreign.g;
-const test5 = (() => {
+const test5 = /* #__PURE__ */ (() => {
   const _0 = g(1);
   return v2 => {
     if (v2.tag === "Nothing") { return a + 1 | 0; }
@@ -12,7 +15,7 @@ const test5 = (() => {
     throw new Error("Failed pattern match");
   };
 })();
-const test4 = (() => {
+const test4 = /* #__PURE__ */ (() => {
   const _0 = g(1);
   return v2 => {
     if (v2.tag === "Nothing") { return f(Data$dUnit.unit); }
@@ -25,7 +28,7 @@ const test3 = v2 => {
   if (v2.tag === "Just") { return 1 + v2._1 | 0; }
   throw new Error("Failed pattern match");
 };
-const test2 = (() => {
+const test2 = /* #__PURE__ */ (() => {
   const _0 = f(Data$dUnit.unit);
   const _1 = g(1);
   return v2 => {
@@ -34,7 +37,7 @@ const test2 = (() => {
     throw new Error("Failed pattern match");
   };
 })();
-const test1 = (() => {
+const test1 = /* #__PURE__ */ (() => {
   const _0 = f(Data$dUnit.unit);
   return v2 => {
     if (v2.tag === "Nothing") { return _0; }
