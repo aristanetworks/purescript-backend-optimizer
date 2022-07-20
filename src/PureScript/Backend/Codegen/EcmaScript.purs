@@ -303,9 +303,9 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   UncurriedEffectApp _ _ ->
     esPureEnv env $ esCodegenEffectBlock env tcoExpr
   Accessor a prop ->
-    esPureEnv env $ esCodegenAccessor (esCodegenExpr env a) prop
+    esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
-    esPureEnv env $ esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
+    esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
   CtorDef ct ty (Ident tag) [] ->
     esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag []
   CtorDef ct ty (Ident tag) fields ->
@@ -315,7 +315,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   CtorSaturated (Qualified qual _) ct ty (Ident tag) fields ->
     esPureEnv env $ esCtor ct (Qualified qual (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
   PrimOp op ->
-    esPureEnv env $ esCodegenPrimOp env op
+    esCodegenPrimOp env op
   PrimEffect _ ->
     esCodegenEffectBlock (noPure env) tcoExpr
   Fail str ->
@@ -622,7 +622,7 @@ esCodegenLazyInit ident = esBinding ident (esApp (esCodegenIdent (esLazyIdent id
 esCodegenTcoMutualLoopBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> NonEmptyArray (Tuple Ident TcoBinding) -> Dodo.Doc a
 esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.toArray bindings of
   [ Tuple ident tco ] ->
-    esCodegenTcoLoopBinding mode env ident tco
+    esCodegenTcoLoopBinding mode (noPure env) ident tco
   bindings' -> do
     let maxArgs = fromMaybe 0 $ maximum $ NonEmptyArray.length <<< _.arguments <<< snd <$> bindings
     let argIdents = esTcoArgIdent tcoIdent <$> Array.range 0 (maxArgs - 0)
@@ -634,7 +634,7 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
                   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
                   Tuple (Dodo.words [ esCodegenIdent branchIdent, Dodo.text "===", esInt ix ]) $ fold
                     [ (\(Tuple arg var) -> Statement $ esBinding var (esCodegenIdent arg)) <$> Array.zip argIdents (NonEmptyArray.toArray argNames)
-                    , esCodegenBlockStatements (mode { tco = true }) env' tco.body
+                    , esCodegenBlockStatements (mode { tco = true }) (noPure env') tco.body
                     ]
               )
               bindings
