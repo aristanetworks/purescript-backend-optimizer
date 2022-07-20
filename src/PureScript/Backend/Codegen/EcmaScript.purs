@@ -18,6 +18,7 @@ import Data.Monoid as Monoid
 import Data.Newtype (unwrap)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (noFlags)
@@ -331,12 +332,9 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
       )
       (esCodegenExpr env a)
       bs
-  Abs idents body
-    | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
-        esFn [] (esCodegenBlockStatements pureMode (noPure env) body)
-    | otherwise -> do
-        let result = freshNames RefStrict env idents
-        esCurriedFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
+  Abs idents body -> do
+    let result = freshNames RefStrict env idents
+    esCurriedFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
   UncurriedAbs idents body -> do
     let result = freshNames RefStrict env idents
     esFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
@@ -1147,7 +1145,11 @@ esCurriedFn :: forall f a. Foldable f => f Ident -> Array (EsStatement (Dodo.Doc
 esCurriedFn args stmts = foldr go (esFnBody stmts) args
   where
   go arg body = Dodo.words
-    [ esCodegenIdent arg
+    [ case String.stripPrefix (Pattern "$__unused") (unwrap arg) of
+        Nothing ->
+          esCodegenIdent arg
+        Just _ ->
+          Dodo.text "()"
     , Dodo.text "=>"
     , body
     ]
