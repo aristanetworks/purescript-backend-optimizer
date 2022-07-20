@@ -244,7 +244,7 @@ needsPureWrapper (TcoExpr _ expr) = case expr of
   Accessor _ _ -> true
   Update a props -> needsPureWrapper a || Array.any (needsPureWrapper <<< propValue) props
   CtorSaturated _ _ _ _ props -> Array.any (needsPureWrapper <<< snd) props
-  CtorDef _ _ _ args -> Array.null args
+  CtorDef _ _ _ args -> false
   LetRec _ _ _ -> false
   Let _ _ _ _ -> false
   EffectBind _ _ _ _ -> false
@@ -352,7 +352,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Update a props ->
     esPureEnv env $ esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
   CtorDef ct ty (Ident tag) [] ->
-    esCtor ct (Qualified Nothing (esCtorIdent ty)) tag []
+    esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag []
   CtorDef ct ty (Ident tag) fields ->
     esCurriedFn (Ident <$> fields) [ Return (esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenIdent <<< Ident <$> fields)) ]
   CtorSaturated (Qualified (Just mn) _) ct ty (Ident tag) fields | mn == env.currentModule ->
