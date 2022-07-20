@@ -30,6 +30,7 @@ data BackendSyntax a
   | Branch (NonEmptyArray (Pair a)) (Maybe a)
   | PrimOp (BackendOperator a)
   | PrimEffect (BackendEffect a)
+  | PrimUndefined
   | Fail String
 
 newtype Level = Level Int
@@ -138,6 +139,7 @@ instance Foldable BackendSyntax where
     Branch as b -> foldMap (foldMap f) as <> foldMap f b
     PrimOp a -> foldMap f a
     PrimEffect a -> foldMap f a
+    PrimUndefined -> mempty
     CtorSaturated _ _ _ _ es -> foldMap (foldMap f) es
     CtorDef _ _ _ _ -> mempty
     Fail _ -> mempty
@@ -192,6 +194,8 @@ instance Traversable BackendSyntax where
       PrimOp <$> traverse f a
     PrimEffect a ->
       PrimEffect <$> traverse f a
+    PrimUndefined ->
+      pure PrimUndefined
     Fail a ->
       pure (Fail a)
 

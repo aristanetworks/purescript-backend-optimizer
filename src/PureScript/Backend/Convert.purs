@@ -27,7 +27,7 @@ import PureScript.Backend.Directives (parseDirectiveHeader)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident, Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -233,6 +233,8 @@ toBackendExpr = case _ of
         buildM (Local (Just ident) lvl)
       Qualified (Just mn) ident | mn == currentModule, Just lvl <- Map.lookup ident toLevel ->
         buildM (Local (Just ident) lvl)
+      Qualified (Just (ModuleName "Prim")) (Ident "undefined") ->
+        buildM PrimUndefined
       Qualified Nothing ident ->
         buildM (Var (Qualified (Just currentModule) ident))
       _ ->

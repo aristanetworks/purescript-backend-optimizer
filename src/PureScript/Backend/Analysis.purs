@@ -220,6 +220,8 @@ analyze externAnalysis expr = case expr of
     analysis = complex NonTrivial $ analyzeDefault expr
   PrimEffect _ ->
     complex NonTrivial $ analyzeDefault expr
+  PrimUndefined ->
+    analyzeDefault expr
   Accessor hd _ ->
     case syntaxOf hd of
       Just (Accessor _ _) ->

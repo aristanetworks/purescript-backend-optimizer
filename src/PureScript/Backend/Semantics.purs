@@ -57,6 +57,7 @@ data BackendSemantics
   | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
   | NeutPrimOp (BackendOperator BackendSemantics)
   | NeutPrimEffect (BackendEffect BackendSemantics)
+  | NeutPrimUndefined
 
 data SemConditional a = SemConditional a (Maybe (SemTry a) -> a)
 
@@ -224,6 +225,8 @@ instance Eval f => Eval (BackendSyntax f) where
       evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
       NeutPrimEffect $ eval env <$> eff
+    PrimUndefined ->
+      NeutPrimUndefined
     Lit lit ->
       NeutLit (eval env <$> lit)
     Fail err ->
@@ -872,6 +875,8 @@ quote = go
       build ctx $ PrimOp (quote ctx <$> op)
     NeutPrimEffect eff ->
       build ctx $ PrimEffect (quote ctx <$> eff)
+    NeutPrimUndefined ->
+      build ctx PrimUndefined
     NeutFail err ->
       build ctx $ Fail err
     NeutBacktrack ->

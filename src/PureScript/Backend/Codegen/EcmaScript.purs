@@ -252,6 +252,7 @@ needsPureWrapper (TcoExpr _ expr) = case expr of
   Branch _ _ -> false
   PrimOp _ -> true
   PrimEffect _ -> false
+  PrimUndefined -> false
   Fail _ -> false
 
 esCodegenTopLevelExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
@@ -269,8 +270,6 @@ esCodegenTopLevelExpr env tcoExpr@(TcoExpr _ expr) = do
 
 esCodegenExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
 esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
-  Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined")) ->
-    esUndefined
   Var (Qualified (Just mn) ident) | mn == env.currentModule ->
     esCodegenName (renameTopLevel ident env)
   Var var ->
@@ -282,7 +281,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   App a bs ->
     esPureEnv env $ foldl
       ( \hd -> case _ of
-          TcoExpr _ (Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined"))) ->
+          TcoExpr _ PrimUndefined ->
             esApp hd []
           arg ->
             esApp hd [ esCodegenExpr env arg ]
@@ -318,6 +317,8 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenPrimOp env op
   PrimEffect _ ->
     esCodegenEffectBlock (noPure env) tcoExpr
+  PrimUndefined ->
+    esUndefined
   Fail str ->
     esError str
   Branch _ _ ->
@@ -587,6 +588,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
     Fail _ ->
       false
     PrimEffect _ ->
+      false
+    PrimUndefined ->
       false
     LetRec _ _ _ ->
       false
