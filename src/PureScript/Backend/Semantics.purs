@@ -13,7 +13,7 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
@@ -52,6 +52,7 @@ data BackendSemantics
   | NeutUpdate BackendSemantics (Array (Prop BackendSemantics))
   | NeutLit (Literal BackendSemantics)
   | NeutFail String
+  | NeutBacktrack
   | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
   | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
   | NeutPrimOp (BackendOperator BackendSemantics)
@@ -64,6 +65,7 @@ type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Maybe (Lazy a))
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
   | ExprRewrite BackendAnalysis BackendRewrite
+  | ExprBacktrack
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -88,6 +90,7 @@ instance HasAnalysis BackendExpr where
   analysisOf = case _ of
     ExprSyntax s _ -> s
     ExprRewrite s _ -> s
+    ExprBacktrack -> mempty
 
 instance HasSyntax BackendExpr where
   syntaxOf = case _ of
@@ -278,6 +281,8 @@ instance Eval BackendExpr where
               []
       ExprSyntax _ expr ->
         eval env expr
+      ExprBacktrack ->
+        NeutBacktrack
 
 instance Eval NeutralExpr where
   eval env (NeutralExpr a) = eval env a
@@ -421,7 +426,7 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
             Just sem ->
               force sem
             Nothing ->
-              NeutFail "Failed pattern match"
+              NeutBacktrack
 
 evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
 evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (flip eval b <<< addTry env)
@@ -869,6 +874,8 @@ quote = go
       build ctx $ PrimEffect (quote ctx <$> eff)
     NeutFail err ->
       build ctx $ Fail err
+    NeutBacktrack ->
+      ExprBacktrack
 
   goBlock ctx = case _ of
     SemLet ident binding k -> do
@@ -889,11 +896,12 @@ quote = go
       let ctx' = ctx { effect = false }
       let quoteCond (SemConditional a k) = buildPair ctx' (quote ctx' a) (quote ctx (k Nothing))
       let branches' = quoteCond <<< force <$> branches
-      case quote ctx <<< force <$> def of
-        Just def' ->
-          foldr1Array (buildBranchCond ctx) (flip (buildBranchCond ctx) def') branches'
-        Nothing ->
-          build ctx $ Branch branches' Nothing
+      fromMaybe ExprBacktrack $ foldr (buildBranchCond ctx) (quote ctx <<< force <$> def) branches'
+      -- case
+      --   Just def' ->
+      --     foldr1Array (buildBranchCond ctx) (flip (buildBranchCond ctx) def') branches'
+      --   Nothing ->
+      --     build ctx $ Branch branches' Nothing
     _ ->
       unsafeCrashWith "goBlock: impossible"
 
@@ -955,7 +963,7 @@ buildPair _ p1 = case _ of
   p2 ->
     Pair p1 p2
 
-buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
+buildBranchCond :: Ctx -> Pair BackendExpr -> Maybe BackendExpr -> Maybe BackendExpr
 buildBranchCond ctx (Pair a b) c = case b of
   -- TODO: This is broken.
   -- ExprSyntax _ (Lit (LitBoolean bool1))
@@ -970,8 +978,10 @@ buildBranchCond ctx (Pair a b) c = case b of
   --         build ctx (PrimOp (Op2 OpBooleanOr a c))
   --       else
   --         build ctx (PrimOp (Op2 OpBooleanOr (build ctx (PrimOp (Op1 OpBooleanNot a))) c))
+  ExprBacktrack ->
+    c
   _ ->
-    build ctx (Branch (NonEmptyArray.singleton (Pair a b)) (Just c))
+    Just $ build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
 
 isBooleanTail :: forall a. BackendSyntax a -> Boolean
 isBooleanTail = case _ of
@@ -1151,6 +1161,8 @@ freeze init = Tuple (analysisOf init) (go init)
           NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
         RewriteUnpackData ident level qual ct ty tag values body ->
           NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
+    ExprBacktrack ->
+      NeutralExpr $ Fail "Failed pattern match"
 
 reassocBindings
   :: (Maybe Ident -> Level -> NeutralExpr -> NeutralExpr -> BackendSyntax NeutralExpr)
