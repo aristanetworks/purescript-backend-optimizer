@@ -26,8 +26,8 @@ import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Stream as Stream
 import PureScript.Backend.Builder.Cli (basicCliMain)
-import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esForeignModulePath, esModulePath)
-import PureScript.CoreFn (Module(..))
+import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esModulePath)
+import PureScript.CoreFn (Module(..), ModuleName(..))
 
 main :: FilePath -> Effect Unit
 main cliRoot = basicCliMain
@@ -35,16 +35,17 @@ main cliRoot = basicCliMain
   , description: "A PureScript backend for modern ECMAScript."
   , defaultOutputDir: Path.concat [ ".", "output-es" ]
   , onCodegenBefore: \args -> do
-      FS.mkdir' args.outputDir { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
+      mkdirp args.outputDir
+      writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
       copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
   , onCodegenAfter: mempty
-  , onCodegenModule: \args _ (Module coreFnMod) backendMod -> do
+  , onCodegenModule: \args _ (Module coreFnMod) backendMod@{ name: ModuleName name } -> do
       let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule backendMod
-      let modPath = Path.concat [ args.outputDir, esModulePath backendMod.name ]
-      writeTextFile UTF8 modPath formatted
-      unless (Array.null coreFnMod.foreign) do
-        let foreignFileName = esForeignModulePath backendMod.name
-        let foreignOutputPath = Path.concat [ args.outputDir, foreignFileName ]
+      let modPath = Path.concat [ args.outputDir, name ]
+      mkdirp modPath
+      writeTextFile UTF8 (Path.concat [ modPath, "index.js" ]) formatted
+      unless (Array.null backendMod.foreign) do
+        let foreignOutputPath = Path.concat [ modPath, "foreign.js" ]
         let origPath = Path.concat [ args.outputDir, "..", coreFnMod.path ]
         let foreignSiblingPath = fromMaybe origPath (String.stripSuffix (Pattern (Path.extname origPath)) origPath) <> ".js"
         res <- attempt $ oneOf
@@ -78,3 +79,9 @@ copyFile from to = do
       Stream.destroy res
       Stream.destroy dst
       Stream.destroy src
+
+mkdirp :: FilePath -> Aff Unit
+mkdirp = flip FS.mkdir' { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
+
+esModulePackageJson :: String
+esModulePackageJson = """{"type": "module"}"""

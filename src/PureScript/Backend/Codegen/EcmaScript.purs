@@ -1262,7 +1262,7 @@ esImportRuntime = Dodo.words
   , Dodo.text "as"
   , Dodo.text "$runtime"
   , Dodo.text "from"
-  , esString "./runtime.js"
+  , esString "../runtime.js"
   ]
 
 esExports :: forall a. Maybe String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
@@ -1297,10 +1297,10 @@ esExportAllFrom path = Dodo.words
   ]
 
 esModulePath :: ModuleName -> String
-esModulePath (ModuleName mn) = "./" <> mn <> ".js"
+esModulePath (ModuleName mn) = "../" <> mn <> "/index.js"
 
 esForeignModulePath :: ModuleName -> String
-esForeignModulePath (ModuleName mn) = "./" <> mn <> ".foreign.js"
+esForeignModulePath (ModuleName _) = "./foreign.js"
 
 esUndefined :: forall a. Dodo.Doc a
 esUndefined = Dodo.text "undefined"
