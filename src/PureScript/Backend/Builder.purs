@@ -87,6 +87,6 @@ buildModules options coreFnModules =
     options.onCodegenModule buildEnv coreFnModule' backendMod
     pure
       { directives: Map.union directives backendMod.directives
-      , implementations: Map.union backendMod.implementations implementations
+      , implementations: Map.union implementations backendMod.implementations
       , moduleIndex: moduleIndex + 1
       }
