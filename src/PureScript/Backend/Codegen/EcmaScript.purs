@@ -244,7 +244,7 @@ needsPureWrapper (TcoExpr _ expr) = case expr of
   Accessor _ _ -> true
   Update a props -> needsPureWrapper a || Array.any (needsPureWrapper <<< propValue) props
   CtorSaturated _ _ _ _ props -> Array.any (needsPureWrapper <<< snd) props
-  CtorDef _ _ _ args -> false
+  CtorDef _ _ _ _ -> false
   LetRec _ _ _ -> false
   Let _ _ _ _ -> false
   EffectBind _ _ _ _ -> false
@@ -255,7 +255,9 @@ needsPureWrapper (TcoExpr _ expr) = case expr of
   Fail _ -> false
 
 esCodegenTopLevelExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
-esCodegenTopLevelExpr env tcoExpr@(TcoExpr _ expr) =
+esCodegenTopLevelExpr env tcoExpr@(TcoExpr _ expr) = do
+  let emitBlock = needsPureWrapper tcoExpr
+  let exprDoc = esCodegenExpr (env { emitPure = not emitBlock }) tcoExpr
   if emitBlock then
     case expr of
       Lit (LitRecord _) ->
@@ -264,53 +266,6 @@ esCodegenTopLevelExpr env tcoExpr@(TcoExpr _ expr) =
         esPure $ esBlock [ Return exprDoc ]
   else
     exprDoc
-  -- Var _ ->
-  --   exprDoc
-  -- Local _ _ ->
-  --   exprDoc
-  -- Lit _ ->
-  --   exprDoc
-  -- App _ _ ->
-  --   esPure exprDoc
-  -- UncurriedApp _ _ ->
-  --   esPure exprDoc
-  -- UncurriedEffectApp _ _ ->
-  --   esPure exprDoc
-  -- Abs _ _ ->
-  --   exprDoc
-  -- UncurriedAbs _ _ ->
-  --   exprDoc
-  -- UncurriedEffectAbs _ _ ->
-  --   exprDoc
-  -- Accessor _ _ ->
-  --   esPure $ esBlock [ Return exprDoc ]
-  -- Update _ _ ->
-  --   esPure $ esBlock [ Return exprDoc ]
-  -- CtorSaturated _ _ _ _ _ ->
-  --   esPure $ esBlock [ Return exprDoc ]
-  -- CtorDef _ _ _ args | Array.null args ->
-  --   esPure $ esBlock [ Return exprDoc ]
-  -- CtorDef _ _ _ _ ->
-  --   exprDoc
-  -- LetRec _ _ _ ->
-  --   esPure exprDoc
-  -- Let _ _ _ _ ->
-  --   esPure exprDoc
-  -- EffectBind _ _ _ _ ->
-  --   exprDoc
-  -- EffectPure _ ->
-  --   exprDoc
-  -- Branch _ _ ->
-  --   esPure exprDoc
-  -- PrimOp _ ->
-  --   esPure $ esBlock [ Return exprDoc ]
-  -- PrimEffect _ ->
-  --   exprDoc
-  -- Fail _ ->
-  --   exprDoc
-  where
-  emitBlock = needsPureWrapper tcoExpr
-  exprDoc = esCodegenExpr (env { emitPure = not emitBlock }) tcoExpr
 
 esCodegenExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
 esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of

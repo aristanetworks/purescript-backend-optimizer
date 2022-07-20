@@ -62,6 +62,7 @@ type ConvertEnv =
   , dataTypes :: Map ProperName DataTypeMeta
   , toLevel :: Map Ident Level
   , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+  , moduleImplementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
   , deps :: Set ModuleName
   , directives :: Map EvalRef InlineDirective
   , rewriteLimit :: Int
@@ -99,6 +100,7 @@ toBackendModule (Module mod) env = do
       toBackendTopLevelBindingGroups mod.decls env
         { dataTypes = dataTypes
         , directives = Map.union directives.locals env.directives
+        , moduleImplementations = Map.empty
         }
 
   { name: mod.name
@@ -110,7 +112,7 @@ toBackendModule (Module mod) env = do
       [ map (\a -> Tuple a (Qualified Nothing a)) mod.exports
       , map (\(ReExport mn a) -> Tuple a (Qualified (Just mn) a)) mod.reExports
       ]
-  , implementations: moduleBindings.accum.implementations
+  , implementations: moduleBindings.accum.moduleImplementations
   , directives: directives.exports
   , foreign: mod.foreign
   }
@@ -144,6 +146,7 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
+      , moduleImplementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.moduleImplementations
       , deps = Set.union (unwrap (fst impl)).deps env.deps
       , directives = case impl of
           Tuple _ (ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)))

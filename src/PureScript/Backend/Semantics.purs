@@ -1082,6 +1082,7 @@ shouldInlineExternReference _ (BackendAnalysis s) _ = case _ of
   Just InlineNever -> false
   Just (InlineArity _) -> false
   _ ->
+    -- false
     s.complexity <= Deref && s.size < 16
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
@@ -1090,6 +1091,7 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
   Just InlineNever -> false
   Just (InlineArity n) -> Array.length args == n
   _ ->
+    -- false
     (s.complexity <= Deref && s.size < 16)
       || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 16)
       || (Map.isEmpty s.usages && Set.isEmpty s.deps && s.size < 64)
@@ -1098,13 +1100,16 @@ shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr 
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of
   Just InlineAlways -> true
   Just InlineNever -> false
-  _ -> s.complexity <= Deref && s.size < 16
+  _ ->
+    -- false
+    s.complexity <= Deref && s.size < 16
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Maybe InlineDirective -> Boolean
 shouldInlineExternLiteral lit = case _ of
   Just InlineAlways -> true
   Just InlineNever -> false
   _ ->
+    -- false
     case lit of
       LitInt _ -> true
       LitNumber _ -> true

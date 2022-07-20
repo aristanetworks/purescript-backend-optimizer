@@ -16,6 +16,7 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Bifunctor (lmap)
 import Data.Compactable (separate)
 import Data.Either (Either(..))
+import Data.FoldableWithIndex (foldrWithIndex)
 import Data.List (List, foldM)
 import Data.List as List
 import Data.Map (Map)
@@ -79,6 +80,7 @@ buildModules options coreFnModules =
         , currentLevel: 0
         , toLevel: Map.empty
         , implementations
+        , moduleImplementations: Map.empty
         , deps: Set.empty
         , directives
         , dataTypes: Map.empty
@@ -86,7 +88,7 @@ buildModules options coreFnModules =
         }
     options.onCodegenModule buildEnv coreFnModule' backendMod
     pure
-      { directives: Map.union directives backendMod.directives
-      , implementations: Map.union implementations backendMod.implementations
+      { directives: foldrWithIndex Map.insert directives backendMod.directives
+      , implementations: foldrWithIndex Map.insert implementations backendMod.implementations
       , moduleIndex: moduleIndex + 1
       }
