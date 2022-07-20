@@ -970,19 +970,16 @@ buildPair ctx p1 = case _ of
 
 buildBranchCond :: Ctx -> Pair BackendExpr -> Maybe BackendExpr -> Maybe BackendExpr
 buildBranchCond ctx (Pair a b) c = case b of
-  -- TODO: This is broken.
-  -- ExprSyntax _ (Lit (LitBoolean bool1))
-  --   | ExprSyntax _ (Lit (LitBoolean bool2)) <- c ->
-  --       if bool1 then
-  --         if bool2 then c
-  --         else a
-  --       else if bool2 then c
-  --       else build ctx (PrimOp (Op1 OpBooleanNot a))
-  --   | ExprSyntax _ x <- c, isBooleanTail x ->
-  --       if bool1 then
-  --         build ctx (PrimOp (Op2 OpBooleanOr a c))
-  --       else
-  --         build ctx (PrimOp (Op2 OpBooleanOr (build ctx (PrimOp (Op1 OpBooleanNot a))) c))
+  ExprSyntax _ (Lit (LitBoolean true))
+    | Just (ExprSyntax _ (Lit (LitBoolean true))) <- c ->
+        c
+    | Just (ExprSyntax _ (Lit (LitBoolean false))) <- c ->
+        Just a
+    | Just x@(ExprSyntax _ x') <- c, isBooleanTail x' ->
+        Just $ build ctx (PrimOp (Op2 OpBooleanOr a x))
+  ExprSyntax _ (Lit (LitBoolean false))
+    | Just (ExprSyntax _ (Lit (LitBoolean false))) <- c ->
+        c
   ExprBacktrack ->
     c
   _ ->
