@@ -1,9 +1,9 @@
 // @inline Data.Maybe.maybe arity=3
 // @inline Data.Maybe.maybe' arity=3
-import * as $runtime from "./runtime.js";
-import * as Data$dSemiring from "./Data.Semiring.js";
-import * as Data$dUnit from "./Data.Unit.js";
-import * as Snapshot$dInlineCase02$foreign from "./Snapshot.InlineCase02.foreign.js";
+import * as $runtime from "../runtime.js";
+import * as Data$dSemiring from "../Data.Semiring/index.js";
+import * as Data$dUnit from "../Data.Unit/index.js";
+import * as Snapshot$dInlineCase02$foreign from "./foreign.js";
 const a = Snapshot$dInlineCase02$foreign.a;
 const f = Snapshot$dInlineCase02$foreign.f;
 const g = Snapshot$dInlineCase02$foreign.g;
@@ -38,4 +38,4 @@ const test1 = z => {
   throw new Error("Failed pattern match");
 };
 export {a, f, g, test1, test2, test3, test4, test5};
-export * from "./Snapshot.InlineCase02.foreign.js";
+export * from "./foreign.js";

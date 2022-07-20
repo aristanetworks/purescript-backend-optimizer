@@ -1,9 +1,9 @@
 // @inline Data.Maybe.maybe arity=2
 // @inline Data.Maybe.maybe' arity=2
-import * as $runtime from "./runtime.js";
-import * as Data$dSemiring from "./Data.Semiring.js";
-import * as Data$dUnit from "./Data.Unit.js";
-import * as Snapshot$dInlineCase01$foreign from "./Snapshot.InlineCase01.foreign.js";
+import * as $runtime from "../runtime.js";
+import * as Data$dSemiring from "../Data.Semiring/index.js";
+import * as Data$dUnit from "../Data.Unit/index.js";
+import * as Snapshot$dInlineCase01$foreign from "./foreign.js";
 const a = Snapshot$dInlineCase01$foreign.a;
 const f = Snapshot$dInlineCase01$foreign.f;
 const g = Snapshot$dInlineCase01$foreign.g;
@@ -46,4 +46,4 @@ const test1 = /* #__PURE__ */ (() => {
   };
 })();
 export {a, f, g, test1, test2, test3, test4, test5};
-export * from "./Snapshot.InlineCase01.foreign.js";
+export * from "./foreign.js";

@@ -1,5 +1,5 @@
-import * as $runtime from "./runtime.js";
-import * as Snapshot$dPrimOpBoolean01$foreign from "./Snapshot.PrimOpBoolean01.foreign.js";
+import * as $runtime from "../runtime.js";
+import * as Snapshot$dPrimOpBoolean01$foreign from "./foreign.js";
 const a = Snapshot$dPrimOpBoolean01$foreign.a;
 const b = Snapshot$dPrimOpBoolean01$foreign.b;
 const test9 = /* #__PURE__ */ (() => !a)();
@@ -12,4 +12,4 @@ const test3 = /* #__PURE__ */ (() => a === b)();
 const test2 = /* #__PURE__ */ (() => a || b)();
 const test1 = /* #__PURE__ */ (() => a && b)();
 export {a, b, test1, test2, test3, test4, test5, test6, test7, test8, test9};
-export * from "./Snapshot.PrimOpBoolean01.foreign.js";
+export * from "./foreign.js";

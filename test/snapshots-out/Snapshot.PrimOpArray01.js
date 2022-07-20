@@ -1,6 +1,6 @@
-import * as $runtime from "./runtime.js";
-import * as Data$dArray from "./Data.Array.js";
-import * as Snapshot$dPrimOpArray01$foreign from "./Snapshot.PrimOpArray01.foreign.js";
+import * as $runtime from "../runtime.js";
+import * as Data$dArray from "../Data.Array/index.js";
+import * as Snapshot$dPrimOpArray01$foreign from "./foreign.js";
 const a = Snapshot$dPrimOpArray01$foreign.a;
 const b = Snapshot$dPrimOpArray01$foreign.b;
 const test4 = /* #__PURE__ */ (() => b[2])();
@@ -8,4 +8,4 @@ const test3 = /* #__PURE__ */ (() => b.length)();
 const test2 = /* #__PURE__ */ (() => a[2])();
 const test1 = /* #__PURE__ */ (() => a.length)();
 export {a, b, test1, test2, test3, test4};
-export * from "./Snapshot.PrimOpArray01.foreign.js";
+export * from "./foreign.js";

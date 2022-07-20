@@ -1,4 +1,4 @@
-import * as $runtime from "./runtime.js";
+import * as $runtime from "../runtime.js";
 const test = /* #__PURE__ */ (() => {
   const test3 = n => {
     if (n < 100) { return n; }

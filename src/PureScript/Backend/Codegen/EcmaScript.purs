@@ -49,6 +49,7 @@ type CodegenEnv =
   { currentModule :: ModuleName
   , bound :: Map Ident Int
   , names :: Map CodegenRef CodegenName
+  , emitPure :: Boolean
   }
 
 type TcoBinding =
@@ -131,6 +132,9 @@ renameLocal ident lvl env =
     Just id ->
       id
 
+noPure :: CodegenEnv -> CodegenEnv
+noPure = _ { emitPure = false }
+
 renameTopLevel :: Ident -> CodegenEnv -> CodegenName
 renameTopLevel ident env = fromMaybe (Tuple ident RefStrict) $ Map.lookup (CodegenTopLevel ident) env.names
 
@@ -142,6 +146,7 @@ esCodegenModule mod@{ name: ModuleName this } = do
       { currentModule: mod.name
       , bound: Map.empty
       , names: Map.empty
+      , emitPure: true
       }
 
     foreignModuleName =
@@ -220,58 +225,89 @@ esCodegenModule mod@{ name: ModuleName this } = do
     <> esBlockStatements statements
     <> Dodo.break
 
+needsPureWrapper :: TcoExpr -> Boolean
+needsPureWrapper (TcoExpr _ expr) = case expr of
+  Var _ -> false
+  Local _ _ -> false
+  Lit (LitRecord props) -> Array.any (needsPureWrapper <<< propValue) props
+  Lit (LitArray values) -> Array.any needsPureWrapper values
+  Lit _ -> false
+  App a bs -> needsPureWrapper a || NonEmptyArray.any needsPureWrapper bs
+  UncurriedApp a bs -> needsPureWrapper a || Array.any needsPureWrapper bs
+  UncurriedEffectApp a bs -> needsPureWrapper a || Array.any needsPureWrapper bs
+  Abs _ _ -> false
+  UncurriedAbs _ _ -> false
+  UncurriedEffectAbs _ _ -> false
+  Accessor _ _ -> true
+  Update a props -> needsPureWrapper a || Array.any (needsPureWrapper <<< propValue) props
+  CtorSaturated _ _ _ _ props -> Array.any (needsPureWrapper <<< snd) props
+  CtorDef _ _ _ args -> Array.null args
+  LetRec _ _ _ -> false
+  Let _ _ _ _ -> false
+  EffectBind _ _ _ _ -> false
+  EffectPure _ -> false
+  Branch _ _ -> false
+  PrimOp _ -> true
+  PrimEffect _ -> false
+  Fail _ -> false
+
 esCodegenTopLevelExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
-esCodegenTopLevelExpr env tcoExpr@(TcoExpr _ expr) = case expr of
-  Var _ ->
+esCodegenTopLevelExpr env tcoExpr@(TcoExpr _ expr) =
+  if emitBlock then
+    case expr of
+      Lit (LitRecord _) ->
+        esPure $ esBlock [ ReturnObject exprDoc ]
+      _ ->
+        esPure $ esBlock [ Return exprDoc ]
+  else
     exprDoc
-  Local _ _ ->
-    exprDoc
-  Lit (LitRecord _) ->
-    esPure $ esBlock [ ReturnObject exprDoc ]
-  Lit (LitArray _) ->
-    esPure $ esBlock [ Return exprDoc ]
-  Lit _ ->
-    exprDoc
-  App _ _ ->
-    esPure exprDoc
-  UncurriedApp _ _ ->
-    esPure exprDoc
-  UncurriedEffectApp _ _ ->
-    esPure exprDoc
-  Abs _ _ ->
-    exprDoc
-  UncurriedAbs _ _ ->
-    exprDoc
-  UncurriedEffectAbs _ _ ->
-    exprDoc
-  Accessor _ _ ->
-    esPure $ esBlock [ Return exprDoc ]
-  Update _ _ ->
-    esPure $ esBlock [ Return exprDoc ]
-  CtorSaturated _ _ _ _ _ ->
-    esPure $ esBlock [ Return exprDoc ]
-  CtorDef _ _ _ args | Array.null args ->
-    esPure $ esBlock [ Return exprDoc ]
-  CtorDef _ _ _ _ ->
-    exprDoc
-  LetRec _ _ _ ->
-    esPure exprDoc
-  Let _ _ _ _ ->
-    esPure exprDoc
-  EffectBind _ _ _ _ ->
-    exprDoc
-  EffectPure _ ->
-    exprDoc
-  Branch _ _ ->
-    esPure exprDoc
-  PrimOp _ ->
-    esPure $ esBlock [ Return exprDoc ]
-  PrimEffect _ ->
-    exprDoc
-  Fail _ ->
-    exprDoc
+  -- Var _ ->
+  --   exprDoc
+  -- Local _ _ ->
+  --   exprDoc
+  -- Lit _ ->
+  --   exprDoc
+  -- App _ _ ->
+  --   esPure exprDoc
+  -- UncurriedApp _ _ ->
+  --   esPure exprDoc
+  -- UncurriedEffectApp _ _ ->
+  --   esPure exprDoc
+  -- Abs _ _ ->
+  --   exprDoc
+  -- UncurriedAbs _ _ ->
+  --   exprDoc
+  -- UncurriedEffectAbs _ _ ->
+  --   exprDoc
+  -- Accessor _ _ ->
+  --   esPure $ esBlock [ Return exprDoc ]
+  -- Update _ _ ->
+  --   esPure $ esBlock [ Return exprDoc ]
+  -- CtorSaturated _ _ _ _ _ ->
+  --   esPure $ esBlock [ Return exprDoc ]
+  -- CtorDef _ _ _ args | Array.null args ->
+  --   esPure $ esBlock [ Return exprDoc ]
+  -- CtorDef _ _ _ _ ->
+  --   exprDoc
+  -- LetRec _ _ _ ->
+  --   esPure exprDoc
+  -- Let _ _ _ _ ->
+  --   esPure exprDoc
+  -- EffectBind _ _ _ _ ->
+  --   exprDoc
+  -- EffectPure _ ->
+  --   exprDoc
+  -- Branch _ _ ->
+  --   esPure exprDoc
+  -- PrimOp _ ->
+  --   esPure $ esBlock [ Return exprDoc ]
+  -- PrimEffect _ ->
+  --   exprDoc
+  -- Fail _ ->
+  --   exprDoc
   where
-  exprDoc = esCodegenExpr env tcoExpr
+  emitBlock = needsPureWrapper tcoExpr
+  exprDoc = esCodegenExpr (env { emitPure = not emitBlock }) tcoExpr
 
 esCodegenExpr :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
 esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
@@ -286,7 +322,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Lit lit ->
     esCodegenLit env lit
   App a bs ->
-    foldl
+    esPureEnv env $ foldl
       ( \hd -> case _ of
           TcoExpr _ (Var (Qualified (Just (ModuleName "Prim")) (Ident "undefined"))) ->
             esApp hd []
@@ -297,48 +333,48 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
       bs
   Abs idents body
     | [ Tuple (Just (Ident "$__unused")) _ ] <- NonEmptyArray.toArray idents ->
-        esFn [] (esCodegenBlockStatements pureMode env body)
+        esFn [] (esCodegenBlockStatements pureMode (noPure env) body)
     | otherwise -> do
         let result = freshNames RefStrict env idents
-        esCurriedFn result.value (esCodegenBlockStatements pureMode result.accum body)
+        esCurriedFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
   UncurriedAbs idents body -> do
     let result = freshNames RefStrict env idents
-    esFn result.value (esCodegenBlockStatements pureMode result.accum body)
-  UncurriedApp a bs ->
-    esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+    esFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
+  UncurriedApp a bs -> do
+    esPureEnv env $ esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   UncurriedEffectAbs idents body -> do
     let result = freshNames RefStrict env idents
-    esFn result.value (esCodegenBlockStatements effectMode result.accum body)
+    esFn result.value (esCodegenBlockStatements effectMode (noPure result.accum) body)
   UncurriedEffectApp _ _ ->
-    esCodegenEffectBlock env tcoExpr
+    esPureEnv env $ esCodegenEffectBlock env tcoExpr
   Accessor a prop ->
-    esCodegenAccessor (esCodegenExpr env a) prop
+    esPureEnv env $ esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
-    esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
+    esPureEnv env $ esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
   CtorDef ct ty (Ident tag) [] ->
     esCtor ct (Qualified Nothing (esCtorIdent ty)) tag []
   CtorDef ct ty (Ident tag) fields ->
     esCurriedFn (Ident <$> fields) [ Return (esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenIdent <<< Ident <$> fields)) ]
   CtorSaturated (Qualified (Just mn) _) ct ty (Ident tag) fields | mn == env.currentModule ->
-    esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
+    esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
   CtorSaturated (Qualified qual _) ct ty (Ident tag) fields ->
-    esCtor ct (Qualified qual (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
+    esPureEnv env $ esCtor ct (Qualified qual (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
   PrimOp op ->
-    esCodegenPrimOp env op
+    esPureEnv env $ esCodegenPrimOp env op
   PrimEffect _ ->
-    esCodegenEffectBlock env tcoExpr
+    esCodegenEffectBlock (noPure env) tcoExpr
   Fail str ->
     esError str
   Branch _ _ ->
-    esCodegenBlock env tcoExpr
+    esPureEnv env $ esCodegenBlock (noPure env) tcoExpr
   LetRec _ _ _ ->
-    esCodegenBlock env tcoExpr
+    esPureEnv env $ esCodegenBlock (noPure env) tcoExpr
   Let _ _ _ _ ->
-    esCodegenBlock env tcoExpr
+    esPureEnv env $ esCodegenBlock (noPure env) tcoExpr
   EffectBind _ _ _ _ ->
-    esCodegenEffectBlock env tcoExpr
+    esCodegenEffectBlock (noPure env) tcoExpr
   EffectPure _ ->
-    esCodegenEffectBlock env tcoExpr
+    esCodegenEffectBlock (noPure env) tcoExpr
 
 esCodegenBindEffect :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
 esCodegenBindEffect env expr@(TcoExpr _ expr') = case expr' of
@@ -1356,6 +1392,11 @@ esSepStatements = Dodo.foldWithSeparator (Dodo.text ";" <> Dodo.break)
 
 esPure :: forall a. Dodo.Doc a -> Dodo.Doc a
 esPure doc = Dodo.text "/* #__PURE__ */" <> Dodo.space <> doc
+
+esPureEnv :: forall a. CodegenEnv -> Dodo.Doc a -> Dodo.Doc a
+esPureEnv { emitPure } doc
+  | emitPure = esPure doc
+  | otherwise = doc
 
 esComment :: forall a. Comment -> Dodo.Doc a
 esComment = case _ of
