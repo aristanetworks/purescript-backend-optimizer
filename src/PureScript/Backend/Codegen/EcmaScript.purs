@@ -3,6 +3,7 @@ module PureScript.Backend.Codegen.EcmaScript where
 import Prelude
 
 import Control.Alternative (guard)
+import Data.Argonaut as Json
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -20,6 +21,7 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.String (Pattern(..))
 import Data.String as String
+import Data.String.CodeUnits as SCU
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
@@ -1180,7 +1182,7 @@ esEscapeProp = \prop ->
   if Regex.test safeRegex prop then
     Nothing
   else
-    Just $ show prop
+    Just $ esEscapeString prop
   where
   safeRegex = unsafeRegex """^[a-zA-Z_$][a-zA-Z0-9_$]*$""" noFlags
 
@@ -1217,7 +1219,7 @@ esCtor ct fn tag vals = case ct of
     esApp (esCodegenQualified fn) vals
 
 esString :: forall a. String -> Dodo.Doc a
-esString = Dodo.text <<< show
+esString = Dodo.text <<< esEscapeString
 
 esNumber :: forall a. Number -> Dodo.Doc a
 esNumber = Dodo.text <<< show
@@ -1226,7 +1228,7 @@ esInt :: forall a. Int -> Dodo.Doc a
 esInt = Dodo.text <<< show
 
 esChar :: forall a. Char -> Dodo.Doc a
-esChar = Dodo.text <<< show
+esChar = Dodo.text <<< esEscapeString <<< SCU.singleton
 
 esBoolean :: forall a. Boolean -> Dodo.Doc a
 esBoolean = Dodo.text <<< show
@@ -1406,3 +1408,6 @@ esComment = case _ of
     Dodo.text "//" <> Dodo.text str
   BlockComment str ->
     Dodo.text "/*" <> Dodo.text str <> Dodo.text "*/"
+
+esEscapeString :: String -> String
+esEscapeString = Json.stringify <<< Json.fromString
