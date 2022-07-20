@@ -653,7 +653,7 @@ esCodegenBinding :: forall a. CodegenEnv -> Ident -> TcoExpr -> Dodo.Doc a
 esCodegenBinding env ident expr = esBinding ident (esCodegenExpr env expr)
 
 esCodegenTopLevelLazyBinding :: forall a. CodegenEnv -> Ident -> TcoExpr -> Dodo.Doc a
-esCodegenTopLevelLazyBinding env ident expr = esTopLevelLazyBinding (esLazyIdent ident) (esCodegenBlockStatements pureMode env expr)
+esCodegenTopLevelLazyBinding env ident expr = esTopLevelLazyBinding (esLazyIdent ident) (esCodegenBlockStatements pureMode (noPure env) expr)
 
 esCodegenLazyBinding :: forall a. CodegenEnv -> Ident -> TcoExpr -> Dodo.Doc a
 esCodegenLazyBinding env ident expr = esLazyBinding (esLazyIdent ident) (esCodegenBlockStatements pureMode env expr)
