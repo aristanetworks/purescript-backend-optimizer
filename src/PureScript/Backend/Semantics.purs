@@ -903,11 +903,6 @@ quote = go
       let quoteCond (SemConditional a k) = buildPair ctx' (quote ctx' a) (quote ctx (k Nothing))
       let branches' = quoteCond <<< force <$> branches
       fromMaybe ExprBacktrack $ foldr (buildBranchCond ctx) (quote ctx <<< force <$> def) branches'
-      -- case
-      --   Just def' ->
-      --     foldr1Array (buildBranchCond ctx) (flip (buildBranchCond ctx) def') branches'
-      --   Nothing ->
-      --     build ctx $ Branch branches' Nothing
     _ ->
       unsafeCrashWith "goBlock: impossible"
 
