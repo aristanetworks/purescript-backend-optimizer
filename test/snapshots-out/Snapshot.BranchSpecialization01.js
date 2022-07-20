@@ -7,11 +7,10 @@ const Baz = /* #__PURE__ */ $Test("Baz");
 const Qux = /* #__PURE__ */ $Test("Qux");
 const eqTest = {
   eq: x => y => {
-    if (x.tag === "Foo") { if (y.tag === "Foo") { return true; } }
-    if (x.tag === "Bar") { if (y.tag === "Bar") { return true; } }
-    if (x.tag === "Baz") { if (y.tag === "Baz") { return true; } }
-    if (x.tag === "Qux") { if (y.tag === "Qux") { return true; } }
-    return false;
+    if (x.tag === "Foo" && y.tag === "Foo") { return true; }
+    if (x.tag === "Bar" && y.tag === "Bar") { return true; }
+    if (x.tag === "Baz" && y.tag === "Baz") { return true; }
+    return x.tag === "Qux" && y.tag === "Qux";
   }
 };
 const test1 = a => a.tag === "Baz";

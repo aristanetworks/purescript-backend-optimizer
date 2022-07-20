@@ -486,8 +486,9 @@ evalPrimOp env = case _ of
             x
         | NeutLit (LitBoolean false) <- y ->
             y
-        | NeutLit (LitBoolean true) <- x
-        , NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- x ->
+            y
+        | NeutLit (LitBoolean true) <- y ->
             x
       OpBooleanOr
         | NeutLit (LitBoolean false) <- x ->
@@ -960,11 +961,10 @@ build ctx = case _ of
     buildDefault ctx expr
 
 buildPair :: Ctx -> BackendExpr -> BackendExpr -> Pair BackendExpr
-buildPair _ p1 = case _ of
-  -- TODO: This results in redundant `true`s sometimes.
-  -- ExprSyntax _ (Branch bs Nothing)
-  --   | [ Pair p2 b ] <- NonEmptyArray.toArray bs ->
-  --       Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
+buildPair ctx p1 = case _ of
+  ExprSyntax _ (Branch bs Nothing)
+    | [ Pair p2 b ] <- NonEmptyArray.toArray bs ->
+        Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
   p2 ->
     Pair p1 p2
 
