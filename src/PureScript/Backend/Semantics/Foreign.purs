@@ -550,8 +550,9 @@ record_unsafe_unsafeGet :: ForeignSemantics
 record_unsafe_unsafeGet = Tuple (qualified "Record.Unsafe" "unsafeGet") go
   where
   go env _ = case _ of
-    [ ExternApp [ NeutLit (LitString prop), r ] ] ->
-      Just $ evalAccessor env r $ GetProp prop
+    [ ExternApp [ NeutLit (LitString prop) ] ] ->
+      Just $ SemLam Nothing \r ->
+        evalAccessor env r $ GetProp prop
     _ ->
       Nothing
 

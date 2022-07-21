@@ -10,6 +10,7 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, over)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Syntax (class HasSyntax, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, syntaxOf)
@@ -240,7 +241,7 @@ analyze externAnalysis expr = case expr of
         complex Known analysis
       LitRecord ps | Array.length ps > 0 ->
         complex Known analysis
-      LitString _ ->
+      LitString str | SCU.length str > 128 ->
         complex Known analysis
       _ ->
         complex Trivial analysis
