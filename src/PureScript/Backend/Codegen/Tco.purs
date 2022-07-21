@@ -50,7 +50,7 @@ popTcoScope ref = go List.Nil
       | Just index <- NonEmptyArray.findIndex (eq ref) group ->
           Just { ident, group, index, stack }
       | otherwise ->
-        go (List.Cons ident stack) rest
+          go (List.Cons ident stack) rest
     _ ->
       Nothing
 

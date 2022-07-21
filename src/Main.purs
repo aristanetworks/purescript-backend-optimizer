@@ -58,7 +58,7 @@ main cliRoot = basicCliMain
       let total = show build.moduleCount
       let index = show (build.moduleIndex + 1)
       let padding = power " " (SCU.length total - SCU.length index)
-      Console.log $ "[" <> padding <> index <>  " of " <> total <> "] Building " <> unwrap name
+      Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
       pure coreFnMod
   }
 

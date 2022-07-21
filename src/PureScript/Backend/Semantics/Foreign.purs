@@ -233,7 +233,6 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
         SemLam Nothing \val ->
           goRunFn (n' - 1) head (Array.snoc tail val)
 
-
 effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
 effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn" <> show n)) go
   where
@@ -291,7 +290,7 @@ primBinaryOperator :: BackendOperator2 -> ForeignEval
 primBinaryOperator op env _ = case _ of
   [ ExternApp [ a ] ] ->
     Just $ SemLet Nothing a \a' ->
-      SemLam Nothing \ b' ->
+      SemLam Nothing \b' ->
         evalPrimOp env (Op2 op a' b')
   _ ->
     Nothing

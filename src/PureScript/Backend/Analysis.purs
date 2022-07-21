@@ -119,13 +119,13 @@ used level = do
 accessed :: Level -> BackendAnalysis -> BackendAnalysis
 accessed level (BackendAnalysis s) = do
   BackendAnalysis s
-    { usages = Map.update (Just <<< over Usage (\us -> us { access = us.access + 1 })) level  s.usages
+    { usages = Map.update (Just <<< over Usage (\us -> us { access = us.access + 1 })) level s.usages
     }
 
 cased :: Level -> BackendAnalysis -> BackendAnalysis
 cased level (BackendAnalysis s) = do
   BackendAnalysis s
-    { usages = Map.update (Just <<< over Usage (\us -> us { case = us.case + 1 })) level  s.usages
+    { usages = Map.update (Just <<< over Usage (\us -> us { case = us.case + 1 })) level s.usages
     }
 
 usedDep :: ModuleName -> BackendAnalysis

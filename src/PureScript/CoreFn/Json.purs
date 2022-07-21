@@ -157,7 +157,7 @@ decodeExpr decAnn json = do
     "Constructor" -> do
       tyn <- getField decodeProperName obj "typeName"
       con <- getField decodeIdent obj "constructorName"
-      is  <- getField (decodeArray decodeString) obj "fieldNames"
+      is <- getField (decodeArray decodeString) obj "fieldNames"
       pure $ ExprConstructor ann tyn con is
     "Accessor" -> do
       e <- getField (decodeExpr decAnn) obj "expression"

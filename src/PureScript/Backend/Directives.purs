@@ -60,7 +60,7 @@ parseDirectiveHeader moduleName = foldl go { errors: [], locals: Map.empty, expo
             Left err ->
               { errors: Array.snoc errors (Tuple line' err), locals, exports }
             Right (Tuple (Left (Tuple key val)) _) ->
-              { errors, locals: Map.insert key val locals, exports: Map.insert key val exports}
+              { errors, locals: Map.insert key val locals, exports: Map.insert key val exports }
             Right (Tuple (Right (Tuple key val)) _) ->
               { errors, locals: Map.insert key val locals, exports }
     _ ->
@@ -81,7 +81,7 @@ parseDirectiveExport moduleName =
       keyword "export"
       ident <- unqualified
       accessor <- optional (dot *> label)
-      directive <-  parseInlineDirective
+      directive <- parseInlineDirective
       in Tuple (EvalExtern (Qualified (Just moduleName) ident) (GetProp <$> accessor)) directive
   ) <* eof
 
@@ -90,7 +90,7 @@ parseDirective =
   ( ado
       qual <- qualified
       accessor <- optional (dot *> label)
-      directive <-  parseInlineDirective
+      directive <- parseInlineDirective
       in Tuple (EvalExtern qual (GetProp <$> accessor)) directive
   ) <* eof
 
@@ -142,7 +142,7 @@ equals = expectMap case _ of
 
 keyword :: String -> Parser Unit
 keyword word1 = expectMap case _ of
-  { value: TokLowerName Nothing word2} | word1 == word2 ->
+  { value: TokLowerName Nothing word2 } | word1 == word2 ->
     Just unit
   _ ->
     Nothing

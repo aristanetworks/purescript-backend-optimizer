@@ -139,7 +139,7 @@ toBackendTopLevelBindingGroup env = case _ of
   overValue f a =
     a { value = f a.value }
 
-toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv ->  Binding Ann -> Accum ConvertEnv (Tuple Ident NeutralExpr)
+toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident NeutralExpr)
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, try: Nothing }
   let backendExpr = toBackendExpr cfn env

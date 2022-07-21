@@ -1133,8 +1133,8 @@ optimize ctx env (Qualified _ (Ident _)) = go
   go n expr1
     | n == 0 = do
         expr1
-        -- let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
-        -- unsafeCrashWith $ name <> ": Possible infinite optimization loop."
+    -- let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
+    -- unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
         case expr2 of
