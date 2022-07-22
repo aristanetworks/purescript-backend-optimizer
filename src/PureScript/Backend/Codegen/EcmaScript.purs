@@ -563,6 +563,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
       true
     CtorDef _ _ _ _ ->
       true
+    EffectBind _ _ _ _ ->
+      true
     EffectPure _ ->
       true
     Var (Qualified (Just mn) ident) | mn == currentModule ->
@@ -581,8 +583,6 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
       go a && (all (go <<< propValue)) b
     CtorSaturated _ _ _ _ vals ->
       all (go <<< snd) vals
-    EffectBind _ _ a _ ->
-      go a
     PrimOp op ->
       all go op
     Fail _ ->

@@ -317,7 +317,8 @@ primOrdOperator op env _ = case _ of
 effectBind :: ForeignEval
 effectBind _ _ = case _ of
   [ ExternApp [ eff, SemLam ident next ] ] ->
-    Just $ SemEffectBind ident eff next
+    Just $ SemLet Nothing eff \nextEff ->
+      SemEffectBind ident nextEff next
   _ -> Nothing
 
 effectMap :: ForeignEval

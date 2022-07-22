@@ -836,7 +836,7 @@ quote = go
     sem@(SemLetRec _ _) ->
       goBlock ctx sem
     sem@(SemEffectBind _ _ _) ->
-      goBlock (ctx { effect = true }) sem
+      goBlock ctx sem
     sem@(SemEffectPure _) ->
       goBlock ctx sem
     sem@(SemBranch _ _) ->
@@ -895,7 +895,7 @@ quote = go
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ EffectBind ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+      build ctx $ EffectBind ident level (quote (ctx { effect = false }) binding) $ quote (ctx' { effect = true }) $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemBranch branches def -> do

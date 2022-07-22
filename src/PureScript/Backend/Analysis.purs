@@ -162,7 +162,7 @@ analyze externAnalysis expr = case expr of
   LetRec lvl as b ->
     bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
   EffectBind _ lvl a b ->
-    bump (complex NonTrivial (analysisOf a <> capture CaptureClosure (bound lvl (analysisOf b))))
+    capture CaptureClosure (bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b))))
   EffectPure a ->
     capture CaptureClosure $ bump (analysisOf a)
   Abs args _ ->
