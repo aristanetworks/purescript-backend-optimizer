@@ -38,7 +38,7 @@ runState s (State k) = k Tuple s
 
 test4 :: State Int Unit
 test4 = do
- res1 <- get
- put (res1 + 1)
- res2 <- get
- put (res2 + 1)
+  res1 <- get
+  put (res1 + 1)
+  res2 <- get
+  put (res2 + 1)

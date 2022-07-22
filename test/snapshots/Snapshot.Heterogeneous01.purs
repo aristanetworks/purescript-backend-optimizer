@@ -20,7 +20,9 @@ import Type.Proxy (Proxy(..))
 newtype ZipProps fns = ZipProps { | fns }
 
 instance zipProps ::
-  (IsSymbol sym, Row.Cons sym (a -> b) x fns) =>
+  ( IsSymbol sym
+  , Row.Cons sym (a -> b) x fns
+  ) =>
   MappingWithIndex (ZipProps fns) (Proxy sym) a b where
   mappingWithIndex (ZipProps fns) prop = Record.get prop fns
 
@@ -31,11 +33,11 @@ test1 =
   , b: Tuple "bar"
   , c: \a -> not a
   }
-  `zipRecord`
-  { a: 12
-  , b: 42.0
-  , c: true
-  }
+    `zipRecord`
+      { a: 12
+      , b: 42.0
+      , c: true
+      }
 
 test2 :: { a :: Int, b :: Number, c :: Boolean } -> _
 test2 = zipRecord
