@@ -12,6 +12,7 @@
   , "maybe"
   , "partial"
   , "prelude"
+  , "profunctor-lenses"
   , "random"
   , "record"
   , "tuples"
