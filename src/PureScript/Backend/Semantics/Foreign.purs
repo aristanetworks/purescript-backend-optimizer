@@ -581,7 +581,7 @@ record_unsafe_unsafeSet :: ForeignSemantics
 record_unsafe_unsafeSet = Tuple (qualified "Record.Unsafe" "unsafeSet") go
   where
   go env _ = case _ of
-    [ ExternApp [ NeutLit (LitString prop), value, r@(NeutLit (LitRecord _)) ] ] ->
+    [ ExternApp [ NeutLit (LitString prop), value, r ] ] ->
       Just $ evalUpdate env r [ Prop prop value ]
     _ ->
       Nothing
