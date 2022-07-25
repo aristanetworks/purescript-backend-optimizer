@@ -13,7 +13,7 @@ import Data.Set as Set
 import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Syntax (class HasSyntax, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, syntaxOf)
+import PureScript.Backend.Syntax (class HasSyntax, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Qualified(..))
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
@@ -207,8 +207,13 @@ analyze externAnalysis expr = case expr of
     bump (foldMap (foldMap analysisOf) cs <> foldMap usedDep mn)
   CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
-  Branch _ _ ->
-    complex NonTrivial $ capture CaptureBranch $ analyzeDefault expr
+  Branch bs def -> do
+    let Pair a b = NonEmptyArray.head bs
+    complex NonTrivial do
+      analysisOf a
+        <> capture CaptureBranch (analysisOf b)
+        <> capture CaptureBranch (foldMap (foldMap analysisOf) (NonEmptyArray.tail bs))
+        <> capture CaptureBranch (foldMap analysisOf def)
   Fail _ ->
     complex NonTrivial $ analyzeDefault expr
   PrimOp op ->
