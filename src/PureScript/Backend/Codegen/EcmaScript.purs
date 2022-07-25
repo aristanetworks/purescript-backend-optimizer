@@ -1327,16 +1327,21 @@ esTcoBranchIdent (Ident tcoIdent) = Ident (tcoIdent <> "$b")
 esTcoArgIdent :: Ident -> Int -> Ident
 esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$" <> show ix)
 
+esTcoCopyIdent :: Ident -> Ident
+esTcoCopyIdent (Ident tcoIdent) = Ident (tcoIdent <> "$copy")
+
 esTcoFn :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
-esTcoFn tcoIdent args body = esCurriedFn args
-  [ Statement $ esLetBinding (esTcoLoopIdent tcoIdent) (Dodo.text "true")
-  , Statement $ esFwdRef (esTcoReturnIdent tcoIdent)
-  , Statement $ Dodo.words
-      [ Dodo.text "while"
-      , Dodo.Common.jsParens (esCodegenIdent (esTcoLoopIdent tcoIdent))
-      , Dodo.Common.jsCurlies body
-      ]
-  , Return (esCodegenIdent (esTcoReturnIdent tcoIdent))
+esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args) $ fold
+  [ (\arg -> Statement $ esLetBinding arg $ esCodegenIdent $ esTcoCopyIdent arg) <$> NonEmptyArray.toArray args
+  , [ Statement $ esLetBinding (esTcoLoopIdent tcoIdent) (Dodo.text "true")
+    , Statement $ esFwdRef (esTcoReturnIdent tcoIdent)
+    , Statement $ Dodo.words
+        [ Dodo.text "while"
+        , Dodo.Common.jsParens (esCodegenIdent (esTcoLoopIdent tcoIdent))
+        , Dodo.Common.jsCurlies body
+        ]
+    , Return (esCodegenIdent (esTcoReturnIdent tcoIdent))
+    ]
   ]
 
 esTcoApp :: forall a. TcoPop -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
