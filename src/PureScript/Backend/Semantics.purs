@@ -386,6 +386,13 @@ evalAccessor initEnv initLhs accessor =
       | GetProp prop <- accessor
       , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
           sem
+    NeutUpdate rec props
+      | GetProp prop <- accessor ->
+          case Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props of
+            Just sem ->
+              sem
+            Nothing ->
+              evalAccessor env rec accessor
     NeutLit (LitArray values)
       | GetIndex n <- accessor
       , Just sem <- Array.index values n ->

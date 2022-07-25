@@ -17,3 +17,11 @@ test4 a = over (prop (Proxy :: _ "bar")) (add 1) a
 
 test5 = over (prop (Proxy :: _ "bar") <<< prop (Proxy :: _ "baz")) (add 1)
 test6 a = over (prop (Proxy :: _ "bar") <<< prop (Proxy :: _ "baz")) (add 1) a
+
+test7 =
+  over (prop (Proxy :: _ "foo")) (add 1)
+    >>> over (prop (Proxy :: _ "bar")) (add 42)
+
+test8 a = a
+  # over (prop (Proxy :: _ "foo")) (add 1)
+  # over (prop (Proxy :: _ "bar")) (add 42)
