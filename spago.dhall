@@ -17,6 +17,7 @@ You can edit this file as you like.
   , "dodo-printer"
   , "effect"
   , "either"
+  , "enums"
   , "filterable"
   , "foldable-traversable"
   , "foreign-object"

@@ -3,10 +3,12 @@ module PureScript.Backend.Semantics.Foreign where
 import Prelude
 
 import Data.Array as Array
+import Data.Enum (fromEnum)
 import Data.Lazy as Lazy
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUpdate, liftBoolean)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
@@ -64,6 +66,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_semiring_intMul
     , data_semiring_numAdd
     , data_semiring_numMul
+    , data_string_codePoints_toCodePointArray
     , effect_bindE
     , effect_pureE
     , effect_ref_modify
@@ -274,6 +277,15 @@ data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolIm
       | NeutLit (LitBoolean x) <- a
       , NeutLit (LitBoolean y) <- b ->
           Just $ NeutLit (LitBoolean (not x || y))
+    _ ->
+      Nothing
+
+data_string_codePoints_toCodePointArray :: ForeignSemantics
+data_string_codePoints_toCodePointArray = Tuple (qualified "Data.String.CodePoints" "toCodePointArray") go
+  where
+  go _ _ = case _ of
+    [ ExternApp [ NeutLit (LitString str) ] ] ->
+      Just $ NeutLit $ LitArray $ NeutLit <<< LitInt <<< fromEnum <$> String.toCodePointArray str
     _ ->
       Nothing
 
