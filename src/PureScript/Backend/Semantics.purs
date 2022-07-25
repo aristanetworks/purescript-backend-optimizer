@@ -563,6 +563,10 @@ evalPrimOp env = case _ of
       OpStringAppend
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
+      OpBooleanAnd -> -- Lazy operator should not be reassociated
+        NeutPrimOp (Op2 op2 x y)
+      OpBooleanOr -> -- Lazy operator should not be reassociated
+        NeutPrimOp (Op2 op2 x y)
       _ ->
         evalAssocLet2 env x y \_ x' y' ->
           NeutPrimOp (Op2 op2 x' y')
@@ -1128,13 +1132,13 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 derive instance Newtype NeutralExpr _
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified _ (Ident _)) = go
+optimize ctx env (Qualified mn (Ident id)) initN = go initN
   where
   go n expr1
     | n == 0 = do
-        expr1
-    -- let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
-    -- unsafeCrashWith $ name <> ": Possible infinite optimization loop."
+        -- expr1
+        let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
+        unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
         case expr2 of
