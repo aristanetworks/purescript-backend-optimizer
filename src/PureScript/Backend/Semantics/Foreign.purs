@@ -5,6 +5,7 @@ import Prelude
 import Data.Array as Array
 import Data.Enum (fromEnum)
 import Data.Lazy as Lazy
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -252,9 +253,16 @@ effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffect
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items
       , Array.length tail == n ->
-          Just $ NeutUncurriedEffectApp head tail
+          Just $ goRunEffectFn [] head $ List.fromFoldable tail
     _ ->
       Nothing
+
+  goRunEffectFn acc head = case _ of
+    List.Nil ->
+      NeutUncurriedEffectApp head acc
+    List.Cons arg args ->
+      SemLet Nothing arg \nextArg ->
+        goRunEffectFn (Array.snoc acc nextArg) head args
 
 data_heytingAlgebra_boolConj :: ForeignSemantics
 data_heytingAlgebra_boolConj = Tuple (qualified "Data.HeytingAlgebra" "boolConj") $ primBinaryOperator OpBooleanAnd

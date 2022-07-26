@@ -186,7 +186,8 @@ analyze externAnalysis expr = case expr of
       _ ->
         analysis
     where
-    analysis = complex NonTrivial $ analyzeDefault expr
+    analysis =
+      complex NonTrivial $ capture CaptureClosure $ analyzeDefault expr
   App hd tl | BackendAnalysis { args } <- analysisOf hd ->
     withArgs remainingArgs case syntaxOf hd of
       Just (Local _ lvl) ->
@@ -263,6 +264,15 @@ analyzeEffectBlock externAnalysis expr = case expr of
     bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
   EffectPure a ->
     bump (analysisOf a)
+  UncurriedEffectApp hd tl ->
+    case syntaxOf hd of
+      Just (Local _ lvl) ->
+        callArity lvl (Array.length tl) analysis
+      _ ->
+        analysis
+    where
+    analysis =
+      complex NonTrivial $ analyzeDefault expr
   _ ->
     analyze externAnalysis expr
 

@@ -906,7 +906,8 @@ quote = go
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ EffectBind ident level (quote (ctx { effect = false }) binding) $ quote (ctx' { effect = true }) $ k $ NeutLocal ident level
+      let bindingCtx = if isKnownEffectSemantics binding then ctx else ctx { effect = false }
+      build ctx $ EffectBind ident level (quote bindingCtx binding) $ quote (ctx' { effect = true }) $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemBranch branches def -> do
@@ -1083,6 +1084,7 @@ shouldInlineLet level a b = do
         || (captured == CaptureNone && (total == 1 || (s1.complexity <= Deref && s1.size < 5)))
         || (s1.complexity == Known && total == 1)
         || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
+        || (isKnownEffect a && total == 1)
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Maybe InlineDirective -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ = case _ of
@@ -1132,6 +1134,18 @@ isAbs = syntaxOf >>> case _ of
   Just (Abs _ _) -> true
   Just (UncurriedAbs _ _) -> true
   Just (UncurriedEffectAbs _ _) -> true
+  _ -> false
+
+isKnownEffect :: BackendExpr -> Boolean
+isKnownEffect = syntaxOf >>> case _ of
+  Just (PrimEffect _) -> true
+  Just (UncurriedEffectApp _ _) -> true
+  _ -> false
+
+isKnownEffectSemantics :: BackendSemantics -> Boolean
+isKnownEffectSemantics = case _ of
+  NeutPrimEffect _ -> true
+  NeutUncurriedEffectApp _ _ -> true
   _ -> false
 
 newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
