@@ -15,6 +15,7 @@
   , "profunctor-lenses"
   , "random"
   , "record"
+  , "refs"
   , "tuples"
   , "variant"
   ]

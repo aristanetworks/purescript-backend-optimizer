@@ -358,27 +358,32 @@ effectPure _ _ = case _ of
 effectRefNew :: ForeignEval
 effectRefNew _ _ = case _ of
   [ ExternApp [ val ] ] ->
-    Just $ NeutPrimEffect $ EffectRefNew val
+    Just $ SemLet Nothing val \val' ->
+      NeutPrimEffect $ EffectRefNew val'
   _ -> Nothing
 
 effectRefRead :: ForeignEval
 effectRefRead _ _ = case _ of
   [ ExternApp [ val ] ] ->
-    Just $ NeutPrimEffect $ EffectRefRead val
+    Just $ SemLet Nothing val \val' ->
+      NeutPrimEffect $ EffectRefRead val'
   _ -> Nothing
 
 effectRefWrite :: ForeignEval
 effectRefWrite _ _ = case _ of
   [ ExternApp [ val, ref ] ] ->
-    Just $ NeutPrimEffect $ EffectRefWrite ref val
+    Just $ SemLet Nothing val \val' ->
+      SemLet Nothing ref \ref' ->
+        NeutPrimEffect $ EffectRefWrite ref' val'
   _ -> Nothing
 
 effectRefModify :: ForeignEval
 effectRefModify env _ = case _ of
   [ ExternApp [ fn, ref ] ] ->
-    Just $ SemLet Nothing ref \ref' ->
-      SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
-        NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn [ val ])
+    Just $ SemLet Nothing fn \fn' ->
+      SemLet Nothing ref \ref' ->
+        SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
+          NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
   _ ->
     Nothing
 

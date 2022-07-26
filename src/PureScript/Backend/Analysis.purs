@@ -226,7 +226,7 @@ analyze externAnalysis expr = case expr of
     where
     analysis = complex NonTrivial $ analyzeDefault expr
   PrimEffect _ ->
-    complex NonTrivial $ analyzeDefault expr
+    complex NonTrivial $ capture CaptureClosure $ analyzeDefault expr
   PrimUndefined ->
     analyzeDefault expr
   Accessor hd _ ->
@@ -273,6 +273,8 @@ analyzeEffectBlock externAnalysis expr = case expr of
     where
     analysis =
       complex NonTrivial $ analyzeDefault expr
+  PrimEffect _ ->
+    complex NonTrivial $ analyzeDefault expr
   _ ->
     analyze externAnalysis expr
 
