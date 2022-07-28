@@ -19,7 +19,7 @@ const flubImpl = /* #__PURE__ */ (() => Data$dShow.showRecord()()(Data$dShow.sho
       return "(Just false)";
     }
     if (v.tag === "Nothing") { return "Nothing"; }
-    throw new Error("Failed pattern match");
+    $runtime.fail();
   }
 }))(Data$dShow.showString)).show)();
 const defaultOptions = {foo: 42, baz: Data$dMaybe.Nothing};

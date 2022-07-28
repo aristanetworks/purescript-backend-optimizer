@@ -16,3 +16,6 @@ export function binding(init) {
   };
 }
 
+export function fail() {
+  throw new Error("Failed pattern match");
+}

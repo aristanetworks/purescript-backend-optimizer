@@ -319,6 +319,8 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenEffectBlock (noPure env) tcoExpr
   PrimUndefined ->
     esUndefined
+  Fail "Failed pattern match" ->
+    esFail
   Fail str ->
     esError str
   Branch _ _ ->
@@ -1309,6 +1311,9 @@ esError str = Dodo.words
   , Dodo.text "new"
   , esApp (Dodo.text "Error") [ esString str ]
   ]
+
+esFail :: forall a. Dodo.Doc a
+esFail = Dodo.text "$runtime.fail()"
 
 esTcoMutualIdent :: NonEmptyArray Ident -> Ident
 esTcoMutualIdent idents = case NonEmptyArray.toArray idents of

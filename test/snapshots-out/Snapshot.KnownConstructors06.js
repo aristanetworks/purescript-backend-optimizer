@@ -14,14 +14,14 @@ const genericTest = {
     if (x.tag === "Inr" && x._1.tag === "Inl") { return Bar; }
     if (x.tag === "Inr" && (x._1.tag === "Inr" && x._1._1.tag === "Inl")) { return Baz; }
     if (x.tag === "Inr" && (x._1.tag === "Inr" && x._1._1.tag === "Inr")) { return Qux; }
-    throw new Error("Failed pattern match");
+    $runtime.fail();
   },
   from: x => {
     if (x.tag === "Foo") { return Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments); }
     if (x.tag === "Bar") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)); }
     if (x.tag === "Baz") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments))); }
     if (x.tag === "Qux") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments))); }
-    throw new Error("Failed pattern match");
+    $runtime.fail();
   }
 };
 const showTest = {
@@ -30,7 +30,7 @@ const showTest = {
     if (x.tag === "Bar") { return "Bar"; }
     if (x.tag === "Baz") { return "Baz"; }
     if (x.tag === "Qux") { return "Qux"; }
-    throw new Error("Failed pattern match");
+    $runtime.fail();
   }
 };
 export {$Test, Bar, Baz, Foo, Qux, genericTest, showTest};

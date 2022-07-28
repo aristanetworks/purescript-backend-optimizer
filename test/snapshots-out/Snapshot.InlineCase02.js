@@ -11,31 +11,31 @@ const test5 = z => {
   const _1 = g(1);
   if (z.tag === "Nothing") { return a + 1 | 0; }
   if (z.tag === "Just") { return _1(z._1); }
-  throw new Error("Failed pattern match");
+  $runtime.fail();
 };
 const test4 = z => {
   const _1 = g(1);
   if (z.tag === "Nothing") { return f(Data$dUnit.unit); }
   if (z.tag === "Just") { return _1(z._1); }
-  throw new Error("Failed pattern match");
+  $runtime.fail();
 };
 const test3 = z => {
   if (z.tag === "Nothing") { return f(Data$dUnit.unit); }
   if (z.tag === "Just") { return 1 + z._1 | 0; }
-  throw new Error("Failed pattern match");
+  $runtime.fail();
 };
 const test2 = z => {
   const _1 = f(Data$dUnit.unit);
   const _2 = g(1);
   if (z.tag === "Nothing") { return _1; }
   if (z.tag === "Just") { return _2(z._1); }
-  throw new Error("Failed pattern match");
+  $runtime.fail();
 };
 const test1 = z => {
   const _1 = f(Data$dUnit.unit);
   if (z.tag === "Nothing") { return _1; }
   if (z.tag === "Just") { return 1 + z._1 | 0; }
-  throw new Error("Failed pattern match");
+  $runtime.fail();
 };
 export {a, f, g, test1, test2, test3, test4, test5};
 export * from "./foreign.js";
