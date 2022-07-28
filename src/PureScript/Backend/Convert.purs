@@ -27,7 +27,7 @@ import PureScript.Backend.Directives (parseDirectiveHeader)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..))
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..), findProp)
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -141,7 +141,7 @@ toBackendTopLevelBindingGroup env = case _ of
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident NeutralExpr)
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, try: Nothing }
+  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, branchTry: Nothing }
   let backendExpr = toBackendExpr cfn env
   let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
   { accum: env
@@ -200,9 +200,29 @@ buildM a env = build (getCtx env) a
 getCtx :: ConvertEnv -> Ctx
 getCtx env =
   { currentLevel: env.currentLevel
-  , lookupExtern: traverse fromExternImpl <=< flip Map.lookup env.implementations
+  , lookupExtern
   , effect: false
   }
+  where
+  lookupExtern (Tuple qual acc) = do
+    Tuple s impl <- Map.lookup qual env.implementations
+    case impl of
+      ExternExpr _ a ->
+        case acc of
+          Nothing ->
+            Just (Tuple s a)
+          _ ->
+            Nothing
+      ExternDict _ a ->
+        case acc of
+          Just (GetProp prop) ->
+            findProp prop a
+          -- Nothing ->
+          --   Just $ Tuple s $ NeutralExpr $ Lit $ LitRecord (map snd <$> a)
+          _ ->
+            Nothing
+      ExternCtor _ _ _ _ ->
+        Nothing
 
 fromExternImpl :: ExternImpl -> Maybe NeutralExpr
 fromExternImpl = case _ of

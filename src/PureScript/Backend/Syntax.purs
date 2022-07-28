@@ -41,6 +41,12 @@ derive instance Newtype Level _
 
 data Pair a = Pair a a
 
+fstPair :: forall a. Pair a -> a
+fstPair (Pair a _) = a
+
+sndPair :: forall a. Pair a -> a
+sndPair (Pair _ a) = a
+
 data BackendAccessor
   = GetProp String
   | GetIndex Int

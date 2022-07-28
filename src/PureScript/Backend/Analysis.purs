@@ -7,13 +7,13 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype, over)
+import Data.Newtype (class Newtype, over, unwrap)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Syntax (class HasSyntax, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), syntaxOf)
+import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 import PureScript.CoreFn (Ident, Literal(..), ModuleName, Qualified(..))
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
@@ -51,7 +51,7 @@ instance Semigroup Usage where
 instance Monoid Usage where
   mempty = Usage { total: 0, captured: mempty, arities: Set.empty, call: 0, access: 0, case: 0 }
 
-data Complexity = Trivial | Deref | Known | NonTrivial
+data Complexity = Trivial | Deref | KnownSize | NonTrivial
 
 derive instance Eq Complexity
 derive instance Ord Complexity
@@ -62,6 +62,19 @@ instance Semigroup Complexity where
 instance Monoid Complexity where
   mempty = Trivial
 
+data ResultTerm = KnownNeutral | Unknown
+
+derive instance Eq ResultTerm
+
+instance Semigroup ResultTerm where
+  append = case _, _ of
+    Unknown, _ -> Unknown
+    _, Unknown -> Unknown
+    _, _ -> KnownNeutral
+
+instance Monoid ResultTerm where
+  mempty = KnownNeutral
+
 newtype BackendAnalysis = BackendAnalysis
   { usages :: Map Level Usage
   , size :: Int
@@ -69,6 +82,7 @@ newtype BackendAnalysis = BackendAnalysis
   , args :: Array Usage
   , rewrite :: Boolean
   , deps :: Set ModuleName
+  , result :: ResultTerm
   }
 
 derive instance Newtype BackendAnalysis _
@@ -81,6 +95,7 @@ instance Semigroup BackendAnalysis where
     , args: []
     , rewrite: a.rewrite || b.rewrite
     , deps: Set.union a.deps b.deps
+    , result: a.result <> b.result
     }
 
 instance Monoid BackendAnalysis where
@@ -91,6 +106,7 @@ instance Monoid BackendAnalysis where
     , args: []
     , rewrite: false
     , deps: Set.empty
+    , result: KnownNeutral
     }
 
 bound :: Level -> BackendAnalysis -> BackendAnalysis
@@ -147,28 +163,57 @@ callArity lvl arity (BackendAnalysis s) = BackendAnalysis s
   { usages = Map.update (Just <<< over Usage (\us -> us { arities = Set.insert arity us.arities, call = us.call + 1 })) lvl s.usages
   }
 
+withResult :: ResultTerm -> BackendAnalysis -> BackendAnalysis
+withResult r (BackendAnalysis s) = BackendAnalysis s { result = r }
+
 class HasAnalysis a where
   analysisOf :: a -> BackendAnalysis
 
-analyze :: forall a. HasAnalysis a => HasSyntax a => (Qualified Ident -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+resultOf :: forall a. HasAnalysis a => a -> ResultTerm
+resultOf = analysisOf >>> unwrap >>> _.result
+
+analyze :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyze externAnalysis expr = case expr of
   Var qi@(Qualified mn _) -> do
-    let BackendAnalysis { args } = externAnalysis qi
-    withArgs args $ bump $ foldMap usedDep mn
+    let BackendAnalysis { args } = externAnalysis (Tuple qi Nothing)
+    withArgs args
+      $ bump
+      $ foldMap usedDep mn
   Local _ lvl ->
-    bump (used lvl)
+    bump
+      $ used lvl
   Let _ lvl a b ->
-    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+    withResult (resultOf b)
+      $ bump
+      $ complex NonTrivial
+      $ analysisOf a <> bound lvl (analysisOf b)
   LetRec lvl as b ->
-    bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
+    withResult (resultOf b)
+      $ complex NonTrivial
+      $ bound lvl
+      $ bump
+      $ foldMap (analysisOf <<< snd) as <> analysisOf b
   EffectBind _ lvl a b ->
-    capture CaptureClosure (bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b))))
+    withResult Unknown
+      $ complex NonTrivial
+      $ capture CaptureClosure
+      $ bump
+      $ analysisOf a <> bound lvl (analysisOf b)
   EffectPure a ->
-    capture CaptureClosure $ bump (analysisOf a)
+    withResult Unknown
+      $ capture CaptureClosure
+      $ bump
+      $ analysisOf a
   Abs args _ ->
-    complex NonTrivial $ capture CaptureClosure $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    withResult KnownNeutral
+      $ complex KnownSize
+      $ capture CaptureClosure
+      $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedAbs args _ ->
-    complex NonTrivial $ capture CaptureClosure $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    withResult KnownNeutral
+      $ complex KnownSize
+      $ capture CaptureClosure
+      $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedApp hd tl ->
     case syntaxOf hd of
       Just (Local _ lvl) ->
@@ -176,9 +221,15 @@ analyze externAnalysis expr = case expr of
       _ ->
         analysis
     where
-    analysis = complex NonTrivial $ analyzeDefault expr
+    analysis =
+      withResult Unknown
+        $ complex NonTrivial
+        $ analyzeDefault expr
   UncurriedEffectAbs args _ ->
-    complex NonTrivial $ capture CaptureClosure $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+    withResult KnownNeutral
+      $ complex KnownSize
+      $ capture CaptureClosure
+      $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedEffectApp hd tl ->
     case syntaxOf hd of
       Just (Local _ lvl) ->
@@ -187,13 +238,21 @@ analyze externAnalysis expr = case expr of
         analysis
     where
     analysis =
-      complex NonTrivial $ capture CaptureClosure $ analyzeDefault expr
+      withResult Unknown
+        $ complex NonTrivial
+        $ capture CaptureClosure
+        $ analyzeDefault expr
   App hd tl | BackendAnalysis { args } <- analysisOf hd ->
     withArgs remainingArgs case syntaxOf hd of
       Just (Local _ lvl) ->
-        callArity lvl (NonEmptyArray.length tl) analysis
+        withResult Unknown
+          $ callArity lvl (NonEmptyArray.length tl)
+          $ bump
+          $ analysis
       _ ->
-        analysis
+        withResult Unknown
+          $ bump
+          $ analysis
     where
     remainingArgs =
       Array.drop (NonEmptyArray.length tl) args
@@ -203,20 +262,26 @@ analyze externAnalysis expr = case expr of
       | otherwise =
           analyzeDefault expr
   Update _ _ ->
-    complex NonTrivial $ analyzeDefault expr
+    withResult Unknown
+      $ complex NonTrivial
+      $ analyzeDefault expr
   CtorSaturated (Qualified mn _) _ _ _ cs ->
-    bump (foldMap (foldMap analysisOf) cs <> foldMap usedDep mn)
+    withResult KnownNeutral
+      $ bump
+      $ foldMap (foldMap analysisOf) cs <> foldMap usedDep mn
   CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Branch bs def -> do
     let Pair a b = NonEmptyArray.head bs
-    complex NonTrivial do
+    let result = foldMap (resultOf <<< sndPair) bs
+    withResult result $ complex NonTrivial do
       analysisOf a
         <> capture CaptureBranch (analysisOf b)
         <> capture CaptureBranch (foldMap (foldMap analysisOf) (NonEmptyArray.tail bs))
         <> capture CaptureBranch (foldMap analysisOf def)
   Fail _ ->
-    complex NonTrivial $ analyzeDefault expr
+    complex NonTrivial
+      $ analyzeDefault expr
   PrimOp op ->
     case op of
       Op1 (OpIsTag _) b | Just (Local _ lvl) <- syntaxOf b ->
@@ -224,46 +289,73 @@ analyze externAnalysis expr = case expr of
       _ ->
         analysis
     where
-    analysis = complex NonTrivial $ analyzeDefault expr
+    analysis =
+      withResult Unknown
+        $ complex NonTrivial
+        $ analyzeDefault expr
   PrimEffect _ ->
-    complex NonTrivial $ capture CaptureClosure $ analyzeDefault expr
+    withResult Unknown
+      $ complex NonTrivial
+      $ capture CaptureClosure
+      $ analyzeDefault expr
   PrimUndefined ->
     analyzeDefault expr
-  Accessor hd _ ->
+  Accessor hd acc ->
     case syntaxOf hd of
       Just (Accessor _ _) ->
         analysis
       Just (Local _ lvl) ->
         accessed lvl analysis
-      Just (Var _) ->
-        complex Trivial analysis
+      Just (Var qi) -> do
+        let BackendAnalysis { args } = externAnalysis (Tuple qi (Just acc))
+        withArgs args $ complex Trivial analysis
       _ ->
         complex Deref analysis
     where
-    analysis = analyzeDefault expr
+    analysis =
+      withResult Unknown
+        $ analyzeDefault expr
   Lit lit ->
     case lit of
       LitArray as | Array.length as > 0 ->
-        complex Known analysis
-      LitRecord ps | Array.length ps > 0 ->
-        complex Known analysis
+        complex KnownSize analysis
+      LitRecord ps
+        | Array.length ps > 0 ->
+            complex KnownSize analysis
+        | otherwise ->
+            analysis
       LitString str | SCU.length str > 128 ->
-        complex Known analysis
+        complex KnownSize analysis
       _ ->
-        complex Trivial analysis
+        analysis
     where
-    analysis = analyzeDefault expr
+    analysis =
+      withResult KnownNeutral
+        $ analyzeDefault expr
 
-analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Qualified Ident -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyzeEffectBlock externAnalysis expr = case expr of
   Let _ lvl a b ->
-    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+    withResult (resultOf b)
+      $ complex NonTrivial
+      $ bump
+      $ analysisOf a <> bound lvl (analysisOf b)
   LetRec lvl as b ->
-    bump (complex NonTrivial (bound lvl (foldMap (analysisOf <<< snd) as <> analysisOf b)))
+    withResult (resultOf b)
+      $ complex NonTrivial
+      $ bound lvl
+      $ bump
+      $ foldMap (analysisOf <<< snd) as <> analysisOf b
   EffectBind _ lvl a b ->
-    bump (complex NonTrivial (analysisOf a <> bound lvl (analysisOf b)))
+    -- withResult (resultOf b)
+    withResult Unknown
+      $ complex NonTrivial
+      $ bump
+      $ analysisOf a <> bound lvl (analysisOf b)
   EffectPure a ->
-    bump (analysisOf a)
+    withResult Unknown
+      $ bump
+      $ analysisOf a
   UncurriedEffectApp hd tl ->
     case syntaxOf hd of
       Just (Local _ lvl) ->
@@ -272,9 +364,13 @@ analyzeEffectBlock externAnalysis expr = case expr of
         analysis
     where
     analysis =
-      complex NonTrivial $ analyzeDefault expr
+      withResult Unknown
+        $ complex NonTrivial
+        $ analyzeDefault expr
   PrimEffect _ ->
-    complex NonTrivial $ analyzeDefault expr
+    withResult Unknown
+      $ complex NonTrivial
+      $ analyzeDefault expr
   _ ->
     analyze externAnalysis expr
 

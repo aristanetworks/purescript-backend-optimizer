@@ -6,7 +6,8 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (foldMap, foldl, foldr)
+import Data.Foldable (class Foldable, foldMap, foldl, foldr)
+import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
@@ -18,9 +19,9 @@ import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, withRewrite)
+import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
 
@@ -81,6 +82,16 @@ data BackendRewrite
   | RewriteStop (Qualified Ident)
   | RewriteUnpackRecord (Maybe Ident) Level (Array (Prop BackendExpr)) BackendExpr
   | RewriteUnpackData (Maybe Ident) Level (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr)) BackendExpr
+  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
+  | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
+
+data DistOp
+  = DistApp (NonEmptyArray BackendExpr)
+  | DistUncurriedApp (Array BackendExpr)
+  | DistAccessor BackendAccessor
+  | DistPrimOp1 BackendOperator1
+  | DistPrimOp2L BackendOperator2 BackendExpr
+  | DistPrimOp2R BackendExpr BackendOperator2
 
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
@@ -124,7 +135,7 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: Map EvalRef InlineDirective
-  , try :: Maybe (SemTry BackendSemantics)
+  , branchTry :: Maybe (SemTry BackendSemantics)
   }
 
 derive instance Newtype Env _
@@ -150,8 +161,8 @@ addStop (Env env) ref = Env env
       env.directives
   }
 
-addTry :: Env -> Maybe (SemTry BackendSemantics) -> Env
-addTry (Env env) try = Env env { try = try }
+withBranchTry :: Env -> Maybe (SemTry BackendSemantics) -> Env
+withBranchTry (Env env) branchTry = Env env { branchTry = branchTry }
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -181,7 +192,7 @@ instance Eval f => Eval (BackendSyntax f) where
               loop (bindLocal env' (One nextArg)) as
       SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
     UncurriedEffectApp hd tl ->
-      NeutUncurriedEffectApp (eval env hd) (eval env <$> tl)
+      evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
     UncurriedEffectAbs idents body -> do
       let
         loop env' = case _ of
@@ -198,14 +209,16 @@ instance Eval f => Eval (BackendSyntax f) where
         idents
         env
     Let ident _ binding body ->
-      SemLet ident (eval env binding) (flip eval body <<< bindLocal env <<< One)
+      guardFail (eval env binding) \binding' ->
+        SemLet ident binding' (flip eval body <<< bindLocal env <<< One)
     LetRec _ bindings body -> do
       let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
       SemLetRec (map bindGroup <$> bindings) (bindGroup body)
     EffectBind ident _ binding body ->
-      SemEffectBind ident (eval env binding) (flip eval body <<< bindLocal env <<< One)
+      guardFail (eval env binding) \binding' ->
+        SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
     EffectPure val ->
-      SemEffectPure (eval env val)
+      guardFail (eval env val) SemEffectPure
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
     Update lhs updates ->
@@ -216,7 +229,7 @@ instance Eval f => Eval (BackendSyntax f) where
         Just def' ->
           evalBranches env conds1 (Just (defer \_ -> eval env def'))
         Nothing ->
-          case (unwrap env).try of
+          case (unwrap env).branchTry of
             Nothing ->
               evalBranches env conds1 Nothing
             Just (Tuple conds2 def') ->
@@ -224,17 +237,17 @@ instance Eval f => Eval (BackendSyntax f) where
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
-      NeutPrimEffect $ eval env <$> eff
+      guardFailOver identity (eval env <$> eff) NeutPrimEffect
     PrimUndefined ->
       NeutPrimUndefined
     Lit lit ->
-      NeutLit (eval env <$> lit)
+      guardFailOver identity (eval env <$> lit) NeutLit
     Fail err ->
       NeutFail err
     CtorDef ct ty tag fields ->
       NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
     CtorSaturated qual ct ty tag fields ->
-      NeutData qual ct ty tag (map (eval env) <$> fields)
+      guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
 instance Eval BackendExpr where
   eval = go
@@ -282,6 +295,25 @@ instance Eval BackendExpr where
               (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
               fields
               []
+          RewriteDistBranchesLet _ _ branches def body ->
+            rewriteBranches (flip eval body <<< bindLocal env <<< One)
+              $ evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
+          RewriteDistBranchesOp branches def op ->
+            rewriteBranches dist $ evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
+            where
+            dist = case op of
+              DistApp spine ->
+                flip (evalApp env) (NonEmptyArray.toArray (eval env <$> spine))
+              DistUncurriedApp spine ->
+                flip (evalUncurriedApp env) (eval env <$> spine)
+              DistAccessor acc ->
+                flip (evalAccessor env) acc
+              DistPrimOp1 op1 ->
+                evalPrimOp env <<< Op1 op1
+              DistPrimOp2L op2 rhs ->
+                evalPrimOp env <<< flip (Op2 op2) (eval env rhs)
+              DistPrimOp2R lhs op2 ->
+                evalPrimOp env <<< Op2 op2 (eval env lhs)
       ExprSyntax _ expr ->
         eval env expr
       ExprBacktrack ->
@@ -303,6 +335,10 @@ evalApp env hd spine
   | otherwise = go env hd (List.fromFoldable spine)
       where
       go env' = case _, _ of
+        _, List.Cons (NeutFail err) _ ->
+          NeutFail err
+        NeutFail err, _ ->
+          NeutFail err
         SemLam _ k, List.Cons arg args ->
           SemLet Nothing arg \nextArg ->
             go env' (k nextArg) args
@@ -323,6 +359,8 @@ evalUncurriedApp env hd spine = case hd of
     go mk (List.fromFoldable spine)
     where
     go = case _, _ of
+      MkFnNext _ _, List.Cons (NeutFail err) _ ->
+        NeutFail err
       MkFnNext _ k, List.Cons arg args ->
         SemLet Nothing arg \nextArg ->
           go (k nextArg) args
@@ -333,13 +371,20 @@ evalUncurriedApp env hd spine = case hd of
       MkFnApplied a, args ->
         NeutUncurriedApp a (List.toUnfoldable args)
   SemExtern qual sp _ ->
-    evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine))
+    guardFailOver identity spine \spine' ->
+      evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
   SemLet ident val k ->
     SemLet ident val \nextVal ->
       SemLet Nothing (k nextVal) \nextFn ->
         evalUncurriedApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn spine
+  NeutFail err ->
+    NeutFail err
   _ ->
     NeutUncurriedApp hd spine
+
+evalUncurriedEffectApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
+evalUncurriedEffectApp _ hd spine =
+  guardFail hd (guardFailOver identity spine <<< NeutUncurriedEffectApp)
 
 evalSpine :: Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
 evalSpine env = foldl go
@@ -401,6 +446,8 @@ evalAccessor initEnv initLhs accessor =
       | GetOffset n <- accessor
       , Just (Tuple _ sem) <- Array.index fields n ->
           sem
+    NeutFail err ->
+      NeutFail err
     _ ->
       NeutAccessor lhs accessor
 
@@ -425,6 +472,8 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
             go acc [] (Just (defer \_ -> k (Just (Tuple tail def))))
           else
             go acc tail def
+        SemConditional (NeutFail err) _ ->
+          go acc [] (Just (defer \_ -> NeutFail err))
         _ ->
           go (Array.snoc acc head) tail def
     Nothing ->
@@ -438,8 +487,21 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
             Nothing ->
               NeutBacktrack
 
+rewriteBranches :: (BackendSemantics -> BackendSemantics) -> BackendSemantics -> BackendSemantics
+rewriteBranches k = go
+  where
+  go = case _ of
+    SemLet a b c ->
+      SemLet a b (go <$> c)
+    SemLetRec a b ->
+      SemLetRec a (go <$> b)
+    SemBranch bs def ->
+      SemBranch (map (\(SemConditional a b) -> SemConditional a (go <$> b)) <$> bs) (map go <$> def)
+    sem ->
+      k sem
+
 evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
-evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (flip eval b <<< addTry env)
+evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (flip eval b <<< withBranchTry env)
 
 evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 evalAssocLet env sem go = case sem of
@@ -447,6 +509,8 @@ evalAssocLet env sem go = case sem of
     SemLet ident val \nextVal1 ->
       SemLet Nothing (k nextVal1) \nextVal2 ->
         go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
+  NeutFail err ->
+    NeutFail err
   _ ->
     go env sem
 
@@ -483,6 +547,8 @@ evalPrimOp env = case _ of
         liftNumber (negate a)
       _, SemExtern qual spine _ ->
         evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+      _, NeutFail err ->
+        NeutFail err
       _, _ ->
         evalAssocLet env x \_ x' ->
           NeutPrimOp (Op1 op1 x')
@@ -571,12 +637,22 @@ evalPrimOp env = case _ of
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
       OpBooleanAnd -> -- Lazy operator should not be reassociated
-        NeutPrimOp (Op2 op2 x y)
+        case x, y of
+          NeutFail err, _ -> NeutFail err
+          _, NeutFail err -> NeutFail err
+          _, _ -> NeutPrimOp (Op2 op2 x y)
       OpBooleanOr -> -- Lazy operator should not be reassociated
-        NeutPrimOp (Op2 op2 x y)
+        case x, y of
+          NeutFail err, _ -> NeutFail err
+          _, NeutFail err -> NeutFail err
+          _, _ -> NeutPrimOp (Op2 op2 x y)
       _ ->
-        evalAssocLet2 env x y \_ x' y' ->
-          NeutPrimOp (Op2 op2 x' y')
+        case x, y of
+          NeutFail err, _ -> NeutFail err
+          _, NeutFail err -> NeutFail err
+          _, _ ->
+            evalAssocLet2 env x y \_ x' y' ->
+              NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
 evalPrimOpAssocL op match combine a b = case match a of
@@ -808,7 +884,7 @@ foldl1Array f g arr = go 0 (g (NonEmptyArray.head arr))
 
 type Ctx =
   { currentLevel :: Int
-  , lookupExtern :: Qualified Ident -> Maybe (Tuple BackendAnalysis NeutralExpr)
+  , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
   , effect :: Boolean
   }
 
@@ -942,12 +1018,36 @@ build ctx = case _ of
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
       (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
       body1
-  Let ident level binding body | shouldInlineLet level binding body ->
-    rewriteInline ident level binding body
-  Let ident level binding body | Just expr' <- shouldUnpackRecord ident level binding body ->
-    expr'
-  Let ident level binding body | Just expr' <- shouldUnpackCtor ident level binding body ->
-    expr'
+  Let ident level binding body
+    | shouldInlineLet level binding body ->
+        rewriteInline ident level binding body
+  Let ident level binding body
+    | Just expr' <- shouldUnpackRecord ident level binding body ->
+        expr'
+  Let ident level binding body
+    | Just expr' <- shouldUnpackCtor ident level binding body ->
+        expr'
+  Let ident level binding body
+    | Just expr' <- shouldDistributeBranches ident level binding body ->
+        expr'
+  App (ExprSyntax analysis (Branch bs (Just def))) tl
+    | Just expr' <- shouldDistributeBranchApps analysis bs def tl ->
+        expr'
+  UncurriedApp (ExprSyntax analysis (Branch bs (Just def))) tl
+    | Just expr' <- shouldDistributeBranchUncurriedApps analysis bs def tl ->
+        expr'
+  Accessor (ExprSyntax analysis (Branch bs (Just def))) acc
+    | Just expr' <- shouldDistributeBranchAccessor analysis bs def acc ->
+        expr'
+  PrimOp (Op1 op1 (ExprSyntax analysis (Branch bs (Just def))))
+    | Just expr' <- shouldDistributeBranchPrimOp1 analysis bs def op1 ->
+        expr'
+  PrimOp (Op2 op2 (ExprSyntax analysis (Branch bs (Just def))) rhs)
+    | Just expr' <- shouldDistributeBranchPrimOp2L analysis bs def op2 rhs ->
+        expr'
+  PrimOp (Op2 op2 lhs (ExprSyntax analysis (Branch bs (Just def))))
+    | Just expr' <- shouldDistributeBranchPrimOp2R analysis bs def lhs op2 ->
+        expr'
   expr@(EffectBind ident1 level1 (ExprSyntax _ (EffectBind ident2 level2 binding2 body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
       [ { ident: ident2, level: level2, binding: binding2 }
@@ -1072,6 +1172,69 @@ shouldUnpackRecord ident level a body = do
     _ ->
       Nothing
 
+shouldDistributeBranches :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldDistributeBranches ident level a body = do
+  let BackendAnalysis s2 = analysisOf body
+  case a of
+    ExprSyntax (BackendAnalysis s1) (Branch branches (Just def))
+      | s2.size <= 128
+      , s1.result == KnownNeutral
+      , Just (Usage us) <- Map.lookup level s2.usages
+      , us.total == us.access + us.case -> do
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = analysisOf a <> bound level (analysisOf body)
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesLet ident level branches def body
+    _ ->
+      Nothing
+
+shouldDistributeBranchApps :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> NonEmptyArray BackendExpr -> Maybe BackendExpr
+shouldDistributeBranchApps analysis1 branches def spine =
+  if NonEmptyArray.all ((_ <= Deref) <<< _.complexity <<< unwrap <<< analysisOf) spine then do
+    -- TODO: Not sure what what to do about analysis, or if it matters.
+    let analysis = analysis1 <> foldMap analysisOf spine
+    Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesOp branches def (DistApp spine)
+  else
+    Nothing
+
+shouldDistributeBranchUncurriedApps :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Array BackendExpr -> Maybe BackendExpr
+shouldDistributeBranchUncurriedApps analysis1 branches def spine =
+  if Array.all ((_ <= Deref) <<< _.complexity <<< unwrap <<< analysisOf) spine then do
+    -- TODO: Not sure what what to do about analysis, or if it matters.
+    let analysis = analysis1 <> foldMap analysisOf spine
+    Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesOp branches def (DistUncurriedApp spine)
+  else
+    Nothing
+
+shouldDistributeBranchAccessor :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> BackendAccessor -> Maybe BackendExpr
+shouldDistributeBranchAccessor analysis1 branches def acc = do
+  -- TODO: Not sure what what to do about analysis, or if it matters.
+  let analysis = bump analysis1
+  Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesOp branches def (DistAccessor acc)
+
+shouldDistributeBranchPrimOp1 :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> BackendOperator1 -> Maybe BackendExpr
+shouldDistributeBranchPrimOp1 analysis1 branches def op = do
+  -- TODO: Not sure what what to do about analysis, or if it matters.
+  let analysis = bump analysis1
+  Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesOp branches def (DistPrimOp1 op)
+
+shouldDistributeBranchPrimOp2L :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> BackendOperator2 -> BackendExpr -> Maybe BackendExpr
+shouldDistributeBranchPrimOp2L analysis1 branches def op2 rhs =
+  if (unwrap (analysisOf rhs)).complexity <= Deref then do
+    -- TODO: Not sure what what to do about analysis, or if it matters.
+    let analysis = bump $ analysis1 <> analysisOf rhs
+    Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesOp branches def (DistPrimOp2L op2 rhs)
+  else
+    Nothing
+
+shouldDistributeBranchPrimOp2R :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> BackendExpr -> BackendOperator2 -> Maybe BackendExpr
+shouldDistributeBranchPrimOp2R analysis1 branches def lhs op2 =
+  if (unwrap (analysisOf lhs)).complexity <= Deref then do
+    -- TODO: Not sure what what to do about analysis, or if it matters.
+    let analysis = bump $ analysis1 <> analysisOf lhs
+    Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesOp branches def (DistPrimOp2R lhs op2)
+  else
+    Nothing
+
 shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
 shouldInlineLet level a b = do
   let BackendAnalysis s1 = analysisOf a
@@ -1082,7 +1245,7 @@ shouldInlineLet level a b = do
     Just (Usage { captured, total }) ->
       (s1.complexity == Trivial)
         || (captured == CaptureNone && (total == 1 || (s1.complexity <= Deref && s1.size < 5)))
-        || (s1.complexity == Known && total == 1)
+        || (s1.complexity == KnownSize && total == 1)
         || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
         || (isKnownEffect a && total == 1)
 
@@ -1188,6 +1351,23 @@ freeze init = Tuple (analysisOf init) (go init)
           NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
         RewriteUnpackData ident level qual ct ty tag values body ->
           NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
+        RewriteDistBranchesLet ident level branches def body ->
+          NeutralExpr $ Let ident level (NeutralExpr (Branch (map go <$> branches) (Just (go def)))) (go body)
+        RewriteDistBranchesOp branches def op -> do
+          let branches' = NeutralExpr $ Branch (map go <$> branches) (Just (go def))
+          case op of
+            DistApp spine ->
+              NeutralExpr $ App branches' (go <$> spine)
+            DistUncurriedApp spine ->
+              NeutralExpr $ UncurriedApp branches' (go <$> spine)
+            DistAccessor acc ->
+              NeutralExpr $ Accessor branches' acc
+            DistPrimOp1 op1 ->
+              NeutralExpr $ PrimOp $ Op1 op1 branches'
+            DistPrimOp2L op2 rhs ->
+              NeutralExpr $ PrimOp $ Op2 op2 branches' (go rhs)
+            DistPrimOp2R lhs op2 ->
+              NeutralExpr $ PrimOp $ Op2 op2 (go lhs) branches'
     ExprBacktrack ->
       NeutralExpr $ Fail "Failed pattern match"
 
@@ -1224,3 +1404,18 @@ evalMkFn env n sem
           MkFnNext Nothing \nextArg -> do
             let env' = bindLocal env (One nextArg)
             evalMkFn env' (n - 1) (evalApp env' sem [ nextArg ])
+
+guardFail :: BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+guardFail sem k = case sem of
+  NeutFail err -> NeutFail err
+  _ -> k sem
+
+guardFailOver :: forall f a. Foldable f => (a -> BackendSemantics) ->  f a -> (f a -> BackendSemantics) -> BackendSemantics
+guardFailOver f as k =
+  case Foldable.findMap (toFail <<< f) as of
+    Just err -> err
+    Nothing -> k as
+  where
+  toFail expr = case expr of
+    NeutFail _ -> Just expr
+    _ -> Nothing

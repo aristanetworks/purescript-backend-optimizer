@@ -110,7 +110,6 @@ runSnapshotTests { accept, filter } = do
             pure true
           Right prevOutput
             | output == prevOutput -> do
-                Console.log $ withGraphics (foreground Green) "✓" <> " " <> name <> " passed."
                 pure true
             | accept -> do
                 Console.log $ withGraphics (foreground Yellow) "✓" <> " " <> name <> " accepted."

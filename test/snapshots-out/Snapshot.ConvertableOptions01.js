@@ -8,7 +8,6 @@ import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Record$dBuilder from "../Record.Builder/index.js";
 import * as Record$dUnsafe$dUnion from "../Record.Unsafe.Union/index.js";
-import * as Type$dProxy from "../Type.Proxy/index.js";
 const $Flub = () => ({tag: "Flub"});
 const barIsSymbol = {reflectSymbol: () => "bar"};
 const bazIsSymbol = {reflectSymbol: () => "baz"};
@@ -16,12 +15,8 @@ const fooIsSymbol = {reflectSymbol: () => "foo"};
 const flubImpl = /* #__PURE__ */ (() => Data$dShow.showRecord()()(Data$dShow.showRecordFieldsCons(barIsSymbol)(Data$dShow.showRecordFieldsCons(bazIsSymbol)(Data$dShow.showRecordFieldsCons(fooIsSymbol)(Data$dShow.showRecordFieldsNil)(Data$dShow.showInt))({
   show: v => {
     if (v.tag === "Just") {
-      return "(Just " + (
-        (() => {
-          if (v._1) { return "true"; }
-          return "false";
-        })() + ")"
-      );
+      if (v._1) { return "(Just true)"; }
+      return "(Just false)";
     }
     if (v.tag === "Nothing") { return "Nothing"; }
     throw new Error("Failed pattern match");

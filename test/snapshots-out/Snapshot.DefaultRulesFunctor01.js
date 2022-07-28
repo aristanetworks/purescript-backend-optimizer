@@ -5,11 +5,7 @@ import * as Data$dUnit from "../Data.Unit/index.js";
 import * as Snapshot$dDefaultRulesFunctor01$foreign from "./foreign.js";
 const mb = Snapshot$dDefaultRulesFunctor01$foreign.mb;
 const test5 = /* #__PURE__ */ (() => {
-  const _0 = (() => {
-    if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", v => mb._1); }
-    return Data$dMaybe.Nothing;
-  })();
-  if (_0.tag === "Just") { return Data$dMaybe.$Maybe("Just", _0._1(12)); }
+  if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", mb._1); }
   return Data$dMaybe.Nothing;
 })();
 const test4 = /* #__PURE__ */ (() => {
