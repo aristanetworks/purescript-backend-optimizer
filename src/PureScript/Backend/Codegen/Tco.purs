@@ -133,7 +133,7 @@ overTcoAnalysis f (TcoExpr a b) = TcoExpr (f a) b
 
 tcoCall :: TcoRef -> Int -> TcoAnalysis -> TcoAnalysis
 tcoCall ident arity (TcoAnalysis s) = TcoAnalysis s
-  { usages = Map.insertWith append ident (Usage { total: 1, captured: mempty, arities: Set.singleton arity, call: 1, access: 0, case: 0 }) s.usages
+  { usages = Map.insertWith append ident (Usage { total: 1, captured: mempty, arities: Set.singleton arity, call: 1, access: 0, case: 0, update: 0 }) s.usages
   , tailCalls = Map.insert ident 1 s.tailCalls
   }
 

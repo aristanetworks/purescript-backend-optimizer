@@ -34,6 +34,7 @@ newtype Usage = Usage
   , call :: Int
   , access :: Int
   , case :: Int
+  , update :: Int
   }
 
 derive instance Newtype Usage _
@@ -46,10 +47,19 @@ instance Semigroup Usage where
     , call: a.call + b.call
     , access: a.access + b.access
     , case: a.case + b.case
+    , update: a.update + b.update
     }
 
 instance Monoid Usage where
-  mempty = Usage { total: 0, captured: mempty, arities: Set.empty, call: 0, access: 0, case: 0 }
+  mempty = Usage
+    { total: 0
+    , captured: mempty
+    , arities: Set.empty
+    , call: 0
+    , access: 0
+    , case: 0
+    , update: 0
+    }
 
 data Complexity = Trivial | Deref | KnownSize | NonTrivial
 
@@ -129,7 +139,15 @@ used :: Level -> BackendAnalysis
 used level = do
   let BackendAnalysis s = mempty
   BackendAnalysis s
-    { usages = Map.singleton level (Usage { total: 1, captured: mempty, arities: Set.empty, call: 0, access: 0, case: 0 })
+    { usages = Map.singleton level $ Usage
+        { total: 1
+        , captured: mempty
+        , arities: Set.empty
+        , call: 0
+        , access: 0
+        , case: 0
+        , update: 0
+        }
     }
 
 accessed :: Level -> BackendAnalysis -> BackendAnalysis
@@ -142,6 +160,12 @@ cased :: Level -> BackendAnalysis -> BackendAnalysis
 cased level (BackendAnalysis s) = do
   BackendAnalysis s
     { usages = Map.update (Just <<< over Usage (\us -> us { case = us.case + 1 })) level s.usages
+    }
+
+updated :: Level -> BackendAnalysis -> BackendAnalysis
+updated level (BackendAnalysis s) = do
+  BackendAnalysis s
+    { usages = Map.update (Just <<< over Usage (\us -> us { update = us.update + 1 })) level s.usages
     }
 
 usedDep :: ModuleName -> BackendAnalysis
@@ -261,10 +285,17 @@ analyze externAnalysis expr = case expr of
           complex NonTrivial $ analyzeDefault expr
       | otherwise =
           analyzeDefault expr
-  Update _ _ ->
-    withResult Unknown
-      $ complex NonTrivial
-      $ analyzeDefault expr
+  Update hd _ ->
+    case syntaxOf hd of
+      Just (Local _ lvl) ->
+        updated lvl analysis
+      _ ->
+        analysis
+    where
+    analysis =
+      withResult Unknown
+        $ complex NonTrivial
+        $ analyzeDefault expr
   CtorSaturated (Qualified mn _) _ _ _ cs ->
     withResult KnownNeutral
       $ bump

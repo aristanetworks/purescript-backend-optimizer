@@ -21,9 +21,9 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, withRewrite)
+import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, updated, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
-import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey)
+import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 
 type Spine a = Array a
 
@@ -80,10 +80,14 @@ data BackendRewrite
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
-  | RewriteUnpackRecord (Maybe Ident) Level (Array (Prop BackendExpr)) BackendExpr
-  | RewriteUnpackData (Maybe Ident) Level (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr)) BackendExpr
+  | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
   | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
   | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
+
+data UnpackOp
+  = UnpackRecord (Array (Prop BackendExpr))
+  | UnpackUpdate BackendExpr (Array (Prop BackendExpr))
+  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr))
 
 data DistOp
   = DistApp (NonEmptyArray BackendExpr)
@@ -210,7 +214,7 @@ instance Eval f => Eval (BackendSyntax f) where
         env
     Let ident _ binding body ->
       guardFail (eval env binding) \binding' ->
-        SemLet ident binding' (flip eval body <<< bindLocal env <<< One)
+        makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
     LetRec _ bindings body -> do
       let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
       SemLetRec (map bindGroup <$> bindings) (bindGroup body)
@@ -263,7 +267,7 @@ instance Eval BackendExpr where
                 List.Nil ->
                   eval env' body
                 List.Cons b bs ->
-                  SemLet b.ident (eval env' b.binding) \nextBinding ->
+                  makeLet b.ident (eval env' b.binding) \nextBinding ->
                     goBinding (bindLocal env (One nextBinding)) bs
             goBinding env (List.fromFoldable bindings)
           RewriteEffectBindAssoc bindings body -> do
@@ -277,24 +281,36 @@ instance Eval BackendExpr where
             goBinding env (List.fromFoldable bindings)
           RewriteStop qual ->
             NeutStop qual
-          RewriteUnpackRecord _ _ props body ->
-            foldr
-              ( \(Prop prop expr) next props' ->
-                  SemLet Nothing (eval env expr) \val ->
-                    next (Array.snoc props' (Prop prop val))
-              )
-              (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitRecord)
-              props
-              []
-          RewriteUnpackData _ _ qual ct ty tag fields body ->
-            foldr
-              ( \(Tuple field expr) next props' ->
-                  SemLet Nothing (eval env expr) \val ->
-                    next (Array.snoc props' (Tuple field val))
-              )
-              (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
-              fields
-              []
+          RewriteUnpackOp _ _ op body ->
+            case op of
+              UnpackRecord props ->
+                foldr
+                  ( \(Prop prop expr) next props' ->
+                      makeLet Nothing (eval env expr) \val ->
+                        next (Array.snoc props' (Prop prop val))
+                  )
+                  (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitRecord)
+                  props
+                  []
+              UnpackUpdate hd props ->
+                makeLet Nothing (eval env hd) \hd' ->
+                  foldr
+                    ( \(Prop prop expr) next props' ->
+                        makeLet Nothing (eval env expr) \val ->
+                          next (Array.snoc props' (Prop prop val))
+                    )
+                    (flip eval body <<< bindLocal env <<< One <<< NeutUpdate hd')
+                    props
+                    []
+              UnpackData qual ct ty tag fields ->
+                foldr
+                  ( \(Tuple field expr) next props' ->
+                      makeLet Nothing (eval env expr) \val ->
+                        next (Array.snoc props' (Tuple field val))
+                  )
+                  (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
+                  fields
+                  []
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
@@ -340,13 +356,13 @@ evalApp env hd spine
         NeutFail err, _ ->
           NeutFail err
         SemLam _ k, List.Cons arg args ->
-          SemLet Nothing arg \nextArg ->
+          makeLet Nothing arg \nextArg ->
             go env' (k nextArg) args
         SemExtern qual sp _, List.Cons arg args -> do
           go env' (evalExtern env' qual (snocApp sp arg)) args
         SemLet ident val k, args ->
           SemLet ident val \nextVal ->
-            SemLet Nothing (k nextVal) \nextFn ->
+            makeLet Nothing (k nextVal) \nextFn ->
               go (bindLocal (bindLocal env' (One nextVal)) (One nextFn)) nextFn args
         fn, List.Nil ->
           fn
@@ -362,7 +378,7 @@ evalUncurriedApp env hd spine = case hd of
       MkFnNext _ _, List.Cons (NeutFail err) _ ->
         NeutFail err
       MkFnNext _ k, List.Cons arg args ->
-        SemLet Nothing arg \nextArg ->
+        makeLet Nothing arg \nextArg ->
           go (k nextArg) args
       MkFnNext _ _, _ ->
         unsafeCrashWith "Uncurried function applied to too few arguments"
@@ -375,7 +391,7 @@ evalUncurriedApp env hd spine = case hd of
       evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
   SemLet ident val k ->
     SemLet ident val \nextVal ->
-      SemLet Nothing (k nextVal) \nextFn ->
+      makeLet Nothing (k nextVal) \nextFn ->
         evalUncurriedApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn spine
   NeutFail err ->
     NeutFail err
@@ -507,7 +523,7 @@ evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSe
 evalAssocLet env sem go = case sem of
   SemLet ident val k ->
     SemLet ident val \nextVal1 ->
-      SemLet Nothing (k nextVal1) \nextVal2 ->
+      makeLet Nothing (k nextVal1) \nextVal2 ->
         go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
   NeutFail err ->
     NeutFail err
@@ -524,6 +540,19 @@ evalAssocLet2 env sem1 sem2 go =
   evalAssocLet env sem1 \env' sem1' ->
     evalAssocLet env' sem2 \env'' sem2' ->
       go env'' sem1' sem2'
+
+makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+makeLet ident binding go = case binding of
+  SemExtern _ [] _ ->
+    go binding
+  NeutLocal _ _ ->
+    go binding
+  NeutStop _ ->
+    go binding
+  NeutVar _ ->
+    go binding
+  _ ->
+    SemLet ident binding go
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -1025,6 +1054,9 @@ build ctx = case _ of
     | Just expr' <- shouldUnpackRecord ident level binding body ->
         expr'
   Let ident level binding body
+    | Just expr' <- shouldUnpackUpdate ident level binding body ->
+        expr'
+  Let ident level binding body
     | Just expr' <- shouldUnpackCtor ident level binding body ->
         expr'
   Let ident level binding body
@@ -1155,20 +1187,35 @@ shouldUnpackCtor ident level a body = do
     ExprSyntax _ (CtorSaturated qual ct ty tag fields)
       | Just (Usage us) <- Map.lookup level s2.usages
       , us.total == us.access + us.case -> do
-          let analysis = foldr (const bump) (complex NonTrivial (bound level (BackendAnalysis s2))) fields
-          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackData ident level qual ct ty tag fields body
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = foldr (append <<< analysisOf <<< snd) (complex NonTrivial (bound level (BackendAnalysis s2))) fields
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackData qual ct ty tag fields) body
     _ ->
       Nothing
 
 shouldUnpackRecord :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
-shouldUnpackRecord ident level a body = do
+shouldUnpackRecord ident level binding body = do
   let BackendAnalysis s2 = analysisOf body
-  case a of
+  case binding of
     ExprSyntax _ (Lit (LitRecord props))
       | Just (Usage us) <- Map.lookup level s2.usages
       , us.total == us.access -> do
-          let analysis = foldr (const bump) (complex NonTrivial (bound level (BackendAnalysis s2))) props
-          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackRecord ident level props body
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = foldr (append <<< analysisOf <<< propValue) (complex NonTrivial (bound level (BackendAnalysis s2))) props
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackRecord props) body
+    _ ->
+      Nothing
+
+shouldUnpackUpdate :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldUnpackUpdate ident level binding body = do
+  let BackendAnalysis s2 = analysisOf body
+  case binding of
+    ExprSyntax _ (Update hd props)
+      | Just (Usage us) <- Map.lookup level s2.usages
+      , us.total == us.access + us.update -> do
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = updated level $ analysisOf hd <> foldr (append <<< analysisOf <<< propValue) (complex NonTrivial (bound level (BackendAnalysis s2))) props
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackUpdate hd props) body
     _ ->
       Nothing
 
@@ -1347,10 +1394,14 @@ freeze init = Tuple (analysisOf init) (go init)
           reassocBindings Let go bindings body
         RewriteEffectBindAssoc bindings body ->
           reassocBindings EffectBind go bindings body
-        RewriteUnpackRecord ident level props body ->
-          NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
-        RewriteUnpackData ident level qual ct ty tag values body ->
-          NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
+        RewriteUnpackOp ident level op body ->
+          case op of
+            UnpackRecord props ->
+              NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
+            UnpackUpdate hd props ->
+              NeutralExpr $ Let ident level (NeutralExpr (Update (go hd) (map go <$> props))) (go body)
+            UnpackData qual ct ty tag values ->
+              NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
         RewriteDistBranchesLet ident level branches def body ->
           NeutralExpr $ Let ident level (NeutralExpr (Branch (map go <$> branches) (Just (go def)))) (go body)
         RewriteDistBranchesOp branches def op -> do
