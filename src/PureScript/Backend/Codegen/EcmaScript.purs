@@ -3,39 +3,35 @@ module PureScript.Backend.Codegen.EcmaScript where
 import Prelude
 
 import Control.Alternative (guard)
-import Data.Argonaut as Json
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Either (Either(..))
-import Data.Foldable (class Foldable, all, any, fold, foldMap, foldl, foldr, maximum)
+import Data.Foldable (all, any, fold, foldMap, foldl, foldr, maximum)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Monoid as Monoid
 import Data.Newtype (unwrap)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.String (Pattern(..))
 import Data.String as String
-import Data.String.CodeUnits as SCU
-import Data.String.Regex as Regex
-import Data.String.Regex.Flags (noFlags)
-import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Traversable (class Traversable, Accum, mapAccumL, traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import PureScript.Backend.Analysis (Usage(..))
+import PureScript.Backend.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBlock, esBlockStatements, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esFwdRef, esIdent, esImport, esIndex, esInt, esLetBinding, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
+import PureScript.Backend.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Codegen.Tco as Tco
 import PureScript.Backend.Convert (BackendBindingGroup, BackendModule, DataTypeMeta)
 import PureScript.Backend.Semantics (NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Comment(..), ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
+import PureScript.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 
 data CodegenRefType = RefStrict | RefLazy
 
@@ -279,23 +275,33 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Lit lit ->
     esCodegenLit env lit
   App a bs ->
-    esPureEnv env $ foldl
-      ( \hd -> case _ of
-          TcoExpr _ PrimUndefined ->
-            esApp hd []
-          arg ->
-            esApp hd [ esCodegenExpr env arg ]
-      )
-      (esCodegenExpr env a)
-      bs
+    case a of
+      TcoExpr _ (Var qual)
+        | Just doc <- shouldInlineApp env qual (NonEmptyArray.toArray bs) ->
+            esPureEnv env $ doc
+      _ ->
+        esPureEnv env $ foldl
+          ( \hd -> case _ of
+              TcoExpr _ PrimUndefined ->
+                esApp hd []
+              arg ->
+                esApp hd [ esCodegenExpr env arg ]
+          )
+          (esCodegenExpr env a)
+          bs
   Abs idents body -> do
     let result = freshNames RefStrict env idents
     esCurriedFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
   UncurriedAbs idents body -> do
     let result = freshNames RefStrict env idents
     esFn result.value (esCodegenBlockStatements pureMode (noPure result.accum) body)
-  UncurriedApp a bs -> do
-    esPureEnv env $ esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
+  UncurriedApp a bs ->
+    case a of
+      TcoExpr _ (Var qual)
+        | Just doc <- shouldInlineApp env qual bs ->
+            esPureEnv env $ doc
+      _ ->
+        esPureEnv env $ esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
   UncurriedEffectAbs idents body -> do
     let result = freshNames RefStrict env idents
     esFn result.value (esCodegenBlockStatements effectMode (noPure result.accum) body)
@@ -308,7 +314,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   CtorDef ct ty (Ident tag) [] ->
     esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag []
   CtorDef ct ty (Ident tag) fields ->
-    esCurriedFn (Ident <$> fields) [ Return (esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenIdent <<< Ident <$> fields)) ]
+    esCurriedFn (Ident <$> fields) [ Return (esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esIdent <<< Ident <$> fields)) ]
   CtorSaturated (Qualified (Just mn) _) ct ty (Ident tag) fields | mn == env.currentModule ->
     esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
   CtorSaturated (Qualified qual _) ct ty (Ident tag) fields ->
@@ -333,6 +339,11 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenEffectBlock (noPure env) tcoExpr
   EffectPure _ ->
     esCodegenEffectBlock (noPure env) tcoExpr
+
+shouldInlineApp :: forall a. CodegenEnv -> Qualified Ident -> Array TcoExpr -> Maybe (Dodo.Doc a)
+shouldInlineApp env qual args = do
+  fn <- Map.lookup qual esInlineMap
+  fn (esCodegenExpr env) qual args
 
 esCodegenBindEffect :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
 esCodegenBindEffect env expr@(TcoExpr _ expr') = case expr' of
@@ -374,12 +385,6 @@ esCodegenBlock env a = esBlock (esCodegenBlockStatements pureMode env a)
 
 esCodegenEffectBlock :: forall a. CodegenEnv -> TcoExpr -> Dodo.Doc a
 esCodegenEffectBlock env a = esEffectBlock (esCodegenBlockStatements effectMode env a)
-
-data EsStatement a
-  = Statement a
-  | Control a
-  | Return a
-  | ReturnObject a
 
 type BlockMode =
   { effect :: Boolean
@@ -619,10 +624,10 @@ esCodegenLazyBinding :: forall a. CodegenEnv -> Ident -> TcoExpr -> Dodo.Doc a
 esCodegenLazyBinding env ident expr = esLazyBinding (esLazyIdent ident) (esCodegenBlockStatements pureMode env expr)
 
 esCodegenTopLevelLazyInit :: forall a. Ident -> Dodo.Doc a
-esCodegenTopLevelLazyInit ident = esBinding ident (esPure (esApp (esCodegenIdent (esLazyIdent ident)) []))
+esCodegenTopLevelLazyInit ident = esBinding ident (esPure (esApp (esIdent (esLazyIdent ident)) []))
 
 esCodegenLazyInit :: forall a. Ident -> Dodo.Doc a
-esCodegenLazyInit ident = esBinding ident (esApp (esCodegenIdent (esLazyIdent ident)) [])
+esCodegenLazyInit ident = esBinding ident (esApp (esIdent (esLazyIdent ident)) [])
 
 esCodegenTcoMutualLoopBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> NonEmptyArray (Tuple Ident TcoBinding) -> Dodo.Doc a
 esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.toArray bindings of
@@ -637,8 +642,8 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
           ( mapWithIndex
               ( \ix (Tuple _ tco) -> do
                   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
-                  Tuple (Dodo.words [ esCodegenIdent branchIdent, Dodo.text "===", esInt ix ]) $ fold
-                    [ (\(Tuple arg var) -> Statement $ esBinding var (esCodegenIdent arg)) <$> Array.zip argIdents (NonEmptyArray.toArray argNames)
+                  Tuple (Dodo.words [ esIdent branchIdent, Dodo.text "===", esInt ix ]) $ fold
+                    [ (\(Tuple arg var) -> Statement $ esBinding var (esIdent arg)) <$> Array.zip argIdents (NonEmptyArray.toArray argNames)
                     , esCodegenBlockStatements (mode { tco = true }) (noPure env') tco.body
                     ]
               )
@@ -649,7 +654,7 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
         <>
           mapWithIndex
             ( \ix (Tuple ident _) ->
-                esBinding ident $ esPure $ esApp (esCodegenIdent tcoIdent) [ esInt ix ]
+                esBinding ident $ esPure $ esApp (esIdent tcoIdent) [ esInt ix ]
             )
             bindings'
 
@@ -658,7 +663,7 @@ esCodegenTcoLoopBinding mode env tcoIdent tco = do
   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
   let argIdents = mapWithIndex (Tuple <<< esTcoArgIdent tcoIdent) argNames
   esBinding tcoIdent $ esTcoFn tcoIdent (fst <$> argIdents) $ Dodo.lines
-    [ esBlockStatements $ (\(Tuple arg var) -> Statement $ esBinding var (esCodegenIdent arg)) <$> argIdents
+    [ esBlockStatements $ (\(Tuple arg var) -> Statement $ esBinding var (esIdent arg)) <$> argIdents
     , esBlockStatements $ esCodegenBlockStatements (mode { tco = true }) env' tco.body
     ]
 
@@ -855,296 +860,17 @@ esLocalIdent mb (Level lvl) = case mb of
   Nothing ->
     Ident ("_" <> show lvl)
 
-esCodegenIdent :: forall a. Ident -> Dodo.Doc a
-esCodegenIdent (Ident a) = Dodo.text (esEscapeIdent a)
-
 esCodegenName :: forall a. CodegenName -> Dodo.Doc a
 esCodegenName (Tuple id refType) = case refType of
   RefStrict ->
-    esCodegenIdent id
+    esIdent id
   RefLazy ->
-    esApp (esCodegenIdent (esLazyIdent id)) []
+    esApp (esIdent (esLazyIdent id)) []
 
 esCodegenQualified :: forall a. Qualified Ident -> Dodo.Doc a
 esCodegenQualified (Qualified qual ident) = case qual of
-  Nothing -> esCodegenIdent ident
-  Just mn -> esCodegenModuleName mn <> Dodo.text "." <> Dodo.text (esEscapeSpecial (unwrap ident))
-
-esCodegenModuleName :: forall a. ModuleName -> Dodo.Doc a
-esCodegenModuleName (ModuleName mn) = Dodo.text (esEscapeIdent mn)
-
-esEscapeIdent :: String -> String
-esEscapeIdent = escapeReserved
-  where
-  escapeReserved str
-    | Set.member str esReservedNames =
-        "$$" <> str
-    | otherwise =
-        esEscapeSpecial str
-
-esEscapeSpecial :: String -> String
-esEscapeSpecial =
-  String.replaceAll (String.Pattern "'") (String.Replacement "$p")
-    >>> String.replaceAll (String.Pattern ".") (String.Replacement "$d")
-
-esReservedNames :: Set String
-esReservedNames = Set.fromFoldable
-  [ "AggregateError"
-  , "Array"
-  , "ArrayBuffer"
-  , "AsyncFunction"
-  , "AsyncGenerator"
-  , "AsyncGeneratorFunction"
-  , "Atomics"
-  , "BigInt"
-  , "BigInt64Array"
-  , "BigUint64Array"
-  , "Boolean"
-  , "Boolean"
-  , "DataView"
-  , "Date"
-  , "Error"
-  , "EvalError"
-  , "Float32Array"
-  , "Float64Array"
-  , "Function"
-  , "Generator"
-  , "GeneratorFunction"
-  , "Infinity"
-  , "Int16Array"
-  , "Int32Array"
-  , "Int8Array"
-  , "Intl"
-  , "JSON"
-  , "Map"
-  , "Math"
-  , "NaN"
-  , "Number"
-  , "Object"
-  , "Promise"
-  , "Proxy"
-  , "RangeError"
-  , "ReferenceError"
-  , "Reflect"
-  , "RegExp"
-  , "Set"
-  , "SharedArrayBuffer"
-  , "String"
-  , "Symbol"
-  , "SyntaxError"
-  , "TypeError"
-  , "URIError"
-  , "Uint16Array"
-  , "Uint32Array"
-  , "Uint8Array"
-  , "Uint8ClampedArray"
-  , "WeakMap"
-  , "WeakSet"
-  , "WebAssembly"
-  , "abstract"
-  , "arguments"
-  , "await"
-  , "boolean"
-  , "break"
-  , "byte"
-  , "case"
-  , "catch"
-  , "char"
-  , "class"
-  , "const"
-  , "continue"
-  , "debugger"
-  , "default"
-  , "delete"
-  , "do"
-  , "double"
-  , "else"
-  , "enum"
-  , "eval"
-  , "export"
-  , "extends"
-  , "false"
-  , "final"
-  , "finally"
-  , "float"
-  , "for"
-  , "function"
-  , "get"
-  , "globalThis"
-  , "goto"
-  , "if"
-  , "implements"
-  , "import"
-  , "in"
-  , "instanceof"
-  , "int"
-  , "interface"
-  , "let"
-  , "long"
-  , "native"
-  , "new"
-  , "null"
-  , "package"
-  , "private"
-  , "protected"
-  , "public"
-  , "return"
-  , "set"
-  , "short"
-  , "static"
-  , "super"
-  , "switch"
-  , "synchronized"
-  , "this"
-  , "throw"
-  , "throws"
-  , "transient"
-  , "true"
-  , "try"
-  , "typeof"
-  , "undefined"
-  , "var"
-  , "void"
-  , "volatile"
-  , "while"
-  , "with"
-  , "yield"
-  ]
-
-esFwdRef :: forall a. Ident -> Dodo.Doc a
-esFwdRef ident = Dodo.text "let" <> Dodo.space <> esCodegenIdent ident
-
-esLetBinding :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
-esLetBinding ident b = Dodo.words
-  [ Dodo.text "let"
-  , esCodegenIdent ident
-  , Dodo.text "="
-  , b
-  ]
-
-esBinding :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
-esBinding ident b = Dodo.words
-  [ Dodo.text "const"
-  , esCodegenIdent ident
-  , Dodo.text "="
-  , b
-  ]
-
-esTopLevelLazyBinding :: forall a. Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esTopLevelLazyBinding ident bs = esBinding ident $ esPure $ esApp (Dodo.text "$runtime.binding") [ esFn [] bs ]
-
-esLazyBinding :: forall a. Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esLazyBinding ident bs = esBinding ident $ esApp (Dodo.text "$runtime.binding") [ esFn [] bs ]
-
-esLazyIdent :: Ident -> Ident
-esLazyIdent (Ident id) = Ident (id <> "$lazy")
-
-esAssign :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
-esAssign ident b = Dodo.words
-  [ esCodegenIdent ident
-  , Dodo.text "="
-  , b
-  ]
-
-esAssignRef :: forall a. Dodo.Doc a -> Dodo.Doc a -> Dodo.Doc a
-esAssignRef lhs rhs = fold
-  [ lhs
-  , Dodo.text ".value"
-  , Dodo.space
-  , Dodo.text "="
-  , Dodo.space
-  , rhs
-  ]
-
-esAccessor :: forall a. Dodo.Doc a -> String -> Dodo.Doc a
-esAccessor expr prop = case esEscapeProp prop of
-  Nothing ->
-    expr <> Dodo.text "." <> Dodo.text prop
-  Just escaped ->
-    expr <> Dodo.Common.jsSquares (Dodo.text escaped)
-
-esIndex :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
-esIndex expr ix = expr <> Dodo.text "[" <> Dodo.text (show ix) <> Dodo.text "]"
-
-esOffset :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
-esOffset expr ix = expr <> Dodo.text "._" <> Dodo.text (show (ix + 1))
-
-esUpdate :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
-esUpdate rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
-
-esBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esBlock stmts = Dodo.text "(" <> esFn mempty stmts <> Dodo.text ")" <> Dodo.text "()"
-
-esEffectBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esEffectBlock stmts = esFn mempty stmts
-
-esBlockStatements :: forall f a. Foldable f => Functor f => f (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esBlockStatements = Dodo.lines <<< map go
-  where
-  go = case _ of
-    Statement a -> a <> Dodo.text ";"
-    Control a -> a
-    Return a -> esReturn a <> Dodo.text ";"
-    ReturnObject a -> esReturn a <> Dodo.text ";"
-
-esFn :: forall a. Array Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esFn args stmts = Dodo.words
-  [ if Array.length args == 1 then
-      foldMap esCodegenIdent args
-    else
-      Dodo.Common.jsParens (Dodo.foldWithSeparator Dodo.Common.trailingComma (esCodegenIdent <$> args))
-  , Dodo.text "=>"
-  , esFnBody stmts
-  ]
-
-esReturn :: forall a. Dodo.Doc a -> Dodo.Doc a
-esReturn doc = Dodo.words
-  [ Dodo.text "return"
-  , doc
-  ]
-
-esCurriedFn :: forall f a. Foldable f => f Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esCurriedFn args stmts = foldr go (esFnBody stmts) args
-  where
-  go arg body = Dodo.words
-    [ case String.stripPrefix (Pattern "$__unused") (unwrap arg) of
-        Nothing ->
-          esCodegenIdent arg
-        Just _ ->
-          Dodo.text "()"
-    , Dodo.text "=>"
-    , body
-    ]
-
-esFnBody :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
-esFnBody = case _ of
-  [] -> Dodo.Common.jsCurlies mempty
-  [ Return a ] -> a
-  [ ReturnObject a ] -> Dodo.Common.jsParens a
-  stmts -> Dodo.Common.jsCurlies (esBlockStatements stmts)
-
-esArray :: forall a. Array (Dodo.Doc a) -> Dodo.Doc a
-esArray = Dodo.Common.jsSquares <<< Dodo.foldWithSeparator Dodo.Common.trailingComma
-
-esRecord :: forall a. Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
-esRecord = Dodo.Common.jsCurlies <<< Dodo.foldWithSeparator Dodo.Common.trailingComma <<< map esProp
-
-esProp :: forall a. Prop (Dodo.Doc a) -> Dodo.Doc a
-esProp (Prop prop val) = fold
-  [ Dodo.text (fromMaybe prop $ esEscapeProp prop)
-  , Dodo.text ":"
-  , Dodo.space
-  , val
-  ]
-
-esEscapeProp :: String -> Maybe String
-esEscapeProp = \prop ->
-  if Regex.test safeRegex prop then
-    Nothing
-  else
-    Just $ esEscapeString prop
-  where
-  safeRegex = unsafeRegex """^[a-zA-Z_$][a-zA-Z0-9_$]*$""" noFlags
+  Nothing -> esIdent ident
+  Just mn -> esModuleName mn <> Dodo.text "." <> Dodo.text (esEscapeSpecial (unwrap ident))
 
 esCtorIdent :: ProperName -> Ident
 esCtorIdent (ProperName name) = Ident ("$" <> name)
@@ -1161,14 +887,14 @@ esCtorForType name meta = do
         [ ReturnObject $ Dodo.Common.jsCurlies
             $ Dodo.foldWithSeparator Dodo.Common.trailingComma
             $ Array.cons (esProp (Prop "tag" (esString ctor)))
-            $ esCodegenIdent <$> fields
+            $ esIdent <$> fields
         ]
     _ -> do
       let args = Array.cons (Ident "tag") fields
       esBinding (esCtorIdent name) $ esFn args
         [ ReturnObject $ Dodo.Common.jsCurlies
             $ Dodo.foldWithSeparator Dodo.Common.trailingComma
-            $ esCodegenIdent <$> args
+            $ esIdent <$> args
         ]
 
 esCtor :: forall a. ConstructorType -> Qualified Ident -> String -> Array (Dodo.Doc a) -> Dodo.Doc a
@@ -1178,142 +904,11 @@ esCtor ct fn tag vals = case ct of
   ProductType ->
     esApp (esCodegenQualified fn) vals
 
-esString :: forall a. String -> Dodo.Doc a
-esString = Dodo.text <<< esEscapeString
-
-esNumber :: forall a. Number -> Dodo.Doc a
-esNumber = Dodo.text <<< show
-
-esInt :: forall a. Int -> Dodo.Doc a
-esInt = Dodo.text <<< show
-
-esChar :: forall a. Char -> Dodo.Doc a
-esChar = Dodo.text <<< esEscapeString <<< SCU.singleton
-
-esBoolean :: forall a. Boolean -> Dodo.Doc a
-esBoolean = Dodo.text <<< show
-
-esApp :: forall a. Dodo.Doc a -> Array (Dodo.Doc a) -> Dodo.Doc a
-esApp a bs =
-  if Array.length bs == 1 then
-    a <> Dodo.text "(" <> Dodo.flexGroup args <> Dodo.text ")"
-  else
-    a <> Dodo.Common.jsParens args
-  where
-  args = Dodo.foldWithSeparator Dodo.Common.trailingComma bs
-
-esIfElse :: forall f a. Foldable f => f (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
-esIfElse conds default = Dodo.lines
-  [ condChain.doc
-  , Monoid.guard (not (Dodo.isEmpty default)) $ fold
-      [ Dodo.text "else"
-      , Dodo.space
-      , Dodo.Common.jsCurlies default
-      ]
-  ]
-  where
-  condChain = foldl go { elseif: false, doc: mempty } conds
-  go { elseif, doc } (Tuple cond body) =
-    { elseif: true
-    , doc: fold
-        [ doc
-        , if elseif then Dodo.space <> Dodo.text "else if" else Dodo.text "if"
-        , Dodo.space
-        , Dodo.Common.jsParens cond
-        , Dodo.space
-        , Dodo.Common.jsCurlies body
-        ]
-    }
-
-esBranches :: forall a. NonEmptyArray (Tuple (Dodo.Doc a) (Array (EsStatement (Dodo.Doc a)))) -> Maybe (Array (EsStatement (Dodo.Doc a))) -> Dodo.Doc a
-esBranches branches def =
-  Dodo.lines
-    [ Dodo.lines $ map
-        ( \(Tuple doc stmts) -> Dodo.flexGroup $ fold
-            [ Dodo.text "if"
-            , Dodo.space
-            , Dodo.Common.jsParens doc
-            , Dodo.space
-            , Dodo.text "{"
-            , Dodo.spaceBreak
-            , Dodo.indent (esBlockStatements stmts)
-            , Dodo.spaceBreak
-            , Dodo.text "}"
-            ]
-        )
-        branches
-    , foldMap esBlockStatements def
-    ]
-
-esImport :: forall a. ModuleName -> String -> Dodo.Doc a
-esImport mn path = Dodo.words
-  [ Dodo.text "import"
-  , Dodo.text "*"
-  , Dodo.text "as"
-  , esCodegenModuleName mn
-  , Dodo.text "from"
-  , esString path
-  ]
-
-esImportRuntime :: forall a. Dodo.Doc a
-esImportRuntime = Dodo.words
-  [ Dodo.text "import"
-  , Dodo.text "*"
-  , Dodo.text "as"
-  , Dodo.text "$runtime"
-  , Dodo.text "from"
-  , esString "../runtime.js"
-  ]
-
-esExports :: forall a. Maybe String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
-esExports mbPath exports = Dodo.words
-  [ Dodo.text "export"
-  , Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ map
-      ( \(Tuple id1 id2) -> do
-          let id1' = esEscapeSpecial (unwrap id1)
-          let id2' = esEscapeIdent (unwrap id2)
-          if id1' == id2' || isJust mbPath then
-            Dodo.text id1'
-          else
-            Dodo.words
-              [ Dodo.text id2'
-              , Dodo.text "as"
-              , Dodo.text id1'
-              ]
-      )
-      exports
-  , flip foldMap mbPath \path -> Dodo.words
-      [ Dodo.text "from"
-      , esString path
-      ]
-  ]
-
-esExportAllFrom :: forall a. String -> Dodo.Doc a
-esExportAllFrom path = Dodo.words
-  [ Dodo.text "export"
-  , Dodo.text "*"
-  , Dodo.text "from"
-  , esString path
-  ]
-
 esModulePath :: ModuleName -> String
 esModulePath (ModuleName mn) = "../" <> mn <> "/index.js"
 
 esForeignModulePath :: ModuleName -> String
 esForeignModulePath (ModuleName _) = "./foreign.js"
-
-esUndefined :: forall a. Dodo.Doc a
-esUndefined = Dodo.text "undefined"
-
-esError :: forall a. String -> Dodo.Doc a
-esError str = Dodo.words
-  [ Dodo.text "throw"
-  , Dodo.text "new"
-  , esApp (Dodo.text "Error") [ esString str ]
-  ]
-
-esFail :: forall a. Dodo.Doc a
-esFail = Dodo.text "$runtime.fail()"
 
 esTcoMutualIdent :: NonEmptyArray Ident -> Ident
 esTcoMutualIdent idents = case NonEmptyArray.toArray idents of
@@ -1337,15 +932,15 @@ esTcoCopyIdent (Ident tcoIdent) = Ident (tcoIdent <> "$copy")
 
 esTcoFn :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
 esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args) $ fold
-  [ (\arg -> Statement $ esLetBinding arg $ esCodegenIdent $ esTcoCopyIdent arg) <$> NonEmptyArray.toArray args
+  [ (\arg -> Statement $ esLetBinding arg $ esIdent $ esTcoCopyIdent arg) <$> NonEmptyArray.toArray args
   , [ Statement $ esLetBinding (esTcoLoopIdent tcoIdent) (Dodo.text "true")
     , Statement $ esFwdRef (esTcoReturnIdent tcoIdent)
     , Statement $ Dodo.words
         [ Dodo.text "while"
-        , Dodo.Common.jsParens (esCodegenIdent (esTcoLoopIdent tcoIdent))
+        , Dodo.Common.jsParens (esIdent (esTcoLoopIdent tcoIdent))
         , Dodo.Common.jsCurlies body
         ]
-    , Return (esCodegenIdent (esTcoReturnIdent tcoIdent))
+    , Return (esIdent (esTcoReturnIdent tcoIdent))
     ]
   ]
 
@@ -1356,26 +951,29 @@ esTcoApp pop args = esSepStatements $ fold
   , mapWithIndex (\ix arg -> esAssign (esTcoArgIdent pop.ident ix) arg) $ NonEmptyArray.toArray args
   ]
 
-esContinue :: forall a. Dodo.Doc a
-esContinue = Dodo.text "continue"
+esTopLevelLazyBinding :: forall a. Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
+esTopLevelLazyBinding ident bs = esBinding ident $ esPure $ esApp (Dodo.text "$runtime.binding") [ esFn [] bs ]
 
-esSepStatements :: forall f a. Foldable f => f (Dodo.Doc a) -> Dodo.Doc a
-esSepStatements = Dodo.foldWithSeparator (Dodo.text ";" <> Dodo.break)
+esLazyBinding :: forall a. Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
+esLazyBinding ident bs = esBinding ident $ esApp (Dodo.text "$runtime.binding") [ esFn [] bs ]
 
-esPure :: forall a. Dodo.Doc a -> Dodo.Doc a
-esPure doc = Dodo.text "/* #__PURE__ */" <> Dodo.space <> doc
+esLazyIdent :: Ident -> Ident
+esLazyIdent (Ident id) = Ident (id <> "$lazy")
 
 esPureEnv :: forall a. CodegenEnv -> Dodo.Doc a -> Dodo.Doc a
 esPureEnv { emitPure } doc
   | emitPure = esPure doc
   | otherwise = doc
 
-esComment :: forall a. Comment -> Dodo.Doc a
-esComment = case _ of
-  LineComment str ->
-    Dodo.text "//" <> Dodo.text str
-  BlockComment str ->
-    Dodo.text "/*" <> Dodo.text str <> Dodo.text "*/"
+esImportRuntime :: forall a. Dodo.Doc a
+esImportRuntime = Dodo.words
+  [ Dodo.text "import"
+  , Dodo.text "*"
+  , Dodo.text "as"
+  , Dodo.text "$runtime"
+  , Dodo.text "from"
+  , esString "../runtime.js"
+  ]
 
-esEscapeString :: String -> String
-esEscapeString = Json.stringify <<< Json.fromString
+esFail :: forall a. Dodo.Doc a
+esFail = Dodo.text "$runtime.fail()"

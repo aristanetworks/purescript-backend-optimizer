@@ -23,13 +23,13 @@ const flubImpl = /* #__PURE__ */ (() => Data$dShow.showRecord()()(Data$dShow.sho
   }
 }))(Data$dShow.showString)).show)();
 const defaultOptions = {foo: 42, baz: Data$dMaybe.Nothing};
-const test1 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ Record$dUnsafe$dUnion.unsafeUnionFn({bar: "Hello"}, defaultOptions));
-const test2 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ Record$dUnsafe$dUnion.unsafeUnionFn({foo: 99, bar: "Hello"}, defaultOptions));
-const test3 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ Record$dUnsafe$dUnion.unsafeUnionFn(
+const test1 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ $runtime.recordUnionMutateLeft({bar: "Hello"}, defaultOptions));
+const test2 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ $runtime.recordUnionMutateLeft({foo: 99, bar: "Hello"}, defaultOptions));
+const test3 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ $runtime.recordUnionMutateLeft(
   {foo: 99, baz: /* #__PURE__ */ Data$dMaybe.$Maybe("Just", true), bar: "Hello"},
   defaultOptions
 ));
-const test4 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ Record$dUnsafe$dUnion.unsafeUnionFn(
+const test4 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ $runtime.recordUnionMutateLeft(
   {foo: 99, baz: /* #__PURE__ */ Data$dMaybe.$Maybe("Just", true), bar: /* #__PURE__ */ Data$dShow.showIntImpl(42)},
   defaultOptions
 ));

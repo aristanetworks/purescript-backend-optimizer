@@ -3,6 +3,7 @@ module PureScript.Backend.Semantics.Foreign where
 import Prelude
 
 import Data.Array as Array
+import Data.Array.NonEmpty as NonEmptyArray
 import Data.Enum (fromEnum)
 import Data.Lazy as Lazy
 import Data.List as List
@@ -80,6 +81,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , record_builder_unsafeInsert
     , record_builder_unsafeModify
     , record_builder_unsafeRename
+    , record_unsafe_union_unsafeUnionFn
     , record_unsafe_unsafeDelete
     , record_unsafe_unsafeGet
     , record_unsafe_unsafeHas
@@ -605,5 +607,14 @@ record_unsafe_unsafeDelete = Tuple (qualified "Record.Unsafe" "unsafeDelete") go
   go _ _ = case _ of
     [ ExternApp [ NeutLit (LitString prop), NeutLit (LitRecord props) ] ] ->
       Just $ NeutLit (LitRecord (Array.filter (not <<< eq prop <<< propKey) props))
+    _ ->
+      Nothing
+
+record_unsafe_union_unsafeUnionFn :: ForeignSemantics
+record_unsafe_union_unsafeUnionFn = Tuple (qualified "Record.Unsafe.Union" "unsafeUnionFn") go
+  where
+  go _ _ = case _ of
+    [ ExternUncurriedApp [ NeutLit (LitRecord props1), NeutLit (LitRecord props2) ] ] ->
+      Just $ NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props1 <> props2)))
     _ ->
       Nothing
