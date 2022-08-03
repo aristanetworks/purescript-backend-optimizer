@@ -21,7 +21,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, updated, withRewrite)
+import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 
@@ -77,6 +77,7 @@ type LetBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
+  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
@@ -261,6 +262,9 @@ instance Eval BackendExpr where
         case rewrite of
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
+          RewriteUncurry ident _ args binding body ->
+            SemLet ident (mkFnFromArgs env (NonEmptyArray.toArray args) binding) \newFn -> do
+              eval (bindLocal env (One (mkUncurriedAppRewrite env newFn (NonEmptyArray.length args)))) body
           RewriteLetAssoc bindings body -> do
             let
               goBinding env' = case _ of
@@ -1051,6 +1055,9 @@ build ctx = case _ of
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
   Let ident level binding body
+    | Just expr' <- shouldUncurryAbs ident level binding body ->
+        expr'
+  Let ident level binding body
     | Just expr' <- shouldUnpackRecord ident level binding body ->
         expr'
   Let ident level binding body
@@ -1282,6 +1289,24 @@ shouldDistributeBranchPrimOp2R analysis1 branches def lhs op2 =
   else
     Nothing
 
+shouldUncurryAbs :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldUncurryAbs ident level a b = do
+  let BackendAnalysis s2 = analysisOf b
+  case a of
+    ExprSyntax _ (Abs args fn)
+      | Just (Usage u) <- Map.lookup level s2.usages
+      , [ n ] <- Set.toUnfoldable u.arities
+      , n == NonEmptyArray.length args -> do
+          let
+            analysis =
+              withResult (resultOf b)
+                $ bump
+                $ complex NonTrivial
+                $ analysisOf a <> bound level (analysisOf b)
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUncurry ident level args fn b
+    _ ->
+      Nothing
+
 shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
 shouldInlineLet level a b = do
   let BackendAnalysis s1 = analysisOf a
@@ -1388,6 +1413,8 @@ freeze init = Tuple (analysisOf init) (go init)
       case rewrite of
         RewriteInline ident level binding body ->
           NeutralExpr $ Let ident level (go binding) (go body)
+        RewriteUncurry ident level args binding body ->
+          NeutralExpr $ Let ident level (NeutralExpr (Abs args (go binding))) (go body)
         RewriteStop qual ->
           NeutralExpr $ Var qual
         RewriteLetAssoc bindings body ->
@@ -1455,6 +1482,25 @@ evalMkFn env n sem
           MkFnNext Nothing \nextArg -> do
             let env' = bindLocal env (One nextArg)
             evalMkFn env' (n - 1) (evalApp env' sem [ nextArg ])
+
+mkUncurriedAppRewrite :: Env -> BackendSemantics -> Int -> BackendSemantics
+mkUncurriedAppRewrite env hd = go []
+  where
+  go acc n
+    | n == 0 = evalUncurriedApp env hd acc
+    | otherwise =
+        SemLam Nothing \arg ->
+          go (Array.snoc acc arg) (n - 1)
+
+mkFnFromArgs :: forall f. Eval f => Env -> Array (Tuple (Maybe Ident) Level) -> f -> BackendSemantics
+mkFnFromArgs env args body =
+  SemMkFn $ foldr
+    ( \(Tuple ident _) next env' ->
+        MkFnNext ident (next <<< bindLocal env' <<< One)
+    )
+    (MkFnApplied <<< flip eval body)
+    args
+    env
 
 guardFail :: BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
 guardFail sem k = case sem of

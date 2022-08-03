@@ -5,6 +5,7 @@
   , "convertable-options"
   , "effect"
   , "either"
+  , "foldable-traversable"
   , "functions"
   , "heterogeneous"
   , "integers"
