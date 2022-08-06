@@ -2,16 +2,20 @@ module Main where
 
 import Prelude
 
+import ArgParse.Basic (ArgParser)
+import ArgParse.Basic as ArgParser
 import Control.Plus (empty)
 import Data.Array as Array
 import Data.Either (Either(..), isRight)
 import Data.Foldable (oneOf)
-import Data.Maybe (fromMaybe, maybe)
+import Data.Map as Map
+import Data.Maybe (Maybe, fromMaybe, maybe)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
+import Data.Traversable (traverse)
 import Dodo as Dodo
 import Effect (Effect)
 import Effect.Aff (Aff, attempt, effectCanceler, error, makeAff, throwError)
@@ -25,15 +29,46 @@ import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Stream as Stream
-import PureScript.Backend.Builder.Cli (basicCliMain)
+import PureScript.Backend.Builder.Cli (basicCliMain, externalDirectivesFromFile)
 import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esModulePath)
 import PureScript.CoreFn (Module(..), ModuleName(..))
+
+type BasicCliArgs =
+  { coreFnDir :: FilePath
+  , outputDir :: FilePath
+  , foreignDir :: Maybe FilePath
+  , directivesFile :: Maybe FilePath
+  }
+
+esArgParser :: ArgParser BasicCliArgs
+esArgParser =
+  ArgParser.fromRecord
+    { coreFnDir:
+        ArgParser.anyNotFlag "COREFN_DIR"
+          "Directory for corefn.json files."
+          # ArgParser.default "output"
+    , outputDir:
+        ArgParser.argument [ "--output-dir" ]
+          "Output directory for backend files"
+          # ArgParser.default (Path.concat [ ".", "output-es" ])
+    , foreignDir:
+        ArgParser.argument [ "--foreign-dir" ]
+          "Directory for foreign module implementations"
+          # ArgParser.optional
+    , directivesFile:
+        ArgParser.argument [ "--directives" ]
+          "Path to file that defines external inline directives"
+          # ArgParser.optional
+    }
+    <* ArgParser.flagHelp
 
 main :: FilePath -> Effect Unit
 main cliRoot = basicCliMain
   { name: "purs-backend-es"
   , description: "A PureScript backend for modern ECMAScript."
-  , defaultOutputDir: Path.concat [ ".", "output-es" ]
+  , argParser: esArgParser
+  , resolveCoreFnDirectory: pure <<< _.coreFnDir
+  , resolveExternalDirectives: map (fromMaybe Map.empty) <<< traverse externalDirectivesFromFile <<< _.directivesFile
   , onCodegenBefore: \args -> do
       mkdirp args.outputDir
       writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson

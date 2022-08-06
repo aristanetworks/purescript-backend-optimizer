@@ -11,5 +11,6 @@
 /.purs*
 /.psa*
 /.spago
+/.vscode
 /*.purs*
 /**/.DS_Store

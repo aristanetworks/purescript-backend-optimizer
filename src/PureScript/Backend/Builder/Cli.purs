@@ -7,12 +7,11 @@ import ArgParse.Basic as ArgParser
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (for_)
+import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe, fromMaybe)
-import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_)
+import Effect.Aff (Aff, launchAff_, parallel, sequential)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Node.Encoding (Encoding(..))
@@ -23,66 +22,43 @@ import PureScript.Backend.Builder (BuildEnv, buildModules, coreFnModulesFromOutp
 import PureScript.Backend.Convert (BackendModule)
 import PureScript.Backend.Directives (parseDirectiveFile)
 import PureScript.Backend.Directives.Defaults as Defaults
+import PureScript.Backend.Semantics (EvalRef, InlineDirective)
 import PureScript.CST.Errors (printParseError)
 import PureScript.CoreFn (Ann, Module)
 
-type BasicCliArgs =
-  { coreFnDir :: FilePath
-  , outputDir :: FilePath
-  , foreignDir :: Maybe FilePath
-  , directivesFile :: Maybe FilePath
-  }
-
-basicArgParser :: FilePath -> ArgParser BasicCliArgs
-basicArgParser defaultOutputDir =
-  ArgParser.fromRecord
-    { coreFnDir:
-        ArgParser.anyNotFlag "COREFN_DIR"
-          "Directory for corefn.json files."
-    , outputDir:
-        ArgParser.argument [ "--output-dir" ]
-          "Output directory for backend files"
-          # ArgParser.default defaultOutputDir
-    , foreignDir:
-        ArgParser.argument [ "--foreign-dir" ]
-          "Directory for foreign module implementations"
-          # ArgParser.optional
-    , directivesFile:
-        ArgParser.argument [ "--directives" ]
-          "Path to file that defines external inline directives"
-          # ArgParser.optional
-    }
-    <* ArgParser.flagHelp
+externalDirectivesFromFile :: FilePath -> Aff (Map EvalRef InlineDirective)
+externalDirectivesFromFile filePath = do
+  fileContent <- FS.readTextFile UTF8 filePath
+  let { errors, directives } = parseDirectiveFile fileContent
+  for_ errors \(Tuple directive { position, error }) -> do
+    Console.warn $ "Invalid directive [" <> show (position.line + 1) <> ":" <> show (position.column + 1) <> "]"
+    Console.warn $ "  " <> directive
+    Console.warn $ "  " <> printParseError error
+  pure directives
 
 basicCliMain
-  :: { name :: String
+  :: forall args
+   . { name :: String
      , description :: String
-     , defaultOutputDir :: FilePath
-     , onCodegenBefore :: BasicCliArgs -> Aff Unit
-     , onCodegenAfter :: BasicCliArgs -> Aff Unit
-     , onCodegenModule :: BasicCliArgs -> BuildEnv -> Module Ann -> BackendModule -> Aff Unit
-     , onPrepareModule :: BasicCliArgs -> BuildEnv -> Module Ann -> Aff (Module Ann)
+     , argParser :: ArgParser args
+     , resolveCoreFnDirectory :: args -> Aff FilePath
+     , resolveExternalDirectives ::  args -> Aff (Map EvalRef InlineDirective)
+     , onCodegenBefore :: args -> Aff Unit
+     , onCodegenAfter :: args -> Aff Unit
+     , onCodegenModule :: args -> BuildEnv -> Module Ann -> BackendModule -> Aff Unit
+     , onPrepareModule :: args -> BuildEnv -> Module Ann -> Aff (Module Ann)
      }
   -> Effect Unit
 basicCliMain options = do
   cliArgs <- Array.drop 2 <$> Process.argv
-  let
-    parsedArgs =
-      ArgParser.parseArgs options.name options.description
-        (basicArgParser options.defaultOutputDir)
-        cliArgs
-  case parsedArgs of
+  case ArgParser.parseArgs options.name options.description options.argParser cliArgs of
     Left err ->
       Console.error $ ArgParser.printArgError err
-    Right args@{ coreFnDir, directivesFile } -> launchAff_ do
-      externalDirectives <- fromMaybe Map.empty <$> for directivesFile \filePath -> do
-        fileContent <- FS.readTextFile UTF8 filePath
-        let { errors, directives } = parseDirectiveFile fileContent
-        for_ errors \(Tuple directive { position, error }) -> do
-          Console.warn $ "Invalid directive [" <> show (position.line + 1) <> ":" <> show (position.column + 1) <> "]"
-          Console.warn $ "  " <> directive
-          Console.warn $ "  " <> printParseError error
-        pure directives
+    Right args -> launchAff_ do
+      { coreFnDir, externalDirectives } <- sequential do
+        { coreFnDir: _, externalDirectives: _ }
+          <$> parallel (options.resolveCoreFnDirectory args)
+          <*> parallel (options.resolveExternalDirectives args)
       let defaultDirectives = (parseDirectiveFile Defaults.defaultDirectives).directives
       let allDirectives = Map.union externalDirectives defaultDirectives
       coreFnModulesFromOutput coreFnDir >>= case _ of
