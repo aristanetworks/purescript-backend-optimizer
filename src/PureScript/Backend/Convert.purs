@@ -14,17 +14,17 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype (unwrap)
 import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, mapAccumL, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import Partial.Unsafe (unsafeCrashWith)
+import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (BackendAnalysis)
 import PureScript.Backend.Directives (parseDirectiveHeader)
-import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..), findProp)
@@ -34,6 +34,8 @@ type BackendBindingGroup a b =
   , bindings :: Array (Tuple a b)
   }
 
+type BackendImplementations = Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+
 type BackendModule =
   { name :: ModuleName
   , comments :: Array Comment
@@ -42,18 +44,8 @@ type BackendModule =
   , bindings :: Array (BackendBindingGroup Ident NeutralExpr)
   , exports :: Array (Tuple Ident (Qualified Ident))
   , foreign :: Array Ident
-  , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+  , implementations :: BackendImplementations
   , directives :: Map EvalRef InlineDirective
-  }
-
-type DataTypeMeta =
-  { constructors :: Map Ident CtorMeta
-  , size :: Int
-  }
-
-type CtorMeta =
-  { fields :: Array String
-  , tag :: Int
   }
 
 type ConvertEnv =
@@ -61,8 +53,8 @@ type ConvertEnv =
   , currentModule :: ModuleName
   , dataTypes :: Map ProperName DataTypeMeta
   , toLevel :: Map Ident Level
-  , implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
-  , moduleImplementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+  , implementations :: BackendImplementations
+  , moduleImplementations :: BackendImplementations
   , deps :: Set ModuleName
   , directives :: Map EvalRef InlineDirective
   , rewriteLimit :: Int
@@ -143,7 +135,7 @@ toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, branchTry: Nothing }
   let backendExpr = toBackendExpr cfn env
-  let Tuple impl expr' = toExternImpl group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
+  let Tuple impl expr' = toExternImpl env group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
       , moduleImplementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.moduleImplementations
@@ -160,14 +152,15 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   , value: Tuple ident expr'
   }
 
-toExternImpl :: Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr
-toExternImpl group expr = case expr of
+toExternImpl :: ConvertEnv -> Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr
+toExternImpl env group expr = case expr of
   ExprSyntax analysis (Lit (LitRecord props)) -> do
     let propsWithAnalysis = map freeze <$> props
     Tuple (Tuple analysis (ExternDict group propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
   ExprSyntax _ (CtorDef ct ty tag fields) -> do
     let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ExternCtor ct ty tag fields)) expr'
+    let meta = unsafePartial $ fromJust $ Map.lookup ty env.dataTypes
+    Tuple (Tuple analysis (ExternCtor meta ct ty tag fields)) expr'
   _ -> do
     let Tuple analysis expr' = freeze expr
     Tuple (Tuple analysis (ExternExpr group expr')) expr'
@@ -221,14 +214,14 @@ getCtx env =
           --   Just $ Tuple s $ NeutralExpr $ Lit $ LitRecord (map snd <$> a)
           _ ->
             Nothing
-      ExternCtor _ _ _ _ ->
+      ExternCtor _ _ _ _ _ ->
         Nothing
 
 fromExternImpl :: ExternImpl -> Maybe NeutralExpr
 fromExternImpl = case _ of
   ExternExpr _ a -> Just a
   ExternDict _ _ -> Nothing
-  ExternCtor _ _ _ _ -> Nothing
+  ExternCtor _ _ _ _ _ -> Nothing
 
 levelUp :: forall a. ConvertM a -> ConvertM a
 levelUp f env = f (env { currentLevel = env.currentLevel + 1 })

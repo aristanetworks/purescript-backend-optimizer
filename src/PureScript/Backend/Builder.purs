@@ -86,9 +86,11 @@ buildModules options coreFnModules =
         , dataTypes: Map.empty
         , rewriteLimit: 10_000
         }
-    options.onCodegenModule buildEnv coreFnModule' backendMod
+      newImplementations =
+        foldrWithIndex Map.insert implementations backendMod.implementations
+    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod
     pure
       { directives: foldrWithIndex Map.insert directives backendMod.directives
-      , implementations: foldrWithIndex Map.insert implementations backendMod.implementations
+      , implementations: newImplementations
       , moduleIndex: moduleIndex + 1
       }

@@ -33,14 +33,15 @@ import PureScript.Backend.Builder.Cli (basicCliMain, externalDirectivesFromFile)
 import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esModulePath)
 import PureScript.CoreFn (Module(..), ModuleName(..))
 
-type BasicCliArgs =
+type Args =
   { coreFnDir :: FilePath
   , outputDir :: FilePath
   , foreignDir :: Maybe FilePath
   , directivesFile :: Maybe FilePath
+  , intTags :: Boolean
   }
 
-esArgParser :: ArgParser BasicCliArgs
+esArgParser :: ArgParser Args
 esArgParser =
   ArgParser.fromRecord
     { coreFnDir:
@@ -59,6 +60,11 @@ esArgParser =
         ArgParser.argument [ "--directives" ]
           "Path to file that defines external inline directives"
           # ArgParser.optional
+    , intTags:
+        ArgParser.flag [ "--int-tags" ]
+          "Use integers for tags in codegen instead of strings"
+          # ArgParser.boolean
+          # ArgParser.default false
     }
     <* ArgParser.flagHelp
 
@@ -74,8 +80,8 @@ main cliRoot = basicCliMain
       writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
       copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
   , onCodegenAfter: mempty
-  , onCodegenModule: \args _ (Module coreFnMod) backendMod@{ name: ModuleName name } -> do
-      let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule backendMod
+  , onCodegenModule: \args build (Module coreFnMod) backendMod@{ name: ModuleName name } -> do
+      let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule { intTags: args.intTags } build.implementations backendMod
       let modPath = Path.concat [ args.outputDir, name ]
       mkdirp modPath
       writeTextFile UTF8 (Path.concat [ modPath, "index.js" ]) formatted

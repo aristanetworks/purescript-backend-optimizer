@@ -23,13 +23,14 @@ import Data.Traversable (class Traversable, Accum, mapAccumL, traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
+import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Analysis (Usage(..))
 import PureScript.Backend.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBlock, esBlockStatements, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esFwdRef, esIdent, esImport, esIndex, esInt, esLetBinding, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
 import PureScript.Backend.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Codegen.Tco as Tco
-import PureScript.Backend.Convert (BackendBindingGroup, BackendModule, DataTypeMeta)
-import PureScript.Backend.Semantics (NeutralExpr(..))
+import PureScript.Backend.Convert (BackendBindingGroup, BackendModule, BackendImplementations)
+import PureScript.Backend.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 
@@ -44,11 +45,17 @@ data CodegenRef
 derive instance Eq CodegenRef
 derive instance Ord CodegenRef
 
+type CodegenOptions =
+  { intTags :: Boolean
+  }
+
 type CodegenEnv =
   { currentModule :: ModuleName
   , bound :: Map Ident Int
   , names :: Map CodegenRef CodegenName
   , emitPure :: Boolean
+  , options :: CodegenOptions
+  , implementations :: BackendImplementations
   }
 
 type TcoBinding =
@@ -137,8 +144,8 @@ noPure = _ { emitPure = false }
 renameTopLevel :: Ident -> CodegenEnv -> CodegenName
 renameTopLevel ident env = fromMaybe (Tuple ident RefStrict) $ Map.lookup (CodegenTopLevel ident) env.names
 
-esCodegenModule :: forall a. BackendModule -> Dodo.Doc a
-esCodegenModule mod@{ name: ModuleName this } = do
+esCodegenModule :: forall a. CodegenOptions -> BackendImplementations -> BackendModule -> Dodo.Doc a
+esCodegenModule options implementations mod@{ name: ModuleName this } = do
   let
     codegenEnv :: CodegenEnv
     codegenEnv =
@@ -146,6 +153,8 @@ esCodegenModule mod@{ name: ModuleName this } = do
       , bound: Map.empty
       , names: Map.empty
       , emitPure: true
+      , options
+      , implementations
       }
 
     foreignModuleName =
@@ -211,7 +220,7 @@ esCodegenModule mod@{ name: ModuleName this } = do
       [ [ Statement esImportRuntime ]
       , (\mn -> Statement (esImport mn (esModulePath mn))) <$> mod.imports
       , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esImport foreignModuleName (esForeignModulePath mod.name)) ]
-      , map (Statement <<< uncurry esCtorForType) dataTypes
+      , map (Statement <<< uncurry (esCtorForType options)) dataTypes
       , map Statement usedBindings.lines
       , map (Statement <<< uncurry (maybe (esExports Nothing) (esExports <<< Just))) exportsByPath
       , Monoid.guard (not (Array.null foreignBindings)) [ Statement (esExportAllFrom (esForeignModulePath mod.name)) ]
@@ -311,14 +320,18 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
     esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
     esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
-  CtorDef ct ty (Ident tag) [] ->
-    esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag []
-  CtorDef ct ty (Ident tag) fields ->
-    esCurriedFn (Ident <$> fields) [ Return (esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esIdent <<< Ident <$> fields)) ]
-  CtorSaturated (Qualified (Just mn) _) ct ty (Ident tag) fields | mn == env.currentModule ->
-    esPureEnv env $ esCtor ct (Qualified Nothing (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
-  CtorSaturated (Qualified qual _) ct ty (Ident tag) fields ->
-    esPureEnv env $ esCtor ct (Qualified qual (esCtorIdent ty)) tag (esCodegenExpr env <<< snd <$> fields)
+  CtorDef ct ty tag [] -> do
+    let ctorMeta = lookupCtorMeta env (Qualified (Just env.currentModule) tag)
+    esPureEnv env $ esCtor env.options ct (Qualified Nothing (esCtorIdent ty)) tag ctorMeta []
+  CtorDef ct ty tag fields -> do
+    let ctorMeta = lookupCtorMeta env (Qualified (Just env.currentModule) tag)
+    esCurriedFn (Ident <$> fields) [ Return (esCtor env.options ct (Qualified Nothing (esCtorIdent ty)) tag ctorMeta (esIdent <<< Ident <$> fields)) ]
+  CtorSaturated (Qualified qual@(Just mn) _) ct ty tag fields | mn == env.currentModule -> do
+    let ctorMeta = lookupCtorMeta env (Qualified qual tag)
+    esPureEnv env $ esCtor env.options ct (Qualified Nothing (esCtorIdent ty)) tag ctorMeta (esCodegenExpr env <<< snd <$> fields)
+  CtorSaturated (Qualified qual _) ct ty tag fields -> do
+    let ctorMeta = lookupCtorMeta env (Qualified qual tag)
+    esPureEnv env $ esCtor env.options ct (Qualified qual (esCtorIdent ty)) tag ctorMeta (esCodegenExpr env <<< snd <$> fields)
   PrimOp op ->
     esCodegenPrimOp env op
   PrimEffect _ ->
@@ -708,15 +721,15 @@ data EsOperatorTree b a
   | Leaf a
 
 esCodegenPrimOp :: forall a. CodegenEnv -> BackendOperator TcoExpr -> Dodo.Doc a
-esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
+esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator env)
   where
   go :: Either Int Int -> CodegenEnv -> EsOperatorTree (Dodo.Doc a) TcoExpr -> Dodo.Doc a
   go prec env = case _ of
     Binary op p1 p2 lhs rhs -> do
       let
         doc = op
-          (go (Left p1) env (fromExpr lhs))
-          (go (Right p1) env (fromExpr rhs))
+          (go (Left p1) env (fromExpr env lhs))
+          (go (Right p1) env (fromExpr env rhs))
       case prec of
         Left n | p2 >= n ->
           doc
@@ -725,7 +738,7 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
         _ ->
           Dodo.Common.jsParens doc
     Unary op p1 p2 val -> do
-      let doc = op (go (Right p1) env (fromExpr val))
+      let doc = op (go (Right p1) env (fromExpr env val))
       case prec of
         Left n | p2 > n ->
           doc
@@ -736,15 +749,15 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
     Leaf expr ->
       esCodegenExpr env expr
 
-  fromExpr :: TcoExpr -> EsOperatorTree (Dodo.Doc a) TcoExpr
-  fromExpr = case _ of
+  fromExpr :: CodegenEnv -> TcoExpr -> EsOperatorTree (Dodo.Doc a) TcoExpr
+  fromExpr env = case _ of
     TcoExpr _ (PrimOp expr) ->
-      fromOperator expr
+      fromOperator env expr
     expr ->
       Leaf expr
 
-  fromOperator :: BackendOperator TcoExpr -> EsOperatorTree (Dodo.Doc a) TcoExpr
-  fromOperator = case _ of
+  fromOperator :: CodegenEnv -> BackendOperator TcoExpr -> EsOperatorTree (Dodo.Doc a) TcoExpr
+  fromOperator env = case _ of
     Op1 op1 a ->
       case op1 of
         OpBooleanNot -> opNot a
@@ -752,7 +765,7 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
         OpIntNegate -> opNeg a
         OpNumberNegate -> opNeg a
         OpArrayLength -> opArrayLength a
-        OpIsTag op -> opIsTag op a
+        OpIsTag op -> opIsTag env op a
     Op2 op2 a b ->
       case op2 of
         OpBooleanAnd -> opAnd a b
@@ -834,11 +847,11 @@ esCodegenPrimOp = (\env -> go (Left 0) env <<< fromOperator)
   opArrayIndex =
     Binary (\a b -> a <> Dodo.text "[" <> b <> Dodo.text "]") top top
 
-  opIsTag (Qualified _ (Ident tag)) = Unary
+  opIsTag env qual@(Qualified _ tag) = Unary
     ( \a -> Dodo.words
         [ a <> Dodo.text ".tag"
         , Dodo.text "==="
-        , esString tag
+        , esTag env.options tag (lookupCtorMeta env qual)
         ]
     )
     top
@@ -875,18 +888,20 @@ esCodegenQualified (Qualified qual ident) = case qual of
 esCtorIdent :: ProperName -> Ident
 esCtorIdent (ProperName name) = Ident ("$" <> name)
 
-esCtorForType :: forall a. ProperName -> DataTypeMeta -> Dodo.Doc a
-esCtorForType name meta = do
+esCtorForType :: forall a r. { intTags :: Boolean | r } -> ProperName -> DataTypeMeta -> Dodo.Doc a
+esCtorForType options name meta = do
   let
     fields
       | meta.size > 0 = Ident <<< append "_" <<< show <$> Array.range 1 meta.size
       | otherwise = []
   case Map.toUnfoldable meta.constructors of
-    [ Tuple (Ident ctor) _ ] ->
+    [ Tuple ctor ctorMeta ] ->
       esBinding (esCtorIdent name) $ esFn fields
         [ ReturnObject $ Dodo.Common.jsCurlies
             $ Dodo.foldWithSeparator Dodo.Common.trailingComma
-            $ Array.cons (esProp (Prop "tag" (esString ctor)))
+            -- Only add the tag for product types if we care what the name is,
+            -- otherwise they are all 0 and it might as well not be there.
+            $ (if options.intTags then identity else Array.cons (esProp (Prop "tag" (esTag options ctor ctorMeta))))
             $ esIdent <$> fields
         ]
     _ -> do
@@ -897,10 +912,17 @@ esCtorForType name meta = do
             $ esIdent <$> args
         ]
 
-esCtor :: forall a. ConstructorType -> Qualified Ident -> String -> Array (Dodo.Doc a) -> Dodo.Doc a
-esCtor ct fn tag vals = case ct of
+esTag :: forall a r. { intTags :: Boolean | r } -> Ident -> CtorMeta -> Dodo.Doc a
+esTag options (Ident ctor) { tag }
+  | options.intTags =
+      Dodo.words [ esInt tag, Dodo.text "/*", Dodo.text ctor, Dodo.text "*/" ]
+  | otherwise =
+      esString ctor
+
+esCtor :: forall a r. { intTags :: Boolean | r } -> ConstructorType -> Qualified Ident -> Ident -> CtorMeta -> Array (Dodo.Doc a) -> Dodo.Doc a
+esCtor options ct fn ctor ctorMeta vals = case ct of
   SumType ->
-    esApp (esCodegenQualified fn) $ Array.cons (esString tag) vals
+    esApp (esCodegenQualified fn) $ Array.cons (esTag options ctor ctorMeta) vals
   ProductType ->
     esApp (esCodegenQualified fn) vals
 
@@ -977,3 +999,14 @@ esImportRuntime = Dodo.words
 
 esFail :: forall a. Dodo.Doc a
 esFail = Dodo.text "$runtime.fail()"
+
+lookupCtorMeta :: CodegenEnv -> Qualified Ident -> CtorMeta
+lookupCtorMeta env qual = case Map.lookup qual env.implementations of
+  Just (Tuple _ (ExternCtor dm _ _ tag _))
+    | Just meta <- Map.lookup tag dm.constructors ->
+        meta
+  _ ->
+    unsafeCrashWith $ "Constructor meta not found: "
+      <> foldMap unwrap (qualifiedModuleName qual)
+      <> "."
+      <> unwrap (unQualified qual)

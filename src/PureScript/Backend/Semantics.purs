@@ -101,7 +101,17 @@ data DistOp
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
   | ExternDict (Array (Qualified Ident)) (Array (Prop (Tuple BackendAnalysis NeutralExpr)))
-  | ExternCtor ConstructorType ProperName Ident (Array String)
+  | ExternCtor DataTypeMeta ConstructorType ProperName Ident (Array String)
+
+type DataTypeMeta =
+  { constructors :: Map Ident CtorMeta
+  , size :: Int
+  }
+
+type CtorMeta =
+  { fields :: Array String
+  , tag :: Int
+  }
 
 instance HasAnalysis BackendExpr where
   analysisOf = case _ of
@@ -816,7 +826,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case impl of
         Just $ evalApp env (eval env body) args
       _, _ ->
         Nothing
-  ExternCtor ct ty tag fields ->
+  ExternCtor _ ct ty tag fields ->
     case fields, spine of
       [], [] ->
         Just $ NeutData qual ct ty tag []

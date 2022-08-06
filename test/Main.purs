@@ -87,9 +87,9 @@ runSnapshotTests { accept, filter } = do
           | otherwise = \name -> Array.any (isJust <<< flip String.stripPrefix (String.toLower name) <<< Pattern) filter
       coreFnModules # buildModules
         { directives
-        , onCodegenModule: \_ (Module { name: ModuleName name, path }) backend ->
+        , onCodegenModule: \build (Module { name: ModuleName name, path }) backend ->
             if Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths && shouldCompare name then do
-              let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule backend
+              let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule { intTags: false } build.implementations backend
               void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
             else
               mempty
