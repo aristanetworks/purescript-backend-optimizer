@@ -1,7 +1,6 @@
 -- @inline ConvertableOptions.convertRecordOptionsCons arity=6
 -- @inline ConvertableOptions.convertRecordOptionsNil always
 -- @inline export flub always
--- @inline export flubImpl never
 module Snapshot.ConvertableOptions01
   ( test1
   , test2
@@ -56,8 +55,7 @@ flub provided = flubImpl all
   all :: { | All }
   all = convertOptionsWithDefaults Flub defaultOptions provided
 
-flubImpl :: { | All } -> String
-flubImpl = show
+foreign import flubImpl :: { | All } -> String
 
 test1 = flub { bar: "Hello" }
 test2 = flub { foo: 99, bar: "Hello" }
