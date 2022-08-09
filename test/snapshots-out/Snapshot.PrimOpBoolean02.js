@@ -1,5 +1,4 @@
 import * as $runtime from "../runtime.js";
-import * as Data$dHeytingAlgebra from "../Data.HeytingAlgebra/index.js";
 const test9 = [false, true];
 const boolValues = op => [op(true)(true), op(true)(false), op(false)(true), op(false)(false)];
 const test1 = [true, false, false, false];

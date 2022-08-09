@@ -1,6 +1,4 @@
 import * as $runtime from "../runtime.js";
-import * as Control$dSemigroupoid from "../Control.Semigroupoid/index.js";
-import * as Data$dSemiring from "../Data.Semiring/index.js";
 import * as Data$dTuple from "../Data.Tuple/index.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 const State = x => x;

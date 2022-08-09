@@ -1,6 +1,5 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
-import * as Effect from "../Effect/index.js";
 const Id = x => x;
 const monadId = {Applicative0: () => applicativeId, Bind1: () => bindId};
 const functorId = {map: f => a => bindId.bind(a)(a$p => applicativeId.pure(f(a$p)))};

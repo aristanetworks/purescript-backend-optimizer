@@ -2,8 +2,7 @@ import * as $runtime from "../runtime.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
-import * as Snapshot$dDefaultRulesFunctor01$foreign from "./foreign.js";
-const mb = Snapshot$dDefaultRulesFunctor01$foreign.mb;
+import {mb} from "./foreign.js";
 const test5 = /* #__PURE__ */ (() => {
   if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", mb._1); }
   return Data$dMaybe.Nothing;
@@ -24,5 +23,5 @@ const test1 = /* #__PURE__ */ (() => {
   if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", Data$dShow.showIntImpl(mb._1)); }
   return Data$dMaybe.Nothing;
 })();
-export {mb, test1, test2, test3, test4, test5};
+export {test1, test2, test3, test4, test5};
 export * from "./foreign.js";

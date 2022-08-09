@@ -1,8 +1,5 @@
 import * as $runtime from "../runtime.js";
-import * as Data$dSemiring from "../Data.Semiring/index.js";
-import * as Effect from "../Effect/index.js";
-import * as Snapshot$dEffectBind03$foreign from "./foreign.js";
-const random = Snapshot$dEffectBind03$foreign.random;
+import {random} from "./foreign.js";
 const MyEffect = x => x;
 const functorMyEffect = {
   map: f => v => () => {
@@ -32,5 +29,5 @@ const test = () => {
   const a$p_1 = random();
   return a$p + a$p_1 | 0;
 };
-export {MyEffect, applicativeMyEffect, applyMyEffect, bindMyEffect, functorMyEffect, monadMyEffect, random, test};
+export {MyEffect, applicativeMyEffect, applyMyEffect, bindMyEffect, functorMyEffect, monadMyEffect, test};
 export * from "./foreign.js";

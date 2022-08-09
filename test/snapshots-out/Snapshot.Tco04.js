@@ -1,6 +1,4 @@
 import * as $runtime from "../runtime.js";
-import * as Data$dEq from "../Data.Eq/index.js";
-import * as Data$dRing from "../Data.Ring/index.js";
 const test2test1 = test2test1$b$copy => test2test1$0$copy => test2test1$1$copy => {
   let test2test1$b = test2test1$b$copy;
   let test2test1$0 = test2test1$0$copy;

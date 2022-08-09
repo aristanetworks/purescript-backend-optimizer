@@ -1,7 +1,6 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dArray from "../Data.Array/index.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
-import * as Data$dSemiring from "../Data.Semiring/index.js";
 const span = p => arr => {
   const go = go$0$copy => {
     let go$0 = go$0$copy;

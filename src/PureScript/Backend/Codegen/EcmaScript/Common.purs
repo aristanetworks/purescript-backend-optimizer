@@ -374,7 +374,28 @@ esImport mn path = Dodo.words
   , esString path
   ]
 
-esExports :: forall a. Maybe String -> NonEmptyArray (Tuple Ident Ident) -> Dodo.Doc a
+esImports :: forall a. String -> Array (Tuple Ident Ident) -> Dodo.Doc a
+esImports path imports = Dodo.words
+  [ Dodo.text "import"
+  , Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ map
+      ( \(Tuple id1 id2) -> do
+          let id1' = esEscapeIdent (unwrap id2)
+          let id2' = esEscapeSpecial (unwrap id1)
+          if id1' == id2' then
+            Dodo.text id1'
+          else
+            Dodo.words
+              [ Dodo.text id2'
+              , Dodo.text "as"
+              , Dodo.text id1'
+              ]
+      )
+      imports
+  , Dodo.text "from"
+  , esString path
+  ]
+
+esExports :: forall a. Maybe String -> Array (Tuple Ident Ident) -> Dodo.Doc a
 esExports mbPath exports = Dodo.words
   [ Dodo.text "export"
   , Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ map

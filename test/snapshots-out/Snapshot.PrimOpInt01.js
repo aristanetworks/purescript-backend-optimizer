@@ -1,8 +1,6 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dEuclideanRing from "../Data.EuclideanRing/index.js";
-import * as Snapshot$dPrimOpInt01$foreign from "./foreign.js";
-const a = Snapshot$dPrimOpInt01$foreign.a;
-const b = Snapshot$dPrimOpInt01$foreign.b;
+import {a, b} from "./foreign.js";
 const test9 = /* #__PURE__ */ (() => a * b | 0)();
 const test8 = /* #__PURE__ */ (() => a >= b)();
 const test7 = /* #__PURE__ */ (() => a <= b)();
@@ -14,5 +12,5 @@ const test2 = /* #__PURE__ */ (() => a - b | 0)();
 const test11 = /* #__PURE__ */ (() => -a)();
 const test10 = /* #__PURE__ */ Data$dEuclideanRing.intDiv(a)(b);
 const test1 = /* #__PURE__ */ (() => a + b | 0)();
-export {a, b, test1, test10, test11, test2, test3, test4, test5, test6, test7, test8, test9};
+export {test1, test10, test11, test2, test3, test4, test5, test6, test7, test8, test9};
 export * from "./foreign.js";

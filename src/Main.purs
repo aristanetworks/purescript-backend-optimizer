@@ -5,13 +5,13 @@ import Prelude
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
 import Control.Plus (empty)
-import Data.Array as Array
 import Data.Either (Either(..), isRight)
 import Data.Foldable (oneOf)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe, maybe)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
+import Data.Set as Set
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
@@ -85,7 +85,7 @@ main cliRoot = basicCliMain
       let modPath = Path.concat [ args.outputDir, name ]
       mkdirp modPath
       writeTextFile UTF8 (Path.concat [ modPath, "index.js" ]) formatted
-      unless (Array.null backendMod.foreign) do
+      unless (Set.isEmpty backendMod.foreign) do
         let foreignOutputPath = Path.concat [ modPath, "foreign.js" ]
         let origPath = Path.concat [ args.outputDir, "..", coreFnMod.path ]
         let foreignSiblingPath = fromMaybe origPath (String.stripSuffix (Pattern (Path.extname origPath)) origPath) <> ".js"

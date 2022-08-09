@@ -3,11 +3,7 @@
 // @inline Heterogeneous.Mapping.mapRecordWithIndexCons arity=5
 // @inline Heterogeneous.Mapping.mapRecordWithIndexNil.mapRecordWithIndexBuilder arity=2
 import * as $runtime from "../runtime.js";
-import * as Control$dSemigroupoid from "../Control.Semigroupoid/index.js";
-import * as Data$dHeytingAlgebra from "../Data.HeytingAlgebra/index.js";
-import * as Data$dSemiring from "../Data.Semiring/index.js";
 import * as Data$dTuple from "../Data.Tuple/index.js";
-import * as Record$dUnsafe from "../Record.Unsafe/index.js";
 const test2 = /* #__PURE__ */ (() => {
   const _0 = Data$dTuple.Tuple("bar");
   return r1 => ({...r1, a: 1 + r1.a | 0, b: _0(r1.b), c: !r1.c});

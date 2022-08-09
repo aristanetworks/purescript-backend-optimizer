@@ -1,9 +1,6 @@
 import * as $runtime from "../runtime.js";
-import * as Effect from "../Effect/index.js";
 import * as Effect$dUncurried from "../Effect.Uncurried/index.js";
-import * as Snapshot$dUncurriedEffectFns01$foreign from "./foreign.js";
-const f = Snapshot$dUncurriedEffectFns01$foreign.f;
-const g = Snapshot$dUncurriedEffectFns01$foreign.g;
+import {f, g} from "./foreign.js";
 const test6 = /* #__PURE__ */ (() => {
   const _0 = g(1);
   return () => {
@@ -26,5 +23,5 @@ const test1 = /* #__PURE__ */ (() => {
   const _0 = g(1);
   return () => f(_0, 2, 3);
 })();
-export {f, g, test1, test2, test3, test4, test5, test6};
+export {test1, test2, test3, test4, test5, test6};
 export * from "./foreign.js";

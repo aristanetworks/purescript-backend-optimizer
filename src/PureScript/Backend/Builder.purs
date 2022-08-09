@@ -22,7 +22,6 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
 import Node.Encoding (Encoding(..))
@@ -81,7 +80,6 @@ buildModules options coreFnModules =
         , toLevel: Map.empty
         , implementations
         , moduleImplementations: Map.empty
-        , deps: Set.empty
         , directives
         , dataTypes: Map.empty
         , rewriteLimit: 10_000

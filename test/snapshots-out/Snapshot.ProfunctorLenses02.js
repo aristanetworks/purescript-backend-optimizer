@@ -1,7 +1,5 @@
 // @inline Data.Lens.Internal.Forget.choiceForget arity=1
 import * as $runtime from "../runtime.js";
-import * as Control$dSemigroupoid from "../Control.Semigroupoid/index.js";
-import * as Data$dLens$dInternal$dForget from "../Data.Lens.Internal.Forget/index.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 const test4 = a => {
   if (a.tag === "Left") {

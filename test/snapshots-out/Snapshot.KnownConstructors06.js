@@ -2,7 +2,6 @@
 // @inline export genericTest.from arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
-import * as Data$dShow$dGeneric from "../Data.Show.Generic/index.js";
 const $Test = tag => ({tag});
 const Foo = /* #__PURE__ */ $Test("Foo");
 const Bar = /* #__PURE__ */ $Test("Bar");

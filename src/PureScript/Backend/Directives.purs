@@ -3,6 +3,8 @@ module PureScript.Backend.Directives
   , parseDirectiveHeader
   , parseDirectiveLine
   , parseDirectiveExport
+  , DirectiveFileResult
+  , DirectiveHeaderResult
   ) where
 
 import Prelude

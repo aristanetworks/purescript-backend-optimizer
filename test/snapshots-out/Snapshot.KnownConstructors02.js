@@ -1,10 +1,9 @@
 import * as $runtime from "../runtime.js";
-import * as Snapshot$dKnownConstructors02$foreign from "./foreign.js";
-const a = Snapshot$dKnownConstructors02$foreign.a;
+import {a} from "./foreign.js";
 const test = /* #__PURE__ */ (() => {
   if (a.tag === "Left") { return a._1; }
   if (a.tag === "Right") { return a._1; }
   $runtime.fail();
 })();
-export {a, test};
+export {test};
 export * from "./foreign.js";

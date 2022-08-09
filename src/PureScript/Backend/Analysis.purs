@@ -14,7 +14,7 @@ import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
-import PureScript.CoreFn (Ident, Literal(..), ModuleName, Qualified(..))
+import PureScript.CoreFn (Ident, Literal(..), Qualified)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
 
@@ -91,7 +91,7 @@ newtype BackendAnalysis = BackendAnalysis
   , complexity :: Complexity
   , args :: Array Usage
   , rewrite :: Boolean
-  , deps :: Set ModuleName
+  , deps :: Set (Qualified Ident)
   , result :: ResultTerm
   }
 
@@ -168,10 +168,10 @@ updated level (BackendAnalysis s) = do
     { usages = Map.update (Just <<< over Usage (\us -> us { update = us.update + 1 })) level s.usages
     }
 
-usedDep :: ModuleName -> BackendAnalysis
-usedDep mn = do
+usedDep :: Qualified Ident -> BackendAnalysis
+usedDep dep = do
   let BackendAnalysis s = mempty
-  BackendAnalysis s { deps = Set.singleton mn }
+  BackendAnalysis s { deps = Set.singleton dep }
 
 bump :: BackendAnalysis -> BackendAnalysis
 bump (BackendAnalysis s) = BackendAnalysis s { size = s.size + 1 }
@@ -198,11 +198,11 @@ resultOf = analysisOf >>> unwrap >>> _.result
 
 analyze :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyze externAnalysis expr = case expr of
-  Var qi@(Qualified mn _) -> do
+  Var qi -> do
     let BackendAnalysis { args } = externAnalysis (Tuple qi Nothing)
     withArgs args
       $ bump
-      $ foldMap usedDep mn
+      $ usedDep qi
   Local _ lvl ->
     bump
       $ used lvl
@@ -296,10 +296,10 @@ analyze externAnalysis expr = case expr of
       withResult Unknown
         $ complex NonTrivial
         $ analyzeDefault expr
-  CtorSaturated (Qualified mn _) _ _ _ cs ->
+  CtorSaturated qi _ _ _ cs ->
     withResult KnownNeutral
       $ bump
-      $ foldMap (foldMap analysisOf) cs <> foldMap usedDep mn
+      $ foldMap (foldMap analysisOf) cs <> usedDep qi
   CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Branch bs def -> do

@@ -2,11 +2,12 @@ module PureScript.Backend.Convert where
 
 import Prelude
 
+import Control.Alternative (guard)
 import Control.Apply (lift2)
 import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (fold)
+import Data.Foldable (foldMap)
 import Data.FoldableWithIndex (foldrWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
@@ -19,15 +20,15 @@ import Data.Newtype (unwrap)
 import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.Traversable (class Foldable, Accum, foldr, mapAccumL, sequence, traverse)
+import Data.Traversable (class Foldable, Accum, foldr, mapAccumL, mapAccumR, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (BackendAnalysis)
-import PureScript.Backend.Directives (parseDirectiveHeader)
+import PureScript.Backend.Directives (DirectiveHeaderResult, parseDirectiveHeader)
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport(..), findProp)
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport, findProp, qualifiedModuleName)
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -39,11 +40,12 @@ type BackendImplementations = Map (Qualified Ident) (Tuple BackendAnalysis Exter
 type BackendModule =
   { name :: ModuleName
   , comments :: Array Comment
-  , imports :: Array ModuleName
+  , imports :: Set ModuleName
   , dataTypes :: Map ProperName DataTypeMeta
   , bindings :: Array (BackendBindingGroup Ident NeutralExpr)
-  , exports :: Array (Tuple Ident (Qualified Ident))
-  , foreign :: Array Ident
+  , exports :: Set Ident
+  , reExports :: Set ReExport
+  , foreign :: Set Ident
   , implementations :: BackendImplementations
   , directives :: Map EvalRef InlineDirective
   }
@@ -55,7 +57,6 @@ type ConvertEnv =
   , toLevel :: Map Ident Level
   , implementations :: BackendImplementations
   , moduleImplementations :: BackendImplementations
-  , deps :: Set ModuleName
   , directives :: Map EvalRef InlineDirective
   , rewriteLimit :: Int
   }
@@ -65,9 +66,10 @@ type ConvertM = Function ConvertEnv
 toBackendModule :: Module Ann -> ConvertM BackendModule
 toBackendModule (Module mod) env = do
   let
-    directives =
-      parseDirectiveHeader mod.name mod.comments
+    directives :: DirectiveHeaderResult
+    directives = parseDirectiveHeader mod.name mod.comments
 
+    ctors :: Array (Tuple ProperName (Tuple Ident (Array String)))
     ctors = do
       Binding _ _ value <- mod.decls >>= case _ of
         Rec bindings -> bindings
@@ -77,6 +79,7 @@ toBackendModule (Module mod) env = do
           pure $ Tuple dataTy (Tuple ctor fields)
         _ -> []
 
+    dataTypes :: Map ProperName DataTypeMeta
     dataTypes = ctors
       # Array.groupAllBy (comparing fst)
       # map
@@ -88,28 +91,70 @@ toBackendModule (Module mod) env = do
           )
       # Map.fromFoldable
 
-    moduleBindings =
-      toBackendTopLevelBindingGroups mod.decls env
-        { dataTypes = dataTypes
-        , directives = Map.union directives.locals env.directives
-        , moduleImplementations = Map.empty
-        }
+    moduleBindings :: Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
+    moduleBindings = toBackendTopLevelBindingGroups mod.decls env
+      { dataTypes = dataTypes
+      , directives = Map.union directives.locals env.directives
+      , moduleImplementations = Map.empty
+      }
+
+    localExports :: Set Ident
+    localExports = Set.fromFoldable mod.exports
+
+    isBindingUsed :: forall a. Set (Qualified Ident) -> Tuple Ident a -> Boolean
+    isBindingUsed deps (Tuple ident _) = Set.member ident localExports || Set.member (Qualified (Just mod.name) ident) deps
+
+    usedBindings :: Accum (Set (Qualified Ident)) (Array (BackendBindingGroup Ident NeutralExpr))
+    usedBindings = mapAccumR
+      ( \deps group -> do
+          let
+            { accum, value: newBindings } =
+              if group.recursive then
+                if Array.any (isBindingUsed deps) group.bindings then
+                  { accum: foldMap (fst <<< snd) group.bindings <> deps
+                  , value: (Just <<< map snd) <$> group.bindings
+                  }
+                else
+                  { accum: deps, value: [] }
+              else
+                mapAccumR
+                  ( \deps' binding@(Tuple ident (Tuple deps'' expr)) ->
+                      if isBindingUsed deps' binding then
+                        { accum: deps'' <> deps'
+                        , value: Just (Tuple ident expr)
+                        }
+                      else
+                        { accum: deps', value: Nothing }
+                  )
+                  deps
+                  (group.bindings :: Array (Tuple Ident (Tuple _ NeutralExpr)))
+          { accum
+          , value: group { bindings = Array.catMaybes newBindings }
+          }
+      )
+      Set.empty
+      moduleBindings.value
+
+    usedImports :: Set ModuleName
+    usedImports = usedBindings.accum # Set.mapMaybe \qi -> do
+      mn <- qualifiedModuleName qi
+      mn <$ guard (mn /= mod.name && mn /= ModuleName "Prim")
 
   { name: mod.name
   , comments: mod.comments
-  , imports: Array.filter (not <<< (eq mod.name || eq (ModuleName "Prim"))) $ Set.toUnfoldable moduleBindings.accum.deps
-  , dataTypes
-  , bindings: moduleBindings.value
-  , exports: fold
-      [ map (\a -> Tuple a (Qualified Nothing a)) mod.exports
-      , map (\(ReExport mn a) -> Tuple a (Qualified (Just mn) a)) mod.reExports
-      ]
+  , imports: usedImports
+  , dataTypes: Map.filter (Array.any (isBindingUsed usedBindings.accum) <<< Map.toUnfoldable <<< _.constructors) dataTypes
+  , bindings: usedBindings.value
+  , exports: localExports
+  , reExports: Set.fromFoldable mod.reExports
   , implementations: moduleBindings.accum.moduleImplementations
   , directives: directives.exports
-  , foreign: mod.foreign
+  , foreign: Set.fromFoldable mod.foreign
   }
 
-toBackendTopLevelBindingGroups :: Array (Bind Ann) -> ConvertM (Accum ConvertEnv (Array (BackendBindingGroup Ident NeutralExpr)))
+type WithDeps = Tuple (Set (Qualified Ident))
+
+toBackendTopLevelBindingGroups :: Array (Bind Ann) -> ConvertM (Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr))))
 toBackendTopLevelBindingGroups binds env = do
   let result = mapAccumL toBackendTopLevelBindingGroup env binds
   result
@@ -118,7 +163,7 @@ toBackendTopLevelBindingGroups binds env = do
           Array.groupBy ((&&) `on` (not <<< _.recursive)) result.value
     }
 
-toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (BackendBindingGroup Ident NeutralExpr)
+toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr))
 toBackendTopLevelBindingGroup env = case _ of
   Rec bindings -> do
     let group = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
@@ -131,7 +176,7 @@ toBackendTopLevelBindingGroup env = case _ of
   overValue f a =
     a { value = f a.value }
 
-toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident NeutralExpr)
+toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, branchTry: Nothing }
   let backendExpr = toBackendExpr cfn env
@@ -139,7 +184,6 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
       , moduleImplementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.moduleImplementations
-      , deps = Set.union (unwrap (fst impl)).deps env.deps
       , directives = case impl of
           Tuple _ (ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)))
             | Just (InlineArity n) <- Map.lookup (EvalExtern qual Nothing) env.directives
@@ -149,7 +193,7 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
           _ ->
             env.directives
       }
-  , value: Tuple ident expr'
+  , value: Tuple ident (Tuple (unwrap (fst impl)).deps expr')
   }
 
 toExternImpl :: ConvertEnv -> Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr

@@ -1,7 +1,6 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
-import * as Snapshot$dDefaultRulesEq01$foreign from "./foreign.js";
-const x = Snapshot$dDefaultRulesEq01$foreign.x;
+import {x} from "./foreign.js";
 const eq = ra => rb => ra.bar === rb.bar && (ra.baz === rb.baz && ra.foo === rb.foo);
 const test9 = /* #__PURE__ */ (() => "hello" === x(Data$dUnit.unit))();
 const test8 = false;
@@ -16,5 +15,5 @@ const test10 = /* #__PURE__ */ (() => {
   return rb => _0 === rb.bar && (rb.baz && 42 === rb.foo);
 })();
 const test1 = eq;
-export {eq, test1, test10, test2, test3, test4, test5, test6, test7, test8, test9, x};
+export {eq, test1, test10, test2, test3, test4, test5, test6, test7, test8, test9};
 export * from "./foreign.js";

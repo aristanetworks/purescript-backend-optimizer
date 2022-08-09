@@ -1,6 +1,4 @@
 import * as $runtime from "../runtime.js";
-import * as Data$dEq from "../Data.Eq/index.js";
-import * as Data$dRing from "../Data.Ring/index.js";
 const test = /* #__PURE__ */ (() => {
   const go = go$0$copy => {
     let go$0 = go$0$copy;
