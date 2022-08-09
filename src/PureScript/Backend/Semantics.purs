@@ -1216,7 +1216,7 @@ shouldUnpackRecord ident level binding body = do
   case binding of
     ExprSyntax _ (Lit (LitRecord props))
       | Just (Usage us) <- Map.lookup level s2.usages
-      , us.total == us.access -> do
+      , us.total == us.access + us.update -> do
           -- TODO: Not sure what to do about analysis, or if it matters.
           let analysis = foldr (append <<< analysisOf <<< propValue) (complex NonTrivial (bound level (BackendAnalysis s2))) props
           Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackRecord props) body
