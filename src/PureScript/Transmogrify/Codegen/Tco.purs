@@ -1,4 +1,4 @@
-module PureScript.Backend.Codegen.Tco where
+module PureScript.Transmogrify.Codegen.Tco where
 
 import Prelude
 
@@ -17,10 +17,10 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Analysis (Usage(..))
-import PureScript.Backend.Semantics (NeutralExpr(..))
-import PureScript.Backend.Syntax (BackendSyntax(..), Level, Pair(..))
-import PureScript.CoreFn (Ident, ModuleName, Qualified(..))
+import PureScript.Transmogrify.Analysis (Usage(..))
+import PureScript.Transmogrify.Semantics (NeutralExpr(..))
+import PureScript.Transmogrify.Syntax (BackendSyntax(..), Level, Pair(..))
+import PureScript.Transmogrify.CoreFn (Ident, ModuleName, Qualified(..))
 
 type LocalRef = Tuple (Maybe Ident) Level
 type TcoScope = List TcoScopeItem

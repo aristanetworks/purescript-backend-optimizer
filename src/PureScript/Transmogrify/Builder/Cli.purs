@@ -1,4 +1,4 @@
-module PureScript.Backend.Builder.Cli where
+module PureScript.Transmogrify.Builder.Cli where
 
 import Prelude
 
@@ -18,13 +18,13 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
 import Node.Path (FilePath)
 import Node.Process as Process
-import PureScript.Backend.Builder (BuildEnv, buildModules, coreFnModulesFromOutput)
-import PureScript.Backend.Convert (BackendModule)
-import PureScript.Backend.Directives (parseDirectiveFile)
-import PureScript.Backend.Directives.Defaults as Defaults
-import PureScript.Backend.Semantics (EvalRef, InlineDirective)
+import PureScript.Transmogrify.Builder (BuildEnv, buildModules, coreFnModulesFromOutput)
+import PureScript.Transmogrify.Convert (BackendModule)
+import PureScript.Transmogrify.Directives (parseDirectiveFile)
+import PureScript.Transmogrify.Directives.Defaults as Defaults
+import PureScript.Transmogrify.Semantics (EvalRef, InlineDirective)
 import PureScript.CST.Errors (printParseError)
-import PureScript.CoreFn (Ann, Module)
+import PureScript.Transmogrify.CoreFn (Ann, Module)
 
 externalDirectivesFromFile :: FilePath -> Aff (Map EvalRef InlineDirective)
 externalDirectivesFromFile filePath = do

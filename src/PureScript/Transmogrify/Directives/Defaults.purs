@@ -1,4 +1,4 @@
-module PureScript.Backend.Directives.Defaults where
+module PureScript.Transmogrify.Directives.Defaults where
 
 defaultDirectives :: String
 defaultDirectives =

@@ -1,4 +1,4 @@
-module PureScript.Backend.Semantics.Foreign where
+module PureScript.Transmogrify.Semantics.Foreign where
 
 import Prelude
 
@@ -12,9 +12,9 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUpdate, liftBoolean)
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
-import PureScript.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
+import PureScript.Transmogrify.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUpdate, liftBoolean)
+import PureScript.Transmogrify.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
+import PureScript.Transmogrify.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
 
 type ForeignEval =
   Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics

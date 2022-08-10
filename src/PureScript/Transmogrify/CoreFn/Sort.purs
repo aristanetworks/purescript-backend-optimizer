@@ -1,4 +1,4 @@
-module PureScript.CoreFn.Sort where
+module PureScript.Transmogrify.CoreFn.Sort where
 
 import Prelude
 
@@ -9,7 +9,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..), uncurry)
-import PureScript.CoreFn (Import(..), Module(..), moduleName)
+import PureScript.Transmogrify.CoreFn (Import(..), Module(..), moduleName)
 
 sortModules :: forall f a. Foldable f => f (Module a) -> List (Module a)
 sortModules =

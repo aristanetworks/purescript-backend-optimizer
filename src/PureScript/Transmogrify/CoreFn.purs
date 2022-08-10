@@ -1,4 +1,4 @@
-module PureScript.CoreFn where
+module PureScript.Transmogrify.CoreFn where
 
 import Prelude
 

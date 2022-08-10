@@ -29,9 +29,9 @@ import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Stream as Stream
-import PureScript.Backend.Builder.Cli (basicCliMain, externalDirectivesFromFile)
-import PureScript.Backend.Codegen.EcmaScript (esCodegenModule, esModulePath)
-import PureScript.CoreFn (Module(..), ModuleName(..))
+import PureScript.Transmogrify.Builder.Cli (basicCliMain, externalDirectivesFromFile)
+import PureScript.Transmogrify.Codegen.EcmaScript (esCodegenModule, esModulePath)
+import PureScript.Transmogrify.CoreFn (Module(..), ModuleName(..))
 
 type Args =
   { coreFnDir :: FilePath

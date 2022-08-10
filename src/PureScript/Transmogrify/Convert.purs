@@ -43,7 +43,7 @@
 -- |                 2. put a copy of the row in Problem B
 -- |         3. If the chosen column is an expandable type, recurse on Problem A
 -- |         4. Otherwise, guard against the chosen pattern, recursing on Problem A if it succeeds and recursing on Problem B if it fails.
-module PureScript.Backend.Convert where
+module PureScript.Transmogrify.Convert where
 
 import Prelude
 
@@ -69,13 +69,13 @@ import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Analysis (BackendAnalysis)
-import PureScript.Backend.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
-import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.Backend.Utils (foldl1Array)
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
+import PureScript.Transmogrify.Analysis (BackendAnalysis)
+import PureScript.Transmogrify.Directives (DirectiveHeaderResult, parseDirectiveHeader)
+import PureScript.Transmogrify.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Transmogrify.Semantics.Foreign (coreForeignSemantics)
+import PureScript.Transmogrify.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Transmogrify.Utils (foldl1Array)
+import PureScript.Transmogrify.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
 import Safe.Coerce (coerce)
 
 type BackendBindingGroup a b =

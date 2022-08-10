@@ -1,4 +1,4 @@
-module PureScript.Backend.Analysis where
+module PureScript.Transmogrify.Analysis where
 
 import Prelude
 
@@ -13,8 +13,8 @@ import Data.Set as Set
 import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
-import PureScript.CoreFn (Ident, Literal(..), Qualified)
+import PureScript.Transmogrify.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
+import PureScript.Transmogrify.CoreFn (Ident, Literal(..), Qualified)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
 

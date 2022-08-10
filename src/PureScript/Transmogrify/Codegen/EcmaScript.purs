@@ -1,4 +1,4 @@
-module PureScript.Backend.Codegen.EcmaScript where
+module PureScript.Transmogrify.Codegen.EcmaScript where
 
 import Prelude
 
@@ -24,15 +24,15 @@ import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.Backend.Analysis (Usage(..))
-import PureScript.Backend.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBlock, esBlockStatements, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esFwdRef, esIdent, esImport, esImports, esIndex, esInt, esLetBinding, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
-import PureScript.Backend.Codegen.EcmaScript.Inline (esInlineMap)
-import PureScript.Backend.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
-import PureScript.Backend.Codegen.Tco as Tco
-import PureScript.Backend.Convert (BackendImplementations, BackendModule, BackendBindingGroup)
-import PureScript.Backend.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
-import PureScript.Backend.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
+import PureScript.Transmogrify.Analysis (Usage(..))
+import PureScript.Transmogrify.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBlock, esBlockStatements, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esFwdRef, esIdent, esImport, esImports, esIndex, esInt, esLetBinding, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
+import PureScript.Transmogrify.Codegen.EcmaScript.Inline (esInlineMap)
+import PureScript.Transmogrify.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
+import PureScript.Transmogrify.Codegen.Tco as Tco
+import PureScript.Transmogrify.Convert (BackendImplementations, BackendModule, BackendBindingGroup)
+import PureScript.Transmogrify.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
+import PureScript.Transmogrify.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Transmogrify.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 
 data CodegenRefType = RefStrict | RefLazy
 

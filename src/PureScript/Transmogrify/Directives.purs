@@ -1,4 +1,4 @@
-module PureScript.Backend.Directives
+module PureScript.Transmogrify.Directives
   ( parseDirectiveFile
   , parseDirectiveHeader
   , parseDirectiveLine
@@ -20,14 +20,14 @@ import Data.Maybe (Maybe(..))
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
-import PureScript.Backend.Semantics (EvalRef(..), InlineDirective(..))
-import PureScript.Backend.Syntax (BackendAccessor(..))
+import PureScript.Transmogrify.Semantics (EvalRef(..), InlineDirective(..))
+import PureScript.Transmogrify.Syntax (BackendAccessor(..))
 import PureScript.CST.Errors (ParseError(..))
 import PureScript.CST.Lexer (lex)
 import PureScript.CST.Parser.Monad (Parser, PositionedError, eof, optional, runParser, take)
 import PureScript.CST.Types (IntValue(..), SourceToken, Token(..))
 import PureScript.CST.Types as CST
-import PureScript.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
+import PureScript.Transmogrify.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
 
 type DirectiveFileResult =
   { errors :: Array (Tuple String PositionedError)
