@@ -10,9 +10,15 @@ const Qux = /* #__PURE__ */ $Test("Qux");
 const genericTest = {
   to: x => {
     if (x.tag === "Inl") { return Foo; }
-    if (x.tag === "Inr" && x._1.tag === "Inl") { return Bar; }
-    if (x.tag === "Inr" && (x._1.tag === "Inr" && x._1._1.tag === "Inl")) { return Baz; }
-    if (x.tag === "Inr" && (x._1.tag === "Inr" && x._1._1.tag === "Inr")) { return Qux; }
+    if (x.tag === "Inr") {
+      if (x._1.tag === "Inl") { return Bar; }
+      if (x._1.tag === "Inr") {
+        if (x._1._1.tag === "Inl") { return Baz; }
+        if (x._1._1.tag === "Inr") { return Qux; }
+        $runtime.fail();
+      }
+      $runtime.fail();
+    }
     $runtime.fail();
   },
   from: x => {

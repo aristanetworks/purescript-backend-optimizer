@@ -23,6 +23,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Utils (foldl1Array)
 import PureScript.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 
 type Spine a = Array a
@@ -680,11 +681,13 @@ evalPrimOp env = case _ of
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
       OpBooleanAnd -> -- Lazy operator should not be reassociated
+
         case x, y of
           NeutFail err, _ -> NeutFail err
           _, NeutFail err -> NeutFail err
           _, _ -> NeutPrimOp (Op2 op2 x y)
       OpBooleanOr -> -- Lazy operator should not be reassociated
+
         case x, y of
           NeutFail err, _ -> NeutFail err
           _, NeutFail err -> NeutFail err
@@ -916,15 +919,6 @@ foldr1Array f g arr = go (NonEmptyArray.length arr - 2) (g (NonEmptyArray.last a
     | otherwise =
         go (ix - 1) (f (unsafePartial (NonEmptyArray.unsafeIndex arr ix)) acc)
 
-foldl1Array :: forall a b. (b -> a -> b) -> (a -> b) -> NonEmptyArray a -> b
-foldl1Array f g arr = go 0 (g (NonEmptyArray.head arr))
-  where
-  len = NonEmptyArray.length arr
-  go ix acc
-    | ix == len = acc
-    | otherwise =
-        go (ix + 1) (f acc (unsafePartial (NonEmptyArray.unsafeIndex arr ix)))
-
 type Ctx =
   { currentLevel :: Int
   , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
@@ -1136,10 +1130,19 @@ buildBranchCond ctx (Pair a b) c = case b of
   ExprSyntax _ (Lit (LitBoolean false))
     | Just (ExprSyntax _ (Lit (LitBoolean false))) <- c ->
         c
+    | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x1))) <- a
+    , Just (ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2)))) <- c
+    , isSameVariable x1 x2 ->
+        c
   ExprBacktrack ->
     c
   _ ->
     Just $ build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
+  where
+  isSameVariable = case _, _ of
+    Local _ l, Local _ r -> l == r
+    Var l, Var r -> l == r
+    _, _ -> false
 
 isBooleanTail :: forall a. BackendSyntax a -> Boolean
 isBooleanTail = case _ of
@@ -1517,7 +1520,7 @@ guardFail sem k = case sem of
   NeutFail err -> NeutFail err
   _ -> k sem
 
-guardFailOver :: forall f a. Foldable f => (a -> BackendSemantics) ->  f a -> (f a -> BackendSemantics) -> BackendSemantics
+guardFailOver :: forall f a. Foldable f => (a -> BackendSemantics) -> f a -> (f a -> BackendSemantics) -> BackendSemantics
 guardFailOver f as k =
   case Foldable.findMap (toFail <<< f) as of
     Just err -> err

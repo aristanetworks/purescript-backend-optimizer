@@ -65,7 +65,8 @@ type TcoBinding =
   }
 
 type TcoJoin =
-  { arguments :: NonEmptyArray (Tuple (Maybe Ident) Level)
+  { curried :: Boolean
+  , arguments :: Array (Tuple (Maybe Ident) Level)
   , body :: TcoExpr
   }
 
@@ -86,8 +87,10 @@ isTcoJoin tcoScope role = Array.any (flip Tco.inTcoScope tcoScope) role.joins
 
 toTcoJoin :: TcoScope -> TcoRole -> TcoExpr -> Maybe TcoJoin
 toTcoJoin tcoScope role = case _ of
-  TcoExpr _ (Abs arguments body) | isTcoJoin tcoScope role ->
-    Just { arguments, body }
+  TcoExpr _ (Abs args body) | isTcoJoin tcoScope role ->
+    Just { curried: true, arguments: NonEmptyArray.toArray args, body }
+  TcoExpr _ (UncurriedAbs args body) | isTcoJoin tcoScope role ->
+    Just { curried: false, arguments: args, body }
   _ ->
     Nothing
 
@@ -443,11 +446,15 @@ esCodegenBlockStatements = go []
       acc <> esCodegenBlockReturn (mode { effect = false }) env expr'
     App (TcoExpr _ (Local ident lvl)) bs
       | Just tco <- Tco.popTcoScope (TcoLocal ident lvl) mode.tcoScope ->
-          acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> bs)
+          acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> NonEmptyArray.toArray bs)
       | Set.member (Tuple ident lvl) mode.tcoJoins ->
           acc <> esCodegenTcoJoin mode (esCodegenExpr env tcoExpr)
-    App (TcoExpr _ (Var qual)) bs | Just tco <- Tco.popTcoScope (TcoTopLevel qual) mode.tcoScope ->
-      acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> bs)
+    App (TcoExpr _ (Var qual)) bs
+      | Just tco <- Tco.popTcoScope (TcoTopLevel qual) mode.tcoScope ->
+          acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> NonEmptyArray.toArray bs)
+    UncurriedApp (TcoExpr _ (Local ident lvl)) _
+      | Set.member (Tuple ident lvl) mode.tcoJoins ->
+          acc <> esCodegenTcoJoin mode (esCodegenExpr env tcoExpr)
     _ ->
       acc <> esCodegenBlockReturn mode env tcoExpr
 
@@ -638,9 +645,10 @@ esCodegenTcoLoopBinding mode env tcoIdent tco = do
 esCodegenTcoJoinBinding :: forall a. BlockMode -> CodegenEnv -> Ident -> TcoJoin -> Dodo.Doc a
 esCodegenTcoJoinBinding mode env tcoIdent tco = do
   let result = freshNames RefStrict env tco.arguments
-  esBinding tcoIdent $ esCurriedFn result.value (esCodegenBlockStatements (mode { tco = false }) result.accum tco.body)
+  let fn = if tco.curried then esCurriedFn else esFn
+  esBinding tcoIdent $ fn result.value (esCodegenBlockStatements (mode { tco = false }) result.accum tco.body)
 
-esCodegenTcoJump :: forall a. BlockMode -> TcoPop -> NonEmptyArray (Dodo.Doc a) -> Array (EsStatement (Dodo.Doc a))
+esCodegenTcoJump :: forall a. BlockMode -> TcoPop -> Array (Dodo.Doc a) -> Array (EsStatement (Dodo.Doc a))
 esCodegenTcoJump mode pop args =
   stkStatements <>
     [ Statement $ esTcoApp pop args
@@ -921,11 +929,11 @@ esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args) $ fold
     ]
   ]
 
-esTcoApp :: forall a. TcoPop -> NonEmptyArray (Dodo.Doc a) -> Dodo.Doc a
+esTcoApp :: forall a. TcoPop -> Array (Dodo.Doc a) -> Dodo.Doc a
 esTcoApp pop args = esSepStatements $ fold
   [ Monoid.guard (NonEmptyArray.length pop.group > 1)
       [ esAssign (esTcoBranchIdent pop.ident) (esInt pop.index) ]
-  , mapWithIndex (\ix arg -> esAssign (esTcoArgIdent pop.ident ix) arg) $ NonEmptyArray.toArray args
+  , mapWithIndex (\ix arg -> esAssign (esTcoArgIdent pop.ident ix) arg) args
   ]
 
 esTopLevelLazyBinding :: forall a. Ident -> Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a

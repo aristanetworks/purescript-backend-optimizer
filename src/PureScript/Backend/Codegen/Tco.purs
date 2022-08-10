@@ -6,19 +6,17 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Bifunctor (bimap)
-import Data.Foldable (foldMap)
+import Data.Foldable (fold, foldMap)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
-import Data.Monoid as Monoid
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..))
 import PureScript.Backend.Analysis (Usage(..))
 import PureScript.Backend.Semantics (NeutralExpr(..))
 import PureScript.Backend.Syntax (BackendSyntax(..), Level, Pair(..))
@@ -152,7 +150,7 @@ isUniformTailCall (TcoAnalysis s) ref arity = do
   Usage u <- Map.lookup ref s.usages
   case Set.toUnfoldable u.arities of
     [ n ] ->
-      Just $ n > 0 && n == arity && u.total == numTailCalls
+      Just $ n == arity && u.total == numTailCalls
     _ ->
       Nothing
 
@@ -166,6 +164,8 @@ tcoRefBinding :: TcoRef -> TcoExpr -> Maybe TcoRefBinding
 tcoRefBinding ref (TcoExpr _ expr) = case expr of
   Abs args (TcoExpr analysis _) ->
     Just { ref, analysis, arity: NonEmptyArray.length args }
+  UncurriedAbs args (TcoExpr analysis _) ->
+    Just { ref, analysis, arity: Array.length args }
   _ ->
     Nothing
 
@@ -173,9 +173,10 @@ tcoRefBindings :: (Ident -> TcoRef) -> NonEmptyArray (Tuple Ident TcoExpr) -> Ma
 tcoRefBindings toTcoRef = traverse \(Tuple ident expr) -> tcoRefBinding (toTcoRef ident) expr
 
 tcoEnvGroup :: (Ident -> TcoRef) -> NonEmptyArray (Tuple Ident NeutralExpr) -> TcoEnv
-tcoEnvGroup toTcoRef bindings = do
-  let env = bimap toTcoRef (syntacticArity <<< unwrap) <$> NonEmptyArray.toArray bindings
-  Monoid.guard (Array.all (not <<< eq 0 <<< snd) env) env
+tcoEnvGroup toTcoRef = fold <<< traverse go <<< NonEmptyArray.toArray
+  where
+  go (Tuple ident (NeutralExpr expr)) =
+    Tuple (toTcoRef ident) <$> syntacticArity expr
 
 localTcoRefBindings :: Level -> NonEmptyArray (Tuple Ident TcoExpr) -> Maybe (NonEmptyArray TcoRefBinding)
 localTcoRefBindings level = tcoRefBindings \ident -> TcoLocal (Just ident) level
@@ -202,10 +203,14 @@ tcoRoleJoins env analysis group = do
   guard (isTailCalledIn analysis group)
   Array.nub $ foldMap (\b -> Array.mapMaybe (\(Tuple ref arity) -> ref <$ (guard =<< isUniformTailCall b.analysis ref arity)) env) group
 
-syntacticArity :: forall a. BackendSyntax a -> Int
+syntacticArity :: forall a. BackendSyntax a -> Maybe Int
 syntacticArity = case _ of
-  Abs args _ -> NonEmptyArray.length args
-  _ -> 0
+  Abs args _ ->
+    Just $ NonEmptyArray.length args
+  UncurriedAbs args _ ->
+    Just $ Array.length args
+  _ ->
+    Nothing
 
 analyze :: TcoEnv -> NeutralExpr -> TcoExpr
 analyze env (NeutralExpr expr) = case expr of
@@ -223,6 +228,16 @@ analyze env (NeutralExpr expr) = case expr of
     let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
     let analysis2 = tcoCall (TcoTopLevel ident) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
+  UncurriedApp hd@(NeutralExpr (Local ident level)) tl -> do
+    let hd' = analyze env hd
+    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
+    let analysis2 = tcoCall (TcoLocal ident level) (Array.length tl') (foldMap tcoAnalysisOf tl')
+    TcoExpr analysis2 $ UncurriedApp hd' tl'
+  UncurriedApp hd@(NeutralExpr (Var ident)) tl -> do
+    let hd' = analyze env hd
+    let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
+    let analysis2 = tcoCall (TcoTopLevel ident) (Array.length tl') (foldMap tcoAnalysisOf tl')
+    TcoExpr analysis2 $ UncurriedApp hd' tl'
   Branch branches def -> do
     let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze env a)) (analyze env b)) branches
     let def' = analyze env <$> def

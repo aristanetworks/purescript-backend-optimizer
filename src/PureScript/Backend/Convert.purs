@@ -1,26 +1,72 @@
+-- | ### Algorithm Summary for Optimized Pattern Matching Conversion
+-- |
+-- | The algorithm used for converting `ExprCase` into `BackendExpr` is based on two papers:
+-- | 1. https://www.cs.tufts.edu/comp/150FP/archive/luc-maranget/jun08.pdf - "Compiling Pattern Matching to Good Decision Trees" (CPMtGDT paper)
+-- | 2. https://julesjacobs.com/notes/patternmatching/patternmatching.pdf - "How to compile pattern matching"
+-- |
+-- | The algorithm uses the composition of heuristics `p`, `b`, `a`, and pseudo-heuristic `N` described in
+-- | the CPMtGDT paper.
+-- |
+-- | The algorithm can be summarized as:
+-- |
+-- | 1. Entry point preprocessing steps:
+-- |     1. let-bind the expressions in the case head and refer to these as `caseHeadIdents`
+-- |     2. for each case row, convert each column's `Binder` into its corresponding `Pattern` type, removing Newtypes completely
+-- |     3. for each case row, zip the corresponding ident in `caseHeadIdents` with its corresponding `Pattern` value
+-- |     4. calculate the references introduced in a case row's binders, sort them by their name, store the result with the case row expression, and reference these as `leafFnArgs`
+-- |     5. let-bind the "leafs" in the case row's expression:
+-- |         1. if `Unconditional`, let-bind the expression as a function, using `leafFnArgs` to determine the number, order, and names of the function args, and using the original expression as the function's body.
+-- |         2. if `Guarded`, do the same let-bind-expression-as-function described in the `Unconditional` step for each `Guard` but do not yet convert the guards predicate. Since the references introduced by the case row's binders are not yet in scope, the predicate won't reference the correct values
+-- | 2. Start the recursive algorithm
+-- |     1. preprocess all record patterns as described previously, so that each case row's corresponding column has all fields referenced in that column and orders its fields in the same order throughout all case rows
+-- |     2. If the clause matrix has 0 rows, then we produce a pattern match failure
+-- |     3. Otherwise, there's at least 1 row. If the clause matrix's first row contains only wildcard patterns (e.g. `value is _`) or is otherwise empty
+-- |         1. calculate the `allReferences` value by combining the case row's "References" array with the references introduced by each remaining column (if any)
+-- |         2. Sort the `allReferences` array by the reference names, so that the order of the references matches the order originally calculated in `leafFnArgs`
+-- |         3. case on the guard
+-- |             1. if `Unconditional`, call the function it references with the ordered `allReferences` args
+-- |             2. if `Guarded`
+-- |                 1. add `allReferences` to the current scope and then convert the predicate.
+-- |                 2. call the function it references with the ordered `allReferences` args
+-- |     4. Otherwise, there's at least one column in the first row against which we still need to test (i.e. there is a `value is pattern` test where the `pattern` is not a wildcard/`_`).
+-- |         1. From among the remaining non-wildcard patterns we could test, use a heuristic to determine which column's `value is pattern` test from the first row will produce the smallest tree
+-- |             1. if the chosen column is a value that can always be expanded (e.g. a `Product` type or `Record` type), use that column
+-- |             2. Otherwise, use heuristic `pbaN`
+-- |         2. Build 2 new clause matrices, Problem A and Problem B, using the below rules. Problem A contains rows where a match occurred. Problem B contains rows where a match did not occur.
+-- |             1. If a row's corresponding column uses the same pattern as the chosen one (e.g. `chosen: a is 1; row's: a is 1`), then
+-- |                 1. in the case row, add the references row's corresponding pattern introduces the case rows' "References" array
+-- |                 2. in the case row's columns, replace the parent pattern with its subterm patterns (if any)
+-- |                 3. put the case row into Problem A because a match occurred
+-- |             2. If a row's corresponding column differs from the chosen one (e.g. `chosen: a is 1; row's: a is 2`), then put it in Problem B; a match did not occur.
+-- |             3. If a row's corresponding column is a wildcard (e.g. `chosen: a is 1; row's: a is _`)
+-- |                 1. follow the instructions above as if there was a normal match and put the resulting row in Problem A
+-- |                 2. put a copy of the row in Problem B
+-- |         3. If the chosen column is an expandable type, recurse on Problem A
+-- |         4. Otherwise, guard against the chosen pattern, recursing on Problem A if it succeeds and recursing on Problem B if it fails.
 module PureScript.Backend.Convert where
 
 import Prelude
 
 import Control.Alternative (guard)
-import Control.Apply (lift2)
 import Control.Monad.RWS (ask)
 import Data.Array as Array
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (foldMap)
-import Data.FoldableWithIndex (foldrWithIndex)
+import Data.Foldable (foldMap, foldl)
+import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
-import Data.List (List)
-import Data.List as List
-import Data.Map (Map)
+import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromJust)
-import Data.Newtype (unwrap)
+import Data.Maybe (Maybe(..), fromJust, maybe)
+import Data.Monoid as Monoid
+import Data.Monoid.Additive (Additive(..))
+import Data.Newtype (class Newtype, over, unwrap)
+import Data.Semigroup.First (First(..))
 import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.Traversable (class Foldable, Accum, foldr, mapAccumL, mapAccumR, sequence, traverse)
+import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Analysis (BackendAnalysis)
@@ -28,7 +74,9 @@ import PureScript.Backend.Directives (DirectiveHeaderResult, parseDirectiveHeade
 import PureScript.Backend.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName, Qualified(..), ReExport, findProp, qualifiedModuleName)
+import PureScript.Backend.Utils (foldl1Array)
+import PureScript.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
+import Safe.Coerce (coerce)
 
 type BackendBindingGroup a b =
   { recursive :: Boolean
@@ -225,12 +273,6 @@ makeExternEval conv env qual spine = do
     _ ->
       result
 
-data PatternStk
-  = PatBinder (Binder Ann) PatternStk
-  | PatPush BackendAccessor PatternStk
-  | PatPop PatternStk
-  | PatNil
-
 buildM :: BackendSyntax BackendExpr -> ConvertM BackendExpr
 buildM a env = build (getCtx env) a
 
@@ -333,178 +375,529 @@ toBackendExpr = case _ of
           <*> intro idents lvl next
       Rec _ ->
         unsafeCrashWith "CoreFn empty Rec binding group"
-  ExprCase _ exprs alts -> do
+  ExprCase _ exprs alts ->
     foldr
       ( \expr next idents ->
           makeLet Nothing (toBackendExpr expr) \tmp ->
             next (Array.snoc idents tmp)
       )
-      ( \idents -> do
-          env <- identity
-          foldr (lift2 (mergeBranches env)) patternFail $ goAlt idents <$> alts
+      ( \idents ->
+          toInitialCaseRows idents alts \caseRows ->
+            buildCaseTreeFromRows caseRows
       )
       exprs
       []
   where
-  mergeBranches :: ConvertEnv -> BackendExpr -> BackendExpr -> BackendExpr
-  mergeBranches _ lhs rhs = case lhs of
-    ExprSyntax a1 (Branch bs1 def1) ->
-      case rhs of
-        ExprSyntax a2 (Branch bs2 def2) ->
-          case def1 of
-            Nothing ->
-              ExprSyntax (a1 <> a2) (Branch (bs1 <> bs2) def2)
-            _ ->
-              lhs
-        _ ->
-          case def1 of
-            Nothing ->
-              ExprSyntax a1 (Branch bs1 (Just rhs))
-            _ ->
-              lhs
-    _ ->
-      lhs
-
-  goAlt :: Array Level -> CaseAlternative Ann -> ConvertM BackendExpr
-  goAlt idents (CaseAlternative binders branch) =
-    goBinders
-      ( \renames -> foldr
-          ( \(Tuple a b) next ->
-              makeLet (Just a) (make (Local Nothing b)) \_ -> next
-          )
-          (goCaseGuard branch)
-          renames
-      )
-      List.Nil
-      (List.fromFoldable idents)
-      (foldr (\b s -> PatBinder b (PatPop s)) PatNil binders)
-
-  goCaseGuard :: CaseGuard Ann -> ConvertM BackendExpr
-  goCaseGuard = case _ of
-    Unconditional expr ->
-      toBackendExpr expr
-    Guarded gs | Just gs' <- NonEmptyArray.fromArray gs ->
-      buildM <<< flip Branch Nothing =<< traverse (\(Guard a b) -> Pair <$> toBackendExpr a <*> toBackendExpr b) gs'
-    Guarded _ ->
-      unsafeCrashWith "CoreFn empty guarded"
-
-  goBinders
-    :: (List (Tuple Ident Level) -> ConvertM BackendExpr)
-    -> List (Tuple Ident Level)
-    -> List Level
-    -> PatternStk
-    -> ConvertM BackendExpr
-  goBinders k store stk = case _ of
-    PatBinder binder next ->
-      case binder, stk of
-        BinderNull _, _ ->
-          makeStep $ goBinders k store stk next
-        BinderVar _ a, List.Cons id _ ->
-          makeStep $ goBinders k (List.Cons (Tuple a id) store) stk next
-        BinderNamed _ a b, List.Cons id _ ->
-          makeStep $ goBinders k (List.Cons (Tuple a id) store) stk (PatBinder b next)
-        BinderLit _ lit, List.Cons id _ -> do
-          case lit of
-            LitInt n ->
-              makeGuard id (guardInt n) $ goBinders k store stk next
-            LitNumber n ->
-              makeGuard id (guardNumber n) $ goBinders k store stk next
-            LitString n ->
-              makeGuard id (guardString n) $ goBinders k store stk next
-            LitChar n ->
-              makeGuard id (guardChar n) $ goBinders k store stk next
-            LitBoolean n ->
-              makeGuard id (guardBoolean n) $ goBinders k store stk next
-            LitArray bs ->
-              makeGuard id (guardArrayLength (Array.length bs)) $ goBinders k store stk $ foldrWithIndex
-                ( \ix b s ->
-                    PatPush (GetIndex ix) $ PatBinder b $ PatPop s
-                )
-                next
-                bs
-            LitRecord ps ->
-              makeStep $ goBinders k store stk $ foldr
-                ( \(Prop ix b) s ->
-                    PatPush (GetProp ix) $ PatBinder b $ PatPop s
-                )
-                next
-                ps
-        BinderConstructor (Ann { meta: Just IsNewtype }) _ _ [ b ], _ ->
-          goBinders k store stk (PatBinder b next)
-        BinderConstructor (Ann { meta }) _ tag bs, List.Cons id _ -> do
+  toInitialCaseRows :: Array Level -> Array (CaseAlternative Ann) -> (Array CaseRow -> ConvertM BackendExpr) -> ConvertM BackendExpr
+  toInitialCaseRows idents alts useCaseRowsCb =
+    foldr
+      ( \(CaseAlternative bs g) mainCb caseRows -> do
           let
-            nextBinders = goBinders k store stk $ foldrWithIndex
-              ( \ix b s ->
-                  PatPush (GetOffset ix) $ PatBinder b $ PatPop s
-              )
-              next
-              bs
-          case meta of
-            Just (IsConstructor SumType _) ->
-              makeGuard id (guardTag tag) nextBinders
-            _ ->
-              makeStep nextBinders
-        _, _ ->
-          unsafeCrashWith "impossible: goBinders (binder)"
-    PatPush accessor next ->
-      case stk of
-        List.Cons id _ ->
-          makeLet Nothing (make (Accessor (make (Local Nothing id)) accessor)) \tmp ->
-            goBinders k store (List.Cons tmp stk) next
-        _ ->
-          unsafeCrashWith "impossible: goBinders (push)"
-    PatPop next ->
-      case stk of
-        List.Cons _ stk' ->
-          goBinders k store stk' next
-        List.Nil ->
-          unsafeCrashWith "impossible: goBinders (pop)"
-    PatNil ->
-      k store
+            patterns = Array.zipWith (\ident b -> { column: ident, pattern: binderToPattern b }) idents bs
+            args = Array.sort $ foldMap patternVars patterns
+            buildCaseRow guardFn = { patterns, guardFn, vars: SemigroupMap Map.empty }
 
-  patternFail :: ConvertM (BackendExpr)
-  patternFail = make (Fail "Failed pattern match")
+          case g of
+            Unconditional e ->
+              makeLet Nothing (makeUncurriedAbs args (\_ -> toBackendExpr e)) \tmp ->
+                mainCb $ Array.snoc caseRows $ buildCaseRow $ UnconditionalFn tmp
+            Guarded gs ->
+              foldr
+                ( \(Guard pred body) cb xs ->
+                    makeLet Nothing (makeUncurriedAbs args (\_ -> toBackendExpr body)) \tmp ->
+                      cb $ Array.snoc xs (Tuple pred tmp)
+                )
+                ( \xs ->
+                    case NonEmptyArray.fromArray xs of
+                      Nothing -> unsafeCrashWith "CoreFn empty Guarded"
+                      Just xs' ->
+                        mainCb $ Array.snoc caseRows $ buildCaseRow $ GuardedFn xs'
+                )
+                gs
+                []
+      )
+      useCaseRowsCb
+      alts
+      []
 
-  makeLet :: Maybe Ident -> ConvertM BackendExpr -> (Level -> ConvertM BackendExpr) -> ConvertM BackendExpr
-  makeLet id a k = do
-    lvl <- currentLevel
-    case id of
+data CaseRowGuardedExpr
+  = UnconditionalFn Level
+  | GuardedFn (NonEmptyArray (Tuple (Expr Ann) Level))
+
+-- guard - the code to run if the pattern matches
+-- patterns - the remaining patterns to match
+-- vars - the references introduced by binders thus far into the pattern matching
+type CaseRow =
+  { guardFn :: CaseRowGuardedExpr
+  , vars :: SemigroupMap Ident (First Level)
+  , patterns :: Array TopPattern
+  }
+
+-- | column - the original identifier against which this pattern matches
+type TopPattern =
+  { column :: Level
+  , pattern :: Pattern
+  }
+
+-- | accessor - how to access this subterm from the parent expression
+type SubPattern =
+  { accessor :: BackendAccessor
+  , pattern :: Pattern
+  }
+
+-- | vars - the references introduced at this pattern.
+-- | pattern - the actual pattern match to test
+-- | subterms - the subterm patterns to match only once this pattern matches.
+newtype Pattern = Pattern
+  { vars :: Set Ident
+  , patternCase :: PatternCase
+  , subterms :: Array SubPattern
+  }
+
+derive instance Newtype Pattern _
+
+data PatternCase
+  = PatWild
+  | PatRecord (Array String)
+  | PatProduct (Qualified ProperName) (Qualified Ident)
+  | PatArray Int
+  | PatSum (Qualified ProperName) (Qualified Ident)
+  | PatInt Int
+  | PatNumber Number
+  | PatString String
+  | PatChar Char
+  | PatBoolean Boolean
+
+derive instance Eq PatternCase
+derive instance Ord PatternCase
+
+binderToPattern :: Binder Ann -> Pattern
+binderToPattern = case _ of
+  BinderNull _ -> primitivePattern PatWild
+  BinderVar _ var ->
+    Pattern { vars: Set.singleton var, patternCase: PatWild, subterms: [] }
+  BinderNamed _ var next -> do
+    let (Pattern r) = binderToPattern next
+    Pattern r { vars = Set.insert var r.vars }
+  BinderLit _ lit -> case lit of
+    LitInt a -> primitivePattern $ PatInt a
+    LitNumber a -> primitivePattern $ PatNumber a
+    LitString a -> primitivePattern $ PatString a
+    LitChar a -> primitivePattern $ PatChar a
+    LitBoolean a -> primitivePattern $ PatBoolean a
+    LitArray vals ->
+      ctorPattern
+        (PatArray $ Array.length vals)
+        vals
+        (\idx _ -> GetIndex idx)
+        identity
+    LitRecord fields ->
+      -- We cannot safely expand the fields here because the number of columns
+      -- would change. So, any later rows' `BinderNull` or `BinderVar` would not similarly be expanded.
+      -- Moreover, we still need to add missing fields and then sort them.
+      ctorPattern
+        (PatRecord $ map propKey fields)
+        fields
+        (\_ p -> GetProp $ propKey p)
+        propValue
+  BinderConstructor (Ann { meta }) tyName ctorName args -> case meta of
+    Just IsNewtype
+      | [ arg ] <- args ->
+          -- We can safely expand the subterm here because the number of columns
+          -- remains the same here.
+          binderToPattern arg
+      | otherwise ->
+          unsafeCrashWith "Newtype binder didn't wrap 1 arg"
+    Just (IsConstructor ProductType _) ->
+      -- We cannot safely expand the fields here because the number of columns
+      -- would change. So, any later rows' `BinderNull` or `BinderVar` would not similarly be expanded.
+      ctorPattern
+        (PatProduct tyName ctorName)
+        args
+        (\idx _ -> GetOffset idx)
+        identity
+    Just (IsConstructor SumType _) ->
+      ctorPattern
+        (PatSum tyName ctorName)
+        args
+        (\idx _ -> GetOffset idx)
+        identity
+    _ ->
+      unsafeCrashWith "binderToPattern - invalid meta"
+  where
+  primitivePattern :: PatternCase -> Pattern
+  primitivePattern patternCase = Pattern { vars: Set.empty, patternCase, subterms: [] }
+
+  ctorPattern
+    :: forall a
+     . PatternCase
+    -> Array a
+    -> (Int -> a -> BackendAccessor)
+    -> (a -> Binder Ann)
+    -> Pattern
+  ctorPattern patternCase args buildAccessor toBinder = Pattern
+    { vars: Set.empty
+    , patternCase
+    , subterms: args # mapWithIndex \idx nextArg ->
+        { accessor: buildAccessor idx nextArg
+        , pattern: binderToPattern $ toBinder nextArg
+        }
+    }
+
+patternVars :: forall r. { pattern :: Pattern | r } -> Array Ident
+patternVars { pattern: Pattern { vars, subterms } } =
+  Set.toUnfoldable vars <> foldMap patternVars subterms
+
+toCaseRowVars :: TopPattern -> SemigroupMap Ident (First Level)
+toCaseRowVars { column, pattern: Pattern p } = foldMap (SemigroupMap <<< flip Map.singleton (First column)) p.vars
+
+-- `patternCase` has a naming clash with record puns
+patternPatCase :: forall r. { pattern :: Pattern | r } -> PatternCase
+patternPatCase { pattern: Pattern r } = r.patternCase
+
+patternSubterms :: forall r. { pattern :: Pattern | r } -> Array SubPattern
+patternSubterms { pattern: Pattern r } = r.subterms
+
+buildCaseTreeFromRows :: Array CaseRow -> ConvertM BackendExpr
+buildCaseTreeFromRows denormalizedRows = case NonEmptyArray.fromArray $ normalizeCaseRows denormalizedRows of
+  Nothing ->
+    patternFail
+  Just rows -> do
+    let
+      { head: row0, tail } = NonEmptyArray.uncons rows
+      row0NonPatWildPatterns =
+        NonEmptyArray.fromArray
+          $ foldlWithIndex (\idx acc p -> if patternPatCase p /= PatWild then Array.snoc acc (Tuple idx p) else acc) []
+          $ row0.patterns
+
+    case row0NonPatWildPatterns of
       Nothing ->
-        make $ Let id lvl a (levelUp (k lvl))
-      Just ident ->
-        make $ Let id lvl a (intro [ ident ] lvl (k lvl))
+        buildCaseLeaf row0 tail
+      Just neaRow0Patterns ->
+        buildCasePattern (chooseNextPattern neaRow0Patterns tail) $ NonEmptyArray.toArray rows
 
-  guardInt :: Int -> _
-  guardInt n lhs = PrimOp (Op2 (OpIntOrd OpEq) lhs (make (Lit (LitInt n))))
+normalizeCaseRows :: Array CaseRow -> Array CaseRow
+normalizeCaseRows = normalizeProps =<< columnProps
+  where
+  columnProps :: Array CaseRow -> Array (Set String)
+  columnProps caseRows = go 0 []
+    where
+    go :: Int -> Array (Set String) -> Array (Set String)
+    go columnIdx columnsAcc =
+      case nextColumnFields of
+        Nothing -> columnsAcc
+        Just a -> go (columnIdx + 1) (Array.snoc columnsAcc a)
+      where
+      nextColumnFields = caseRows # flip foldl Nothing \acc next -> do
+        pat <- Array.index next.patterns columnIdx
+        pure case patternPatCase pat of
+          PatRecord fields -> do
+            let keys = Set.fromFoldable fields
+            maybe keys (append keys) acc
+          _ ->
+            Set.empty
 
-  guardNumber :: Number -> _
-  guardNumber n lhs = PrimOp (Op2 (OpNumberOrd OpEq) lhs (make (Lit (LitNumber n))))
+  normalizeProps :: Array (Set String) -> Array CaseRow -> Array CaseRow
+  normalizeProps allFieldNames = map \nextRow ->
+    nextRow { patterns = Array.zipWith addBinders allFieldNames nextRow.patterns }
+    where
+    addBinders allFieldsSet pat = case patternPatCase pat of
+      PatRecord fields -> do
+        let
+          currentFieldsWithSubterms = Array.zip fields $ patternSubterms pat
+          allFieldsWithWildSubterms = (Set.toUnfoldable allFieldsSet) <#> \fieldName ->
+            Tuple fieldName $ { accessor: GetProp fieldName, pattern: Pattern { vars: Set.empty, patternCase: PatWild, subterms: [] } }
+          Tuple allFields allSubterms =
+            Array.unzip
+              $ map NonEmptyArray.head
+              $ Array.groupAllBy (comparing fst)
+              $ currentFieldsWithSubterms <> allFieldsWithWildSubterms
+        pat { pattern = over Pattern (_ { patternCase = PatRecord allFields, subterms = allSubterms }) pat.pattern }
+      _ -> pat
 
-  guardString :: String -> _
-  guardString n lhs = PrimOp (Op2 (OpStringOrd OpEq) lhs (make (Lit (LitString n))))
+buildCaseLeaf :: CaseRow -> Array CaseRow -> ConvertM BackendExpr
+buildCaseLeaf row0 tailRows = do
+  let
+    orderedArgs =
+      Map.toUnfoldable
+        $ (coerce :: forall k v. SemigroupMap k (First v) -> Map k v)
+        $ row0.vars <> foldMap toCaseRowVars row0.patterns
+    callFn fn args =
+      make $ UncurriedApp (make $ Local Nothing fn) (map (\(Tuple i l) -> make $ Local (Just i) l) args)
 
-  guardChar :: Char -> _
-  guardChar n lhs = PrimOp (Op2 (OpCharOrd OpEq) lhs (make (Lit (LitChar n))))
+  case row0.guardFn of
+    UnconditionalFn fn ->
+      callFn fn orderedArgs
+    GuardedFn gs ->
+      -- Note: `orderedArgs` are the references introduced by the binders for this row
+      -- that have already been let-bound, but not using their source-code name.
+      -- The output of the predicates below will be nonsensical unless these references
+      -- are let-bound again with their source-code name.
+      -- Duplicate let-bound variables will be inlined to at most one let-bound
+      -- variable by the inliner (if they aren't eliminated altogether).
+      foldr
+        ( \(Tuple i l) cb args ->
+            makeLet (Just i) (make $ Local Nothing l) \tmp ->
+              cb $ Array.snoc args (Tuple i tmp)
+        )
+        ( \args -> do
+            pairs <- for gs \(Tuple pred bodyFn) ->
+              Pair <$> toBackendExpr pred <*> callFn bodyFn args
+            fallback <- buildCaseTreeFromRows tailRows
+            buildM $ Branch pairs (Just fallback)
+        )
+        orderedArgs
+        []
 
-  guardBoolean :: Boolean -> _
-  guardBoolean n lhs = PrimOp (Op2 (OpBooleanOrd OpEq) lhs (make (Lit (LitBoolean n))))
+chooseNextPattern :: forall r. NonEmptyArray (Tuple Int TopPattern) -> Array { patterns :: Array TopPattern | r } -> TopPattern
+chooseNextPattern row0Patterns tailRows =
+  case expandIfPossible of
+    Just a -> a
+    Nothing -> do
+      let
+        matchingPatternGroups :: NonEmptyArray { pattern :: TopPattern, pScore :: Int, bScore :: Int, aScore :: Int }
+        matchingPatternGroups = row0Patterns <#> \(Tuple colIdx pat) -> do
+          let
+            matchingCols :: { tailRowIndices :: Array Int, ctors :: Set PatternCase, aScore :: Additive Int }
+            matchingCols = tailRows # foldMapWithIndex \rowIdx row ->
+              case Array.index row.patterns colIdx of
+                Nothing ->
+                  unsafeCrashWith "Impossible: rows' column lengths differ in pattern match"
+                Just tailRowPat ->
+                  { tailRowIndices: Monoid.guard (on eq patternPatCase pat tailRowPat) [ rowIdx + 1 ]
+                  , ctors: Monoid.guard (patternPatCase tailRowPat /= PatWild) $ Set.singleton $ patternPatCase tailRowPat
+                  , aScore: Additive $ negate $ Array.length $ Array.filter (notEq PatWild <<< patternPatCase) $ patternSubterms tailRowPat
+                  }
+          { pattern: pat
+          , pScore: foldl (\l r -> if l + 1 == r then r else l) 0 matchingCols.tailRowIndices
+          , bScore: negate $ Set.size $ Set.insert (patternPatCase pat) matchingCols.ctors
+          , aScore: unwrap matchingCols.aScore
+          }
+        heuristic =
+          maximumByAll (comparing _.pScore)
+            >=> maximumByAll (comparing _.bScore)
+            >=> maximumByAll (comparing _.aScore)
+              >>> map (_.pattern <<< NonEmptyArray.head)
+      case heuristic matchingPatternGroups of
+        Just a -> a
+        Nothing -> snd $ NonEmptyArray.head row0Patterns
+  where
+  maximumByAll :: forall f a. Foldable f => (a -> a -> Ordering) -> f a -> Maybe (NonEmptyArray a)
+  maximumByAll f = foldl keepAllMax Nothing
+    where
+    keepAllMax acc next =
+      case acc of
+        Nothing -> Just $ NonEmptyArray.singleton next
+        Just a -> case f (NonEmptyArray.head a) next of
+          GT -> acc
+          EQ -> Just $ NonEmptyArray.snoc a next
+          LT -> Just $ NonEmptyArray.singleton next
 
-  guardArrayLength :: Int -> _
-  guardArrayLength n lhs = guardInt n (make (PrimOp (Op1 OpArrayLength lhs)))
+  expandIfPossible :: Maybe TopPattern
+  expandIfPossible = row0Patterns # NonEmptyArray.findMap \(Tuple _ next) -> case patternPatCase next of
+    PatRecord _ -> Just next
+    PatProduct _ _ -> Just next
+    _ -> Nothing
 
-  guardTag :: Qualified Ident -> _
-  guardTag n lhs = PrimOp (Op1 (OpIsTag n) lhs)
+buildCasePattern :: TopPattern -> Array CaseRow -> ConvertM BackendExpr
+buildCasePattern chosenColumn rows = case patternPatCase chosenColumn of
+  PatWild ->
+    unsafeCrashWith "Impossible: chosen column cannot be wild pattern"
+  PatRecord _ ->
+    expandSubterms
+  PatProduct _ _ ->
+    expandSubterms
+  PatSum _ a ->
+    buildCaseBranch (guardTag a)
+  PatArray a ->
+    buildCaseBranch (guardArrayLength a)
+  PatInt a ->
+    buildCaseBranch (guardInt a)
+  PatNumber a ->
+    buildCaseBranch (guardNumber a)
+  PatString a ->
+    buildCaseBranch (guardString a)
+  PatChar a ->
+    buildCaseBranch (guardChar a)
+  PatBoolean a ->
+    buildCaseBranch (guardBoolean a)
+  where
+  -- There's no guard to make here. We just expose all subterms as patterns in the following expressions.
+  expandSubterms :: ConvertM BackendExpr
+  expandSubterms = do
+    let { rowsWithMatch } = decompose chosenColumn rows
+    foldr
+      letBindSubterm
+      ( \idents ->
+          buildCaseTreeFromRows $ rebuildCaseRow idents rowsWithMatch
+      )
+      (patternSubterms chosenColumn)
+      []
 
-  makeGuard :: Level -> _ -> ConvertM BackendExpr -> ConvertM BackendExpr
-  makeGuard lvl g inner =
-    make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) Nothing
+  buildCaseBranch
+    :: (ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr))
+    -> ConvertM BackendExpr
+  buildCaseBranch guardExpr = do
+    let
+      { rowsWithMatch, rowsNoMatch } = decompose chosenColumn rows
+      exprOnPatternMiss = buildCaseTreeFromRows rowsNoMatch
+      exprOnPatternMatch = foldr
+        letBindSubterm
+        ( \idents ->
+            buildCaseTreeFromRows $ rebuildCaseRow idents rowsWithMatch
+        )
+        (patternSubterms chosenColumn)
+        []
+    makeGuard chosenColumn.column guardExpr exprOnPatternMatch exprOnPatternMiss
 
-  makeStep :: ConvertM BackendExpr -> ConvertM BackendExpr
-  makeStep inner =
-    make $ Branch (NonEmptyArray.singleton (Pair (make (Lit (LitBoolean true))) inner)) Nothing
+  letBindSubterm
+    :: SubPattern
+    -> (Array Level -> ConvertM BackendExpr)
+    -> Array Level
+    -> ConvertM BackendExpr
+  letBindSubterm { accessor } nextCb idents = do
+    let parentExpr = make $ Local Nothing chosenColumn.column
+    makeLet Nothing (make $ Accessor parentExpr accessor) \tmp ->
+      nextCb $ Array.snoc idents tmp
 
-  make :: BackendSyntax (ConvertM BackendExpr) -> ConvertM BackendExpr
-  make a = buildM =<< sequence a
+  -- | Rebuilds the case row by doing two things:
+  -- | 1. replacing the matched pattern with its subterm patterns
+  -- | 2. adding the `vars` exposed by this case row's corresponding binder to the case row's `vars`
+  rebuildCaseRow :: Array Level -> Array DecomposedCaseRow -> Array CaseRow
+  rebuildCaseRow idents = map \row@{ guardFn, nonMatchesBefore, match, nonMatchesAfter } -> do
+    let
+      subtermPatterns = case patternPatCase match of
+        PatWild -> inlineWildSubterms
+        _ -> Array.zipWith convertSubtermToPattern idents $ patternSubterms match
+    { guardFn
+    , vars: row.vars <> toCaseRowVars match
+    , patterns: nonMatchesBefore <> subtermPatterns <> nonMatchesAfter
+    }
+    where
+    convertSubtermToPattern :: Level -> SubPattern -> TopPattern
+    convertSubtermToPattern column { pattern } = { column, pattern }
+
+    inlineWildSubterms = idents <#> \column -> { column, pattern: Pattern { vars: Set.empty, patternCase: PatWild, subterms: [] } }
+
+-- | Determines whether a case row's patterns had a match or not.
+type DecomposeResult a =
+  { nonMatchesBefore :: Array a
+  , match :: Maybe { match :: a, nonMatchesAfter :: Array a }
+  }
+
+-- | A variant of CaseRow where the `patterns` array
+-- | has been decomposed into three parts:
+-- |  `nonMatchesBefore <> (Array.cons pattern nonMatchesAfter) == patterns`
+-- | The `pattern` will be replaced with its subterm patterns (if any)
+-- | before we can recurse.
+type DecomposedCaseRow =
+  { guardFn :: CaseRowGuardedExpr
+  , vars :: SemigroupMap Ident (First Level)
+  , nonMatchesBefore :: Array TopPattern
+  , match :: TopPattern
+  , nonMatchesAfter :: Array TopPattern
+  }
+
+decompose :: TopPattern -> Array CaseRow -> { rowsWithMatch :: Array DecomposedCaseRow, rowsNoMatch :: Array CaseRow }
+decompose chosenColumn = foldMap \row ->
+  case NonEmptyArray.fromArray row.patterns of
+    Nothing -> unsafeCrashWith "decompose - nextRow.patterns cannot be empty since the first row contains at least one `PatCtor` patternCase"
+    Just neaNextRowPatterns -> do
+      let result@{ nonMatchesBefore } = foldl1Array (\l -> mergeResults l <<< checkMatch) checkMatch neaNextRowPatterns
+      case result.match of
+        Just { match, nonMatchesAfter } ->
+          { rowsWithMatch: [ { guardFn: row.guardFn, vars: row.vars, nonMatchesBefore, match, nonMatchesAfter } ]
+          , rowsNoMatch: if patternPatCase match == PatWild then [ row ] else []
+          }
+        Nothing ->
+          { rowsWithMatch: []
+          , rowsNoMatch: [ row ]
+          }
+  where
+  checkMatch :: TopPattern -> DecomposeResult TopPattern
+  checkMatch p
+    | p.column == chosenColumn.column
+    , patternPatCase p == PatWild || on eq patternPatCase chosenColumn p =
+        { nonMatchesBefore: []
+        , match: Just
+            { match: p
+            , nonMatchesAfter: []
+            }
+        }
+    | otherwise =
+        { nonMatchesBefore: [ p ], match: Nothing }
+
+  mergeResults
+    :: forall a
+     . DecomposeResult a
+    -> DecomposeResult a
+    -> DecomposeResult a
+  mergeResults l r = case l.match, r.match of
+    Just _, Just _ -> unsafeCrashWith "mergeResults - impossible: cannot match the same column twice in the same row"
+    Nothing, Nothing -> r { nonMatchesBefore = l.nonMatchesBefore <> r.nonMatchesBefore }
+    Nothing, Just _ -> r { nonMatchesBefore = l.nonMatchesBefore <> r.nonMatchesBefore }
+    Just lMatch, Nothing -> l { match = Just $ lMatch { nonMatchesAfter = lMatch.nonMatchesAfter <> r.nonMatchesBefore } }
+
+patternFail :: ConvertM (BackendExpr)
+patternFail = make (Fail "Failed pattern match")
+
+makeLet :: Maybe Ident -> ConvertM BackendExpr -> (Level -> ConvertM BackendExpr) -> ConvertM BackendExpr
+makeLet id a k = do
+  lvl <- currentLevel
+  case id of
+    Nothing ->
+      make $ Let id lvl a (levelUp (k lvl))
+    Just ident ->
+      make $ Let id lvl a (intro [ ident ] lvl (k lvl))
+
+guardInt :: Int -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardInt n lhs = PrimOp (Op2 (OpIntOrd OpEq) lhs (make (Lit (LitInt n))))
+
+guardNumber :: Number -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardNumber n lhs = PrimOp (Op2 (OpNumberOrd OpEq) lhs (make (Lit (LitNumber n))))
+
+guardString :: String -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardString n lhs = PrimOp (Op2 (OpStringOrd OpEq) lhs (make (Lit (LitString n))))
+
+guardChar :: Char -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardChar n lhs = PrimOp (Op2 (OpCharOrd OpEq) lhs (make (Lit (LitChar n))))
+
+guardBoolean :: Boolean -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardBoolean n lhs = PrimOp (Op2 (OpBooleanOrd OpEq) lhs (make (Lit (LitBoolean n))))
+
+guardArrayLength :: Int -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardArrayLength n lhs = guardInt n (make (PrimOp (Op1 OpArrayLength lhs)))
+
+guardTag :: Qualified Ident -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardTag n lhs = PrimOp (Op1 (OpIsTag n) lhs)
+
+makeGuard
+  :: Level
+  -> (ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr))
+  -> ConvertM BackendExpr
+  -> ConvertM BackendExpr
+  -> ConvertM BackendExpr
+makeGuard lvl g inner def =
+  make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) (Just def)
+
+makeUncurriedAbs
+  :: Array Ident
+  -> (Array (Tuple (Maybe Ident) Level) -> ConvertM BackendExpr)
+  -> ConvertM BackendExpr
+makeUncurriedAbs args cb =
+  foldr
+    ( \ident next tmps -> do
+        lvl <- currentLevel
+        intro [ ident ] lvl (next (Array.snoc tmps (Tuple (Just ident) lvl)))
+    )
+    ( \tmps ->
+        make $ UncurriedAbs tmps (cb tmps)
+    )
+    args
+    []
+
+make :: BackendSyntax (ConvertM BackendExpr) -> ConvertM BackendExpr
+make a = buildM =<< sequence a
 
 toBackendBinding :: Binding Ann -> ConvertM (Tuple Ident BackendExpr)
 toBackendBinding (Binding _ ident expr) = Tuple ident <$> toBackendExpr expr
