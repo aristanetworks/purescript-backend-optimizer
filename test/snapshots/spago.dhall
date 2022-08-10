@@ -16,6 +16,7 @@
   , "record"
   , "refs"
   , "tuples"
+  , "type-equality"
   , "variant"
   ]
 , packages = ./packages.dhall
