@@ -2,7 +2,7 @@
 Welcome to a Spago project!
 You can edit this file as you like.
 -}
-{ name = "backend-transmogrifier"
+{ name = "backend-transmogrifier-es"
 , dependencies =
   [ "aff"
   , "ansi"
@@ -47,5 +47,5 @@ You can edit this file as you like.
   , "tuples"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/*.purs" ]
+, sources = [ "src/**/*.purs", "backend-es/src/**/*.purs", "backend-es/test/*.purs" ]
 }
