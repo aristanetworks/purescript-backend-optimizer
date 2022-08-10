@@ -1,1 +1,1 @@
-# purescript-example-backend-implementation
+# purescript-backend-transmogrifier
