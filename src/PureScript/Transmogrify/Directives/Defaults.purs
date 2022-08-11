@@ -26,6 +26,7 @@ defaultDirectives =
   Control.Bind.ifM arity=1
   Control.Bind.bindFn arity=2
   Control.Bind.discard arity=1
+
   Control.Category.categoryFn.identity always
 
   Control.Monad.ap arity=1
@@ -62,11 +63,25 @@ defaultDirectives =
 
   Data.Eq.notEq arity=1
   Data.Eq.eqArray arity=1
+  Data.Eq.eqRec arity=2
   Data.Eq.eqRowCons arity=4
   Data.Eq.notEq1 arity=1
 
+  Data.Eq.Generic.genericEq arity=1
+  Data.Eq.Generic.genericEq' arity=1
+  Data.Eq.Generic.genericEqSum.genericEq' arity=2
+  Data.Eq.Generic.genericEqProduct.genericEq' arity=2
+  Data.Eq.Generic.genericEqConstructor.genericEq' arity=1
+  Data.Eq.Generic.genericEqArgument.genericEq' arity=1
+
   Data.EuclideanRing.gcd arity=4
   Data.EuclideanRing.lcm arity=4
+
+  Data.Generic.Rep.showSum.show arity=2
+  Data.Generic.Rep.showProduct.show arity=2
+  Data.Generic.Rep.showConstructor.show arity=2
+  Data.Generic.Rep.showArgument.show arity=1
+  Data.Generic.Rep.repOf arity=1
 
   Data.Function.flip arity=1
   Data.Function.const arity=1
@@ -81,7 +96,19 @@ defaultDirectives =
   Data.Functor.flap arity=1
 
   Data.HeytingAlgebra.heytingAlgebraBoolean.implies arity=2
+  Data.HeytingAlgebra.heytingAlgebraFunction arity=1
+  Data.HeytingAlgebra.heytingAlgebraRecord arity=2
   Data.HeytingAlgebra.heytingAlgebraRecordCons arity=4
+
+  Data.HeytingAlgebra.Generic.genericHeytingAlgebraArgument arity=1
+  Data.HeytingAlgebra.Generic.genericHeytingAlgebraProduct arity=2
+  Data.HeytingAlgebra.Generic.genericHeytingAlgebraConstructor arity=1
+  Data.HeytingAlgebra.Generic.genericFF arity=1
+  Data.HeytingAlgebra.Generic.genericTT arity=1
+  Data.HeytingAlgebra.Generic.genericImplies arity=1
+  Data.HeytingAlgebra.Generic.genericConj arity=1
+  Data.HeytingAlgebra.Generic.genericDisj arity=1
+  Data.HeytingAlgebra.Generic.genericNot arity=1
 
   Data.Monoid.guard arity=2
   Data.Monoid.monoidRecordCons arity=4
