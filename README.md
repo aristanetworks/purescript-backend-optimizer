@@ -14,8 +14,8 @@ It additionally ships with an alternative code-generator which outputs modern
 ECMAScript with additional runtime optimizations, resulting in lighter, faster
 bundles.
 
-| Example | Input | Output |
-|---------|-------|--------|
+| Example | Input | `purs-backend-es` |
+|---------|-------|-------------------|
 | Lenses | [Input](./backend-es/test/snapshots/Snapshot.ProfunctorLenses01.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.ProfunctorLenses01.js) |
 | Prisms | [Input](./backend-es/test/snapshots/Snapshot.ProfunctorLenses02.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.ProfunctorLenses02.js) |
 | Variant | [Input](./backend-es/test/snapshots/Snapshot.Variant01.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.Variant01.js) |
