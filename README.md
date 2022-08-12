@@ -169,3 +169,27 @@ Precedence applies in the following order (most specific to least specific):
 | Directives file | All modules |
 | Module A's header, `@inline export` module A directive | Module A's usages in all modules |
 | Default heuristics | All modules |
+
+## Semantics
+
+`purescript-backend-optimizer` consumes the PureScript compiler's high-level
+intermediate representation (IR) known as CoreFn. CoreFn has no defined
+evaluation semantics, but we operate under assumptions based on common use:
+
+* We makes decisions on what to keep or discard using
+  [Fast and Loose
+  Reasoning](https://www.cs.ox.ac.uk/jeremy.gibbons/publications/fast+loose.pdf),
+  assuming that CoreFn is _pure_ and _total_.
+
+  In practical terms, this means we _may_ take the opportunity to remove any
+  code that we know for certain is not demanded. However, at times we may also
+  choose to propagate known bottoms. Thus, non-totality is considered _undefined
+  behavior_ for the purposes of CoreFn's semantics.
+
+* We preserve _sharing_ of redexes under common assumptions of strict evaluation.
+  Like non-totality, we consider a specific evaluation order to be _undefined
+  behavior_ in CoreFn. However, we assume that all terms under a redex should be
+  in normal form.
+
+  In practical terms, this means we will not delay function arguments that most
+  would expect to be evaluated immediately.
