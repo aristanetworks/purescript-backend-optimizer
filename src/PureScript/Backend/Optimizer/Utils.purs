@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.Utils where
+module PureScript.Backend.Optimizer.Utils where
 
 import Prelude
 

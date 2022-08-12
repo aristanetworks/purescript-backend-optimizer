@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.Builder
+module PureScript.Backend.Optimizer.Builder
   ( BuildEnv
   , BuildOptions
   , buildModules
@@ -28,12 +28,12 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
 import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
-import PureScript.Transmogrify.Analysis (BackendAnalysis)
-import PureScript.Transmogrify.Convert (BackendModule, toBackendModule)
-import PureScript.Transmogrify.Semantics (EvalRef, ExternImpl, InlineDirective)
-import PureScript.Transmogrify.CoreFn (Ann, Ident, Module(..), Qualified)
-import PureScript.Transmogrify.CoreFn.Json (decodeModule)
-import PureScript.Transmogrify.CoreFn.Sort (sortModules)
+import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
+import PureScript.Backend.Optimizer.Convert (BackendModule, toBackendModule)
+import PureScript.Backend.Optimizer.Semantics (EvalRef, ExternImpl, InlineDirective)
+import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
+import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
+import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
 
 type BuildEnv =
   { implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)

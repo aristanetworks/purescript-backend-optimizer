@@ -43,7 +43,7 @@
 -- |                 2. put a copy of the row in Problem B
 -- |         3. If the chosen column is an expandable type, recurse on Problem A
 -- |         4. Otherwise, guard against the chosen pattern, recursing on Problem A if it succeeds and recursing on Problem B if it fails.
-module PureScript.Transmogrify.Convert where
+module PureScript.Backend.Optimizer.Convert where
 
 import Prelude
 
@@ -69,13 +69,13 @@ import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR, sequence, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Transmogrify.Analysis (BackendAnalysis)
-import PureScript.Transmogrify.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Transmogrify.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
-import PureScript.Transmogrify.Semantics.Foreign (coreForeignSemantics)
-import PureScript.Transmogrify.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.Transmogrify.Utils (foldl1Array)
-import PureScript.Transmogrify.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
+import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
+import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
+import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
+import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Optimizer.Utils (foldl1Array)
 import Safe.Coerce (coerce)
 
 type BackendBindingGroup a b =
@@ -142,7 +142,13 @@ toBackendModule (Module mod) env = do
     moduleBindings :: Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
     moduleBindings = toBackendTopLevelBindingGroups mod.decls env
       { dataTypes = dataTypes
-      , directives = Map.union directives.locals env.directives
+      , directives =
+          foldlWithIndex
+            ( \qual dirs dir ->
+                Map.alter (maybe (Just dir) Just) qual dirs
+            )
+            (Map.union directives.locals env.directives)
+            directives.exports
       , moduleImplementations = Map.empty
       }
 

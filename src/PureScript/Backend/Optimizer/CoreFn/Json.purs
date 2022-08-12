@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.CoreFn.Json
+module PureScript.Backend.Optimizer.CoreFn.Json
   ( decodeModule
   , decodeModule'
   , decodeAnn
@@ -18,7 +18,7 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), uncurry)
 import Foreign.Object (Object)
 import Foreign.Object as Object
-import PureScript.Transmogrify.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment(..), ConstructorType(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), ReExport(..), SourcePos, SourceSpan)
+import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment(..), ConstructorType(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), ReExport(..), SourcePos, SourceSpan)
 import Safe.Coerce (coerce)
 
 type JsonDecode = Either JsonDecodeError

@@ -31,11 +31,11 @@ import Node.FS.Aff as FS
 import Node.Glob.Basic (expandGlobsCwd)
 import Node.Path as Path
 import Node.Process as Process
-import PureScript.Transmogrify.Builder (buildModules, coreFnModulesFromOutput)
-import PureScript.Transmogrify.Codegen.EcmaScript (esCodegenModule)
-import PureScript.Transmogrify.Directives (parseDirectiveFile)
-import PureScript.Transmogrify.Directives.Defaults (defaultDirectives)
-import PureScript.Transmogrify.CoreFn (Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.Builder (buildModules, coreFnModulesFromOutput)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule)
+import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
+import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
+import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
 import Test.Utils (bufferToUTF8, execWithStdin, spawnFromParent)
 
 type TestArgs =

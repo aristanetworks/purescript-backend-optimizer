@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.Codegen.EcmaScript.Common where
+module PureScript.Backend.Optimizer.Codegen.EcmaScript.Common where
 
 import Prelude
 
@@ -19,7 +19,7 @@ import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Transmogrify.CoreFn (Comment(..), Ident(..), ModuleName(..), Prop(..))
+import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Prop(..))
 
 data EsStatement a
   = Statement a

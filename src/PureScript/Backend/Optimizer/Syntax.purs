@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.Syntax where
+module PureScript.Backend.Optimizer.Syntax where
 
 import Prelude
 
@@ -7,7 +7,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Traversable (class Foldable, class Traversable, foldMap, foldlDefault, foldrDefault, sequenceDefault, traverse)
 import Data.Tuple (Tuple)
-import PureScript.Transmogrify.CoreFn (ConstructorType, Ident, Literal(..), Prop, ProperName, Qualified)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident, Literal(..), Prop, ProperName, Qualified)
 
 data BackendSyntax a
   = Var (Qualified Ident)

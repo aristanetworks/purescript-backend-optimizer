@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.Debug where
+module PureScript.Backend.Optimizer.Debug where
 
 import Prelude
 

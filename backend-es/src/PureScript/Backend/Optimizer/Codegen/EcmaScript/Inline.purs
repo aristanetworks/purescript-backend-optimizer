@@ -1,4 +1,4 @@
-module PureScript.Transmogrify.Codegen.EcmaScript.Inline where
+module PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline where
 
 import Prelude
 
@@ -7,11 +7,11 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
-import PureScript.Transmogrify.Codegen.EcmaScript.Common (esApp)
-import PureScript.Transmogrify.Codegen.Tco (TcoExpr(..))
-import PureScript.Transmogrify.Semantics.Foreign (qualified)
-import PureScript.Transmogrify.Syntax (BackendSyntax(..))
-import PureScript.Transmogrify.CoreFn (Ident, Literal(..), Qualified)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esApp)
+import PureScript.Backend.Optimizer.Codegen.Tco (TcoExpr(..))
+import PureScript.Backend.Optimizer.Semantics.Foreign (qualified)
+import PureScript.Backend.Optimizer.Syntax (BackendSyntax(..))
+import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
 
 type EsInline a = Tuple (Qualified Ident) (EsInlineCall a)
 type EsInlineCall a = (TcoExpr -> Dodo.Doc a) -> Qualified Ident -> Array TcoExpr -> Maybe (Dodo.Doc a)
