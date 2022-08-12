@@ -1,9 +1,0 @@
--- Syntax:
--- Path.To.Module.identifier <directive>
--- Path.To.Module.typeClassInstanceName.memberName <directive>
---
--- where <directive> is
---  'default' - use default heuristics
---  'always' - always inline
---  'never' - never inline
---  'arity' = <positive-int> - inline once <positive-int> args have been passed to function
