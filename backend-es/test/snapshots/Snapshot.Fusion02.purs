@@ -1,5 +1,6 @@
 -- @inline export mapU arity=1
 -- @inline export filterMapU arity=1
+-- @inline export filterU arity=1
 -- @inline export fromArray arity=1
 -- @inline export toArray arity=1
 -- @inline export overArray arity=1
@@ -37,6 +38,9 @@ filterMapU f = runExists \(Unfold s step) ->
           )
     loop s'
 
+filterU :: forall a. (a -> Boolean) -> Unfold a -> Unfold a
+filterU p = filterMapU (\a -> if p a then Just a else Nothing)
+
 fromArray :: forall a. Array a -> Unfold a
 fromArray arr = mkExists $ Unfold 0 \ix nothing just ->
   if ix == Array.length arr then
@@ -62,5 +66,5 @@ test = overArray do
     >>> mapU show
     >>> filterMapU (String.stripPrefix (String.Pattern "1"))
     >>> mapU (append "2")
-    >>> filterMapU (String.stripSuffix (String.Pattern "2"))
+    >>> filterU (_ /= "wat")
     >>> mapU (flip append "1")

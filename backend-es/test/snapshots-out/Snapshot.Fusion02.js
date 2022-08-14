@@ -1,5 +1,6 @@
 // @inline export mapU arity=1
 // @inline export filterMapU arity=1
+// @inline export filterU arity=1
 // @inline export fromArray arity=1
 // @inline export toArray arity=1
 // @inline export overArray arity=1
@@ -36,19 +37,16 @@ const test = x => {
                 continue;
               }
               if (v1.tag === "Just") {
-                const v1_1 = Data$dString$dCodeUnits.stripSuffix("2")("2" + v1._1);
-                if (v1_1.tag === "Nothing") {
-                  loop_2$c = false;
-                  loop_1$0 = _8;
-                  continue;
-                }
-                if (v1_1.tag === "Just") {
+                const _10 = "2" + v1._1;
+                if (_10 !== "wat") {
                   loop_1$c = loop_2$c = false;
-                  loop$0 = Data$dList$dTypes.$List("Cons", v1_1._1 + "1", acc);
+                  loop$0 = Data$dList$dTypes.$List("Cons", _10 + "1", acc);
                   loop$1 = _8;
                   continue;
                 }
-                $runtime.fail();
+                loop_2$c = false;
+                loop_1$0 = _8;
+                continue;
               }
               $runtime.fail();
             };

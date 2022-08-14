@@ -26,6 +26,9 @@ filterMapF f (Fold next) = Fold \cons nil ->
     )
     nil
 
+filterF :: forall a. (a -> Boolean) -> Fold a -> Fold a
+filterF p = filterMapF (\a -> if p a then Just a else Nothing)
+
 fromArray :: forall a. Array a -> Fold a
 fromArray arr = Fold \cons nil -> do
   let
@@ -48,5 +51,5 @@ test = overArray do
     >>> mapF show
     >>> filterMapF (String.stripPrefix (String.Pattern "1"))
     >>> mapF (append "2")
-    >>> filterMapF (String.stripSuffix (String.Pattern "2"))
+    >>> filterF (_ /= "wat")
     >>> mapF (flip append "1")
