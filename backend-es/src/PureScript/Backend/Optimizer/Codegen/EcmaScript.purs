@@ -25,14 +25,14 @@ import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (Usage(..))
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBlock, esBlockStatements, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esFwdRef, esIdent, esImport, esImports, esIndex, esInt, esLetBinding, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBindings, esBlock, esBlockStatements, esBoolean, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esIdent, esImport, esImports, esIndex, esInt, esLetBindings, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendImplementations, BackendModule, BackendBindingGroup)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 
 data CodegenRefType = RefStrict | RefLazy
 
@@ -610,15 +610,15 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
     esCodegenTcoLoopBinding mode (noPure env) ident tco
   bindings' -> do
     let maxArgs = fromMaybe 0 $ maximum $ NonEmptyArray.length <<< _.arguments <<< snd <$> bindings
-    let argIdents = esTcoArgIdent tcoIdent <$> Array.range 0 (maxArgs - 0)
+    let argIdents = esTcoArgIdent tcoIdent <$> NonEmptyArray.range 0 maxArgs
     let branchIdent = esTcoBranchIdent tcoIdent
     esSepStatements $
-      [ esBinding tcoIdent $ esTcoFn tcoIdent (NonEmptyArray.cons' branchIdent argIdents) $ esBranches
+      [ esBinding tcoIdent $ esTcoFn tcoIdent (NonEmptyArray.cons branchIdent argIdents) $ esBranches
           ( mapWithIndex
               ( \ix (Tuple _ tco) -> do
                   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
                   Tuple (Dodo.words [ esIdent branchIdent, Dodo.text "===", esInt ix ]) $ fold
-                    [ (\(Tuple arg var) -> Statement $ esBinding var (esIdent arg)) <$> Array.zip argIdents (NonEmptyArray.toArray argNames)
+                    [ [ Statement $ esBindings $ NonEmptyArray.zipWith (\arg var -> Tuple var (esIdent arg)) argIdents argNames]
                     , esCodegenBlockStatements (mode { tco = true }) (noPure env') tco.body
                     ]
               )
@@ -638,7 +638,7 @@ esCodegenTcoLoopBinding mode env tcoIdent tco = do
   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
   let argIdents = mapWithIndex (Tuple <<< esTcoArgIdent tcoIdent) argNames
   esBinding tcoIdent $ esTcoFn tcoIdent (fst <$> argIdents) $ Dodo.lines
-    [ esBlockStatements $ (\(Tuple arg var) -> Statement $ esBinding var (esIdent arg)) <$> argIdents
+    [ esBlockStatements [ Statement $ esBindings $ (\(Tuple arg var) ->  Tuple var (esIdent arg)) <$> argIdents ]
     , esBlockStatements $ esCodegenBlockStatements (mode { tco = true }) env' tco.body
     ]
 
@@ -655,22 +655,21 @@ esCodegenTcoJump mode pop args =
     , Statement $ if mode.tco then esContinue else esReturn mempty
     ]
   where
-  stkStatements =
-    pop.stack
-      # List.toUnfoldable
-      # map (Statement <<< flip esAssign (Dodo.text "false") <<< esTcoLoopIdent)
+  stkStatements
+    | List.null pop.stack =
+        []
+    | otherwise =
+        pure $ Statement $ foldr (esAssign <<< esTcoLoopIdent) (esBoolean false) pop.stack
 
 esCodegenTcoReturn :: forall a. BlockMode -> Tuple Ident (List Ident) -> Dodo.Doc a -> Array (EsStatement (Dodo.Doc a))
 esCodegenTcoReturn mode (Tuple tcoIdent stk) doc =
-  stkStatements <>
-    [ Statement $ esAssign (esTcoReturnIdent tcoIdent) doc
-    , Statement $ if mode.tco then esContinue else esReturn mempty
-    ]
+  [ Statement stkStatements
+  , Statement $ esAssign (esTcoReturnIdent tcoIdent) doc
+  , Statement $ if mode.tco then esContinue else esReturn mempty
+  ]
   where
   stkStatements =
-    List.Cons tcoIdent stk
-      # List.toUnfoldable
-      # map (Statement <<< flip esAssign (Dodo.text "false") <<< esTcoLoopIdent)
+    foldr (esAssign <<< esTcoLoopIdent) (esBoolean false) (List.Cons tcoIdent stk)
 
 esCodegenTcoJoin :: forall a. BlockMode -> Dodo.Doc a -> Array (EsStatement (Dodo.Doc a))
 esCodegenTcoJoin mode doc =
@@ -916,18 +915,20 @@ esTcoCopyIdent :: Ident -> Ident
 esTcoCopyIdent (Ident tcoIdent) = Ident (tcoIdent <> "$copy")
 
 esTcoFn :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
-esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args) $ fold
-  [ (\arg -> Statement $ esLetBinding arg $ esIdent $ esTcoCopyIdent arg) <$> NonEmptyArray.toArray args
-  , [ Statement $ esLetBinding (esTcoLoopIdent tcoIdent) (Dodo.text "true")
-    , Statement $ esFwdRef (esTcoReturnIdent tcoIdent)
-    , Statement $ Dodo.words
-        [ Dodo.text "while"
-        , Dodo.Common.jsParens (esIdent (esTcoLoopIdent tcoIdent))
-        , Dodo.Common.jsCurlies body
-        ]
-    , Return (esIdent (esTcoReturnIdent tcoIdent))
-    ]
+esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args)
+  [ Statement $ esLetBindings $ NonEmptyArray.appendArray bindings
+      [ Tuple (esTcoLoopIdent tcoIdent) (Just (esBoolean true))
+      , Tuple (esTcoReturnIdent tcoIdent) Nothing
+      ]
+  , Statement $ Dodo.words
+      [ Dodo.text "while"
+      , Dodo.Common.jsParens (esIdent (esTcoLoopIdent tcoIdent))
+      , Dodo.Common.jsCurlies body
+      ]
+  , Return (esIdent (esTcoReturnIdent tcoIdent))
   ]
+  where
+  bindings = (\arg -> Tuple arg (Just (esIdent (esTcoCopyIdent arg)))) <$> args
 
 esTcoApp :: forall a. TcoPop -> Array (Dodo.Doc a) -> Dodo.Doc a
 esTcoApp pop args = esSepStatements $ fold

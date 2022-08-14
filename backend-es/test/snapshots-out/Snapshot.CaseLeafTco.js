@@ -3,9 +3,7 @@ import * as Data$dArray from "../Data.Array/index.js";
 import * as Data$dSemigroup from "../Data.Semigroup/index.js";
 import {b} from "./foreign.js";
 const test1 = test1$0$copy => {
-  let test1$0 = test1$0$copy;
-  let test1$c = true;
-  let test1$r;
+  let test1$0 = test1$0$copy, test1$c = true, test1$r;
   while (test1$c) {
     const arr = test1$0;
     const v = Data$dArray.index(arr)(arr.length - 1 | 0);

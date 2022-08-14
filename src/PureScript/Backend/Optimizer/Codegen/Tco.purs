@@ -138,7 +138,7 @@ tcoCall ident arity (TcoAnalysis s) = TcoAnalysis s
 tcoNoTailCalls :: TcoAnalysis -> TcoAnalysis
 tcoNoTailCalls (TcoAnalysis s) = TcoAnalysis s
   { tailCalls = Map.empty
-  , role = noTcoRole
+  , role = s.role { joins = [] }
   }
 
 withTcoRole :: TcoRole -> TcoAnalysis -> TcoAnalysis

@@ -1,15 +1,11 @@
 import * as $runtime from "../runtime.js";
 const test = /* #__PURE__ */ (() => {
   const go = go$0$copy => {
-    let go$0 = go$0$copy;
-    let go$c = true;
-    let go$r;
+    let go$0 = go$0$copy, go$c = true, go$r;
     while (go$c) {
       const n = go$0;
       const k = k$0$copy => {
-        let k$0 = k$0$copy;
-        let k$c = true;
-        let k$r;
+        let k$0 = k$0$copy, k$c = true, k$r;
         while (k$c) {
           const m = k$0;
           if (m === 100) {
@@ -18,8 +14,7 @@ const test = /* #__PURE__ */ (() => {
             continue;
           }
           if (m === 900) {
-            go$c = false;
-            k$c = false;
+            go$c = k$c = false;
             go$r = 42;
             continue;
           }

@@ -3,9 +3,7 @@ import * as Data$dArray from "../Data.Array/index.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 const span = p => arr => {
   const go = go$0$copy => {
-    let go$0 = go$0$copy;
-    let go$c = true;
-    let go$r;
+    let go$0 = go$0$copy, go$c = true, go$r;
     while (go$c) {
       const i = go$0;
       const v = Data$dArray.index(arr)(i);

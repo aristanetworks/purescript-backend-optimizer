@@ -1,10 +1,6 @@
 import * as $runtime from "../runtime.js";
 const test2test1 = test2test1$b$copy => test2test1$0$copy => test2test1$1$copy => {
-  let test2test1$b = test2test1$b$copy;
-  let test2test1$0 = test2test1$0$copy;
-  let test2test1$1 = test2test1$1$copy;
-  let test2test1$c = true;
-  let test2test1$r;
+  let test2test1$b = test2test1$b$copy, test2test1$0 = test2test1$0$copy, test2test1$1 = test2test1$1$copy, test2test1$c = true, test2test1$r;
   while (test2test1$c) {
     if (test2test1$b === 0) {
       const m = test2test1$0;

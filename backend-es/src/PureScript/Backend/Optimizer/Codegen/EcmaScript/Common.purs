@@ -16,7 +16,7 @@ import Data.String.CodeUnits as SCU
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Prop(..))
@@ -182,6 +182,23 @@ esLetBinding ident b = Dodo.words
   , b
   ]
 
+esLetBindings :: forall a. NonEmptyArray (Tuple Ident (Maybe (Dodo.Doc a))) -> Dodo.Doc a
+esLetBindings bs = do
+  let kw = Dodo.text "let"
+  let sep = Dodo.flexAlt (Dodo.text ", ") (Dodo.text ";" <> Dodo.break <> kw <> Dodo.space)
+  Dodo.flexGroup $ Dodo.words
+    [ kw
+    , Dodo.foldWithSeparator sep $ map
+        ( \(Tuple ident mb) ->
+            case mb of
+              Nothing ->
+                esIdent ident
+              Just b ->
+                esAssign ident b
+        )
+        bs
+    ]
+
 esBinding :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
 esBinding ident b = Dodo.words
   [ Dodo.text "const"
@@ -189,6 +206,15 @@ esBinding ident b = Dodo.words
   , Dodo.text "="
   , b
   ]
+
+esBindings :: forall a. NonEmptyArray (Tuple Ident (Dodo.Doc a)) -> Dodo.Doc a
+esBindings bs = do
+  let kw = Dodo.text "const"
+  let sep = Dodo.flexAlt (Dodo.text ", ") (Dodo.text ";" <> Dodo.break <> kw <> Dodo.space)
+  Dodo.flexGroup $ Dodo.words
+    [ kw
+    , Dodo.foldWithSeparator sep (uncurry esAssign <$> bs)
+    ]
 
 esAssign :: forall a. Ident -> Dodo.Doc a -> Dodo.Doc a
 esAssign ident b = Dodo.words
