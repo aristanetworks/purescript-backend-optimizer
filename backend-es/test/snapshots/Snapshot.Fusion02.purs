@@ -20,26 +20,26 @@ data Unfold' a s = Unfold s (s -> Step a s)
 type Unfold a = Exists (Unfold' a)
 
 mapU :: forall a b. (a -> b) -> Unfold a -> Unfold b
-mapU f = runExists \(Unfold s step) ->
-  mkExists $ Unfold s \s' nothing just ->
-    step s' nothing (\s'' a  -> just s'' (f a))
+mapU f = runExists \(Unfold s1 step) ->
+  mkExists $ Unfold s1 \s2 nothing just ->
+    step s2 nothing \s3 a ->
+      just s3 (f a)
 
 filterMapU :: forall a b. (a -> Maybe b) -> Unfold a -> Unfold b
-filterMapU f = runExists \(Unfold s step) ->
-  mkExists $ Unfold s \s' nothing just -> do
+filterMapU f = runExists \(Unfold s1 step) ->
+  mkExists $ Unfold s1 \s2 nothing just -> do
     let
-      loop s'' =
-        step s'' nothing
-          ( \s''' a -> case f a of
-              Nothing ->
-                loop s'''
-              Just b ->
-                just s''' b
-          )
-    loop s'
+      loop s3 =
+        step s3 nothing \s4 a ->
+          case f a of
+            Nothing ->
+              loop s4
+            Just b ->
+              just s4 b
+    loop s2
 
 filterU :: forall a. (a -> Boolean) -> Unfold a -> Unfold a
-filterU p = filterMapU (\a -> if p a then Just a else Nothing)
+filterU p = filterMapU \a -> if p a then Just a else Nothing
 
 fromArray :: forall a. Array a -> Unfold a
 fromArray arr = mkExists $ Unfold 0 \ix nothing just ->
@@ -49,13 +49,13 @@ fromArray arr = mkExists $ Unfold 0 \ix nothing just ->
     just (ix + 1) (unsafePartial Array.unsafeIndex arr ix)
 
 toArray :: forall a. Unfold a -> Array a
-toArray = runExists \(Unfold s step) -> do
+toArray = runExists \(Unfold s1 step) -> do
   let
-    loop acc s' =
-      step s'
-        (\_ -> Array.reverse $ List.toUnfoldable acc)
-        (\s'' a -> loop (List.Cons a acc) s'')
-  loop List.Nil s
+    loop s2 acc =
+      step s2
+        (\_ -> Array.reverse (List.toUnfoldable acc))
+        (\s3 a -> loop s3 (List.Cons a acc))
+  loop s1 List.Nil
 
 overArray :: forall a b. (Unfold a -> Unfold b) -> Array a -> Array b
 overArray unfold = toArray <<< unfold <<< fromArray

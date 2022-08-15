@@ -16,22 +16,22 @@ const test = x => {
   const loop = loop$0$copy => loop$1$copy => {
     let loop$0 = loop$0$copy, loop$1 = loop$1$copy, loop$c = true, loop$r;
     while (loop$c) {
-      const acc = loop$0, s$p = loop$1;
+      const s2 = loop$0, acc = loop$1;
       const loop_1 = loop_1$0$copy => {
         let loop_1$0 = loop_1$0$copy, loop_1$c = true, loop_1$r;
         while (loop_1$c) {
-          const s$p$p = loop_1$0;
+          const s3 = loop_1$0;
           const loop_2 = loop_2$0$copy => {
             let loop_2$0 = loop_2$0$copy, loop_2$c = true, loop_2$r;
             while (loop_2$c) {
-              const s$p$p_1 = loop_2$0;
-              if (s$p$p_1 === x.length) {
+              const s3_1 = loop_2$0;
+              if (s3_1 === x.length) {
                 loop$c = loop_1$c = loop_2$c = false;
                 loop$r = Data$dArray.reverse(toUnfoldable(acc));
                 continue;
               }
-              const _8 = s$p$p_1 + 1 | 0;
-              const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[s$p$p_1] | 0));
+              const _8 = s3_1 + 1 | 0;
+              const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[s3_1] | 0));
               if (v1.tag === "Nothing") {
                 loop_2$0 = _8;
                 continue;
@@ -40,8 +40,8 @@ const test = x => {
                 const _10 = "2" + v1._1;
                 if (_10 !== "wat") {
                   loop_1$c = loop_2$c = false;
-                  loop$0 = Data$dList$dTypes.$List("Cons", _10 + "1", acc);
-                  loop$1 = _8;
+                  loop$0 = _8;
+                  loop$1 = Data$dList$dTypes.$List("Cons", _10 + "1", acc);
                   continue;
                 }
                 loop_2$c = false;
@@ -52,16 +52,16 @@ const test = x => {
             };
             return loop_2$r;
           };
-          loop_2(s$p$p);
+          loop_2(s3);
           continue;
         };
         return loop_1$r;
       };
-      loop_1(s$p);
+      loop_1(s2);
       continue;
     };
     return loop$r;
   };
-  return loop(Data$dList$dTypes.Nil)(0);
+  return loop(0)(Data$dList$dTypes.Nil);
 };
 export {test, toUnfoldable};
