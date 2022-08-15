@@ -361,28 +361,30 @@ snocApp prev next = case Array.last prev of
     Array.snoc prev (ExternApp [ next ])
 
 evalApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalApp env hd spine
-  | Array.null spine = hd
-  | otherwise = go env hd (List.fromFoldable spine)
-      where
-      go env' = case _, _ of
-        _, List.Cons (NeutFail err) _ ->
-          NeutFail err
-        NeutFail err, _ ->
-          NeutFail err
-        SemLam _ k, List.Cons arg args ->
-          makeLet Nothing arg \nextArg ->
-            go env' (k nextArg) args
-        SemExtern qual sp _, List.Cons arg args -> do
-          go env' (evalExtern env' qual (snocApp sp arg)) args
-        SemLet ident val k, args ->
-          SemLet ident val \nextVal ->
-            makeLet Nothing (k nextVal) \nextFn ->
-              go (bindLocal (bindLocal env' (One nextVal)) (One nextFn)) nextFn args
-        fn, List.Nil ->
-          fn
-        fn, args ->
-          NeutApp fn (List.toUnfoldable args)
+evalApp env hd spine = go env hd (List.fromFoldable spine)
+  where
+  go env' = case _, _ of
+    _, List.Cons (NeutFail err) _ ->
+      NeutFail err
+    NeutFail err, _ ->
+      NeutFail err
+    SemLam _ k, List.Cons arg args ->
+      makeLet Nothing arg \nextArg ->
+        go env' (k nextArg) args
+    SemExtern qual sp _, List.Cons arg args -> do
+      go env' (evalExtern env' qual (snocApp sp arg)) args
+    SemLet ident val k, args ->
+      SemLet ident val \nextVal ->
+        makeLet Nothing (k nextVal) \nextFn ->
+          go (bindLocal (bindLocal env' (One nextVal)) (One nextFn)) nextFn args
+    SemLetRec vals k, args ->
+      SemLetRec vals \nextVals ->
+        makeLet Nothing (k nextVals) \nextFn ->
+          go (bindLocal (bindLocal env' (Group nextVals)) (One nextFn)) nextFn args
+    fn, List.Nil ->
+      fn
+    fn, args ->
+      NeutApp fn (List.toUnfoldable args)
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
 evalUncurriedApp env hd spine = case hd of
@@ -540,6 +542,10 @@ evalAssocLet env sem go = case sem of
     SemLet ident val \nextVal1 ->
       makeLet Nothing (k nextVal1) \nextVal2 ->
         go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
+  SemLetRec vals k ->
+    SemLetRec vals \nextVals1 ->
+      makeLet Nothing (k nextVals1) \nextVal2 ->
+        go (bindLocal (bindLocal env (Group nextVals1)) (One nextVal2)) nextVal2
   NeutFail err ->
     NeutFail err
   _ ->
