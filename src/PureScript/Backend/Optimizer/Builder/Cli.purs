@@ -42,7 +42,7 @@ basicCliMain
      , description :: String
      , argParser :: ArgParser args
      , resolveCoreFnDirectory :: args -> Aff FilePath
-     , resolveExternalDirectives ::  args -> Aff (Map EvalRef InlineDirective)
+     , resolveExternalDirectives :: args -> Aff (Map EvalRef InlineDirective)
      , onCodegenBefore :: args -> Aff Unit
      , onCodegenAfter :: args -> Aff Unit
      , onCodegenModule :: args -> BuildEnv -> Module Ann -> BackendModule -> Aff Unit

@@ -618,7 +618,7 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
               ( \ix (Tuple _ tco) -> do
                   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
                   Tuple (Dodo.words [ esIdent branchIdent, Dodo.text "===", esInt ix ]) $ fold
-                    [ [ Statement $ esBindings $ NonEmptyArray.zipWith (\arg var -> Tuple var (esIdent arg)) argIdents argNames]
+                    [ [ Statement $ esBindings $ NonEmptyArray.zipWith (\arg var -> Tuple var (esIdent arg)) argIdents argNames ]
                     , esCodegenBlockStatements (mode { tco = true }) (noPure env') tco.body
                     ]
               )
@@ -638,7 +638,7 @@ esCodegenTcoLoopBinding mode env tcoIdent tco = do
   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
   let argIdents = mapWithIndex (Tuple <<< esTcoArgIdent tcoIdent) argNames
   esBinding tcoIdent $ esTcoFn tcoIdent (fst <$> argIdents) $ Dodo.lines
-    [ esBlockStatements [ Statement $ esBindings $ (\(Tuple arg var) ->  Tuple var (esIdent arg)) <$> argIdents ]
+    [ esBlockStatements [ Statement $ esBindings $ (\(Tuple arg var) -> Tuple var (esIdent arg)) <$> argIdents ]
     , esBlockStatements $ esCodegenBlockStatements (mode { tco = true }) env' tco.body
     ]
 
