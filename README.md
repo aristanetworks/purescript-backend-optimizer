@@ -22,6 +22,7 @@ bundles.
 | Heterogeneous | [Input](./backend-es/test/snapshots/Snapshot.Heterogeneous01.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.Heterogeneous01.js) |
 | Uncurried CPS | [Input](./backend-es/test/snapshots/Snapshot.Cps02.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.Cps02.js) |
 | Generics | [Input](./backend-es/test/snapshots/Snapshot.KnownConstructors06.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.KnownConstructors06.js) |
+| Recursion Schemes | [Input](./backend-es/test/snapshots/Snapshot.RecursionSchemes01.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.RecursionSchemes01.js) |
 
 ## ECMAScript Backend
 
