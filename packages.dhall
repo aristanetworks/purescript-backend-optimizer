@@ -1,5 +1,6 @@
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.2-20220610/packages.dhall sha256:348212b7c79da7d343bed71b48ed164d426f1977f92196babac49bd560b32e75
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20220808/packages.dhall
+        sha256:60eee64b04ca0013fae3e02a69fc3b176105c6baa2f31865c67cd5f881a412fd
 
 in  upstream
   with dodo-printer =
@@ -23,33 +24,4 @@ in  upstream
       ]
     , repo = "https://github.com/natefaubion/purescript-node-glob-basic.git"
     , version = "v1.2.2"
-    }
-  with node-workerbees =
-    { dependencies =
-      [ "aff"
-      , "argonaut-core"
-      , "arraybuffer-types"
-      , "avar"
-      , "effect"
-      , "either"
-      , "exceptions"
-      , "maybe"
-      , "newtype"
-      , "parallel"
-      , "variant"
-      ]
-    , repo = "https://github.com/natefaubion/purescript-node-workerbees.git"
-    , version = "v0.2.1"
-    }
-  with argparse-basic =
-    { dependencies =
-      [ "either"
-      , "foldable-traversable"
-      , "lists"
-      , "maybe"
-      , "record"
-      , "strings"
-      ]
-    , repo = "https://github.com/natefaubion/purescript-argparse-basic.git"
-    , version = "v1.0.0"
     }
