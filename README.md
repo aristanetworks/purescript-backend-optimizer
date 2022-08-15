@@ -39,7 +39,7 @@ npm install purs-backend-es
 `purs-backend-es` can be added as a backend in your `spago.dhall`.
 
 ```diff
-+, backend = "purs-backend-es"
++, backend = "purs-backend-es build"
 ```
 
 _You should likely only do this for a production build configuration_, since
@@ -154,7 +154,7 @@ limitation.
 You can provide a directive file to `purs-backend-es`:
 
 ```sh
-purs-backend-es --directives my-directives.txt
+purs-backend-es build --directives my-directives.txt
 ```
 
 Each line should contain an inlining directive using the above syntax, with the

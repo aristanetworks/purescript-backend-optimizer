@@ -49,7 +49,7 @@ type BuildOptions =
 
 coreFnModulesFromOutput :: FilePath -> Aff (Either (NonEmptyArray (Tuple FilePath String)) (List (Module Ann)))
 coreFnModulesFromOutput path = do
-  { left, right } <- map separate $ expandGlobs path [ "*/corefn.json" ] >>= Array.fromFoldable >>> parTraverse readCoreFnModule
+  { left, right } <- map separate $ expandGlobs path [ "**/corefn.json" ] >>= Array.fromFoldable >>> parTraverse readCoreFnModule
   case NonEmptyArray.fromArray left of
     Just errors ->
       pure $ Left errors
