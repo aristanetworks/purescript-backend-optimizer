@@ -73,7 +73,7 @@ import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
 import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
-import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
+import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
 import Safe.Coerce (coerce)
@@ -106,6 +106,7 @@ type ConvertEnv =
   , implementations :: BackendImplementations
   , moduleImplementations :: BackendImplementations
   , directives :: Map EvalRef InlineDirective
+  , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , rewriteLimit :: Int
   }
 
@@ -270,7 +271,7 @@ makeExternEval :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> M
 makeExternEval conv env qual spine = do
   let
     result = do
-      fn <- Map.lookup qual coreForeignSemantics
+      fn <- Map.lookup qual conv.foreignSemantics
       fn env qual spine
   case result of
     Nothing -> do

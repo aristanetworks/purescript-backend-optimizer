@@ -16,11 +16,12 @@ import Node.Path (FilePath)
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules, coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Convert (BackendModule)
+import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, Qualified)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
 import PureScript.Backend.Optimizer.Semantics (EvalRef, InlineDirective)
+import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.CST.Errors (printParseError)
-import PureScript.Backend.Optimizer.CoreFn (Ann, Module)
 
 externalDirectivesFromFile :: FilePath -> Aff (Map EvalRef InlineDirective)
 externalDirectivesFromFile filePath = do
@@ -35,6 +36,7 @@ externalDirectivesFromFile filePath = do
 basicBuildMain
   :: { resolveCoreFnDirectory :: Aff FilePath
      , resolveExternalDirectives :: Aff (Map EvalRef InlineDirective)
+     , foreignSemantics :: Map (Qualified Ident) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit
      , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
@@ -57,6 +59,7 @@ basicBuildMain options = do
       options.onCodegenBefore
       coreFnModules # buildModules
         { directives: allDirectives
+        , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule
         }

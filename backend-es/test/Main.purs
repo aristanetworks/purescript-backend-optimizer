@@ -33,9 +33,11 @@ import Node.Path as Path
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (buildModules, coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
+import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
-import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import Test.Utils (bufferToUTF8, execWithStdin, spawnFromParent)
 
 type TestArgs =
@@ -87,6 +89,7 @@ runSnapshotTests { accept, filter } = do
           | otherwise = \name -> Array.any (isJust <<< flip String.stripPrefix (String.toLower name) <<< Pattern) filter
       coreFnModules # buildModules
         { directives
+        , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backend ->
             if Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths && shouldCompare name then do
               let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule { intTags: false } build.implementations backend

@@ -30,10 +30,11 @@ import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, toBackendModule)
-import PureScript.Backend.Optimizer.Semantics (EvalRef, ExternImpl, InlineDirective)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
 import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
+import PureScript.Backend.Optimizer.Semantics (EvalRef, ExternImpl, InlineDirective)
+import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
 type BuildEnv =
   { implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
@@ -43,6 +44,7 @@ type BuildEnv =
 
 type BuildOptions =
   { directives :: Map EvalRef InlineDirective
+  , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
   }
@@ -82,6 +84,7 @@ buildModules options coreFnModules =
         , moduleImplementations: Map.empty
         , directives
         , dataTypes: Map.empty
+        , foreignSemantics: options.foreignSemantics
         , rewriteLimit: 10_000
         }
       newImplementations =

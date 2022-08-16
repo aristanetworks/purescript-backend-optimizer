@@ -37,7 +37,9 @@ import Node.Process as Process
 import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Builder.Cli (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule, esModulePath)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -190,6 +192,7 @@ main cliRoot =
   buildCmd args = basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
+    , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
         mkdirp args.outputDir
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
