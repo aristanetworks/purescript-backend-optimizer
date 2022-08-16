@@ -179,7 +179,7 @@ Precedence applies in the following order (most specific to least specific):
 intermediate representation (IR) known as CoreFn. CoreFn has no defined
 evaluation semantics, but we operate under assumptions based on common use:
 
-* We makes decisions on what to keep or discard using
+* We make decisions on what to keep or discard using
   [Fast and Loose
   Reasoning](https://www.cs.ox.ac.uk/jeremy.gibbons/publications/fast+loose.pdf),
   assuming that CoreFn is _pure_ and _total_.
@@ -189,7 +189,7 @@ evaluation semantics, but we operate under assumptions based on common use:
   choose to propagate known bottoms. Thus, non-totality is considered _undefined
   behavior_ for the purposes of CoreFn's semantics.
 
-* We preserve _sharing_ of redexes under common assumptions of strict evaluation.
+* We preserve _sharing_ of redexes under common assumptions of call-by-value semantics.
   Like non-totality, we consider a specific evaluation order to be _undefined
   behavior_ in CoreFn. However, we assume that all terms under a redex should be
   in normal form.
