@@ -389,20 +389,7 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
 evalUncurriedApp env hd spine = case hd of
   SemMkFn mk ->
-    go mk (List.fromFoldable spine)
-    where
-    go = case _, _ of
-      MkFnNext _ _, List.Cons (NeutFail err) _ ->
-        NeutFail err
-      MkFnNext _ k, List.Cons arg args ->
-        makeLet Nothing arg \nextArg ->
-          go (k nextArg) args
-      MkFnNext _ _, _ ->
-        unsafeCrashWith "Uncurried function applied to too few arguments"
-      MkFnApplied a, List.Nil ->
-        a
-      MkFnApplied a, args ->
-        NeutUncurriedApp a (List.toUnfoldable args)
+    evalUncurriedBeta NeutUncurriedApp mk spine
   SemExtern qual sp _ ->
     guardFailOver identity spine \spine' ->
       evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
@@ -413,11 +400,36 @@ evalUncurriedApp env hd spine = case hd of
   NeutFail err ->
     NeutFail err
   _ ->
-    NeutUncurriedApp hd spine
+    guardFailOver identity spine (NeutUncurriedApp hd)
 
 evalUncurriedEffectApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalUncurriedEffectApp _ hd spine =
-  guardFail hd (guardFailOver identity spine <<< NeutUncurriedEffectApp)
+evalUncurriedEffectApp env hd spine = case hd of
+  SemMkEffectFn mk ->
+    evalUncurriedBeta NeutUncurriedEffectApp mk spine
+  SemLet ident val k ->
+    SemLet ident val \nextVal ->
+      makeLet Nothing (k nextVal) \nextFn ->
+        evalUncurriedEffectApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn spine
+  NeutFail err ->
+    NeutFail err
+  _ ->
+    guardFailOver identity spine (NeutUncurriedEffectApp hd)
+
+evalUncurriedBeta :: (BackendSemantics -> Spine BackendSemantics -> BackendSemantics) -> MkFn BackendSemantics -> Spine BackendSemantics -> BackendSemantics
+evalUncurriedBeta fn mk spine = go mk (List.fromFoldable spine)
+  where
+  go = case _, _ of
+    MkFnNext _ _, List.Cons (NeutFail err) _ ->
+      NeutFail err
+    MkFnNext _ k, List.Cons arg args ->
+      makeLet Nothing arg \nextArg ->
+        go (k nextArg) args
+    MkFnNext _ _, _ ->
+      unsafeCrashWith "Uncurried function applied to too few arguments"
+    MkFnApplied a, List.Nil ->
+      a
+    MkFnApplied a, args ->
+      fn a (List.toUnfoldable args)
 
 evalSpine :: Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
 evalSpine env = foldl go
@@ -1394,12 +1406,14 @@ isKnownEffect :: BackendExpr -> Boolean
 isKnownEffect = syntaxOf >>> case _ of
   Just (PrimEffect _) -> true
   Just (UncurriedEffectApp _ _) -> true
+  Just (EffectBind _ _ _ _) -> true
   _ -> false
 
 isKnownEffectSemantics :: BackendSemantics -> Boolean
 isKnownEffectSemantics = case _ of
   NeutPrimEffect _ -> true
   NeutUncurriedEffectApp _ _ -> true
+  SemEffectBind _ _ _ -> true
   _ -> false
 
 newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)

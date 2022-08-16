@@ -12,9 +12,9 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUpdate, liftBoolean)
-import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean)
+import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
   Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
@@ -225,19 +225,19 @@ data_function_uncurried_mkFn n = Tuple (qualified "Data.Function.Uncurried" ("mk
 data_function_uncurried_runFn :: Int -> ForeignSemantics
 data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("runFn" <> show n)) go
   where
-  go _ _ = case _ of
+  go env _ = case _ of
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items ->
-          Just $ goRunFn (n - Array.length tail) head tail
+          Just $ goRunFn env (n - Array.length tail) head tail
     _ ->
       Nothing
 
-  goRunFn n' head tail
+  goRunFn env n' head tail
     | n' <= 0 =
-        NeutUncurriedApp head tail
+        evalUncurriedApp env head tail
     | otherwise =
         SemLam Nothing \val ->
-          goRunFn (n' - 1) head (Array.snoc tail val)
+          goRunFn env (n' - 1) head (Array.snoc tail val)
 
 effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
 effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn" <> show n)) go
@@ -251,20 +251,20 @@ effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn
 effect_uncurried_runEffectFn :: Int -> ForeignSemantics
 effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffectFn" <> show n)) go
   where
-  go _ _ = case _ of
+  go env _ = case _ of
     [ ExternApp items ]
       | Just { head, tail } <- Array.uncons items
       , Array.length tail == n ->
-          Just $ goRunEffectFn [] head $ List.fromFoldable tail
+          Just $ goRunEffectFn env [] head $ List.fromFoldable tail
     _ ->
       Nothing
 
-  goRunEffectFn acc head = case _ of
+  goRunEffectFn env acc head = case _ of
     List.Nil ->
-      NeutUncurriedEffectApp head acc
+      evalUncurriedEffectApp env head acc
     List.Cons arg args ->
       SemLet Nothing arg \nextArg ->
-        goRunEffectFn (Array.snoc acc nextArg) head args
+        goRunEffectFn env (Array.snoc acc nextArg) head args
 
 data_heytingAlgebra_boolConj :: ForeignSemantics
 data_heytingAlgebra_boolConj = Tuple (qualified "Data.HeytingAlgebra" "boolConj") $ primBinaryOperator OpBooleanAnd
