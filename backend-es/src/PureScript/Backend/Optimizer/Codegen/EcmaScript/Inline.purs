@@ -7,7 +7,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esApp)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esUpdateLeft, esUpdateRight)
 import PureScript.Backend.Optimizer.Codegen.Tco (TcoExpr(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
 import PureScript.Backend.Optimizer.Semantics.Foreign (qualified)
@@ -26,15 +26,9 @@ record_unsafe_union_unsafeUnionFn :: forall a. EsInline a
 record_unsafe_union_unsafeUnionFn = Tuple (qualified "Record.Unsafe.Union" "unsafeUnionFn") go
   where
   go codegenExpr _ = case _ of
-    [ lhs, rhs@(TcoExpr _ (Lit (LitRecord _))) ] ->
-      Just $ esApp (Dodo.text "$runtime.recordUnionMutateRight")
-        [ codegenExpr lhs
-        , codegenExpr rhs
-        ]
-    [ lhs@(TcoExpr _ (Lit (LitRecord _))), rhs ] ->
-      Just $ esApp (Dodo.text "$runtime.recordUnionMutateLeft")
-        [ codegenExpr lhs
-        , codegenExpr rhs
-        ]
+    [ lhs, TcoExpr _ (Lit (LitRecord props)) ] ->
+      Just $ esUpdateRight (map codegenExpr <$> props) (codegenExpr lhs)
+    [ TcoExpr _ (Lit (LitRecord props)), rhs ] ->
+      Just $ esUpdateLeft (codegenExpr rhs) (map codegenExpr <$> props)
     _ ->
       Nothing

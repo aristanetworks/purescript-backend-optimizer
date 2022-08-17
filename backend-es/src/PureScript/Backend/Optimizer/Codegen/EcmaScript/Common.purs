@@ -246,8 +246,11 @@ esIndex expr ix = expr <> Dodo.text "[" <> Dodo.text (show ix) <> Dodo.text "]"
 esOffset :: forall a. Dodo.Doc a -> Int -> Dodo.Doc a
 esOffset expr ix = expr <> Dodo.text "._" <> Dodo.text (show (ix + 1))
 
-esUpdate :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
-esUpdate rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
+esUpdateLeft :: forall a. Dodo.Doc a -> Array (Prop (Dodo.Doc a)) -> Dodo.Doc a
+esUpdateLeft rec props = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.cons (Dodo.text "..." <> rec) (esProp <$> props)
+
+esUpdateRight :: forall a. Array (Prop (Dodo.Doc a)) -> Dodo.Doc a -> Dodo.Doc a
+esUpdateRight props rec = Dodo.Common.jsCurlies $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ Array.snoc (esProp <$> props) (Dodo.text "..." <> rec)
 
 esBlock :: forall a. Array (EsStatement (Dodo.Doc a)) -> Dodo.Doc a
 esBlock stmts = Dodo.text "(" <> esFn mempty stmts <> Dodo.text ")" <> Dodo.text "()"

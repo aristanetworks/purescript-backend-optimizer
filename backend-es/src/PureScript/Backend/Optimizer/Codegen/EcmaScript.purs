@@ -25,7 +25,7 @@ import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (Usage(..))
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBindings, esBlock, esBlockStatements, esBoolean, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esIdent, esImport, esImports, esIndex, esInt, esLetBindings, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdate)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (EsStatement(..), esAccessor, esApp, esArray, esAssign, esAssignRef, esBinding, esBindings, esBlock, esBlockStatements, esBoolean, esBranches, esChar, esComment, esContinue, esCurriedFn, esEffectBlock, esError, esEscapeSpecial, esExportAllFrom, esExports, esFn, esIdent, esImport, esImports, esIndex, esInt, esLetBindings, esModuleName, esNumber, esOffset, esProp, esPure, esRecord, esReturn, esSepStatements, esString, esUndefined, esUpdateLeft)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
@@ -282,7 +282,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   Accessor a prop ->
     esCodegenAccessor (esCodegenExpr env a) prop
   Update a props ->
-    esUpdate (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
+    esUpdateLeft (esCodegenExpr env a) (map (esCodegenExpr env) <$> props)
   CtorDef ct ty tag [] -> do
     let ctorMeta = lookupCtorMeta env (Qualified (Just env.currentModule) tag)
     esPureEnv env $ esCtor env.options ct (Qualified Nothing (esCtorIdent ty)) tag ctorMeta []
