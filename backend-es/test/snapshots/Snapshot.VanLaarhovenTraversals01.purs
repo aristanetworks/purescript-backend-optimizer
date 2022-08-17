@@ -5,7 +5,6 @@ module Snapshot.VanLaarhovenTraversals01 where
 import Prelude
 
 import Data.Identity (Identity(..))
-import Data.Newtype (un)
 import Safe.Coerce (coerce)
 
 data Fun
@@ -25,4 +24,4 @@ rewriteBottomUpM k = k <=< go
   go a = traverseFun1 (k <=< go) a
 
 rewriteBottomUp :: (Fun -> Fun) -> Fun -> Fun
-rewriteBottomUp k = un Identity <<< rewriteBottomUpM (coerce k)
+rewriteBottomUp = coerce (rewriteBottomUpM :: _ -> _ -> Identity _)

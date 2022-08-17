@@ -20,6 +20,10 @@ esForeignSemantics = Map.fromFoldable semantics
     , data_bounded_topChar
     , data_bounded_bottomChar
     , data_enum_toCharCode
+    , data_show_showCharImpl
+    , data_show_showIntImpl
+    , data_show_showNumberImpl
+    , data_show_showStringImpl
     ]
 
 data_bounded_topInt :: ForeignSemantics
@@ -50,6 +54,33 @@ data_enum_toCharCode = Tuple (qualified "Data.Enum" "toCharCode") go
       Just $ NeutLit $ LitInt $ fromEnum c
     _ ->
       Nothing
+
+data_show_showStringImpl :: ForeignSemantics
+data_show_showStringImpl = Tuple (qualified "Data.Show" "showStringImpl") $ showLit case _ of
+  NeutLit (LitString n) -> Just n
+  _ -> Nothing
+
+data_show_showIntImpl :: ForeignSemantics
+data_show_showIntImpl = Tuple (qualified "Data.Show" "showIntImpl") $ showLit case _ of
+  NeutLit (LitInt n) -> Just n
+  _ -> Nothing
+
+data_show_showNumberImpl :: ForeignSemantics
+data_show_showNumberImpl = Tuple (qualified "Data.Show" "showNumberImpl") $ showLit case _ of
+  NeutLit (LitNumber n) -> Just n
+  _ -> Nothing
+
+data_show_showCharImpl :: ForeignSemantics
+data_show_showCharImpl = Tuple (qualified "Data.Show" "showCharImpl") $ showLit case _ of
+  NeutLit (LitChar n) -> Just n
+  _ -> Nothing
+
+showLit :: forall a. Show a => (BackendSemantics -> Maybe a) -> ForeignEval
+showLit match _ _ = case _ of
+  [ ExternApp [ sem ] ] | Just val <- match sem ->
+    Just $ NeutLit $ LitString (show val)
+  _ ->
+    Nothing
 
 litInt :: Int -> BackendSemantics
 litInt = NeutLit <<< LitInt

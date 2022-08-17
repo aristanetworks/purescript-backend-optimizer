@@ -239,13 +239,21 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
       , moduleImplementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.moduleImplementations
-      , directives = case impl of
-          Tuple _ (ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)))
+      , directives = case impl, backendExpr of
+          Tuple _ (ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args))), _
             | Just (InlineArity n) <- Map.lookup (EvalExtern qual Nothing) env.directives
             , arity <- NonEmptyArray.length args
             , arity < n ->
                 Map.insert (EvalExtern (Qualified (Just env.currentModule) ident) Nothing) (InlineArity (n - arity)) env.directives
-          _ ->
+          -- TODO: Ideally, we would track arity annotations as part of
+          -- inlining to make it more reliably transitive.
+          _, ExprSyntax _ (App (ExprSyntax _ (Var qual)) args)
+            | Just (InlineArity n) <- Map.lookup (EvalExtern qual Nothing) env.directives
+            , ExprApp (Ann { meta: Just IsSyntheticApp }) _ _ <- cfn
+            , arity <- NonEmptyArray.length args
+            , arity >= n ->
+                Map.insert (EvalExtern (Qualified (Just env.currentModule) ident) Nothing) InlineAlways env.directives
+          _, _ ->
             env.directives
       }
   , value: Tuple ident (Tuple (unwrap (fst impl)).deps expr')

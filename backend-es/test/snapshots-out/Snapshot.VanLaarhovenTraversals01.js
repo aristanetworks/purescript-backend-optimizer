@@ -26,7 +26,7 @@ const rewriteBottomUpM = dictMonad => {
     return a => _3.bind(go(a))(k);
   };
 };
-const rewriteBottomUpM1 = k => {
+const rewriteBottomUp = k => {
   const go = a => {
     if (a.tag === "Abs") { return $Fun("Abs", a._1, k(go(a._2))); }
     if (a.tag === "App") { return $Fun("App", k(go(a._1)), k(go(a._2))); }
@@ -34,8 +34,4 @@ const rewriteBottomUpM1 = k => {
   };
   return a => k(go(a));
 };
-const rewriteBottomUp = k => {
-  const _1 = rewriteBottomUpM1(k);
-  return x => _1(x);
-};
-export {$Fun, Abs, App, rewriteBottomUp, rewriteBottomUpM, rewriteBottomUpM1, traverseFun1};
+export {$Fun, Abs, App, rewriteBottomUp, rewriteBottomUpM, traverseFun1};
