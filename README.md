@@ -36,7 +36,7 @@ npm install purs-backend-es
 
 ### Usage
 
-`purs-backend-es` can be added as a backend in your `spago.dhall`.
+`purs-backend-es` requires PureScript `0.15.4` or greater. Add it as a backend in your `spago.dhall`.
 
 ```diff
 +, backend = "purs-backend-es build"
