@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -53,5 +53,6 @@ jobs:
       - name: Run snapshots
         run: spago test --purs-args '--censor-lib'
 
-      - name: Check formatting
+      - name: Check formatting (Linux only)
+        if: matrix.os == 'ubuntu-latest'
         run: purs-tidy check src backend-es/src backend-es/test/*.purs
