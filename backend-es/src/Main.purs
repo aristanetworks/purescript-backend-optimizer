@@ -35,8 +35,8 @@ import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Process as Process
 import Node.Stream as Stream
-import PureScript.Backend.Optimizer.Builder.Cli (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule, esModulePath)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)

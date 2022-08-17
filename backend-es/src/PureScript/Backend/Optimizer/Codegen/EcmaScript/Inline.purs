@@ -9,9 +9,9 @@ import Data.Tuple (Tuple(..))
 import Dodo as Dodo
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esApp)
 import PureScript.Backend.Optimizer.Codegen.Tco (TcoExpr(..))
+import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
 import PureScript.Backend.Optimizer.Semantics.Foreign (qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendSyntax(..))
-import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
 
 type EsInline a = Tuple (Qualified Ident) (EsInlineCall a)
 type EsInlineCall a = (TcoExpr -> Dodo.Doc a) -> Qualified Ident -> Array TcoExpr -> Maybe (Dodo.Doc a)

@@ -1,27 +1,57 @@
-module PureScript.Backend.Optimizer.Builder.Cli where
+module PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder where
 
 import Prelude
 
+import Control.Parallel (parTraverse)
+import Data.Argonaut as Json
+import Data.Array as Array
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NonEmptyArray
+import Data.Bifunctor (lmap)
+import Data.Compactable (separate)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
+import Data.List (List)
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff, parallel, sequential)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
+import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
 import Node.Process as Process
-import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules, coreFnModulesFromOutput)
+import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules)
 import PureScript.Backend.Optimizer.Convert (BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, Qualified)
+import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
+import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
 import PureScript.Backend.Optimizer.Semantics (EvalRef, InlineDirective)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.CST.Errors (printParseError)
+
+coreFnModulesFromOutput :: String -> Aff (Either (NonEmptyArray (Tuple FilePath String)) (List (Module Ann)))
+coreFnModulesFromOutput path = do
+  { left, right } <- map separate $ expandGlobs path [ "**/corefn.json" ] >>= Array.fromFoldable >>> parTraverse readCoreFnModule
+  case NonEmptyArray.fromArray left of
+    Just errors ->
+      pure $ Left errors
+    Nothing ->
+      pure $ Right $ sortModules right
+
+readCoreFnModule :: String -> Aff (Either (Tuple FilePath String) (Module Ann))
+readCoreFnModule filePath = do
+  contents <- FS.readTextFile UTF8 filePath
+  case lmap Json.printJsonDecodeError <<< decodeModule =<< Json.jsonParser contents of
+    Left err -> do
+      pure $ Left $ Tuple filePath err
+    Right mod ->
+      pure $ Right mod
 
 externalDirectivesFromFile :: FilePath -> Aff (Map EvalRef InlineDirective)
 externalDirectivesFromFile filePath = do

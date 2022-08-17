@@ -2,36 +2,19 @@ module PureScript.Backend.Optimizer.Builder
   ( BuildEnv
   , BuildOptions
   , buildModules
-  , readCoreFnModule
-  , coreFnModulesFromOutput
   ) where
 
 import Prelude
 
-import Control.Parallel (parTraverse)
-import Data.Argonaut as Json
-import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Array.NonEmpty as NonEmptyArray
-import Data.Bifunctor (lmap)
-import Data.Compactable (separate)
-import Data.Either (Either(..))
 import Data.FoldableWithIndex (foldrWithIndex)
 import Data.List (List, foldM)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
-import Effect.Aff (Aff)
-import Node.Encoding (Encoding(..))
-import Node.FS.Aff as FS
-import Node.Glob.Basic (expandGlobs)
-import Node.Path (FilePath)
+import Data.Tuple (Tuple)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
-import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
 import PureScript.Backend.Optimizer.Semantics (EvalRef, ExternImpl, InlineDirective)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
@@ -42,32 +25,16 @@ type BuildEnv =
   , moduleIndex :: Int
   }
 
-type BuildOptions =
+type BuildOptions m =
   { directives :: Map EvalRef InlineDirective
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
-  , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
-  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
+  , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
+  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> m Unit
   }
 
-coreFnModulesFromOutput :: FilePath -> Aff (Either (NonEmptyArray (Tuple FilePath String)) (List (Module Ann)))
-coreFnModulesFromOutput path = do
-  { left, right } <- map separate $ expandGlobs path [ "**/corefn.json" ] >>= Array.fromFoldable >>> parTraverse readCoreFnModule
-  case NonEmptyArray.fromArray left of
-    Just errors ->
-      pure $ Left errors
-    Nothing ->
-      pure $ Right $ sortModules right
-
-readCoreFnModule :: FilePath -> Aff (Either (Tuple FilePath String) (Module Ann))
-readCoreFnModule filePath = do
-  contents <- FS.readTextFile UTF8 filePath
-  case lmap Json.printJsonDecodeError <<< decodeModule =<< Json.jsonParser contents of
-    Left err -> do
-      pure $ Left $ Tuple filePath err
-    Right mod ->
-      pure $ Right mod
-
-buildModules :: BuildOptions -> List (Module Ann) -> Aff Unit
+-- | Builds modules given a _sorted_ list of modules.
+-- | See `PureScript.Backend.Optimizer.CoreFn.Sort.sortModules`.
+buildModules :: forall m. Monad m => BuildOptions m -> List (Module Ann) -> m Unit
 buildModules options coreFnModules =
   void $ foldM go { directives: options.directives, implementations: Map.empty, moduleIndex: 0 } (sortModules coreFnModules)
   where

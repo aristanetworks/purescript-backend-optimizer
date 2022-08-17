@@ -20,6 +20,7 @@ import Data.Maybe (Maybe(..))
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
+import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
 import PureScript.Backend.Optimizer.Semantics (EvalRef(..), InlineDirective(..))
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..))
 import PureScript.CST.Errors (ParseError(..))
@@ -27,7 +28,6 @@ import PureScript.CST.Lexer (lex)
 import PureScript.CST.Parser.Monad (Parser, PositionedError, eof, optional, runParser, take)
 import PureScript.CST.Types (IntValue(..), SourceToken, Token(..))
 import PureScript.CST.Types as CST
-import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
 
 type DirectiveFileResult =
   { errors :: Array (Tuple String PositionedError)

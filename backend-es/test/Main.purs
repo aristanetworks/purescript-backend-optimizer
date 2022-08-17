@@ -31,8 +31,9 @@ import Node.FS.Aff as FS
 import Node.Glob.Basic (expandGlobsCwd)
 import Node.Path as Path
 import Node.Process as Process
-import PureScript.Backend.Optimizer.Builder (buildModules, coreFnModulesFromOutput)
+import PureScript.Backend.Optimizer.Builder (buildModules)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)

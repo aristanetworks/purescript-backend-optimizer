@@ -18,9 +18,9 @@ import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (Usage(..))
+import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName, Qualified(..))
 import PureScript.Backend.Optimizer.Semantics (NeutralExpr(..))
 import PureScript.Backend.Optimizer.Syntax (BackendSyntax(..), Level, Pair(..))
-import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName, Qualified(..))
 
 type LocalRef = Tuple (Maybe Ident) Level
 type TcoScope = List TcoScopeItem

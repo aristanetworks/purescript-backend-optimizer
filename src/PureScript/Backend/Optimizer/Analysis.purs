@@ -13,8 +13,8 @@ import Data.Set as Set
 import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
 

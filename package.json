@@ -2,5 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "format": "purs-tidy format-in-place src backend-es/src backend-es/test/*.purs",
+    "format:check": "purs-tidy check src backend-es/src backend-es/test/*.purs"
   }
 }
