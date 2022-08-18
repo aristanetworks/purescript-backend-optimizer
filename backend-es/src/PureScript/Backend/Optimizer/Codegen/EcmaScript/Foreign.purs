@@ -2,14 +2,17 @@ module PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign where
 
 import Prelude
 
+import Data.Array.NonEmpty as NonEmptyArray
 import Data.Enum (fromEnum)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..))
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), evalApp, evalPrimOp)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSemantics, qualified)
+import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator2(..))
+import PureScript.Backend.Optimizer.Utils (foldr1Array)
 
 esForeignSemantics :: Map (Qualified Ident) ForeignEval
 esForeignSemantics = Map.fromFoldable semantics
@@ -24,6 +27,7 @@ esForeignSemantics = Map.fromFoldable semantics
     , data_show_showIntImpl
     , data_show_showNumberImpl
     , data_show_showStringImpl
+    , data_show_showArrayImpl
     ]
 
 data_bounded_topInt :: ForeignSemantics
@@ -75,6 +79,22 @@ data_show_showCharImpl = Tuple (qualified "Data.Show" "showCharImpl") $ showLit 
   NeutLit (LitChar n) -> Just n
   _ -> Nothing
 
+data_show_showArrayImpl :: ForeignSemantics
+data_show_showArrayImpl = Tuple (qualified "Data.Show" "showArrayImpl") go
+  where
+  go env _ = case _ of
+    [ ExternApp [ showDict, NeutLit (LitArray arr) ] ] ->
+      Just case NonEmptyArray.fromArray arr of
+        Nothing ->
+          litString "[]"
+        Just nea -> do
+          let appendStrings l r = evalPrimOp env (Op2 OpStringAppend l r)
+          let showVal val = evalApp env showDict [ val ]
+          let foldFn next acc = appendStrings (showVal next) $ appendStrings (litString ",") acc
+          appendStrings (litString "[") $ foldr1Array foldFn (\last -> appendStrings (showVal last) (litString "]")) nea
+    _ ->
+      Nothing
+
 showLit :: forall a. Show a => (BackendSemantics -> Maybe a) -> ForeignEval
 showLit match _ _ = case _ of
   [ ExternApp [ sem ] ] | Just val <- match sem ->
@@ -87,3 +107,6 @@ litInt = NeutLit <<< LitInt
 
 litChar :: Char -> BackendSemantics
 litChar = NeutLit <<< LitChar
+
+litString :: String -> BackendSemantics
+litString = NeutLit <<< LitString

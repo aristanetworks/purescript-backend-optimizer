@@ -24,7 +24,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
-import PureScript.Backend.Optimizer.Utils (foldl1Array)
+import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
 type Spine a = Array a
 
@@ -928,14 +928,6 @@ caseNumber :: BackendSemantics -> Maybe Number
 caseNumber = case _ of
   NeutLit (LitNumber a) -> Just a
   _ -> Nothing
-
-foldr1Array :: forall a b. (a -> b -> b) -> (a -> b) -> NonEmptyArray a -> b
-foldr1Array f g arr = go (NonEmptyArray.length arr - 2) (g (NonEmptyArray.last arr))
-  where
-  go ix acc
-    | ix < 0 = acc
-    | otherwise =
-        go (ix - 1) (f (unsafePartial (NonEmptyArray.unsafeIndex arr ix)) acc)
 
 type Ctx =
   { currentLevel :: Int
