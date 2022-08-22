@@ -26,6 +26,6 @@
   , "type-equality"
   , "variant"
   ]
-, packages = ./packages.dhall
+, packages = ../../../packages.dhall
 , sources = [ "./*.purs", "./*/*.purs" ]
 }

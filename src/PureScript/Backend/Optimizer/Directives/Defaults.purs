@@ -120,6 +120,9 @@ defaultDirectives =
   Data.Semigroup.semigroupRecordCons arity=4
 
   Data.Show.showArray arity=1
+  Data.Show.showRecord arity=3
+  Data.Show.showRecordFieldsConsNil arity=2
+  Data.Show.showRecordFieldsCons arity=3
 
   Control.Monad.ST.Internal.modify arity=2
   Effect.applyEffect.apply arity=2

@@ -48,7 +48,7 @@ jobs:
         run: spago install
 
       - name: Build project
-        run: spago build --purs-args '--censor-lib'
+        run: spago build --purs-args '--censor-lib --strict'
 
       - name: Run snapshots
         run: spago test --purs-args '--censor-lib'
