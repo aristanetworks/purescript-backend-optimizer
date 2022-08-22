@@ -17,6 +17,7 @@
   , "partial"
   , "prelude"
   , "profunctor-lenses"
+  , "qualified-do"
   , "record"
   , "refs"
   , "safe-coerce"

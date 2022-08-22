@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, foldMap, foldl, foldr)
+import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
@@ -1047,14 +1047,6 @@ build ctx = case _ of
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
     build ctx $ Abs (ids1 <> ids2) body
-  -- TODO: Multi argument eta reduction?
-  -- TODO: Don't eta reduce recursive bindings.
-  -- Abs args (ExprSyntax _ (App hd@(ExprSyntax _ fn) spine))
-  --   | isReference fn
-  --   , [ Tuple _ lvl1 ] <- NonEmptyArray.toArray args
-  --   , [ ExprSyntax _ (Local _ lvl2) ] <- NonEmptyArray.toArray spine
-  --   , lvl1 == lvl2 ->
-  --       hd
   expr@(Let ident1 level1 (ExprSyntax _ (Let ident2 level2 binding2 body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
       [ { ident: ident2, level: level2, binding: binding2 }
@@ -1082,6 +1074,9 @@ build ctx = case _ of
         expr'
   Let ident level binding body
     | Just expr' <- shouldDistributeBranches ident level binding body ->
+        expr'
+  Let _ level binding body
+    | Just expr' <- shouldEtaReduce level binding body ->
         expr'
   App (ExprSyntax analysis (Branch bs (Just def))) tl
     | Just expr' <- shouldDistributeBranchApps analysis bs def tl ->
@@ -1209,6 +1204,19 @@ isReference = case _ of
   Var _ -> true
   Local _ _ -> true
   _ -> false
+
+shouldEtaReduce :: Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldEtaReduce level1 binding = case _ of
+  ExprSyntax _ (Abs args1 (ExprSyntax _ (App (ExprSyntax _ (Local _ level2)) args2)))
+    | level1 == level2
+    , and $ NonEmptyArray.zipWith isSameArg args1 args2 ->
+        Just binding
+  _ ->
+    Nothing
+  where
+  isSameArg (Tuple _ l1) = case _ of
+    ExprSyntax _ (Local _ l2) -> l1 == l2
+    _ -> false
 
 shouldUnpackCtor :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
 shouldUnpackCtor ident level a body = do
@@ -1350,7 +1358,6 @@ shouldInlineExternReference _ (BackendAnalysis s) _ = case _ of
   Just InlineNever -> false
   Just (InlineArity _) -> false
   _ ->
-    -- false
     s.complexity <= Deref && s.size < 16
 
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Maybe InlineDirective -> Boolean
@@ -1359,17 +1366,23 @@ shouldInlineExternApp _ (BackendAnalysis s) _ args = case _ of
   Just InlineNever -> false
   Just (InlineArity n) -> Array.length args == n
   _ ->
-    -- false
     (s.complexity <= Deref && s.size < 16)
-      || (Array.length s.args > 0 && Array.length s.args <= Array.length args && s.size < 16)
       || (Map.isEmpty s.usages && Set.isEmpty s.deps && s.size < 64)
+      || (delayed && Array.length s.args <= Array.length args && s.size < 16)
+      || (delayed && or (Array.zipWith shouldInlineExternAppArg s.args args) && s.size < 16)
+    where
+    delayed = Array.length s.args > 0
+
+shouldInlineExternAppArg :: Usage -> BackendSemantics -> Boolean
+shouldInlineExternAppArg (Usage u) = case _ of
+  SemLam _ _ -> u.captured <= CaptureBranch && u.total > 0 && u.call == u.total
+  _ -> false
 
 shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Maybe InlineDirective -> Boolean
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ = case _ of
   Just InlineAlways -> true
   Just InlineNever -> false
   _ ->
-    -- false
     s.complexity <= Deref && s.size < 16
 
 shouldInlineExternLiteral :: Literal NeutralExpr -> Maybe InlineDirective -> Boolean
@@ -1377,7 +1390,6 @@ shouldInlineExternLiteral lit = case _ of
   Just InlineAlways -> true
   Just InlineNever -> false
   _ ->
-    -- false
     case lit of
       LitInt _ -> true
       LitNumber _ -> true

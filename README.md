@@ -25,6 +25,7 @@ bundles.
 | Fusion (Fold) | [Input](./backend-es/test/snapshots/Snapshot.Fusion01.purs) | [Output](https://try.purescript.org/?view=output&js=true&github=/FINAL_ORG_NAME/purescript-backend-optimizer/main/backend-es/test/snapshots/Snapshot.Fusion01.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.Fusion01.js) |
 | Fusion (Unfold) | [Input](./backend-es/test/snapshots/Snapshot.Fusion02.purs) | [Output](https://try.purescript.org/?view=output&js=true&github=/FINAL_ORG_NAME/purescript-backend-optimizer/main/backend-es/test/snapshots/Snapshot.Fusion02.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.Fusion02.js) |
 | Recursion Schemes | [Input](./backend-es/test/snapshots/Snapshot.RecursionSchemes01.purs) | [Output](https://try.purescript.org/?view=output&js=true&github=/FINAL_ORG_NAME/purescript-backend-optimizer/main/backend-es/test/snapshots/Snapshot.RecursionSchemes01.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.RecursionSchemes01.js) |
+| HTML DSL | [Input](./backend-es/test/snapshots/Snapshot.Html.purs) | [Output](https://try.purescript.org/?view=output&js=true&github=/FINAL_ORG_NAME/purescript-backend-optimizer/main/backend-es/test/snapshots/Snapshot.Html.purs) | [Output](./backend-es/test/snapshots-out/Snapshot.Html.js) |
 
 ## ECMAScript Backend
 
