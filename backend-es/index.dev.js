@@ -2,7 +2,7 @@
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-import { main } from "./bundle/index.js";
+import { main } from "../output/Main/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

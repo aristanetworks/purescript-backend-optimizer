@@ -32,7 +32,7 @@ bundles.
 ### Install
 
 ```sh
-npm install purs-backend-es
+npm install @arista/purs-backend-es
 ```
 
 ### Usage
