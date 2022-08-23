@@ -43,6 +43,7 @@ import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))
 import Unsafe.Coerce (unsafeCoerce)
+import Version as Version
 
 type BuildArgs =
   { coreFnDir :: FilePath
@@ -165,6 +166,7 @@ esArgParser =
             <* ArgParser.flagHelp
     ]
     <* ArgParser.flagHelp
+    <* ArgParser.flagInfo [ "--version", "-v" ] "Show the current version of purs-backend-es." Version.version
 
 parseArgs :: Effect (Either ArgParser.ArgError Command)
 parseArgs = do
@@ -205,7 +207,7 @@ main cliRoot =
         writeTextFile UTF8 (Path.concat [ modPath, "index.js" ]) formatted
         unless (Set.isEmpty backendMod.foreign) do
           let foreignOutputPath = Path.concat [ modPath, "foreign.js" ]
-          let origPath = Path.concat [ args.outputDir, "..", coreFnMod.path ]
+          origPath <- liftEffect $ Path.resolve [ args.outputDir, ".." ] coreFnMod.path
           let foreignSiblingPath = fromMaybe origPath (String.stripSuffix (Pattern (Path.extname origPath)) origPath) <> ".js"
           res <- attempt $ oneOf
             [ maybe empty (\dir -> copyFile (Path.concat [ dir, esModulePath backendMod.name ]) foreignOutputPath) args.foreignDir

@@ -1,0 +1,42 @@
+{
+  "name": "@arista/purs-backend-es",
+  "version": "1.0.0",
+  "description": "A modern ECMAScript optimizing backend for PureScript",
+  "main": "index.js",
+  "type": "module",
+  "files": [
+    "./LICENSE",
+    "./index.js",
+    "./bundle/*.js"
+  ],
+  "bin": {
+    "purs-backend-es": "./index.js"
+  },
+  "scripts": {
+    "preversion": "npm run test && npm run test:output-diff",
+    "version": "echo 'export const version = \"v'$npm_package_version'\";' > ./src/Version.js && git add ./src/Version.js && git commit -m 'Bump purs-backend-es version ($npm_package_version)' && git tag 'purs-backend-es-v$npm_package_version'",
+    "postversion": "git push && git push --tags",
+    "test": "cd .. && spago test",
+    "test:output-diff": "npm run build && cd ../ && ./backend-es/index.js build --int-tags --output-dir=output-es2 && diff -r output-es output-es2 && rm -r output-es2",
+    "build": "cd .. && spago build -u '-g corefn,js' && node ./backend-es/index.dev.js bundle-module -m Main --int-tags --platform=node --minify --to=./backend-es/bundle/index.js",
+    "prepublishOnly": "rm -rf bundle ../output ../output-es && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aristanetworks/purescript-backend-optimizer.git"
+  },
+  "keywords": [
+    "PureScript",
+    "backend",
+    "optimizer"
+  ],
+  "author": "Arista Networks",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aristanetworks/purescript-backend-optimizer/issues"
+  },
+  "homepage": "https://github.com/aristanetworks/purescript-backend-optimizer#readme",
+  "devDependencies": {
+    "esbuild": "^0.15.5"
+  }
+}
