@@ -1209,6 +1209,7 @@ shouldEtaReduce :: Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
 shouldEtaReduce level1 binding = case _ of
   ExprSyntax _ (Abs args1 (ExprSyntax _ (App (ExprSyntax _ (Local _ level2)) args2)))
     | level1 == level2
+    , NonEmptyArray.length args1 == NonEmptyArray.length args2
     , and $ NonEmptyArray.zipWith isSameArg args1 args2 ->
         Just binding
   _ ->
