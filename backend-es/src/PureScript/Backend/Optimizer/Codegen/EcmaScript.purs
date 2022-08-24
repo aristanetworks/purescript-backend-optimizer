@@ -100,7 +100,7 @@ boundTopLevel ident env = env { bound = Map.insert ident 1 env.bound }
 freshName :: CodegenRefType -> Maybe Ident -> Level -> CodegenEnv -> Tuple Ident CodegenEnv
 freshName refType ident lvl env = case ident of
   Nothing ->
-    Tuple (Ident ("_" <> show (unwrap lvl))) env
+    Tuple (Ident ("$" <> show (unwrap lvl))) env
   Just id ->
     case Map.lookup id env.bound of
       Nothing ->
@@ -109,7 +109,7 @@ freshName refType ident lvl env = case ident of
           , names = Map.insert (CodegenLocal id lvl) (Tuple id refType) env.names
           }
       Just n -> do
-        let fresh = Ident (unwrap id <> "_" <> show n)
+        let fresh = Ident (unwrap id <> "$" <> show n)
         Tuple fresh $ env
           { bound = Map.insert id (n + 1) env.bound
           , names = Map.insert (CodegenLocal id lvl) (Tuple fresh refType) env.names
@@ -831,9 +831,9 @@ esCodegenAccessor lhs = case _ of
 esLocalIdent :: Maybe Ident -> Level -> Ident
 esLocalIdent mb (Level lvl) = case mb of
   Just (Ident a) ->
-    Ident (a <> "_" <> show lvl)
+    Ident (a <> "$" <> show lvl)
   Nothing ->
-    Ident ("_" <> show lvl)
+    Ident ("$" <> show lvl)
 
 esCodegenName :: forall a. CodegenName -> Dodo.Doc a
 esCodegenName (Tuple id refType) = case refType of
@@ -909,7 +909,7 @@ esTcoBranchIdent :: Ident -> Ident
 esTcoBranchIdent (Ident tcoIdent) = Ident (tcoIdent <> "$b")
 
 esTcoArgIdent :: Ident -> Int -> Ident
-esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$" <> show ix)
+esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$a" <> show ix)
 
 esTcoCopyIdent :: Ident -> Ident
 esTcoCopyIdent (Ident tcoIdent) = Ident (tcoIdent <> "$copy")

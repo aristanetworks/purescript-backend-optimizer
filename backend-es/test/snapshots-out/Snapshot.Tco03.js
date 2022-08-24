@@ -1,16 +1,16 @@
 import * as $runtime from "../runtime.js";
 const test = /* #__PURE__ */ (() => {
-  const go = go$0$copy => {
-    let go$0 = go$0$copy, go$c = true, go$r;
+  const go = go$a0$copy => {
+    let go$a0 = go$a0$copy, go$c = true, go$r;
     while (go$c) {
-      const n = go$0;
-      const k = k$0$copy => {
-        let k$0 = k$0$copy, k$c = true, k$r;
+      const n = go$a0;
+      const k = k$a0$copy => {
+        let k$a0 = k$a0$copy, k$c = true, k$r;
         while (k$c) {
-          const m = k$0;
+          const m = k$a0;
           if (m === 100) {
             k$c = false;
-            go$0 = m - 1 | 0;
+            go$a0 = m - 1 | 0;
             continue;
           }
           if (m === 900) {
@@ -18,7 +18,7 @@ const test = /* #__PURE__ */ (() => {
             go$r = 42;
             continue;
           }
-          k$0 = m - 1 | 0;
+          k$a0 = m - 1 | 0;
           continue;
         };
         return k$r;
@@ -29,7 +29,7 @@ const test = /* #__PURE__ */ (() => {
         continue;
       }
       if (n <= 100) {
-        go$0 = n - 1 | 0;
+        go$a0 = n - 1 | 0;
         continue;
       }
       k(n - 1 | 0);
