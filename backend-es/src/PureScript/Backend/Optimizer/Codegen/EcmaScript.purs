@@ -909,7 +909,7 @@ esTcoBranchIdent :: Ident -> Ident
 esTcoBranchIdent (Ident tcoIdent) = Ident (tcoIdent <> "$b")
 
 esTcoArgIdent :: Ident -> Int -> Ident
-esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$" <> show ix)
+esTcoArgIdent (Ident tcoIdent) ix = Ident (tcoIdent <> "$a" <> show ix)
 
 esTcoCopyIdent :: Ident -> Ident
 esTcoCopyIdent (Ident tcoIdent) = Ident (tcoIdent <> "$copy")
