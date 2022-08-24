@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "files": [
-    "./LICENSE",
-    "./index.js",
-    "./bundle/*.js"
+    "LICENSE",
+    "index.js",
+    "bundle/index.js"
   ],
   "bin": {
     "purs-backend-es": "./index.js"
