@@ -1,5 +1,5 @@
 {
-  "name": "@arista/purs-backend-es",
+  "name": "purs-backend-es",
   "version": "1.0.0",
   "description": "A modern ECMAScript optimizing backend for PureScript",
   "main": "index.js",
