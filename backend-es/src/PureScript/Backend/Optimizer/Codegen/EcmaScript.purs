@@ -249,7 +249,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   App a bs ->
     case a of
       TcoExpr _ (Var qual)
-        | Just doc <- shouldInlineApp env qual (NonEmptyArray.toArray bs) ->
+        | Just (Tuple doc _) <- shouldInlineApp env qual (NonEmptyArray.toArray bs) ->
             esPureEnv env $ doc
       _ ->
         esPureEnv env $ foldl
@@ -270,7 +270,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   UncurriedApp a bs ->
     case a of
       TcoExpr _ (Var qual)
-        | Just doc <- shouldInlineApp env qual bs ->
+        | Just (Tuple doc _) <- shouldInlineApp env qual bs ->
             esPureEnv env $ doc
       _ ->
         esPureEnv env $ esApp (esCodegenExpr env a) (esCodegenExpr env <$> bs)
@@ -316,7 +316,7 @@ esCodegenExpr env tcoExpr@(TcoExpr _ expr) = case expr of
   EffectPure _ ->
     esCodegenEffectBlock (noPure env) tcoExpr
 
-shouldInlineApp :: forall a. CodegenEnv -> Qualified Ident -> Array TcoExpr -> Maybe (Dodo.Doc a)
+shouldInlineApp :: forall a. CodegenEnv -> Qualified Ident -> Array TcoExpr -> Maybe (Tuple (Dodo.Doc a) (EsStatement (Dodo.Doc a)))
 shouldInlineApp env qual args = do
   fn <- Map.lookup qual esInlineMap
   fn (esCodegenExpr env) qual args
@@ -452,9 +452,15 @@ esCodegenBlockStatements = go []
     App (TcoExpr _ (Var qual)) bs
       | Just tco <- Tco.popTcoScope (TcoTopLevel qual) mode.tcoScope ->
           acc <> esCodegenTcoJump mode tco (esCodegenExpr env <$> NonEmptyArray.toArray bs)
+      | Just (Tuple _ line) <- shouldInlineApp env qual (NonEmptyArray.toArray bs) ->
+          Array.snoc acc line
     UncurriedApp (TcoExpr _ (Local ident lvl)) _
       | Set.member (Tuple ident lvl) mode.tcoJoins ->
           acc <> esCodegenTcoJoin mode (esCodegenExpr env tcoExpr)
+    UncurriedApp (TcoExpr _ (Var qual)) bs
+      -- TODO: Should we handle top-level tco for uncurried apps?
+      | Just (Tuple _ line) <- shouldInlineApp env qual bs ->
+          Array.snoc acc line
     _ ->
       acc <> esCodegenBlockReturn mode env tcoExpr
 
