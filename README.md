@@ -56,6 +56,27 @@ See the CLI help for options:
 purs-backend-es --help
 ```
 
+### Notable Differences from `purs`
+
+* Uses arrow functions, `const/let` block scope, and object spread syntax.
+* Uses a much lighter-weight data encoding (using plain objects) which is significantly
+  faster to dispatch. By default, we use string tags, but integer tags are also
+  supported via a CLI flag for further performance improvement and size reduction.
+* Newtypes over `Effect` and `ST` also benefit from optimizations. With general
+  inlining, even instances that aren't newtype-derived benefit from the same
+  optimizations.
+* TCO fires in more cases. For example, you can now write TCO loops over
+  `purescript-exists` because the eliminator is inlined away.
+* TCO supports mutually recursive binding groups.
+* Optimized pattern matching eliminates redundant tests.
+
+Code size and performance improvement varies by usecase, but we've generally
+observed:
+
+* 25-35% improvement in runtime.
+* 20-25% improvement in minified bundle size.
+* 15-20% improvement in minified+gzip bundle size.
+
 ## Inlining Directives
 
 The inliner follows some basic heuristics, but to get the most out of it you
