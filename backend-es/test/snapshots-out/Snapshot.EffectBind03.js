@@ -18,16 +18,16 @@ const bindMyEffect = {
 const applyMyEffect = {
   apply: f => a => () => {
     const a$p = f();
-    const a$p_1 = a();
-    return applicativeMyEffect.pure(a$p(a$p_1))();
+    const a$p$1 = a();
+    return applicativeMyEffect.pure(a$p(a$p$1))();
   },
   Functor0: () => functorMyEffect
 };
 const applicativeMyEffect = {pure: x => () => x, Apply0: () => applyMyEffect};
 const test = () => {
   const a$p = random();
-  const a$p_1 = random();
-  return a$p + a$p_1 | 0;
+  const a$p$1 = random();
+  return a$p + a$p$1 | 0;
 };
 export {MyEffect, applicativeMyEffect, applyMyEffect, bindMyEffect, functorMyEffect, monadMyEffect, test};
 export * from "./foreign.js";

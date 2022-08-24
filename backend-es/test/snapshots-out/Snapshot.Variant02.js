@@ -10,11 +10,11 @@ const variantBuildMatch = dict => dict.variantBuildMatch;
 const variantBuildMatchCons = dictTypeEquals => () => () => dictIsSymbol => dictVariantBuildMatch => (
   {
     variantBuildMatch: v => k => r => {
-      const _8 = Record$dUnsafe.unsafeGet(dictIsSymbol.reflectSymbol(Type$dProxy.Proxy))(r);
-      const _9 = dictVariantBuildMatch.variantBuildMatch(Type$dProxy.Proxy)(k)(r);
-      return r_1 => {
-        if (r_1.type === dictIsSymbol.reflectSymbol(Type$dProxy.Proxy)) { return _8(r_1.value); }
-        return _9(r_1);
+      const $8 = Record$dUnsafe.unsafeGet(dictIsSymbol.reflectSymbol(Type$dProxy.Proxy))(r);
+      const $9 = dictVariantBuildMatch.variantBuildMatch(Type$dProxy.Proxy)(k)(r);
+      return r$1 => {
+        if (r$1.type === dictIsSymbol.reflectSymbol(Type$dProxy.Proxy)) { return $8(r$1.value); }
+        return $9(r$1);
       };
     }
   }

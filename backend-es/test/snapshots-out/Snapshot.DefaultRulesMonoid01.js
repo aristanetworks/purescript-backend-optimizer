@@ -1,9 +1,9 @@
 import * as $runtime from "../runtime.js";
 import {f} from "./foreign.js";
 const test2 = /* #__PURE__ */ (() => {
-  const _0 = f([1, 2, 3]);
+  const $0 = f([1, 2, 3]);
   return a => {
-    if (a) { return _0; }
+    if (a) { return $0; }
     return [];
   };
 })();

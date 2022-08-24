@@ -3,12 +3,12 @@ const $Html = (tag, _1, _2) => ({tag, _1, _2});
 const Elem = value0 => value1 => $Html("Elem", value0, value1);
 const Text = value0 => $Html("Text", value0);
 const h11 = /* #__PURE__ */ (() => {
-  const _0 = Elem("h1");
-  return x => _0([x]);
+  const $0 = Elem("h1");
+  return x => $0([x]);
 })();
 const h21 = /* #__PURE__ */ (() => {
-  const _0 = Elem("h2");
-  return x => _0([x]);
+  const $0 = Elem("h2");
+  return x => $0([x]);
 })();
 const p1 = /* #__PURE__ */ Elem("p");
 const section1 = /* #__PURE__ */ Elem("section");

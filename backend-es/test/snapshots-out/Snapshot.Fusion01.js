@@ -21,8 +21,8 @@ const test = x => Data$dArray.reverse(toUnfoldable((() => {
       loop$1 = (() => {
         const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[n] | 0));
         if (v1.tag === "Just") {
-          const _5 = "2" + v1._1;
-          if (_5 !== "wat") { return Data$dList$dTypes.$List("Cons", _5 + "1", acc); }
+          const $5 = "2" + v1._1;
+          if ($5 !== "wat") { return Data$dList$dTypes.$List("Cons", $5 + "1", acc); }
           return acc;
         }
         if (v1.tag === "Nothing") { return acc; }
