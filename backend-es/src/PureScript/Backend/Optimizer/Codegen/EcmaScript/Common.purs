@@ -46,6 +46,7 @@ esEscapeSpecial :: String -> String
 esEscapeSpecial =
   String.replaceAll (String.Pattern "'") (String.Replacement "$p")
     >>> String.replaceAll (String.Pattern ".") (String.Replacement "$d")
+    >>> String.replaceAll (String.Pattern "\"") (String.Replacement "$q")
 
 esReservedNames :: Set String
 esReservedNames = Set.fromFoldable
