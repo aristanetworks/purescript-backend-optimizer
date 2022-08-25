@@ -5,6 +5,7 @@ import Prelude
 import Data.Argonaut as Json
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Enum (fromEnum)
 import Data.Foldable (class Foldable, fold, foldMap, foldl, foldr)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Monoid as Monoid
@@ -14,7 +15,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.String.CodeUnits as SCU
 import Data.String.Regex as Regex
-import Data.String.Regex.Flags (noFlags)
+import Data.String.Regex.Flags (global, noFlags, unicode)
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Tuple (Tuple(..), uncurry)
 import Dodo as Dodo
@@ -44,8 +45,11 @@ esEscapeIdent = escapeReserved
 
 esEscapeSpecial :: String -> String
 esEscapeSpecial =
-  String.replaceAll (String.Pattern "'") (String.Replacement "$p")
-    >>> String.replaceAll (String.Pattern ".") (String.Replacement "$d")
+  Regex.replace' (unsafeRegex """(?:^[^\p{L}_$])|(?:[^\p{L}0-9_$])""" (unicode <> global)) \m _ ->
+    case m of
+      "'" -> "$p"
+      "." -> "$d"
+      _ -> "$x" <> String.joinWith "" (show <<< fromEnum <$> String.toCodePointArray m)
 
 esReservedNames :: Set String
 esReservedNames = Set.fromFoldable
