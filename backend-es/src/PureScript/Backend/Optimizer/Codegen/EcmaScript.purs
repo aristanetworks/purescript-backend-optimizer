@@ -616,10 +616,10 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
     esCodegenTcoLoopBinding mode (noPure env) ident tco
   bindings' -> do
     let maxArgs = fromMaybe 0 $ maximum $ NonEmptyArray.length <<< _.arguments <<< snd <$> bindings
-    let argIdents = esTcoArgIdent tcoIdent <$> NonEmptyArray.range 0 maxArgs
+    let argIdents = esTcoArgIdent tcoIdent <$> NonEmptyArray.range 0 (maxArgs - 1)
     let branchIdent = esTcoBranchIdent tcoIdent
     esSepStatements $
-      [ esBinding tcoIdent $ esTcoFn tcoIdent (NonEmptyArray.cons branchIdent argIdents) $ esBranches
+      [ esBinding tcoIdent $ esMutualTcoFn tcoIdent (NonEmptyArray.cons branchIdent argIdents) $ esBranches
           ( mapWithIndex
               ( \ix (Tuple _ tco) -> do
                   let { value: argNames, accum: env' } = freshNames RefStrict env tco.arguments
@@ -634,8 +634,11 @@ esCodegenTcoMutualLoopBinding mode env tcoIdent bindings = case NonEmptyArray.to
       ]
         <>
           mapWithIndex
-            ( \ix (Tuple ident _) ->
-                esBinding ident $ esPure $ esApp (esIdent tcoIdent) [ esInt ix ]
+            ( \ix (Tuple ident { arguments: args }) -> do
+                let { value: idents } = freshNames RefStrict env args
+                esBinding ident $ esCurriedFn idents
+                  [ Return $ esApp (esIdent tcoIdent) $ Array.cons (esInt ix) (esIdent <$> NonEmptyArray.toArray idents)
+                  ]
             )
             bindings'
 
@@ -903,7 +906,7 @@ esForeignModulePath (ModuleName _) = "./foreign.js"
 esTcoMutualIdent :: NonEmptyArray Ident -> Ident
 esTcoMutualIdent idents = case NonEmptyArray.toArray idents of
   [ ident ] -> ident
-  _ -> Ident $ foldMap (String.take 5 <<< unwrap) idents
+  _ -> Ident $ "$" <> foldMap (String.take 5 <<< unwrap) idents
 
 esTcoLoopIdent :: Ident -> Ident
 esTcoLoopIdent (Ident tcoIdent) = Ident (tcoIdent <> "$c")
@@ -921,7 +924,13 @@ esTcoCopyIdent :: Ident -> Ident
 esTcoCopyIdent (Ident tcoIdent) = Ident (tcoIdent <> "$copy")
 
 esTcoFn :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
-esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args)
+esTcoFn tcoIdent args body = esCurriedFn (esTcoCopyIdent <$> args) (esTcoFnBody tcoIdent args body)
+
+esMutualTcoFn :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Dodo.Doc a
+esMutualTcoFn tcoIdent args body = esFn (esTcoCopyIdent <$> NonEmptyArray.toArray args) (esTcoFnBody tcoIdent args body)
+
+esTcoFnBody :: forall a. Ident -> NonEmptyArray Ident -> Dodo.Doc a -> Array (EsStatement (Dodo.Doc a))
+esTcoFnBody tcoIdent args body =
   [ Statement $ esLetBindings $ NonEmptyArray.appendArray bindings
       [ Tuple (esTcoLoopIdent tcoIdent) (Just (esBoolean true))
       , Tuple (esTcoReturnIdent tcoIdent) Nothing
