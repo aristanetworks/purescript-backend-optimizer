@@ -56,6 +56,14 @@ See the CLI help for options:
 purs-backend-es --help
 ```
 
+`spago bundle-app` is not compatible with `purs-backend-es`. To bundle your app,
+you can invoke `purs-backend-es bundle-app`. It supports the same CLI arguments
+as `spago bundle-app`.
+
+```sh
+spago build && purs-backend-es bundle-app --no-build
+```
+
 ### Notable Differences from `purs`
 
 * Uses arrow functions, `const/let` block scope, and object spread syntax.
