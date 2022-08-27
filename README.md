@@ -44,7 +44,10 @@ npm install purs-backend-es
 ```
 
 _You should likely only do this for a production build configuration_, since
-optimization and code-generation are currently not incremental.
+optimization and code-generation are currently not incremental. E.g. by creating a separate `prod.dhall` with the following content:
+```dhall
+./spago.dhall // { backend = "purs-backend-es build" }
+```
 
 By default, `purs-backend-es` will read corefn.json files from `output`, and
 generate code in `output-es` following the same directory pattern as the
