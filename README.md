@@ -44,7 +44,9 @@ npm install purs-backend-es
 ```
 
 _You should likely only do this for a production build configuration_, since
-optimization and code-generation are currently not incremental. E.g. by creating a separate `prod.dhall` with the following content:
+optimization and code-generation are currently not incremental. For example,
+you can create a separate `prod.dhall` with the following:
+
 ```dhall
 ./spago.dhall // { backend = "purs-backend-es build" }
 ```
