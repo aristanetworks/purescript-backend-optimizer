@@ -47,7 +47,7 @@ module PureScript.Backend.Optimizer.Convert where
 
 import Prelude
 
-import Control.Alternative ((<|>), guard)
+import Control.Alternative (guard, (<|>))
 import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
