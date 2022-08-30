@@ -20,8 +20,14 @@ const $test2test1 = ($test2test1$b$copy, $test2test1$a0$copy) => {
         $test2test1$r = n;
         continue;
       }
-      $test2test1$b = 0;
-      $test2test1$a0 = n - 1 | 0;
+      const $1 = n - 1 | 0;
+      if ($1 === 2) {
+        $test2test1$c = false;
+        $test2test1$r = $1;
+        continue;
+      }
+      $test2test1$b = 1;
+      $test2test1$a0 = $1 - 2 | 0;
       continue;
     }
   };

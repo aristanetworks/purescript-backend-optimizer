@@ -1,4 +1,5 @@
--- @inline Data.Lens.Internal.Forget.choiceForget arity=1
+-- @inline Data.Lens.Internal.Forget.choiceForget(..).left arity=1
+-- @inline Data.Lens.Internal.Forget.choiceForget(..).right arity=1
 module Snapshot.ProfunctorLenses02 where
 
 import Prelude

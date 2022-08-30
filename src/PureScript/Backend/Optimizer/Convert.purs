@@ -47,7 +47,7 @@ module PureScript.Backend.Optimizer.Convert where
 
 import Prelude
 
-import Control.Alternative (guard)
+import Control.Alternative ((<|>), guard)
 import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -72,7 +72,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineDirective(..), NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -95,7 +95,7 @@ type BackendModule =
   , reExports :: Set ReExport
   , foreign :: Set Ident
   , implementations :: BackendImplementations
-  , directives :: Map EvalRef InlineDirective
+  , directives :: InlineDirectiveMap
   }
 
 type ConvertEnv =
@@ -105,7 +105,7 @@ type ConvertEnv =
   , toLevel :: Map Ident Level
   , implementations :: BackendImplementations
   , moduleImplementations :: BackendImplementations
-  , directives :: Map EvalRef InlineDirective
+  , directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , rewriteLimit :: Int
   }
@@ -239,25 +239,65 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   { accum: env
       { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
       , moduleImplementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.moduleImplementations
-      , directives = case impl, backendExpr of
-          Tuple _ (ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args))), _
-            | Just (InlineArity n) <- Map.lookup (EvalExtern qual Nothing) env.directives
-            , arity <- NonEmptyArray.length args
-            , arity < n ->
-                Map.insert (EvalExtern (Qualified (Just env.currentModule) ident) Nothing) (InlineArity (n - arity)) env.directives
-          -- TODO: Ideally, we would track arity annotations as part of
-          -- inlining to make it more reliably transitive.
-          _, ExprSyntax _ (App (ExprSyntax _ (Var qual)) args)
-            | Just (InlineArity n) <- Map.lookup (EvalExtern qual Nothing) env.directives
-            , ExprApp (Ann { meta: Just IsSyntheticApp }) _ _ <- cfn
-            , arity <- NonEmptyArray.length args
-            , arity >= n ->
-                Map.insert (EvalExtern (Qualified (Just env.currentModule) ident) Nothing) InlineAlways env.directives
-          _, _ ->
-            env.directives
+      , directives =
+          case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
+            Just dirs ->
+              Map.alter
+                case _ of
+                  Just oldDirs ->
+                    Just $ Map.union oldDirs dirs
+                  Nothing ->
+                    Just dirs
+                (EvalExtern (Qualified (Just env.currentModule) ident))
+                env.directives
+            Nothing ->
+              env.directives
       }
   , value: Tuple ident (Tuple (unwrap (fst impl)).deps expr')
   }
+
+inferTransitiveDirective :: InlineDirectiveMap -> ExternImpl -> BackendExpr -> Expr Ann -> Maybe (Map InlineAccessor InlineDirective)
+inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBackendExpr
+  where
+  fromImpl = case impl of
+    ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)) ->
+      case Map.lookup (EvalExtern qual) directives of
+        Just dirs -> do
+          let
+            newDirs = Map.toUnfoldable dirs # Array.mapMaybe case _ of
+              Tuple InlineRef (InlineArity n) ->
+                Just $ Tuple InlineRef (InlineArity (n - NonEmptyArray.length args))
+              Tuple (InlineSpineProp prop) dir ->
+                Just $ Tuple (InlineProp prop) dir
+              _ ->
+                Nothing
+          if Array.null newDirs then
+            Nothing
+          else
+            Just $ Map.fromFoldable newDirs
+        _ ->
+          Nothing
+    ExternExpr _ (NeutralExpr (Accessor (NeutralExpr (App (NeutralExpr (Var qual)) _)) (GetProp prop))) ->
+      case Map.lookup (EvalExtern qual) directives >>= Map.lookup (InlineSpineProp prop) of
+        Just (InlineArity n) ->
+          Just $ Map.singleton InlineRef (InlineArity n)
+        _ ->
+          Nothing
+    _ ->
+      Nothing
+
+  fromBackendExpr = case backendExpr of
+    ExprSyntax _ (App (ExprSyntax _ (Var qual)) args) ->
+      case Map.lookup (EvalExtern qual) directives >>= Map.lookup InlineRef of
+        Just (InlineArity n)
+          | ExprApp (Ann { meta: Just IsSyntheticApp }) _ _ <- cfn
+          , arity <- NonEmptyArray.length args
+          , arity >= n ->
+              Just $ Map.singleton InlineRef InlineAlways
+        _ ->
+          Nothing
+    _ ->
+      Nothing
 
 toExternImpl :: ConvertEnv -> Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr
 toExternImpl env group expr = case expr of
