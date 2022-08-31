@@ -1,4 +1,5 @@
-// @inline Data.Lens.Internal.Forget.choiceForget arity=1
+// @inline Data.Lens.Internal.Forget.choiceForget(..).left arity=1
+// @inline Data.Lens.Internal.Forget.choiceForget(..).right arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 const test4 = a => {

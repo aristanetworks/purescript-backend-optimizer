@@ -14,24 +14,22 @@ import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.FoldableWithIndex (foldlWithIndex)
-import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
-import PureScript.Backend.Optimizer.Semantics (EvalRef(..), InlineDirective(..))
-import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..))
+import PureScript.Backend.Optimizer.Semantics (EvalRef(..), InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, insertDirective)
 import PureScript.CST.Errors (ParseError(..))
 import PureScript.CST.Lexer (lex)
-import PureScript.CST.Parser.Monad (Parser, PositionedError, eof, optional, runParser, take)
+import PureScript.CST.Parser.Monad (Parser, PositionedError, eof, runParser, take)
 import PureScript.CST.Types (IntValue(..), SourceToken, Token(..))
 import PureScript.CST.Types as CST
 
 type DirectiveFileResult =
   { errors :: Array (Tuple String PositionedError)
-  , directives :: Map EvalRef InlineDirective
+  , directives :: InlineDirectiveMap
   }
 
 parseDirectiveFile :: String -> DirectiveFileResult
@@ -42,13 +40,13 @@ parseDirectiveFile = foldlWithIndex go { errors: [], directives: Map.empty } <<<
       { errors: Array.snoc errors (Tuple str (err { position { line = line } })), directives }
     Right Nothing ->
       { errors, directives }
-    Right (Just (Tuple key val)) ->
-      { errors, directives: Map.insert key val directives }
+    Right (Just (Tuple key (Tuple acc val))) ->
+      { errors, directives: insertDirective key acc val directives }
 
 type DirectiveHeaderResult =
   { errors :: Array (Tuple String PositionedError)
-  , locals :: Map EvalRef InlineDirective
-  , exports :: Map EvalRef InlineDirective
+  , locals :: InlineDirectiveMap
+  , exports :: InlineDirectiveMap
   }
 
 parseDirectiveHeader :: ModuleName -> Array Comment -> DirectiveHeaderResult
@@ -61,40 +59,46 @@ parseDirectiveHeader moduleName = foldl go { errors: [], locals: Map.empty, expo
           case runParser (lex line') parser of
             Left err ->
               { errors: Array.snoc errors (Tuple line' err), locals, exports }
-            Right (Tuple (Left (Tuple key val)) _) ->
-              { errors, locals, exports: Map.insert key val exports }
-            Right (Tuple (Right (Tuple key val)) _) ->
-              { errors, locals: Map.insert key val locals, exports }
+            Right (Tuple (Left (Tuple key (Tuple acc val))) _) ->
+              { errors, locals, exports: insertDirective key acc val exports }
+            Right (Tuple (Right (Tuple key (Tuple acc val))) _) ->
+              { errors, locals: insertDirective key acc val locals, exports }
     _ ->
       { errors, locals, exports }
 
   parser =
     Left <$> parseDirectiveExport moduleName <|> Right <$> parseDirective
 
-parseDirectiveLine :: String -> Either PositionedError (Maybe (Tuple EvalRef InlineDirective))
+parseDirectiveLine :: String -> Either PositionedError (Maybe (Tuple EvalRef (Tuple InlineAccessor InlineDirective)))
 parseDirectiveLine line = fst <$> runParser (lex line) parseDirectiveMaybe
 
-parseDirectiveMaybe :: Parser (Maybe (Tuple EvalRef InlineDirective))
+parseDirectiveMaybe :: Parser (Maybe (Tuple EvalRef (Tuple InlineAccessor InlineDirective)))
 parseDirectiveMaybe = Just <$> parseDirective <|> (Nothing <$ eof)
 
-parseDirectiveExport :: ModuleName -> Parser (Tuple EvalRef InlineDirective)
+parseDirectiveExport :: ModuleName -> Parser (Tuple EvalRef (Tuple InlineAccessor InlineDirective))
 parseDirectiveExport moduleName =
   ( ado
       keyword "export"
       ident <- unqualified
-      accessor <- optional (dot *> label)
+      accessor <- parseInlineAccessor
       directive <- parseInlineDirective
-      in Tuple (EvalExtern (Qualified (Just moduleName) ident) (GetProp <$> accessor)) directive
+      in Tuple (EvalExtern (Qualified (Just moduleName) ident)) (Tuple accessor directive)
   ) <* eof
 
-parseDirective :: Parser (Tuple EvalRef InlineDirective)
+parseDirective :: Parser (Tuple EvalRef (Tuple InlineAccessor InlineDirective))
 parseDirective =
   ( ado
       qual <- qualified
-      accessor <- optional (dot *> label)
+      accessor <- parseInlineAccessor
       directive <- parseInlineDirective
-      in Tuple (EvalExtern qual (GetProp <$> accessor)) directive
+      in Tuple (EvalExtern qual) (Tuple accessor directive)
   ) <* eof
+
+parseInlineAccessor :: Parser InlineAccessor
+parseInlineAccessor =
+  InlineProp <$> (dot *> label)
+    <|> InlineSpineProp <$> (dotDot *> dot *> label)
+    <|> pure InlineRef
 
 parseInlineDirective :: Parser InlineDirective
 parseInlineDirective =
@@ -131,6 +135,13 @@ label = expectMap case _ of
 dot :: Parser Unit
 dot = expectMap case _ of
   { value: TokDot } ->
+    Just unit
+  _ ->
+    Nothing
+
+dotDot :: Parser Unit
+dotDot = expectMap case _ of
+  { value: TokSymbolName Nothing ".." } ->
     Just unit
   _ ->
     Nothing

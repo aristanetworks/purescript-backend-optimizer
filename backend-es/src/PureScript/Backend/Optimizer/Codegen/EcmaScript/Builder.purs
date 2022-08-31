@@ -31,7 +31,7 @@ import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
-import PureScript.Backend.Optimizer.Semantics (EvalRef, InlineDirective)
+import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.CST.Errors (printParseError)
 
@@ -53,7 +53,7 @@ readCoreFnModule filePath = do
     Right mod ->
       pure $ Right mod
 
-externalDirectivesFromFile :: FilePath -> Aff (Map EvalRef InlineDirective)
+externalDirectivesFromFile :: FilePath -> Aff InlineDirectiveMap
 externalDirectivesFromFile filePath = do
   fileContent <- FS.readTextFile UTF8 filePath
   let { errors, directives } = parseDirectiveFile fileContent
@@ -65,7 +65,7 @@ externalDirectivesFromFile filePath = do
 
 basicBuildMain
   :: { resolveCoreFnDirectory :: Aff FilePath
-     , resolveExternalDirectives :: Aff (Map EvalRef InlineDirective)
+     , resolveExternalDirectives :: Aff InlineDirectiveMap
      , foreignSemantics :: Map (Qualified Ident) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit

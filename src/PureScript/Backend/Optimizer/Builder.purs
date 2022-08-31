@@ -16,7 +16,7 @@ import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
 import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
-import PureScript.Backend.Optimizer.Semantics (EvalRef, ExternImpl, InlineDirective)
+import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
 type BuildEnv =
@@ -26,7 +26,7 @@ type BuildEnv =
   }
 
 type BuildOptions m =
-  { directives :: Map EvalRef InlineDirective
+  { directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> m Unit

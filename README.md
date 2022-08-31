@@ -148,6 +148,26 @@ Example.semigroupMyData.append arity=2
 It's possible to refer to unnamed instances through their compiler-generated
 name, however this is quite difficult to maintain.
 
+Sometimes instances are parameterized by other constraints:
+
+```purescript
+module Example where
+
+import Prelude
+
+data Product f g a = Product (f a) (g a)
+
+instance functorProduct :: (Functor f, Functor g) => Functor (Product f g) where
+  map f (Product a b) = Product (f <$> a) (f <$> b)
+```
+
+```
+Example.functorProduct(..).map arity=2
+```
+
+Note the `(..)` between the name and the accessor, which will match
+applications of known instance dictionaries.
+
 ### Configuration
 
 Inlining directives can be configured in three ways:
