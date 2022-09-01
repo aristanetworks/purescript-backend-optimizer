@@ -5,7 +5,7 @@ defaultDirectives =
   """
   -- arrays
   -- <TODO>
-  
+
   -- assert
   -- <none>
 
@@ -80,6 +80,159 @@ defaultDirectives =
   Data.Op.semigroupOp arity=1
   Data.Op.monoidOp arity=1
   Data.Op.contravariantOp arity=1
+
+  -- control
+  -- <TODO>
+
+  -- datetime
+  -- <TODO>
+
+  -- distributive
+  -- <TODO>
+
+  -- effect
+  -- <move inliners here>
+
+  -- either
+  -- <TODO>
+
+  -- enums
+  -- <TODO>
+
+  -- exceptions
+  -- <TODO>
+
+  -- exists
+  -- <TODO>
+
+  -- filterable
+  -- <TODO>
+
+  -- foldable-traversable
+  -- <TODO>
+
+  -- foreign
+  -- <TODO>
+
+  -- foreign-object
+  -- <TODO>
+
+  -- free
+  -- <TODO>
+
+  -- functions
+  -- <TODO>
+
+  -- functors
+  -- <TODO>
+
+  -- gen
+  -- <TODO>
+
+  -- graphs
+  -- <TODO>
+
+  -- identity
+  -- <TODO>
+
+  -- integers
+  -- <TODO>
+
+  -- invariant
+  -- <TODO>
+
+  -- lazy
+  -- <TODO>
+
+  -- lcg
+  -- <TODO>
+
+  -- lists
+  -- <TODO>
+
+  -- maybe
+  -- <TODO>
+
+  -- metadata
+  -- <none and this package can always be ignored>
+
+  -- minibench
+  -- <TODO>
+
+  -- newtype
+  -- <TODO>
+
+  -- numbers
+  -- <TODO>
+
+  -- ordered-collections
+  -- <TODO>
+
+  -- orders
+  -- <TODO>
+
+  -- parallel
+  -- <TODO>
+
+  -- partial
+  -- <TODO>
+
+  -- prelude
+  -- <TODO: move respective content here>
+
+  -- profunctor
+  -- <TODO>
+
+  -- psci-support
+  -- <TODO>
+
+  -- quickcheck
+  -- <TODO>
+
+  -- random
+  -- <TODO>
+
+  -- record
+  -- <TODO>
+
+  -- refs
+  -- <TODO>
+
+  -- safe-coerce
+  -- <TODO>
+
+  -- semirings
+  -- <TODO>
+
+  -- st
+  -- <TODO>
+
+  -- strings
+  -- <TODO>
+
+  -- tailrec
+  -- <TODO>
+
+  -- transformers
+  -- <TODO>
+
+  -- tuples
+  -- <TODO>
+
+  -- type-equality
+  -- <TODO>
+
+  -- typelevel-prelude
+  -- <TODO>
+
+  -- unfoldable
+  -- <TODO>
+
+  -- unsafe-coerce
+  -- <TODO>
+
+  -- validation
+  -- <TODO>
 
   -- Prelude
 
