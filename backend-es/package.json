@@ -15,7 +15,7 @@
   },
   "scripts": {
     "preversion": "npm run test && npm run test:output-diff",
-    "version": "echo 'export const version = \"v'$npm_package_version'\";' > ./src/Version.js && git add ./src/Version.js && git commit -m 'Bump purs-backend-es version ($npm_package_version)' && git tag purs-backend-es-v$npm_package_version",
+    "version": "echo 'export const version = \"v'$npm_package_version'\";' > ./src/Version.js && git add ./src/Version.js && git commit -m 'Bump purs-backend-es version ('$npm_package_version')' && git tag purs-backend-es-v$npm_package_version",
     "postversion": "git push && git push --tags",
     "test": "cd .. && spago test",
     "test:output-diff": "npm run build && cd ../ && ./backend-es/index.js build --int-tags --output-dir=output-es2 && diff -r output-es output-es2 && rm -r output-es2",
