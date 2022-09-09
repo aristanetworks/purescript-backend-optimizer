@@ -137,7 +137,7 @@ The conclusion is dependent on what `f` is:
 
 #### Inlining and Inline Directives
 
-An inliner replaces a function's call site (e.g. stuff on the left-hand-side of the `=`) with its implementation (e.g. stuff on the right-hand-side of the `=`). This replacement means the function's body is duplicated and will appear at least twice in the resulting code: once in its original definition and once in the usage site.
+An inliner replaces a function call with its implementation. This replacement means the function's body is duplicated and will appear at least twice in the resulting code: once in its original definition and once in the usage site.
 
 Here's one example using the function `binaryPlus`:
 
