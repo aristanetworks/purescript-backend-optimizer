@@ -13,9 +13,6 @@ defaultDirectives =
   Control.Biapply.biapplyFirst arity=1
   Control.Biapply.biapplySecond arity=1
 
-  -- Data.Bifunctor.lmap arity=1
-  -- Data.Bifunctor.rmap arity=1
-
   -- Data.Bifunctor.Join.bifunctorJoin arity=1
   -- Data.Bifunctor.Join.biapplyJoin arity=1
   -- Data.Bifunctor.Join.biapplicativeJoin arity=1
