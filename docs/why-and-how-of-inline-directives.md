@@ -76,17 +76,17 @@ foo = do
 
 </details>
 
-At the end of the day, evaluating `case1` and `case2` produce the same boolean value, but `case1` produces and then consumes 2 intermediate data structures unnecessarily: `Either` and `Maybe`.
+At the end of the day, evaluating `case1` and `case2` produce the same boolean value, but `case1` constructs and then eliminates 2 intermediate data structures unnecessarily: `Either` and `Maybe`.
 
 **To summarize, the goal of our optimizations is to remove these unneeded intermediate data structures.** As a result, the code is more performant because there's less purely-overhead work for the computer to do at runtime.
 
 ## How Code Gets Optimized
 
-### Primitive Data Flow: Production and Consumption
+### Primitive Data Flow: Constructor and Eliminator
 
-How does `purs-backend-es` know when unneeded intermediate data structures are being used and when it is safe to remove them? These usages arise when primitive data is "produced" and then immediately "consumed".
+How does `purs-backend-es` know when unneeded intermediate data structures are being used and when it is safe to remove them? These usages arise when primitive data "constructors" are immediately followed by "eliminators".
 
-For example, the `Right` data constructor below is "produced" when it wraps `"value`" and then immediately consumed by `eitherToMaybe`.
+For example, the `Right` data constructor below is the "constructor" that is immediately "eliminiated" by the `case _ of` in `eitherToMaybe`.
 
 ```purs
 eitherToMaybe :: forall l r. Either l r -> Maybe r
@@ -97,7 +97,14 @@ eitherToMaybe = case _ of
 eitherToMaybe $ Right "value"
 ```
 
-Here's another example using records. The `{ bar: 42 }` record is "produced" by being defined in a let binding. It is then immediately "consumed" when its `bar` field is accessed. Thus, the record can be removed entirely and `a.bar` can be replaced with `42`.
+Here's another example using records. One can think of `record.label` as syntax sugar for the following case statement:
+
+```purs
+case _ of
+  { bar } -> bar
+```
+
+The below `{ bar: 42 }` record is a "constructor" that is immediately "eliminated" by the implicit case statement hidden by `a.bar`.
 
 ```purs
 foo = do
@@ -107,10 +114,9 @@ foo = do
   b
 ```
 
-Lastly, here's an example with a few different conclusions:
+Thus, the record can be removed entirely and `a.bar` can be replaced with `42`.
 
-- If we do NOT know what `f` will do with `a` (e.g. if `f` was some FFI function), then we cannot call the record an "unnecessary intermediate data structure." `f` may need the entire record, and that possibility forces us to call the record structure necessary.
-- If we do know what `f` will do (e.g. if `f = _.bar`), then this is still an example of a primitive data "production" followed by immediate primitive data "consumption".
+Lastly, here's an example with a two possible conclusions.
 
 ```purs
 foo = do
@@ -120,7 +126,12 @@ foo = do
   b
 ```
 
-**To summarize, a data producer followed immediately by a data consumer indicates a place where an unneeded intermediate data structure exists and can be removed.**
+The conclusion is dependent on what `f` is:
+
+- If we do NOT know what `f` will do with `a` (e.g. if `f` was some FFI function), then we cannot know whether the record is immediately "eliminated" by an implicit case statement. `f` may need the entire record, and that possibility forces us to call the record structure necessary.
+- If we do know what `f` will do with `a` (e.g. if `f = _.bar`), then this is still an example of a primitive "constructor" followed by immediate primitive "eliminiator".
+
+**To summarize, a data "constructor" followed immediately by a data "eliminator" indicates a place where an unneeded intermediate data structure exists and can be removed.**
 
 ### Removing Unneeded Data Structures
 
@@ -246,7 +257,7 @@ foo = (\arg2 -> do
   ) 9
 ```
 
-At this point, `purs-backend-es`' default inliners will see a lambda (i.e. a "producer") being immediately applied to an argument (i.e. a "consumer"). Thus, it will inline that argument into the lambda's body. This gets us:
+At this point, `purs-backend-es`' default inliners will see a lambda (i.e. a "constructor") being immediately applied to an argument (i.e. an "eliminator"). Thus, it will inline that argument into the lambda's body. This gets us:
 
 ```purs
 ignoreArgs arg1 arg2 = do
@@ -274,7 +285,7 @@ foo = do
   1 + a.bar + 17
 ```
 
-Fortunately, `purs-backend-es`' default inliners will see a record binding (i.e. a "producer") that is immediately accessed under the label `bar`. Thus, the corresponding value will be inlined:
+Fortunately, `purs-backend-es`' default inliners will see a record binding (i.e. a "constructor") that is immediately accessed under the label `bar` (i.e. an "eliminator"). Thus, the corresponding value will be inlined:
 
 ```purs
 ignoreArgs arg1 arg2 = do
