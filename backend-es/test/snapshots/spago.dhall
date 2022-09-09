@@ -1,6 +1,7 @@
 { name = "snapshots"
 , dependencies =
   [ "arrays"
+  , "bifunctors"
   , "console"
   , "convertable-options"
   , "effect"
