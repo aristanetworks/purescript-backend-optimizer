@@ -10,76 +10,76 @@ defaultDirectives =
   -- <none>
 
   -- bifunctors
-  Control.Biapply.biapplyFirst arity=1
-  Control.Biapply.biapplySecond arity=1
-  Control.Biapply.bilift2 arity=1
-  Control.Biapply.bilift3 arity=1
+  -- Control.Biapply.biapplyFirst arity=1
+  -- Control.Biapply.biapplySecond arity=1
+  -- Control.Biapply.bilift2 arity=1
+  -- Control.Biapply.bilift3 arity=1
 
-  Data.Bifunctor.lmap arity=1
-  Data.Bifunctor.rmap arity=1
+  -- Data.Bifunctor.lmap arity=1
+  -- Data.Bifunctor.rmap arity=1
 
-  Data.Bifunctor.Join.bifunctorJoin arity=1
-  Data.Bifunctor.Join.biapplyJoin arity=1
-  Data.Bifunctor.Join.biapplicativeJoin arity=1
+  -- Data.Bifunctor.Join.bifunctorJoin arity=1
+  -- Data.Bifunctor.Join.biapplyJoin arity=1
+  -- Data.Bifunctor.Join.biapplicativeJoin arity=1
 
   -- catenable-lists
-  Data.CatList.foldMap arity=1
-  Data.CatQueue.fromFoldable arity=1
-  Data.CatQueue.cqEq arity=1
-  Data.CatQueue.cqCompare arity=1
-  Data.CatQueue.eqCatQueue arity=1
-  Data.CatQueue.ordCatQueue arity=1
+  -- Data.CatList.foldMap arity=1
+  -- Data.CatQueue.fromFoldable arity=1
+  -- Data.CatQueue.cqEq arity=1
+  -- Data.CatQueue.cqCompare arity=1
+  -- Data.CatQueue.eqCatQueue arity=1
+  -- Data.CatQueue.ordCatQueue arity=1
 
   -- console
-  Effect.Class.Console.log arity=1
-  Effect.Class.Console.lowShow arity=1
-  Effect.Class.Console.warn arity=1
-  Effect.Class.Console.warnShow arity=1
-  Effect.Class.Console.error arity=1
-  Effect.Class.Console.errorShow arity=1
-  Effect.Class.Console.info arity=1
-  Effect.Class.Console.infoShow arity=1
-  Effect.Class.Console.debug arity=1
-  Effect.Class.Console.debugShow arity=1
-  Effect.Class.Console.time arity=1
-  Effect.Class.Console.timeLog arity=1
-  Effect.Class.Console.timeEnd arity=1
-  Effect.Class.Console.clear arity=1
+  -- Effect.Class.Console.log arity=1
+  -- Effect.Class.Console.lowShow arity=1
+  -- Effect.Class.Console.warn arity=1
+  -- Effect.Class.Console.warnShow arity=1
+  -- Effect.Class.Console.error arity=1
+  -- Effect.Class.Console.errorShow arity=1
+  -- Effect.Class.Console.info arity=1
+  -- Effect.Class.Console.infoShow arity=1
+  -- Effect.Class.Console.debug arity=1
+  -- Effect.Class.Console.debugShow arity=1
+  -- Effect.Class.Console.time arity=1
+  -- Effect.Class.Console.timeLog arity=1
+  -- Effect.Class.Console.timeEnd arity=1
+  -- Effect.Class.Console.clear arity=1
 
   -- const
-  Data.Const.eqConst arity=1
-  Data.Const.eq1Const arity=1
-  Data.Const.ordConst arity=1
-  Data.Const.ord1Const arity=1
-  Data.Const.boundedConst arity=1
-  Data.Const.semigroupConst arity=1
-  Data.Const.monoidConst arity=1
-  Data.Const.semiringConst arity=1
-  Data.Const.ringConst arity=1
-  Data.Const.euclideanRingConst arity=1
-  Data.Const.commutativeRingConst arity=1
-  Data.Const.heytingAlgebraConst arity=1
-  Data.Const.booleanAlgebraConst arity=1
-  Data.Const.applyConst arity=1
-  Data.Const.applicativeConst arity=1
+  -- Data.Const.eqConst arity=1
+  -- Data.Const.eq1Const arity=1
+  -- Data.Const.ordConst arity=1
+  -- Data.Const.ord1Const arity=1
+  -- Data.Const.boundedConst arity=1
+  -- Data.Const.semigroupConst arity=1
+  -- Data.Const.monoidConst arity=1
+  -- Data.Const.semiringConst arity=1
+  -- Data.Const.ringConst arity=1
+  -- Data.Const.euclideanRingConst arity=1
+  -- Data.Const.commutativeRingConst arity=1
+  -- Data.Const.heytingAlgebraConst arity=1
+  -- Data.Const.booleanAlgebraConst arity=1
+  -- Data.Const.applyConst arity=1
+  -- Data.Const.applicativeConst arity=1
 
   -- contravariant
-  Data.Functor.Contravariant.cmapFlipped arity=1
-  Data.Functor.Contravariant.coerce arity=1
-  Data.Functor.Contravariant.imapC arity=1
-  Data.Comparison.defaultComparison arity=1
-  Data.Decidable.decidableOp arity=1
-  Data.Decidable.lost arity=1
-  Data.Decide.chooseOp arity=1
-  Data.Decide.chosen arity=1
-  Data.Divide.divideOp arity=1
-  Data.Divide.divided arity=1
-  Data.Divisible.divisibleOp arity=1
-  Data.Equivalence.defaultEquivalence arity=1
-  Data.Equivalence.comparisonEquivalence arity=1
-  Data.Op.semigroupOp arity=1
-  Data.Op.monoidOp arity=1
-  Data.Op.contravariantOp arity=1
+  -- Data.Functor.Contravariant.cmapFlipped arity=1
+  -- Data.Functor.Contravariant.coerce arity=1
+  -- Data.Functor.Contravariant.imapC arity=1
+  -- Data.Comparison.defaultComparison arity=1
+  -- Data.Decidable.decidableOp arity=1
+  -- Data.Decidable.lost arity=1
+  -- Data.Decide.chooseOp arity=1
+  -- Data.Decide.chosen arity=1
+  -- Data.Divide.divideOp arity=1
+  -- Data.Divide.divided arity=1
+  -- Data.Divisible.divisibleOp arity=1
+  -- Data.Equivalence.defaultEquivalence arity=1
+  -- Data.Equivalence.comparisonEquivalence arity=1
+  -- Data.Op.semigroupOp arity=1
+  -- Data.Op.monoidOp arity=1
+  -- Data.Op.contravariantOp arity=1
 
   -- control
   -- <TODO>
