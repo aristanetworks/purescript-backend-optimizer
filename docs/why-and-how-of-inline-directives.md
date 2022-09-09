@@ -3,7 +3,7 @@
 This page explains four things:
 
 1. The primary optimization `purs-backend-es` does
-2. How inlining and inline directives help rewrite rules to optimize code
+2. How inlining and inline directives help `purs-backend-es` to evaluate code and thereby optimize it
 3. The most cost-efficient methodology for defining inline directives that are useful
 4. Guiding principles as to where to define such inline directives
 
@@ -199,20 +199,20 @@ usage2 = (\a b -> do
 
 **To summarize, inlining for the sake of inlining is a great way to unnecessarily increase your program's bundle size**.
 
-#### Rewrite Rules
+#### Evaluation
 
-A **rewrite rule** will replace one expression, usually involving literal values, with an equivalent expression. For example, an expression like `1 + 2` will always produce the value `3`. So, we can replace that expression with `3`. The rewrite rule here could be defined as, "Whenever the `+` function is called on two literal `Int` values, replace that expression with the sum of the two `Int` values."
+`purs-backend-es` knows how to evaluate some primitive PureScript expressions, and will evaluate such expressions at build time. Typically, such expressions involve literal values (e.g. `1`, `{ foo: "string" }`). For example, primitive addition can be evaluated when its arguments are both literal `Int` values (e.g. `1 + 2` is evaluated to `3`):
 
 ```purs
 -- Before
 foo = 1 + 2
-  --  ^^^^^ Rewrite rule: "I can optimize that! `1 + 2` is `3`"
+  --  ^^^^^ purs-backend-es: "I can evaluate that! 1 + 2 = 3"
 
 -- After
 foo = 3
 ```
 
-However, some expressions will prevent such rewrite rules from triggering. For example:
+However, some expressions will prevent these evaluations from triggering. For example:
 
 ```purs
 foo =
@@ -220,14 +220,14 @@ foo =
     a = { bar: 42 }
   in
     1 + a.bar
---  ^^^^^^^^^ Rewrite rule: "I can't optimize that! `a.bar` is not a literal `Int` value."
+--  ^^^^^^^^^ purs-backend-es: "I can't evaluate that! `a.bar` is not a literal `Int` value."
 ```
 
-Because the rewrite rule cannot see the literal `Int` value represented by `a.bar`, its optimization does not trigger. To solve this problem, we need to make it visible. The solution is to duplicate code via inlining.
+Because `purs-backend-es` cannot see the literal `Int` value represented by `a.bar`, its evaluation does not trigger. To solve this problem, we need to make it visible. The solution is to duplicate code via inlining.
 
-**To summarize, inlining duplicates code so that rewrite rules can trigger optimizations that were otherwise hidden from its eyes.**
+**To summarize, inlining duplicates code so that `purs-backend-es` evaluations can trigger optimizations that were otherwise hidden from its eyes.**
 
-#### Code Optimzation Example via Rewrite Rules and Inlining
+#### Code Optimzation Example via Evaluation and Inlining
 
 Let's see how this works in practice using this example:
 
@@ -271,7 +271,7 @@ foo = do
   1 + a.bar + 8 + 9
 ```
 
-A rewrite rule will detect the `8 + 9` expression, and replace it with its sum: `17`. However, `1 + a.bar` and `a.bar + 17` don't trigger the rewrite rule because one of the values is not a literal `Int` value.
+`purs-backend-es` will evaluate `8 + 9` to `17`. However, `1 + a.bar` and `a.bar + 17` don't get evaluated because one of the values is not a literal `Int` value.
 
 ```purs
 ignoreArgs arg1 arg2 = do
@@ -299,7 +299,7 @@ foo = do
   1 + 41 + 17
 ```
 
-The rewrite rules then detects that `1 + 41` is `42`:
+`purs-backend-es` will then evalute `1 + 41` to `42`:
 
 ```purs
 ignoreArgs arg1 arg2 = do
@@ -313,7 +313,7 @@ foo = do
   42 + 17
 ```
 
-The rewrite rules then detects that `42 + 17` is `59`:
+`purs-backend-es` will then evalute `42 + 17` to `59`:
 
 ```purs
 ignoreArgs arg1 arg2 = do
@@ -345,7 +345,7 @@ Now that we've finished optimizing `foo`, the following states are true:
 
 ## A Methodology for Defining Inline Directives
 
-Inlining duplicates code so that rewrite rules can trigger optimizations that were otherwise hidden from its eyes. Ideally, inlining values will always trigger rewrite rules that both reduce the bundle size of the code AND make the resulting program more performant. However, inlining may increase a program's bundle size without improving its performance.
+Inlining duplicates code so that evaluations can trigger optimizations that were otherwise hidden from its eyes. Ideally, inlining values will always trigger evaluations that both reduce the bundle size of the code AND make the resulting program more performant. However, inlining may increase a program's bundle size without improving its performance.
 
 In short, this process isn't scientific. While one can add inline directives without much thought, the result likely won't be what they want.
 
