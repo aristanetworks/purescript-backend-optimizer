@@ -145,21 +145,21 @@ Here's one example using the function `binaryPlus`:
 binaryPlus :: Int -> Int -> Int
 binaryPlus a b = a + b
 
-usage = 9 + binaryPlus 1 2
+usage = binaryPlus 1
 ```
 
-There's a few ways we could inline the expression, `binaryPlus 1 2`. While `purs-backend-es` will performance its own analysis to determine whether and when to inline it, it doesn't know as much as the developer does.
+There's a few ways we could inline the expression, `binaryPlus 1`. While `purs-backend-es` will performance its own analysis to determine whether and when to inline it, it doesn't know as much as the developer does.
 
 A developer can use **inline directives** to tell `purs-backend-es` whether to inline a function's body to its usage site and when (i.e. how many args need to be passed to the function before the inlining occurs):
 
 - never inline it at all (i.e. the directive is `never`)
-    - `9 + binaryPlus 1 2`
+    - `binaryPlus 1`
 - always inline it with no consideration for the number of arguments applied to it (i.e. the directive is `always`)
-    - `9 + (\a b -> a + b) 1 2`
+    - `(\a b -> a + b) 1`
 - inline it only after at least one argument has been applied to it (i.e. the directive is `arity=1`)
-    - `9 + (\  b -> 1 + b)   2`
+    - `(\  b -> 1 + b)`
 - inline it only after at least two arguments have been applied to it (i.e. the directive is `arity=2`)
-    - `9 + (        1 + 2)`
+    - `binaryPlus 1`
 
 **To summarize, inline directives provide developers with a stronger guarantee about whether and when a function is inlined than just relying upon the analysis done by `purs-backend-es`.**
 
