@@ -201,7 +201,7 @@ usage2 = (\a b -> do
 
 #### Evaluation
 
-`purs-backend-es` knows how to evaluate some primitive PureScript expressions, and will evaluate such expressions at build time. Typically, such expressions involve literal values (e.g. `1`, `{ foo: "string" }`). For example, primitive addition can be evaluated when its arguments are both literal `Int` values (e.g. `1 + 2` is evaluated to `3`):
+`purs-backend-es` _can_ evaluate PureScript code, but it will only evaluate _some_ expressions at build time. Typically, such expressions involve literal values (e.g. `1`, `{ foo: "string" }`). For example, primitive addition can be evaluated when its arguments are both literal `Int` values (e.g. `1 + 2` is evaluated to `3`). The below code demonstrates this:
 
 ```purs
 -- Before
