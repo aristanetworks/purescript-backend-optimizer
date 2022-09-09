@@ -225,7 +225,7 @@ foo =
 
 Because `purs-backend-es` cannot see the literal `Int` value represented by `a.bar`, its evaluation does not trigger. To solve this problem, we need to make it visible. The solution is to duplicate code via inlining.
 
-**To summarize, inlining duplicates code so that `purs-backend-es` evaluations can trigger optimizations that were otherwise hidden from its eyes.**
+**To summarize, inlining duplicates code so that `purs-backend-es` evaluations can trigger optimizations that were otherwise not apparent.**
 
 #### Code Optimzation Example via Evaluation and Inlining
 
@@ -345,7 +345,7 @@ Now that we've finished optimizing `foo`, the following states are true:
 
 ## A Methodology for Defining Inline Directives
 
-Inlining duplicates code so that evaluations can trigger optimizations that were otherwise hidden from its eyes. Ideally, inlining values will always trigger evaluations that both reduce the bundle size of the code AND make the resulting program more performant. However, inlining may increase a program's bundle size without improving its performance.
+Inlining duplicates code so that evaluations can trigger optimizations that were otherwise not apparent. Ideally, inlining values will always trigger evaluations that both reduce the bundle size of the code AND make the resulting program more performant. However, inlining may increase a program's bundle size without improving its performance.
 
 In short, this process isn't scientific. While one can add inline directives without much thought, the result likely won't be what they want.
 
