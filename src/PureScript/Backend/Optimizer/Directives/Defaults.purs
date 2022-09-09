@@ -14,12 +14,7 @@ defaultDirectives =
   Control.Biapply.biapplySecond arity=1
 
   -- catenable-lists
-  -- Data.CatList.foldMap arity=1
-  -- Data.CatQueue.fromFoldable arity=1
-  -- Data.CatQueue.cqEq arity=1
-  -- Data.CatQueue.cqCompare arity=1
-  -- Data.CatQueue.eqCatQueue arity=1
-  -- Data.CatQueue.ordCatQueue arity=1
+  -- <none>
 
   -- console
   -- Effect.Class.Console.log arity=1
