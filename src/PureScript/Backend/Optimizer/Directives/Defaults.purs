@@ -17,20 +17,7 @@ defaultDirectives =
   -- <none>
 
   -- console
-  -- Effect.Class.Console.log arity=1
-  -- Effect.Class.Console.lowShow arity=1
-  -- Effect.Class.Console.warn arity=1
-  -- Effect.Class.Console.warnShow arity=1
-  -- Effect.Class.Console.error arity=1
-  -- Effect.Class.Console.errorShow arity=1
-  -- Effect.Class.Console.info arity=1
-  -- Effect.Class.Console.infoShow arity=1
-  -- Effect.Class.Console.debug arity=1
-  -- Effect.Class.Console.debugShow arity=1
-  -- Effect.Class.Console.time arity=1
-  -- Effect.Class.Console.timeLog arity=1
-  -- Effect.Class.Console.timeEnd arity=1
-  -- Effect.Class.Console.clear arity=1
+  -- <none>
 
   -- const
   -- Data.Const.eqConst arity=1
