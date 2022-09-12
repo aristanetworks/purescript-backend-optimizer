@@ -23,7 +23,6 @@ defaultDirectives =
   Data.Const.applicativeConst arity=1
 
   -- contravariant
-  -- Data.Comparison.defaultComparison arity=1
   -- Data.Decidable.decidableOp arity=1
   -- Data.Decidable.lost arity=1
   -- Data.Decide.chooseOp arity=1
