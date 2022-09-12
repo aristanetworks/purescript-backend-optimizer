@@ -3,6 +3,7 @@ import * as Control$dMonad$dWriter$dTrans from "../Control.Monad.Writer.Trans/in
 import * as Data$dMonoid from "../Data.Monoid/index.js";
 import * as Data$dSemigroup from "../Data.Semigroup/index.js";
 import * as Data$dSemiring from "../Data.Semiring/index.js";
+import * as Data$dTuple from "../Data.Tuple/index.js";
 import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
@@ -12,7 +13,6 @@ const monadTellWriterT = /* #__PURE__ */ Control$dMonad$dWriter$dTrans.monadTell
 const applicativeWriterT = /* #__PURE__ */ Control$dMonad$dWriter$dTrans.applicativeWriterT(Data$dMonoid.monoidString);
 const monadTellWriterT1 = /* #__PURE__ */ monadTellWriterT(Effect.monadEffect);
 const monadEffectWriter1 = /* #__PURE__ */ monadEffectWriter(Effect$dClass.monadEffectEffect);
-const bindWriterT1 = /* #__PURE__ */ Control$dMonad$dWriter$dTrans.bindWriterT(Data$dSemigroup.semigroupString)(Effect.bindEffect);
 const map1 = /* #__PURE__ */ (() => Control$dMonad$dWriter$dTrans.functorWriterT(Effect.functorEffect).map)();
 const apply = /* #__PURE__ */ (() => Control$dMonad$dWriter$dTrans.applyWriterT(Data$dSemigroup.semigroupString)(Effect.applyEffect).apply)();
 const pure = /* #__PURE__ */ (() => applicativeWriterT(Effect.applicativeEffect).pure)();
@@ -55,12 +55,39 @@ const test3 = /* #__PURE__ */ (() => {
   };
 })();
 const test1 = /* #__PURE__ */ (() => {
-  const $0 = bindWriterT1.bind(monadEffectWriter1.liftEffect(Effect$dConsole.log("foo")))(() => bindWriterT1.bind(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10)))(i1 => bindWriterT1.bind(map1(v => v + 1 | 0)(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10))))(i2 => bindWriterT1.bind(apply(map1(Data$dSemiring.intAdd)(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10))))(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10))))(i3 => bindWriterT1.bind(monadTellWriterT1.tell("nothing"))(() => pure((
-    (4 + i1 | 0) + i2 | 0
-  ) + i3 | 0))))));
+  const $0 = monadEffectWriter1.liftEffect(Effect$dConsole.log("foo"));
   return () => {
-    const a$p = $0();
+    $0();
+    const a$p = (() => {
+      const $2 = monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10));
+      return () => {
+        const v1 = $2();
+        const a$p = (() => {
+          const $4 = map1(v => v + 1 | 0)(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10)));
+          return () => {
+            const v1$1 = $4();
+            const a$p = (() => {
+              const $6 = apply(map1(Data$dSemiring.intAdd)(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10))))(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10)));
+              return () => {
+                const v1$2 = $6();
+                const a$p = (() => {
+                  const $8 = monadTellWriterT1.tell("nothing");
+                  return () => {
+                    const v1$3 = $8();
+                    const a$p = pure(((4 + v1._1 | 0) + v1$1._1 | 0) + v1$2._1 | 0)();
+                    return Data$dTuple.$Tuple(a$p._1, v1$3._2 + a$p._2);
+                  };
+                })()();
+                return Data$dTuple.$Tuple(a$p._1, v1$2._2 + a$p._2);
+              };
+            })()();
+            return Data$dTuple.$Tuple(a$p._1, v1$1._2 + a$p._2);
+          };
+        })()();
+        return Data$dTuple.$Tuple(a$p._1, v1._2 + a$p._2);
+      };
+    })()();
     return a$p._1;
   };
 })();
-export {applicativeWriterT, apply, bindWriterT1, map1, monadEffectWriter, monadEffectWriter1, monadTellWriterT, monadTellWriterT1, pure, test1, test2, test3, test4, test5};
+export {applicativeWriterT, apply, map1, monadEffectWriter, monadEffectWriter1, monadTellWriterT, monadTellWriterT1, pure, test1, test2, test3, test4, test5};
