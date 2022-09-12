@@ -47,7 +47,8 @@ defaultDirectives =
   -- <TODO>
 
   -- effect
-  -- <move inliners here>
+  -- <TODO>
+  Effect.applyEffect.apply arity=2
 
   -- either
   -- <TODO>
@@ -150,9 +151,12 @@ defaultDirectives =
 
   -- record
   -- <TODO>
+  Record.Builder.build arity=1
+  Record.Builder.rename arity=8
 
   -- refs
   -- <TODO>
+  Effect.Ref.modify arity=2
 
   -- safe-coerce
   -- <TODO>
@@ -162,6 +166,7 @@ defaultDirectives =
 
   -- st
   -- <TODO>
+  Control.Monad.ST.Internal.modify arity=2
 
   -- strings
   -- <TODO>
@@ -310,10 +315,4 @@ defaultDirectives =
   Data.Show.showRecord arity=3
   Data.Show.showRecordFieldsConsNil arity=2
   Data.Show.showRecordFieldsCons arity=3
-
-  Control.Monad.ST.Internal.modify arity=2
-  Effect.applyEffect.apply arity=2
-  Effect.Ref.modify arity=2
-  Record.Builder.build arity=1
-  Record.Builder.rename arity=8
   """
