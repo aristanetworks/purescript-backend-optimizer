@@ -47,8 +47,7 @@ defaultDirectives =
   -- <TODO>
 
   -- effect
-  -- <TODO>
-  Effect.applyEffect.apply arity=2
+  -- <none>
 
   -- either
   -- <TODO>
