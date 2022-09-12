@@ -54,32 +54,50 @@ const test3 = /* #__PURE__ */ (() => {
   const Apply0 = Bind1.Apply0();
   const map1 = Apply0.Functor0().map;
   const pure1 = Monad0.Applicative0().pure;
-  return Bind1.bind(monadEffectReader.liftEffect(Effect$dConsole.log("foo")))(() => Bind1.bind(monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10)))(i1 => Bind1.bind(map1(v => v + 1 | 0)(monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10))))(i2 => Bind1.bind(Apply0.apply(map1(Data$dSemiring.intAdd)(monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10))))(monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10))))(i3 => Bind1.bind(ask1)(five => Bind1.bind(monadReaderReaderT.local(v => v * 2 | 0)(Bind1.bind(ask1)(ten => monadEffectReader.liftEffect(Effect$dRandom.randomInt(ten)(20)))))(i4 => pure1((
-    (((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0
-  ) + i4 | 0)))))))(5);
+  return Bind1.bind((() => {
+    const $6 = Effect$dConsole.log("foo");
+    return v => $6;
+  })())(() => Bind1.bind((() => {
+    const $7 = Effect$dRandom.randomInt(1)(10);
+    return v => $7;
+  })())(i1 => Bind1.bind(map1(v => v + 1 | 0)((() => {
+    const $8 = Effect$dRandom.randomInt(1)(10);
+    return v => $8;
+  })()))(i2 => Bind1.bind(Apply0.apply(map1(Data$dSemiring.intAdd)((() => {
+    const $9 = Effect$dRandom.randomInt(1)(10);
+    return v => $9;
+  })()))((() => {
+    const $9 = Effect$dRandom.randomInt(1)(10);
+    return v => $9;
+  })()))(i3 => Bind1.bind(ask1)(five => Bind1.bind(monadReaderReaderT.local(v => v * 2 | 0)(Bind1.bind(ask1)(ten => {
+    const $12 = Effect$dRandom.randomInt(ten)(20);
+    return v => $12;
+  })))(i4 => pure1(((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0)))))))(5);
 })();
-const test1 = /* #__PURE__ */ (() => bindReaderT.bind(monadEffectReader.liftEffect(Effect$dConsole.log("foo")))(() => bindReaderT.bind(monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10)))(i1 => bindReaderT.bind((() => {
-  const $2 = monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10));
-  return x => {
-    const $4 = $2(x);
-    return () => {
-      const a$p = $4();
-      return a$p + 1 | 0;
-    };
+const test1 = /* #__PURE__ */ (() => bindReaderT.bind((() => {
+  const $0 = Effect$dConsole.log("foo");
+  return v => $0;
+})())(() => bindReaderT.bind((() => {
+  const $1 = Effect$dRandom.randomInt(1)(10);
+  return v => $1;
+})())(i1 => bindReaderT.bind((() => {
+  const $2 = Effect$dRandom.randomInt(1)(10);
+  return x => () => {
+    const a$p = $2();
+    return a$p + 1 | 0;
   };
 })())(i2 => bindReaderT.bind((() => {
-  const $3 = monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10));
-  const $4 = monadEffectReader.liftEffect(Effect$dRandom.randomInt(1)(10));
-  return r => {
-    const $6 = $3(r);
-    const $7 = $4(r);
-    return () => {
-      const a$p = $6();
-      const a$p$1 = $7();
-      return a$p + a$p$1 | 0;
-    };
+  const $3 = Effect$dRandom.randomInt(1)(10);
+  const $4 = Effect$dRandom.randomInt(1)(10);
+  return r => () => {
+    const a$p = $3();
+    const a$p$1 = $4();
+    return a$p + a$p$1 | 0;
   };
-})())(i3 => bindReaderT.bind(Effect.pureE)(five => bindReaderT.bind(monadReaderReaderT.local(v => v * 2 | 0)(bindReaderT.bind(Effect.pureE)(ten => monadEffectReader.liftEffect(Effect$dRandom.randomInt(ten)(20)))))(i4 => {
+})())(i3 => bindReaderT.bind(Effect.pureE)(five => bindReaderT.bind(monadReaderReaderT.local(v => v * 2 | 0)(bindReaderT.bind(Effect.pureE)(ten => {
+  const $6 = Effect$dRandom.randomInt(ten)(20);
+  return v => $6;
+})))(i4 => {
   const $6 = ((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0;
   return v => () => $6;
 }))))))(5))();
