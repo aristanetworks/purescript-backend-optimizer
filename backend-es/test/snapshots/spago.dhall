@@ -21,6 +21,7 @@
   , "refs"
   , "safe-coerce"
   , "strings"
+  , "transformers"
   , "tuples"
   , "type-equality"
   , "variant"
