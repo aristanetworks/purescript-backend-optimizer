@@ -1,7 +1,5 @@
 import * as $runtime from "../runtime.js";
-import * as Data$dConst from "../Data.Const/index.js";
 import * as Data$dEuclideanRing from "../Data.EuclideanRing/index.js";
-import * as Data$dMonoid from "../Data.Monoid/index.js";
 import * as Data$dOrd from "../Data.Ord/index.js";
 const test9 = "";
 const test8 = "hi";
@@ -10,7 +8,7 @@ const test6 = -2147483648;
 const test5 = 2147483647;
 const test4 = /* #__PURE__ */ (() => Data$dOrd.ordString.compare("h")("i"))();
 const test3 = true;
-const test21 = /* #__PURE__ */ (() => Data$dConst.applicativeConst(Data$dMonoid.monoidString).pure(1))();
+const test21 = "";
 const test20 = "hi";
 const test2 = false;
 const test19 = 1;

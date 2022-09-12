@@ -20,21 +20,7 @@ defaultDirectives =
   -- <none>
 
   -- const
-  -- Data.Const.eqConst arity=1
-  -- Data.Const.eq1Const arity=1
-  -- Data.Const.ordConst arity=1
-  -- Data.Const.ord1Const arity=1
-  -- Data.Const.boundedConst arity=1
-  -- Data.Const.semigroupConst arity=1
-  -- Data.Const.monoidConst arity=1
-  -- Data.Const.semiringConst arity=1
-  -- Data.Const.ringConst arity=1
-  -- Data.Const.euclideanRingConst arity=1
-  -- Data.Const.commutativeRingConst arity=1
-  -- Data.Const.heytingAlgebraConst arity=1
-  -- Data.Const.booleanAlgebraConst arity=1
-  -- Data.Const.applyConst arity=1
-  -- Data.Const.applicativeConst arity=1
+  Data.Const.applicativeConst arity=1
 
   -- contravariant
   -- Data.Functor.Contravariant.cmapFlipped arity=1
