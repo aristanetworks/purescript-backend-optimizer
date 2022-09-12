@@ -23,9 +23,6 @@ defaultDirectives =
   Data.Const.applicativeConst arity=1
 
   -- contravariant
-  -- Data.Functor.Contravariant.cmapFlipped arity=1
-  -- Data.Functor.Contravariant.coerce arity=1
-  -- Data.Functor.Contravariant.imapC arity=1
   -- Data.Comparison.defaultComparison arity=1
   -- Data.Decidable.decidableOp arity=1
   -- Data.Decidable.lost arity=1

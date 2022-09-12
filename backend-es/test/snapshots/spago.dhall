@@ -4,6 +4,7 @@
   , "bifunctors"
   , "console"
   , "const"
+  , "contravariant"
   , "convertable-options"
   , "effect"
   , "either"
