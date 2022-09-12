@@ -297,7 +297,12 @@ defaultDirectives =
 
   Control.Monad.Writer.Trans.functorWriterT(..).map arity=1
   Control.Monad.Writer.Trans.applyWriterT(..).apply arity=2
+  Control.Monad.Writer.Trans.applicativeWriterT(..).pure arity=1
   Control.Monad.Writer.Trans.bindWriterT(..).bind arity=2
+  Control.Monad.Writer.Trans.monadEffectWriter(..).liftEffect arity=1
+  Control.Monad.Writer.Trans.monadTellWriterT(..).tell arity=1
+  Control.Monad.Writer.Trans.monadTransWriterT(..).lift arity=1
+
   -- tuples
   -- <TODO>
 
