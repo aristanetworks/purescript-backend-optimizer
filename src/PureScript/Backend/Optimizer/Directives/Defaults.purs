@@ -291,8 +291,9 @@ defaultDirectives =
   -- <TODO>
 
   -- transformers
-  Control.Monad.Reader.Trans.bindReaderT(..).bind arity=1
-  Control.Monad.Reader.Trans.monadEffectReader(..).liftEffect arity=1
+  -- Control.Monad.Reader.Trans.bindReaderT(..).bind arity=1
+  -- Control.Monad.Reader.Trans.monadEffectReader(..).liftEffect arity=1
+  -- Control.Monad.Reader.Trans.monadAskReaderT(..).ask arity=1
 
   -- tuples
   -- <TODO>

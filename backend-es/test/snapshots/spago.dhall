@@ -19,6 +19,7 @@
   , "partial"
   , "prelude"
   , "profunctor-lenses"
+  , "random"
   , "record"
   , "refs"
   , "safe-coerce"
