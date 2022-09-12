@@ -3,6 +3,7 @@
   [ "arrays"
   , "bifunctors"
   , "console"
+  , "const"
   , "convertable-options"
   , "effect"
   , "either"
