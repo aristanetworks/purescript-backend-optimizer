@@ -135,68 +135,6 @@ defaultDirectives =
   -- <TODO>
 
   -- prelude
-  -- <TODO: move respective content here>
-
-  -- profunctor
-  -- <TODO>
-
-  -- psci-support
-  -- <TODO>
-
-  -- quickcheck
-  -- <TODO>
-
-  -- random
-  -- <TODO>
-
-  -- record
-  -- <TODO>
-  Record.Builder.build arity=1
-  Record.Builder.rename arity=8
-
-  -- refs
-  -- <TODO>
-  Effect.Ref.modify arity=2
-
-  -- safe-coerce
-  -- <TODO>
-
-  -- semirings
-  -- <TODO>
-
-  -- st
-  -- <TODO>
-  Control.Monad.ST.Internal.modify arity=2
-
-  -- strings
-  -- <TODO>
-
-  -- tailrec
-  -- <TODO>
-
-  -- transformers
-  -- <TODO>
-
-  -- tuples
-  -- <TODO>
-
-  -- type-equality
-  -- <TODO>
-
-  -- typelevel-prelude
-  -- <TODO>
-
-  -- unfoldable
-  -- <TODO>
-
-  -- unsafe-coerce
-  -- <TODO>
-
-  -- validation
-  -- <TODO>
-
-  -- Prelude
-
   Control.Applicative.liftA1 arity=1
   Control.Applicative.when arity=1
   Control.Applicative.unless arity=1
@@ -315,4 +253,62 @@ defaultDirectives =
   Data.Show.showRecord arity=3
   Data.Show.showRecordFieldsConsNil arity=2
   Data.Show.showRecordFieldsCons arity=3
+
+  -- profunctor
+  -- <TODO>
+
+  -- psci-support
+  -- <TODO>
+
+  -- quickcheck
+  -- <TODO>
+
+  -- random
+  -- <TODO>
+
+  -- record
+  -- <TODO>
+  Record.Builder.build arity=1
+  Record.Builder.rename arity=8
+
+  -- refs
+  -- <TODO>
+  Effect.Ref.modify arity=2
+
+  -- safe-coerce
+  -- <TODO>
+
+  -- semirings
+  -- <TODO>
+
+  -- st
+  -- <TODO>
+  Control.Monad.ST.Internal.modify arity=2
+
+  -- strings
+  -- <TODO>
+
+  -- tailrec
+  -- <TODO>
+
+  -- transformers
+  -- <TODO>
+
+  -- tuples
+  -- <TODO>
+
+  -- type-equality
+  -- <TODO>
+
+  -- typelevel-prelude
+  -- <TODO>
+
+  -- unfoldable
+  -- <TODO>
+
+  -- unsafe-coerce
+  -- <TODO>
+
+  -- validation
+  -- <TODO>
   """
