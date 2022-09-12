@@ -1,6 +1,6 @@
 -- @inline export bindCalls always
 -- @inline export discardCalls always
-module Snapshot.EffectTransformers01 where
+module Snapshot.EffectBind07 where
 
 import Prelude
 
