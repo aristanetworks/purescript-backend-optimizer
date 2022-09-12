@@ -296,6 +296,7 @@ defaultDirectives =
   Control.Monad.Reader.Trans.monadReaderReaderT(..).local arity=1
 
   Control.Monad.Writer.Trans.functorWriterT(..).map arity=1
+  Control.Monad.Writer.Trans.applyWriterT(..).apply arity=2
   Control.Monad.Writer.Trans.bindWriterT(..).bind arity=2
   -- tuples
   -- <TODO>

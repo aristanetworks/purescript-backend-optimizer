@@ -13,7 +13,6 @@ const monadTellWriterT = /* #__PURE__ */ Control$dMonad$dWriter$dTrans.monadTell
 const applicativeWriterT = /* #__PURE__ */ Control$dMonad$dWriter$dTrans.applicativeWriterT(Data$dMonoid.monoidString);
 const monadTellWriterT1 = /* #__PURE__ */ monadTellWriterT(Effect.monadEffect);
 const monadEffectWriter1 = /* #__PURE__ */ monadEffectWriter(Effect$dClass.monadEffectEffect);
-const apply = /* #__PURE__ */ (() => Control$dMonad$dWriter$dTrans.applyWriterT(Data$dSemigroup.semigroupString)(Effect.applyEffect).apply)();
 const pure = /* #__PURE__ */ (() => applicativeWriterT(Effect.applicativeEffect).pure)();
 const test4 = dictMonadEffect => {
   const Monad0 = dictMonadEffect.Monad0();
@@ -67,24 +66,21 @@ const test1 = /* #__PURE__ */ (() => {
             const a$p = $4();
             const $6 = a$p._1 + 1 | 0;
             const a$p$1 = (() => {
-              const $7 = apply((() => {
-                const $7 = monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10));
-                return () => {
-                  const a$p$1 = $7();
-                  return Data$dTuple.$Tuple($9 => a$p$1._1 + $9 | 0, a$p$1._2);
-                };
-              })())(monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10)));
+              const $7 = monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10));
+              const $8 = monadEffectWriter1.liftEffect(Effect$dRandom.randomInt(1)(10));
               return () => {
-                const v1$1 = $7();
-                const a$p$1 = (() => {
-                  const $9 = monadTellWriterT1.tell("nothing");
+                const a$p$1 = $7();
+                const a$p$2 = $8();
+                const $11 = a$p$1._1 + a$p$2._1 | 0;
+                const a$p$3 = (() => {
+                  const $12 = monadTellWriterT1.tell("nothing");
                   return () => {
-                    const v1$2 = $9();
-                    const a$p$1 = pure(((4 + v1._1 | 0) + $6 | 0) + v1$1._1 | 0)();
-                    return Data$dTuple.$Tuple(a$p$1._1, v1$2._2 + a$p$1._2);
+                    const v1$1 = $12();
+                    const a$p$3 = pure(((4 + v1._1 | 0) + $6 | 0) + $11 | 0)();
+                    return Data$dTuple.$Tuple(a$p$3._1, v1$1._2 + a$p$3._2);
                   };
                 })()();
-                return Data$dTuple.$Tuple(a$p$1._1, v1$1._2 + a$p$1._2);
+                return Data$dTuple.$Tuple(a$p$3._1, a$p$1._2 + a$p$2._2 + a$p$3._2);
               };
             })()();
             return Data$dTuple.$Tuple(a$p$1._1, a$p._2 + a$p$1._2);
@@ -96,4 +92,4 @@ const test1 = /* #__PURE__ */ (() => {
     return a$p._1;
   };
 })();
-export {applicativeWriterT, apply, monadEffectWriter, monadEffectWriter1, monadTellWriterT, monadTellWriterT1, pure, test1, test2, test3, test4, test5};
+export {applicativeWriterT, monadEffectWriter, monadEffectWriter1, monadTellWriterT, monadTellWriterT1, pure, test1, test2, test3, test4, test5};
