@@ -68,10 +68,13 @@ const test3 = /* #__PURE__ */ (() => {
   })()))((() => {
     const $9 = Effect$dRandom.randomInt(1)(10);
     return v => $9;
-  })()))(i3 => Bind1.bind(ask1)(five => Bind1.bind(monadReaderReaderT.local(v => v * 2 | 0)(Bind1.bind(ask1)(ten => {
-    const $12 = Effect$dRandom.randomInt(ten)(20);
-    return v => $12;
-  })))(i4 => pure1(((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0)))))))(5);
+  })()))(i3 => Bind1.bind(ask1)(five => Bind1.bind((() => {
+    const $11 = Bind1.bind(ask1)(ten => {
+      const $12 = Effect$dRandom.randomInt(ten)(20);
+      return v => $12;
+    });
+    return x => $11(x * 2 | 0);
+  })())(i4 => pure1(((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0)))))))(5);
 })();
 const test1 = () => {
   Effect$dConsole.log("foo")();
@@ -79,7 +82,7 @@ const test1 = () => {
   const a$p = Effect$dRandom.randomInt(1)(10)();
   const a$p$1 = Effect$dRandom.randomInt(1)(10)();
   const a$p$2 = Effect$dRandom.randomInt(1)(10)();
-  const a$1 = monadReaderReaderT.local(v => v * 2 | 0)(r => Effect$dRandom.randomInt(r)(20))(5)();
+  const a$1 = Effect$dRandom.randomInt(10)(20)();
   return ((((4 + a | 0) + (a$p + 1 | 0) | 0) + (a$p$1 + a$p$2 | 0) | 0) + 5 | 0) + a$1 | 0;
 };
 export {monadEffectReader, monadReaderReaderT, test1, test2, test3, test4, test5};
