@@ -8,7 +8,6 @@ import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
 const monadReaderReaderT = /* #__PURE__ */ Control$dMonad$dReader$dTrans.monadReaderReaderT(Effect.monadEffect);
 const monadEffectReader = /* #__PURE__ */ Control$dMonad$dReader$dTrans.monadEffectReader(Effect$dClass.monadEffectEffect);
-const bindReaderT = /* #__PURE__ */ Control$dMonad$dReader$dTrans.bindReaderT(Effect.bindEffect);
 const test4 = dictMonadEffect => {
   const Monad0 = dictMonadEffect.Monad0();
   const Bind1 = Monad0.Bind1();
@@ -74,31 +73,13 @@ const test3 = /* #__PURE__ */ (() => {
     return v => $12;
   })))(i4 => pure1(((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0)))))))(5);
 })();
-const test1 = /* #__PURE__ */ (() => bindReaderT.bind((() => {
-  const $0 = Effect$dConsole.log("foo");
-  return v => $0;
-})())(() => bindReaderT.bind((() => {
-  const $1 = Effect$dRandom.randomInt(1)(10);
-  return v => $1;
-})())(i1 => bindReaderT.bind((() => {
-  const $2 = Effect$dRandom.randomInt(1)(10);
-  return x => () => {
-    const a$p = $2();
-    return a$p + 1 | 0;
-  };
-})())(i2 => bindReaderT.bind((() => {
-  const $3 = Effect$dRandom.randomInt(1)(10);
-  const $4 = Effect$dRandom.randomInt(1)(10);
-  return r => () => {
-    const a$p = $3();
-    const a$p$1 = $4();
-    return a$p + a$p$1 | 0;
-  };
-})())(i3 => bindReaderT.bind(Effect.pureE)(five => bindReaderT.bind(monadReaderReaderT.local(v => v * 2 | 0)(bindReaderT.bind(Effect.pureE)(ten => {
-  const $6 = Effect$dRandom.randomInt(ten)(20);
-  return v => $6;
-})))(i4 => {
-  const $6 = ((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0;
-  return v => () => $6;
-}))))))(5))();
-export {bindReaderT, monadEffectReader, monadReaderReaderT, test1, test2, test3, test4, test5};
+const test1 = () => {
+  Effect$dConsole.log("foo")();
+  const a = Effect$dRandom.randomInt(1)(10)();
+  const a$p = Effect$dRandom.randomInt(1)(10)();
+  const a$p$1 = Effect$dRandom.randomInt(1)(10)();
+  const a$p$2 = Effect$dRandom.randomInt(1)(10)();
+  const a$1 = monadReaderReaderT.local(v => v * 2 | 0)(r => Effect$dRandom.randomInt(r)(20))(5)();
+  return ((((4 + a | 0) + (a$p + 1 | 0) | 0) + (a$p$1 + a$p$2 | 0) | 0) + 5 | 0) + a$1 | 0;
+};
+export {monadEffectReader, monadReaderReaderT, test1, test2, test3, test4, test5};
