@@ -1,380 +1,369 @@
 # Why and How of Inline Directives
 
-This page explains four things:
+## Optimization by Evaluation
 
-1. The primary optimization `purs-backend-es` does
-2. How inlining and inline directives help `purs-backend-es` to evaluate code and thereby optimize it
-3. The most cost-efficient methodology for defining inline directives that are useful
-4. Guiding principles as to where to define such inline directives
+### Concept
 
-## The Goal of Optimizations
+`purs-backend-es` optimizes PureScript code by evaluating it.
 
-What's the difference between the following two expressions?
+For example, if `purs-backend-es` found an expression like the following:
 
 ```purs
-case1 :: forall a. FailureOrSuccess a -> Boolean
-case1 someComputation =
-  maybeToBoolean $ eitherToMaybe $ resultToEither someComputation
-  where
-  resultToEither :: FailureOrSuccess a -> Either String a
-  resultToEither arg = case  of
-    Failure -> Left "There was an error!"
-    Success a -> Right a
-
-  eitherToMaybe :: Either String a -> Maybe a
-  eitherToMaybe arg = case arg of
-    Left _ -> Nothing
-    Right a -> Just a
-
-  maybeToBoolean :: Maybe a -> Boolean
-  maybeToBoolean arg = case arg of
-    Nothing -> false
-    Just a -> true
-
-case2 :: forall a. FailureOrSuccess a -> Boolean
-case2 someComputation = case someComputation of
-  Failure -> false
-  Success _ -> true
+1 + 2
 ```
 
-While a developer would never intentionally write an expression like `case1`, such an expression may still arise if one has a long enough "chain" of functions spread across different modules.
-
-<details>
-<summary>For an example of such a "chain", expand this accordion</summary>
+it would evaluate that to
 
 ```purs
--- Module1.purs
-someComputation :: forall a. Int -> FailureOrSuccess a
-
--- Module2.purs
-resultToEither :: FailureOrSuccess a -> Either String a
-resultToEither arg = case  of
-  Failure -> Left "There was an error!"
-  Success a -> Right a
-
-computationAsEither = resultToEither $ someComputation 4
-
--- Module3.purs
-eitherToMaybe :: Either String a -> Maybe a
-eitherToMaybe arg = case arg of
-  Left _ -> Nothing
-  Right a -> Just a
-
-computationAsMaybe = map doSomethingElse computationAsEither
-
--- Module4.purs
-maybeToBoolean :: Maybe a -> Boolean
-maybeToBoolean arg = case arg of
-  Nothing -> false
-  Just a -> true
-
--- Module5.purs
-foo = do
-  let x = maybeToBoolean computationAsMaybe
-  ...
+3
 ```
 
-</details>
+Below are a few other examples of the evaluations that `purs-backend-es` knows how to do. The below list is not exhaustive:
 
-At the end of the day, evaluating `case1` and `case2` produce the same boolean value, but `case1` constructs and then eliminates 2 intermediate data structures unnecessarily: `Either` and `Maybe`.
+| Operation | Expression (before) | Expression (after) |
+|-|-|-|
+| Primitive Boolean Conjunction | `false && true` | `false` |
+| Primitive String concatenation | `"hello " <> "world"` | `"hello world"` |
+| Accessing a label from a literal record | `{ foo: 1 }.foo` | `1` |
+| Applying a known argument to a lambda | `(\a -> a + 2) 1` | `1 + 2` |
 
-**To summarize, the goal of our optimizations is to remove these unneeded intermediate data structures.** As a result, the code is more performant because there's less purely-overhead work for the computer to do at runtime.
+`purs-backend-es` also knows how to optimize some case expressions.
 
-## How Code Gets Optimized
-
-### Primitive Data Flow: Constructor and Eliminator
-
-How does `purs-backend-es` know when unneeded intermediate data structures are being used and when it is safe to remove them? These usages arise when primitive data "constructors" are immediately followed by "eliminators".
-
-For example, the `Right` data constructor below is the "constructor" that is immediately "eliminiated" by the `case _ of` in `eitherToMaybe`.
+Here's an obvious example:
 
 ```purs
-eitherToMaybe :: forall l r. Either l r -> Maybe r
-eitherToMaybe = case _ of
-  Left _ -> Nothing
-  Right a -> Just a
+-- Start: a case expression with one case row always matches.
+-- So, just replace the expression `a` with its corresponding value, `1`:
+case 1 of
+  a -> a
 
-eitherToMaybe $ Right "value"
+-- Finish
+1
 ```
 
-Here's another example using records. One can think of `record.label` as syntax sugar for the following case statement:
+A more useful example is **case of known constructor**:
 
 ```purs
-case _ of
-  { bar } -> bar
+data TwoOptions
+  = Option1
+  | Option2
+
+-- Start: we know which constructor of `TwoOptions` is being `case`d on.
+-- So, we can eliminate the case expression completely.
+case Option1 of
+  Option1 -> 1
+  Option2 -> 2
+
+-- Finish
+1
 ```
 
-The below `{ bar: 42 }` record is a "constructor" that is immediately "eliminated" by the implicit case statement hidden by `a.bar`.
+This idea also works on data constructors that take arguments:
 
 ```purs
-foo = do
-  let
-    a = { bar: 42 }
-    b = 1 + a.bar
-  b
+-- Start: we know which constructor of `Either` is being `case`d on.
+-- So, we can remove the constructors from the case expression.
+foo = case Right 1 of
+  Left _ -> 99
+  Right a -> a + 2
+
+-- Finish
+foo = case 1 of
+  a -> a + 2
 ```
 
-Thus, the record can be removed entirely and `a.bar` can be replaced with `42`.
+### Example
 
-Lastly, here's an example with a two possible conclusions.
+Let's see how `purs-backend-es` can optimize more complicated examples like the one below:
 
 ```purs
-foo = do
-  let
-    a = { bar: 42, baz: "something" }
-    b = 1 + f a
-  b
+case Right { onePlus: (\two -> 1 + two) } of
+  Left _ -> 99
+  Right a -> a.onePlus 2
 ```
 
-The conclusion is dependent on what `f` is:
-
-- If we do NOT know what `f` will do with `a` (e.g. if `f` was some FFI function), then we cannot know whether the record is immediately "eliminated" by an implicit case statement. `f` may need the entire record, and that possibility forces us to call the record structure necessary.
-- If we do know what `f` will do with `a` (e.g. if `f = _.bar`), then this is still an example of a primitive "constructor" followed by immediate primitive "eliminiator".
-
-**To summarize, a data "constructor" followed immediately by a data "eliminator" indicates a place where an unneeded intermediate data structure exists and can be removed.**
-
-### Removing Unneeded Data Structures
-
-#### Inlining and Inline Directives
-
-An inliner replaces a function call with its implementation. This replacement means the function's body is duplicated and will appear at least twice in the resulting code: once in its original definition and once in the usage site.
-
-Here's one example using the function `binaryPlus`:
+`purs-backend-es` continues to evaluate PureScript code until it detects that no other optimizations are possible. Here's how it would evaluate the above example, step-by-step:
 
 ```purs
-binaryPlus :: Int -> Int -> Int
-binaryPlus a b = a + b
+-- Start
+case Right { onePlus: (\two -> 1 + two) } of
+  Left _ -> 99
+  Right a -> a.onePlus 2
 
-usage = binaryPlus 1
+-- Step 1: use case-of-known-constructor
+case { onePlus: (\two -> 1 + two) } of
+  a -> a.onePlus 2
+
+-- Step 2: Remove the case expression due to it having only one case row
+{ onePlus: (\two -> 1 + two) }.onePlus 2
+
+-- Step 3: Remove the record due to known label, `onePlus`.
+(\two -> 1 + two) 2
+
+-- Step 4: Remove the lambda due to applying an argument to it
+1 + 2
+
+-- Step 5: Evaluate the primitive addition: `1 + 2` equals `3`
+3
 ```
 
-There's a few ways we could inline the expression, `binaryPlus 1`. While `purs-backend-es` will performance its own analysis to determine whether and when to inline it, it doesn't know as much as the developer does.
+## The Problem of Free Variables
 
-A developer can use **inline directives** to tell `purs-backend-es` whether to inline a function's body to its usage site and when (i.e. how many args need to be passed to the function before the inlining occurs):
+### Example: Hidden Expressions
 
-- never inline it at all (i.e. the directive is `never`)
-    - `binaryPlus 1`
-- always inline it with no consideration for the number of arguments applied to it (i.e. the directive is `always`)
-    - `(\a b -> a + b) 1`
-- inline it only after at least one argument has been applied to it (i.e. the directive is `arity=1`)
-    - `(\  b -> 1 + b)`
-- inline it only after at least two arguments have been applied to it (i.e. the directive is `arity=2`)
-    - `binaryPlus 1`
-
-**To summarize, inline directives provide developers with a stronger guarantee about whether and when a function is inlined than just relying upon the analysis done by `purs-backend-es`.**
-
-#### Inlining Duplicates Code
-
-The below example highlights the risk of inlining everything without thought: pointless code duplication.
+An expression like `1 + 2` can be optimized because we know what each of the values (i.e. `1` and `2`) are. A problem arises when an expression includes free variables. For example, `a` is a free variable in every expression below:
 
 ```purs
-hasExpensiveLetBinding a b = do
-  let
-    someValue = expensiveComputation
-  1 + someValue * b + a
+a + 2
 
-usage1 = hasExpensiveLetBinding 1 2
-usage2 = hasExpensiveLetBinding 3 4
+a.foo
+
+case a of
+  Left _ -> 99
+  Right _ -> 4
 ```
 
-If we inline `hasExpensiveLetBinding` immediately, the `expensiveComputation` will be computed three times rather than once. In other words, it would be the same as writing the following in source code:
+What is `a`? What expression is represented by it? Because `purs-backend-es` cannot know what `a` is, it cannot evaluate the code.
+
+### Unhiding Free Variables via Inlining
+
+However, consider the following expression where `a` _could_ be known:
 
 ```purs
-hasExpensiveLetBinding a b = do
-  let
-    someValue = expensiveComputation
-  1 + someValue * b + a
-
-usage1 = (\a b -> do
-    let
-      someValue = expensiveComputation
-    1 + someValue * b + a
-  ) 1 2
-usage2 = (\a b -> do
-    let
-      someValue = expensiveComputation
-    1 + someValue * b + a
-  ) 3 4
+a = 1
+b = a + 2
 ```
 
-**To summarize, inlining for the sake of inlining is a great way to unnecessarily increase your program's bundle size**.
+Because `purs-backend-es` cannot see the literal `Int` value represented by `a`, it cannot evaluated `a + 2` to `3`. To solve this problem, we need to make the value represented by `a` visible. The solution is inlining.
 
-#### Evaluation
-
-`purs-backend-es` _can_ evaluate PureScript code, but it will only evaluate _some_ expressions at build time. Typically, such expressions involve literal values (e.g. `1`, `{ foo: "string" }`). For example, primitive addition can be evaluated when its arguments are both literal `Int` values (e.g. `1 + 2` is evaluated to `3`). The below code demonstrates this:
+**Inlining works by duplicating code.** Here's what our code would look like before and after inlining `a`:
 
 ```purs
--- Before
-foo = 1 + 2
-  --  ^^^^^ purs-backend-es: "I can evaluate that! 1 + 2 = 3"
+-- Start
+a = 1
+b = a + 2
 
--- After
-foo = 3
+-- Finish
+a = 1
+b = 1 + 2
 ```
 
-However, some expressions will prevent these evaluations from triggering. For example:
+The `a` binding still exists after inlining, but now the `a` free variable has been removed from the expression bound by `b`. This means `purs-backend-es` can evaluate the resulting expression `1 + 2` to `3`. Here's the final before and after:
 
 ```purs
-foo =
-  let
-    a = { bar: 42 }
-  in
-    1 + a.bar
---  ^^^^^^^^^ purs-backend-es: "I can't evaluate that! `a.bar` is not a literal `Int` value."
+-- Start
+a = 1
+b = a + 2
+
+-- Step 1: Inline the `a` free variable with its bound value `1`
+a = 1
+b = 1 + 2
+
+-- Step 2: Evaluate `1 + 2` to `3`
+a = 1
+b = 3
+
+-- Finish
+a = 1
+b = 3
 ```
 
-Because `purs-backend-es` cannot see the literal `Int` value represented by `a.bar`, its evaluation does not trigger. To solve this problem, we need to make it visible. The solution is to duplicate code via inlining.
+### FFI: The Unhideable Free Variable
 
-**To summarize, inlining duplicates code so that `purs-backend-es` evaluations can trigger optimizations that were otherwise not apparent.**
-
-#### Code Optimzation Example via Evaluation and Inlining
-
-Let's see how this works in practice using this example:
+We know from a previous section that the expression bound by `b` below can be evaluated to `3`:
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
+-- Start
+a = 1
+b = a + 2
 
-foo = ignoreArgs 8 9
+-- Finish
+a = 1
+b = 3
 ```
 
-Let's assume `ignoreArgs` has an inline directive of `arity=1`. Here's what happens when we optimize this code piece.
-
-First, we see that `ignoreArgs` has 2 arguments applied. Since `2` >= `1`, the arity of the directive we specified, we inline `ignoreArgs`. Since `8` corresponds to `arg1`, we replace `arg1` with `8` when inlining `ignoreArgs`. We don't remove the original `ignoreArgs` declaration.
+However, what happens when `a` is a value defined via FFI?
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
+foreign import a :: Int
 
-foo = (\arg2 -> do
-  let
-    a = { bar: 41 }
-  1 + a.bar + 8 + arg2
-  ) 9
+b = a + 2
 ```
 
-At this point, `purs-backend-es`' default inliners will see a lambda (i.e. a "constructor") being immediately applied to an argument (i.e. an "eliminator"). Thus, it will inline that argument into the lambda's body. This gets us:
+While we can inline `a` into `b`'s expression, it doesn't reveal the value represented by `a`. Unless `purs-backend-es` knows the implementation for `a` internally, no evaluation will occur.
+
+**In short, inlining doesn't always trigger code optimizations.**
+
+## The Risks of Inlining
+
+In actuality, inlining can negatively affect the outputted code. Inlining comes with the following risks.
+
+### Inlining Risk 1: Code Bloat
+
+Consider this example
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
-
-foo = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + 8 + 9
+a = [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+r = Array.length $ Array.filter isRed a
+o = Array.length $ Array.filter isOrange a
+y = Array.length $ Array.filter isYellow a
+g = Array.length $ Array.filter isGreen a
+b = Array.length $ Array.filter isBlue a
+p = Array.length $ Array.filter isPurple a
 ```
 
-`purs-backend-es` will evaluate `8 + 9` to `17`. However, `1 + a.bar` and `a.bar + 17` don't get evaluated because one of the values is not a literal `Int` value.
+What happens if we inline `a`? The same array will be declared 6 times more than the original code:
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
-
-foo = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + 17
+a = [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+r = Array.length $ Array.filter isRed [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+o = Array.length $ Array.filter isOrange [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+y = Array.length $ Array.filter isYellow [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+g = Array.length $ Array.filter isGreen [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+b = Array.length $ Array.filter isBlue [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
+p = Array.length $ Array.filter isPurple [ x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17 ]
 ```
 
-Fortunately, `purs-backend-es`' default inliners will see a record binding (i.e. a "constructor") that is immediately accessed under the label `bar` (i.e. an "eliminator"). Thus, the corresponding value will be inlined:
+The code will still behave the same, but the code has been bloated.
+
+**In short, inlining "large" expressions will negatively impact the bundle or binary size of your code.**
+
+### Inlining Risk 2: Slower Code
+
+Let's consider another example. `getLazyInt` is an expensive computation. So, we only want to compute it once and only when necessary. Moreover, `getLazyInt` is a thunk defined in FFI. Despite forcing the thunk via a `unit` arg, `purs-backend-es` cannot evaluate it.
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
+foreign import getLazyInt :: Unit -> Int
 
-foo = do
-  let
-    a = { bar: 41 }
-  1 + 41 + 17
+a = getLazyInt unit
+b = 3 + a
+c = 4 + a
+d = 5 + a
 ```
 
-`purs-backend-es` will then evalute `1 + 41` to `42`:
+So, what happens if we inlined `a` into `b`, `c`, and `d`'s corresponding expressions? Because inlining works by duplicating, we would produce the following code:
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
+foreign import getLazyInt :: Unit -> Int
 
-foo = do
-  let
-    a = { bar: 41 }
-  42 + 17
+a = getLazyInt unit
+b = 3 + getLazyInt unit
+c = 4 + getLazyInt unit
+d = 5 + getLazyInt unit
 ```
 
-`purs-backend-es` will then evalute `42 + 17` to `59`:
+In other words, we're evaluating an expensive thunk 4 times. Previously, we only evaluated it 1 time. This is an example where inlining can be harmful, not beneficial.
+
+**In short, inlining can negatively affect a program's performance.**
+
+## Inline Directives: Guaranteeing Whether and When to Inline
+
+We can mitigate inlining risks by controlling whether and when an expression gets inlined. While `purs-backend-es` will analyze expressions to determine whether to inline an expression, such heuristics aren't always the best for one's particular codebase.
+
+Thus, inline directives provide guarantees about whether or not something will be inlined and when. There are three possible directives:
+
+- `never`: an expression is never inlined, whether or not arguments are passed to it.
+- `always`: an expression is always inlined, whether or not arguments are passed to it.
+- `arity=x`: a function expression is only inlined once `x`-many arguments have been applied to it.
+
+Let's say we have the following expressions:
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
+a arg1 arg2 arg3 = arg1 + arg2 + arg3
 
-foo = do
-  let
-    a = { bar: 41 }
-  59
+b = a
+c = a x1
+d = a x1 x2
+e = a x1 x2 x3
 ```
 
-Lastly, `purs-backend-es` determines that the `a` binding is never used; thus, it's removed entirely:
+`x<directive>` indicates what `x` would be if we inlined `a` using `directive`. As you look through these examples, consider whether they would be desirable if `x1`, `x2`, and `x3` were small/large and strict/lazy. Note: `xNever` corresponds to the original expression as though inlining did not occur:
 
 ```purs
-ignoreArgs arg1 arg2 = do
-  let
-    a = { bar: 41 }
-  1 + a.bar + arg1 + arg2
+-- Start
+a arg1 arg2 arg3 = arg1 + arg2 + arg3
 
-foo = 59
+bNever = a
+bAlways = (\arg1 arg2 arg3 -> arg1 + arg2 + arg3)
+bArity1 = a
+bArity2 = a
+
+cNever = a x1
+cAlways = (\arg2 arg3 -> x1 + arg2 + arg3)
+cArity1 = (\arg2 arg3 -> x1 + arg2 + arg3)
+cArity2 = a x1                             -- because at least 2 args need to be applied,
+                                           -- this does not get inlined
+
+dNever = a x1 x2
+dAlways = (\arg3 -> x1 + x2 + arg3)
+dArity1 = (\arg3 -> x1 + x2 + arg3)        -- because inlining produces this expression...
+                                           --   `(\arg2 arg3 -> x1 + arg2 + arg3) x2`
+                                           -- which is then evaluated to
+                                           --   `(\arg3 -> x1 + x2 + arg3)`
+dArity2 = (\arg3 -> x1 + x2 + arg3)
+
+eNever = a x1 x2 x3
+eAlways = x1 + x2 + x3
+eArity1 = x1 + x2 + x3
+eArity2 = x1 + x2 + x3
 ```
 
-Now that we've finished optimizing `foo`, the following states are true:
+**When in doubt, use the `arity=x` directive.** While there are times when using `never` or `always` is best, these situations are very rare.
 
-- `ignoreArgs` is still defined as it originally was
-- the optimized `foo` still represents the same value as the unoptimized `foo` would have had at runtime.
+## Benefits From Inline Directives Should be Verified
 
-## A Methodology for Defining Inline Directives
+Let's say we have a function expression that is bound by `foo`.
 
-Inlining duplicates code so that evaluations can trigger optimizations that were otherwise not apparent. Ideally, inlining values will always trigger evaluations that both reduce the bundle size of the code AND make the resulting program more performant. However, inlining may increase a program's bundle size without improving its performance.
+```purs
+foo arg1 arg2 ... = ... -- some expression
+```
 
-In short, this process isn't scientific. While one can add inline directives without much thought, the result likely won't be what they want.
+`foo` may be used multiple times throughout a codebase. Each case might call `foo` with a different number of arguments. Some cases may use arguments that often trigger optimizations (e.g. literal values) whereas others use free variables. As a result, it can be difficult to determine the following:
 
-So, how should one determine if an inline directive needs to be added? One should always use the below methodology:
+- whether or not adding an inline directive is desirable (i.e. the inline heuristics of `purs-backend-es` may be "good enough" already)
+- if an inline directive should be added, which inline directive produces the best tradeoff amongst all usages of `foo`
+- whether adding an inline directive on other expressions are needed to produce a better tradeoff among usages of `foo`
 
-1. Think of a snippet of code you want to ensure is optimized.
-2. Define a snapshot for that snippet.
-3. Look at the current JavaScript output of that snapshot.
-4. If the current output is not good enough,
-    1. add an inline directive to the outermost thing
-       1. When in doubt, use `arity=x` where `x` is the number of args the function in the outputted JavaScript, not in PureScript source code, takes.
-    2. Go to Step 3.
-5. Once the output satisfies you, determine where it should be defined (see next section)
+There's a 4-step process for answering all of these questions:
 
-First, think of a snippet of code you want to ensure is optimized. If you don't have a goal in mind, you will add inline directives that will unnecessarily bloat your code.
+1. Define a small snippet of code
+2. See what the optimized output of that code is
+3. If the output isn't "good enough", add an inline directive targeting the outermost part of the code
+4. Go to step 2
 
-Second, define a snapshot for that snippet. Without a small snippet of code, you won't be able to see what affects adding more directives may have.
+Using a golden test to verify this is ideal. Over time, the code may change in various ways. If a change somehow interferes with a optimization that previously worked, the corresponding inline directive (if any) may also need to be changed to still produce optimal code.
 
-Third, look at the current JavaScript output of that snapshot. If it's already as optimized, there's no reason to add an inline directive. You're done.
+## Inline Directives: Tradeoffs Are Subjective
 
-Otherwise, fourth, find the outermost function and add an inline directive for that. Because `purs-backend-es` operates on `CoreFn`, not PureScript source code, refer to the function in the outputted JavaScript to determine how many args the function takes.
+Let's say Codebase A exists at Company A, and Codebase B exists at Company B.
 
-### Where to Put Inline Directives
+Inlining `foo` from the previous section using the inline directive `arity=3` may produce six different scenarios based on two variables:
 
-Because inline directives affect the size/performance tradeoff of the code, one tradeoff produced by an inline directive may be desirable to one person but unacceptable to another person. `purs-backend-es` provides default inline directives for a number of the `core` libraries because these will probably be desirable to all users regardless of their purpose. Anything outside of that is debatable. That's why the `--directives` flag exists.
+- Variable 1: how inlining affects a codebase:
+    - better code
+    - worse code
+    - no difference
+- Variable 2: which codebase is affected
+    - Codebase A
+    - Codebase B
+
+For example, inlining may produce (variable 1) better code for (variable 2) Codebase A but (variable 1) no difference for (variable 2) Codebase B. Similarly, it may produce (variable 1) worse code for (variable 2) Codebase A and (variable 1) better code for (variable 2) Codebase B.
+
+For a particular usage of an expression (e.g. `foo`), context determines whether a given inline directive for that expression effectively mitigates or directly causes inlining risks.
+
+Thus, `purs-backend-es` provides different levels of control over inline directives and what code each one affects. The table below is the same one in the README but highlights who likely defines a directive at that level.
 
 | Location | Affects | User |
 |----------|---------|------|
-| Module A's header, `@inline` module B directive | Module B's usages in module A | App developer's usage of some library in particular |
-| Directives file | All modules | Application developer's usage in general
+| Module A's header, `@inline` module B directive | Module B's usages in module A | App developer's usage of some library "in particular" |
+| Directives file | All modules | Application developer's usage "in general"
 | Module A's header, `@inline export` module A directive | Module A's usages in all modules | Library developer's recommended inline directives |
-| Default heuristics | All modules | Defaults |
+| Default heuristics | All modules | `purs-backend-es` default analysis |
+
+## Summary
+
+`purs-backend-es` optimizes PureScript code by evaluating specific known expressions. Free variables inside of such expressions can hinder its ability to evaluate those expressions. Fortunately, inlining the expressions represented by free variables can trigger optimizations that were otherwise not apparent.
+
+Unfortunately, inlining such expressions comes with two risks: code bloat and slower code. One can mitigate such risks by using inline directives. Inline directives guarantee whether an expression is inlined and under what circumstances.
+
+Moreover, inlining the same expression can impact different codebases differently, both positively and negatively. To mitigate such risks while still getting optimal code, one can configure inline directives at various levels.
