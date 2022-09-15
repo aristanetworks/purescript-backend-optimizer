@@ -53,7 +53,8 @@ defaultDirectives =
   -- <TODO>
 
   -- enums
-  -- <TODO>
+  Data.Enum.Generic.genericPred arity=1
+  Data.Enum.Generic.genericSucc arity=1
 
   -- exceptions
   -- <TODO>

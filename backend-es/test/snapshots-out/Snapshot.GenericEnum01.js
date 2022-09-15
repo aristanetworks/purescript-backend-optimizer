@@ -3,6 +3,7 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dEnum$dGeneric from "../Data.Enum.Generic/index.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
+import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dOrdering from "../Data.Ordering/index.js";
 const $Test1 = tag => ({tag});
 const genericBottomConstructor = {"genericBottom'": Data$dGeneric$dRep.NoArguments};
@@ -72,8 +73,62 @@ const genericTest1 = {
 };
 const boundedTest1 = {bottom: A1, top: D1, Ord0: () => ordTest1};
 const enumTest1 = {
-  pred: /* #__PURE__ */ Data$dEnum$dGeneric.genericPred(genericTest1)(genericEnumSum1),
-  succ: /* #__PURE__ */ Data$dEnum$dGeneric.genericSucc(genericTest1)(genericEnumSum1),
+  pred: x => {
+    const $1 = genericEnumSum1["genericPred'"]((() => {
+      if (x.tag === "A1") { return Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments); }
+      if (x.tag === "B1") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)); }
+      if (x.tag === "C1") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments))); }
+      if (x.tag === "D1") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments))); }
+      $runtime.fail();
+    })());
+    if ($1.tag === "Just") {
+      return Data$dMaybe.$Maybe(
+        "Just",
+        (() => {
+          if ($1._1.tag === "Inl") { return A1; }
+          if ($1._1.tag === "Inr") {
+            if ($1._1._1.tag === "Inl") { return B1; }
+            if ($1._1._1.tag === "Inr") {
+              if ($1._1._1._1.tag === "Inl") { return C1; }
+              if ($1._1._1._1.tag === "Inr") { return D1; }
+              $runtime.fail();
+            }
+            $runtime.fail();
+          }
+          $runtime.fail();
+        })()
+      );
+    }
+    return Data$dMaybe.Nothing;
+  },
+  succ: x => {
+    const $1 = genericEnumSum1["genericSucc'"]((() => {
+      if (x.tag === "A1") { return Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments); }
+      if (x.tag === "B1") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)); }
+      if (x.tag === "C1") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments))); }
+      if (x.tag === "D1") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments))); }
+      $runtime.fail();
+    })());
+    if ($1.tag === "Just") {
+      return Data$dMaybe.$Maybe(
+        "Just",
+        (() => {
+          if ($1._1.tag === "Inl") { return A1; }
+          if ($1._1.tag === "Inr") {
+            if ($1._1._1.tag === "Inl") { return B1; }
+            if ($1._1._1.tag === "Inr") {
+              if ($1._1._1._1.tag === "Inl") { return C1; }
+              if ($1._1._1._1.tag === "Inr") { return D1; }
+              $runtime.fail();
+            }
+            $runtime.fail();
+          }
+          $runtime.fail();
+        })()
+      );
+    }
+    return Data$dMaybe.Nothing;
+  },
   Ord0: () => ordTest1
 };
 export {
