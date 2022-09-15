@@ -1,3 +1,4 @@
+// @inline export genericTest1.to arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
 import * as Data$dOrdering from "../Data.Ordering/index.js";
@@ -50,11 +51,5 @@ const genericTest1 = {
     $runtime.fail();
   }
 };
-const boundedTest1 = /* #__PURE__ */ (() => (
-  {
-    bottom: genericTest1.to(Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)),
-    top: genericTest1.to(Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments))),
-    Ord0: () => ordTest1
-  }
-))();
+const boundedTest1 = {bottom: Bottom1, top: Top1, Ord0: () => ordTest1};
 export {$Test1, Bottom1, Ignored1, Top1, boundedTest1, eqTest1, genericTest1, ordTest1};
