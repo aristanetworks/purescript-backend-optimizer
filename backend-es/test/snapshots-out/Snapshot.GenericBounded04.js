@@ -1,8 +1,10 @@
 // @inline export genericTest4.to arity=1
 import * as $runtime from "../runtime.js";
+import * as Data$dBounded from "../Data.Bounded/index.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
 import * as Data$dOrd from "../Data.Ord/index.js";
 import * as Data$dOrdering from "../Data.Ordering/index.js";
+import * as Data$dTuple from "../Data.Tuple/index.js";
 import * as Snapshot$dGenericBounded01 from "../Snapshot.GenericBounded01/index.js";
 import * as Snapshot$dGenericBounded02 from "../Snapshot.GenericBounded02/index.js";
 import * as Snapshot$dGenericBounded03 from "../Snapshot.GenericBounded03/index.js";
@@ -187,4 +189,7 @@ const boundedTest4 = dictOrd1 => {
     };
   };
 };
-export {$Test4, Bottom4, Ignored4, Top4, boundedTest4, eqTest4, genericTest4, ordTest4};
+const boundedTest41 = /* #__PURE__ */ boundedTest4(/* #__PURE__ */ Data$dTuple.ord1Tuple(Data$dOrd.ordInt))(/* #__PURE__ */ Data$dTuple.boundedTuple(Data$dBounded.boundedInt)(Data$dBounded.boundedInt))(Data$dBounded.boundedInt);
+const test5 = /* #__PURE__ */ (() => boundedTest41.bottom)();
+const test6 = /* #__PURE__ */ (() => boundedTest41.top)();
+export {$Test4, Bottom4, Ignored4, Top4, boundedTest4, boundedTest41, eqTest4, genericTest4, ordTest4, test5, test6};
