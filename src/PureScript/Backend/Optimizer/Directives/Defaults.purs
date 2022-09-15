@@ -171,20 +171,20 @@ defaultDirectives =
   Data.Bounded.boundedRecordCons arity=5
   Data.Bounded.boundedRecord arity=2
 
-  Data.Bounded.Generic.genericBottom arity=1
-  Data.Bounded.Generic.genericBottom' arity=1
-  Data.Bounded.Generic.genericBottomNoArguments.genericBottom' always
-  Data.Bounded.Generic.genericBottomArgument.genericBottom' arity=1
-  Data.Bounded.Generic.genericBottomSum.genericBottom' arity=1
-  Data.Bounded.Generic.genericBottomProduct.genericBottom' arity=2
-  Data.Bounded.Generic.genericBottomConstructor.genericBottom' arity=1
-  Data.Bounded.Generic.genericTop arity=1
-  Data.Bounded.Generic.genericTop' arity=1
-  Data.Bounded.Generic.genericTopNoArguments.genericTop' always
-  Data.Bounded.Generic.genericTopArgument.genericTop' arity=1
-  Data.Bounded.Generic.genericTopSum.genericTop' arity=1
-  Data.Bounded.Generic.genericTopProduct.genericTop' arity=2
-  Data.Bounded.Generic.genericTopConstructor.genericTop' arity=1
+  -- Data.Bounded.Generic.genericBottom arity=1
+  -- Data.Bounded.Generic.genericBottom' arity=1
+  -- Data.Bounded.Generic.genericBottomNoArguments.genericBottom' always
+  -- Data.Bounded.Generic.genericBottomArgument.genericBottom' arity=1
+  -- Data.Bounded.Generic.genericBottomSum.genericBottom' arity=1
+  -- Data.Bounded.Generic.genericBottomProduct.genericBottom' arity=2
+  -- Data.Bounded.Generic.genericBottomConstructor.genericBottom' arity=1
+  -- Data.Bounded.Generic.genericTop arity=1
+  -- Data.Bounded.Generic.genericTop' arity=1
+  -- Data.Bounded.Generic.genericTopNoArguments.genericTop' always
+  -- Data.Bounded.Generic.genericTopArgument.genericTop' arity=1
+  -- Data.Bounded.Generic.genericTopSum.genericTop' arity=1
+  -- Data.Bounded.Generic.genericTopProduct.genericTop' arity=2
+  -- Data.Bounded.Generic.genericTopConstructor.genericTop' arity=1
 
   Data.DivisionRing.leftDiv arity=1
   Data.DivisionRing.rightDiv arity=1
