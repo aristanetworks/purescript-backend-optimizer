@@ -13,9 +13,9 @@ import Snapshot.GenericBounded02 (Test2)
 import Snapshot.GenericBounded03 (Test3)
 
 data Test4 f a
-  = Bottom4 Int Test1 Test2 Test3 a (f a)
+  = Bottom4 Int { a :: Int } Test1 Test2 Test3 a (f a)
   | Ignored4
-  | Top4 Int Test1 Test2 Test3 a (f a)
+  | Top4 Int { a :: Int } Test1 Test2 Test3 a (f a)
 
 derive instance (Eq1 f, Eq a) => Eq (Test4 f a)
 derive instance (Ord1 f, Ord a) => Ord (Test4 f a)

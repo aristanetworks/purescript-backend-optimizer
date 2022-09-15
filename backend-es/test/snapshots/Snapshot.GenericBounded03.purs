@@ -4,8 +4,10 @@ import Prelude
 
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Generic.Rep (class Generic)
+import Snapshot.GenericBounded01 (Test1)
+import Snapshot.GenericBounded02 (Test2)
 
-data Test3 = Both3 Int Int
+data Test3 = Both3 Int Boolean Test1 Test2 { a :: Int, b :: Boolean, c :: Test1, d :: Test2 }
 
 derive instance Eq Test3
 derive instance Ord Test3
