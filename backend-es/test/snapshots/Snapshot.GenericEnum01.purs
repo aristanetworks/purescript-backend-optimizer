@@ -1,3 +1,5 @@
+-- @inline export genericTest1.to arity=1
+-- @inline export genericTest1.from arity=1
 module Snapshot.GenericEnum01 where
 
 import Prelude

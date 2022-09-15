@@ -1,3 +1,5 @@
+// @inline export genericTest1.to arity=1
+// @inline export genericTest1.from arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dEnum$dGeneric from "../Data.Enum.Generic/index.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
@@ -68,13 +70,7 @@ const genericTest1 = {
     $runtime.fail();
   }
 };
-const boundedTest1 = /* #__PURE__ */ (() => (
-  {
-    bottom: genericTest1.to(Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)),
-    top: genericTest1.to(Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments)))),
-    Ord0: () => ordTest1
-  }
-))();
+const boundedTest1 = {bottom: A1, top: D1, Ord0: () => ordTest1};
 const enumTest1 = {
   pred: /* #__PURE__ */ Data$dEnum$dGeneric.genericPred(genericTest1)(genericEnumSum1),
   succ: /* #__PURE__ */ Data$dEnum$dGeneric.genericSucc(genericTest1)(genericEnumSum1),
