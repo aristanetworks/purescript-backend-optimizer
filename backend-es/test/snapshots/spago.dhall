@@ -8,6 +8,7 @@
   , "convertable-options"
   , "effect"
   , "either"
+  , "enums"
   , "exists"
   , "foldable-traversable"
   , "functions"
