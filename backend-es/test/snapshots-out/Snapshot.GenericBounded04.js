@@ -1,3 +1,4 @@
+// @inline export genericTest4.to arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
 import * as Data$dOrd from "../Data.Ord/index.js";
@@ -159,42 +160,104 @@ const genericTest4 = {
     $runtime.fail();
   }
 };
+const genericBottom = dictGenericBottom => {
+  if (dictGenericBottom["genericBottom'"].tag === "Inl") {
+    return $Test4(
+      "Bottom4",
+      dictGenericBottom["genericBottom'"]._1._1,
+      dictGenericBottom["genericBottom'"]._1._2._1,
+      dictGenericBottom["genericBottom'"]._1._2._2._1,
+      dictGenericBottom["genericBottom'"]._1._2._2._2._1,
+      dictGenericBottom["genericBottom'"]._1._2._2._2._2._1,
+      dictGenericBottom["genericBottom'"]._1._2._2._2._2._2
+    );
+  }
+  if (dictGenericBottom["genericBottom'"].tag === "Inr") {
+    if (dictGenericBottom["genericBottom'"]._1.tag === "Inl") { return Ignored4; }
+    if (dictGenericBottom["genericBottom'"]._1.tag === "Inr") {
+      return $Test4(
+        "Top4",
+        dictGenericBottom["genericBottom'"]._1._1._1,
+        dictGenericBottom["genericBottom'"]._1._1._2._1,
+        dictGenericBottom["genericBottom'"]._1._1._2._2._1,
+        dictGenericBottom["genericBottom'"]._1._1._2._2._2._1,
+        dictGenericBottom["genericBottom'"]._1._1._2._2._2._2._1,
+        dictGenericBottom["genericBottom'"]._1._1._2._2._2._2._2
+      );
+    }
+    $runtime.fail();
+  }
+  $runtime.fail();
+};
+const genericTop = dictGenericTop => {
+  if (dictGenericTop["genericTop'"].tag === "Inl") {
+    return $Test4(
+      "Bottom4",
+      dictGenericTop["genericTop'"]._1._1,
+      dictGenericTop["genericTop'"]._1._2._1,
+      dictGenericTop["genericTop'"]._1._2._2._1,
+      dictGenericTop["genericTop'"]._1._2._2._2._1,
+      dictGenericTop["genericTop'"]._1._2._2._2._2._1,
+      dictGenericTop["genericTop'"]._1._2._2._2._2._2
+    );
+  }
+  if (dictGenericTop["genericTop'"].tag === "Inr") {
+    if (dictGenericTop["genericTop'"]._1.tag === "Inl") { return Ignored4; }
+    if (dictGenericTop["genericTop'"]._1.tag === "Inr") {
+      return $Test4(
+        "Top4",
+        dictGenericTop["genericTop'"]._1._1._1,
+        dictGenericTop["genericTop'"]._1._1._2._1,
+        dictGenericTop["genericTop'"]._1._1._2._2._1,
+        dictGenericTop["genericTop'"]._1._1._2._2._2._1,
+        dictGenericTop["genericTop'"]._1._1._2._2._2._2._1,
+        dictGenericTop["genericTop'"]._1._1._2._2._2._2._2
+      );
+    }
+    $runtime.fail();
+  }
+  $runtime.fail();
+};
 const boundedTest4 = dictOrd1 => {
   const ordTest41 = ordTest4(dictOrd1);
   return dictBounded => dictBounded1 => {
     const ordTest42 = ordTest41(dictBounded1.Ord0());
     return {
-      bottom: genericTest4.to(Data$dGeneric$dRep.$Sum(
-        "Inl",
-        Data$dGeneric$dRep.$Product(
-          -2147483648,
+      bottom: genericBottom({
+        "genericBottom'": Data$dGeneric$dRep.$Sum(
+          "Inl",
           Data$dGeneric$dRep.$Product(
-            Snapshot$dGenericBounded01.Bottom1,
+            -2147483648,
             Data$dGeneric$dRep.$Product(
-              Snapshot$dGenericBounded02.$Test2("Bottom2", -2147483648),
-              Data$dGeneric$dRep.$Product(Snapshot$dGenericBounded03.$Test3(-2147483648, -2147483648), Data$dGeneric$dRep.$Product(dictBounded1.bottom, dictBounded.bottom))
-            )
-          )
-        )
-      )),
-      top: genericTest4.to(Data$dGeneric$dRep.$Sum(
-        "Inr",
-        Data$dGeneric$dRep.$Sum(
-          "Inr",
-          Data$dGeneric$dRep.$Product(
-            2147483647,
-            Data$dGeneric$dRep.$Product(
-              Snapshot$dGenericBounded01.Top1,
+              Snapshot$dGenericBounded01.Bottom1,
               Data$dGeneric$dRep.$Product(
-                Snapshot$dGenericBounded02.$Test2("Top2", 2147483647),
-                Data$dGeneric$dRep.$Product(Snapshot$dGenericBounded03.$Test3(2147483647, 2147483647), Data$dGeneric$dRep.$Product(dictBounded1.top, dictBounded.top))
+                Snapshot$dGenericBounded02.$Test2("Bottom2", -2147483648),
+                Data$dGeneric$dRep.$Product(Snapshot$dGenericBounded03.$Test3(-2147483648, -2147483648), Data$dGeneric$dRep.$Product(dictBounded1.bottom, dictBounded.bottom))
               )
             )
           )
         )
-      )),
+      }),
+      top: genericTop({
+        "genericTop'": Data$dGeneric$dRep.$Sum(
+          "Inr",
+          Data$dGeneric$dRep.$Sum(
+            "Inr",
+            Data$dGeneric$dRep.$Product(
+              2147483647,
+              Data$dGeneric$dRep.$Product(
+                Snapshot$dGenericBounded01.Top1,
+                Data$dGeneric$dRep.$Product(
+                  Snapshot$dGenericBounded02.$Test2("Top2", 2147483647),
+                  Data$dGeneric$dRep.$Product(Snapshot$dGenericBounded03.$Test3(2147483647, 2147483647), Data$dGeneric$dRep.$Product(dictBounded1.top, dictBounded.top))
+                )
+              )
+            )
+          )
+        )
+      }),
       Ord0: () => ordTest42
     };
   };
 };
-export {$Test4, Bottom4, Ignored4, Top4, boundedTest4, eqTest4, genericTest4, ordTest4};
+export {$Test4, Bottom4, Ignored4, Top4, boundedTest4, eqTest4, genericBottom, genericTest4, genericTop, ordTest4};

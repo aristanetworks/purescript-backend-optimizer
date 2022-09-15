@@ -1,3 +1,4 @@
+-- @inline export genericTest4.to arity=1
 module Snapshot.GenericBounded04 where
 
 import Prelude
