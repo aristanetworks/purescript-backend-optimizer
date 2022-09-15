@@ -1,3 +1,4 @@
+// @inline export genericTest3.to arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
 import * as Data$dOrd from "../Data.Ord/index.js";
@@ -54,32 +55,20 @@ const genericTest3 = {
 };
 const boundedTest3 = /* #__PURE__ */ (() => (
   {
-    bottom: genericTest3.to(Data$dGeneric$dRep.$Product(
+    bottom: $Test3(
       -2147483648,
-      Data$dGeneric$dRep.$Product(
-        false,
-        Data$dGeneric$dRep.$Product(
-          Snapshot$dGenericBounded01.Bottom1,
-          Data$dGeneric$dRep.$Product(
-            Snapshot$dGenericBounded02.boundedTest2.bottom,
-            {a: -2147483648, b: false, c: Snapshot$dGenericBounded01.Bottom1, d: Snapshot$dGenericBounded02.boundedTest2.bottom}
-          )
-        )
-      )
-    )),
-    top: genericTest3.to(Data$dGeneric$dRep.$Product(
+      false,
+      Snapshot$dGenericBounded01.Bottom1,
+      Snapshot$dGenericBounded02.boundedTest2.bottom,
+      {a: -2147483648, b: false, c: Snapshot$dGenericBounded01.Bottom1, d: Snapshot$dGenericBounded02.boundedTest2.bottom}
+    ),
+    top: $Test3(
       2147483647,
-      Data$dGeneric$dRep.$Product(
-        true,
-        Data$dGeneric$dRep.$Product(
-          Snapshot$dGenericBounded01.Top1,
-          Data$dGeneric$dRep.$Product(
-            Snapshot$dGenericBounded02.boundedTest2.top,
-            {a: 2147483647, b: true, c: Snapshot$dGenericBounded01.Top1, d: Snapshot$dGenericBounded02.boundedTest2.top}
-          )
-        )
-      )
-    )),
+      true,
+      Snapshot$dGenericBounded01.Top1,
+      Snapshot$dGenericBounded02.boundedTest2.top,
+      {a: 2147483647, b: true, c: Snapshot$dGenericBounded01.Top1, d: Snapshot$dGenericBounded02.boundedTest2.top}
+    ),
     Ord0: () => ordTest3
   }
 ))();
