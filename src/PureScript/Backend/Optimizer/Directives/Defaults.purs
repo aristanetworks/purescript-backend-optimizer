@@ -55,6 +55,16 @@ defaultDirectives =
   -- enums
   Data.Enum.Generic.genericPred arity=1
   Data.Enum.Generic.genericSucc arity=1
+  -- Data.Enum.Generic.genericEnumNoArguments(..).genericPred' arity=1
+  -- Data.Enum.Generic.genericEnumNoArguments(..).genericSucc' arity=1
+  -- Data.Enum.Generic.genericEnumArgument(..).genericPred' arity=1
+  -- Data.Enum.Generic.genericEnumArgument(..).genericSucc' arity=1
+  Data.Enum.Generic.genericEnumConstructor(..).genericPred' arity=1
+  Data.Enum.Generic.genericEnumConstructor(..).genericSucc' arity=1
+  Data.Enum.Generic.genericEnumSum(..).genericPred' arity=1
+  Data.Enum.Generic.genericEnumSum(..).genericSucc' arity=1
+  -- Data.Enum.Generic.genericEnumProduct(..).genericPred' arity=1
+  -- Data.Enum.Generic.genericEnumProduct(..).genericSucc' arity=1
 
   -- exceptions
   -- <TODO>
