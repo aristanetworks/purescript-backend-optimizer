@@ -1,3 +1,4 @@
+// @inline export program1 arity=1
 import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dState$dTrans from "../Control.Monad.State.Trans/index.js";
 import * as Data$dSemiring from "../Data.Semiring/index.js";
@@ -66,5 +67,20 @@ const program1 = dictMonadEffect => {
     return Data$dTuple.$Tuple(s$p, s$p);
   }))(result => pure1(Data$dShow.showIntImpl(i1 + result | 0)))))))));
 };
-const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect)(1);
+const test2 = /* #__PURE__ */ (() => {
+  const bindStateT1 = Control$dMonad$dState$dTrans.bindStateT(Effect.monadEffect);
+  const liftEffect1 = Control$dMonad$dState$dTrans.monadEffectState(Effect$dClass.monadEffectEffect).liftEffect;
+  const monadStateStateT1 = Control$dMonad$dState$dTrans.monadStateStateT(Effect.monadEffect);
+  const get1 = monadStateStateT1.state(s => Data$dTuple.$Tuple(s, s));
+  const map1 = Control$dMonad$dState$dTrans.functorStateT(Effect.functorEffect).map;
+  const apply1 = Control$dMonad$dState$dTrans.applyStateT(Effect.monadEffect).apply;
+  const pure1 = Control$dMonad$dState$dTrans.applicativeStateT(Effect.monadEffect).pure;
+  return bindStateT1.bind(liftEffect1(Effect$dConsole.log("foo")))(() => bindStateT1.bind(liftEffect1(Effect$dRandom.randomInt(1)(10)))(i1 => bindStateT1.bind(get1)(one => bindStateT1.bind(map1(v => v + one | 0)(liftEffect1(Effect$dRandom.randomInt(1)(10))))(i2 => bindStateT1.bind(monadStateStateT1.state(v => Data$dTuple.$Tuple(
+    Data$dUnit.unit,
+    i2
+  )))(() => bindStateT1.bind(apply1(map1(Data$dSemiring.intAdd)(liftEffect1(Effect$dRandom.randomInt(1)(10))))(liftEffect1(Effect$dRandom.randomInt(1)(10))))(i3 => bindStateT1.bind(monadStateStateT1.state(s => {
+    const s$p = s + i3 | 0;
+    return Data$dTuple.$Tuple(s$p, s$p);
+  }))(result => pure1(Data$dShow.showIntImpl(i1 + result | 0)))))))))(1);
+})();
 export {monadEffectState, monadStateStateT, program1, program2, test1, test2, test3};
