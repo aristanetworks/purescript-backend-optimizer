@@ -15,7 +15,6 @@ const map1 = f => a => () => {
     $runtime.fail();
   })();
 };
-const apply = /* #__PURE__ */ (() => Control$dMonad$dExcept$dTrans.applyExceptT(Effect.monadEffect).apply)();
 const applicativeExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.applicativeExceptT(Effect.monadEffect);
 const monadThrowExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.monadThrowExceptT(Effect.monadEffect);
 const test1 = /* #__PURE__ */ (() => {
@@ -32,19 +31,19 @@ const test1 = /* #__PURE__ */ (() => {
     })())();
     if (v2.tag === "Left") { return Data$dEither.$Either("Left", v2._1); }
     if (v2.tag === "Right") {
-      const v2$1 = apply(map1(Data$dSemiring.intAdd)((() => {
-        const $4 = Effect$dRandom.randomInt(1)(10);
+      const bind = Control$dMonad$dExcept$dTrans.bindExceptT(Effect.monadEffect).bind;
+      const pure = Control$dMonad$dExcept$dTrans.applicativeExceptT(Effect.monadEffect).pure;
+      const $6 = Effect$dRandom.randomInt(1)(10);
+      const v2$1 = bind(map1(Data$dSemiring.intAdd)((() => {
+        const $7 = Effect$dRandom.randomInt(1)(10);
         return () => {
-          const a$p$1 = $4();
+          const a$p$1 = $7();
           return Data$dEither.$Either("Right", a$p$1);
         };
-      })()))((() => {
-        const $4 = Effect$dRandom.randomInt(1)(10);
-        return () => {
-          const a$p$1 = $4();
-          return Data$dEither.$Either("Right", a$p$1);
-        };
-      })())();
+      })()))(f$p => bind(() => {
+        const a$p$1 = $6();
+        return Data$dEither.$Either("Right", a$p$1);
+      })(a$p$1 => pure(f$p(a$p$1))))();
       if (v2$1.tag === "Left") { return Data$dEither.$Either("Left", v2$1._1); }
       if (v2$1.tag === "Right") {
         const v2$2 = (() => {
@@ -119,4 +118,4 @@ const program1 = dictMonadEffect => {
   })())(() => applicativeExceptT1.pure(((1 + i1 | 0) + i2 | 0) + i3 | 0))))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
-export {applicativeExceptT, apply, map1, monadThrowExceptT, program1, program2, test1, test2, test3};
+export {applicativeExceptT, map1, monadThrowExceptT, program1, program2, test1, test2, test3};
