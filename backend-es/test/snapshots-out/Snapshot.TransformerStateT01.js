@@ -8,20 +8,28 @@ import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
-const bindStateT = /* #__PURE__ */ Control$dMonad$dState$dTrans.bindStateT(Effect.monadEffect);
 const monadEffectState = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadEffectState(Effect$dClass.monadEffectEffect);
 const monadStateStateT = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadStateStateT(Effect.monadEffect);
 const $$get = /* #__PURE__ */ (() => monadStateStateT.state(s => Data$dTuple.$Tuple(s, s)))();
 const map = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.functorStateT(Effect.functorEffect).map)();
 const apply = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.applyStateT(Effect.monadEffect).apply)();
 const pure = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.applicativeStateT(Effect.monadEffect).pure)();
-const test1 = /* #__PURE__ */ (() => bindStateT.bind(monadEffectState.liftEffect(Effect$dConsole.log("foo")))(() => bindStateT.bind(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10)))(i1 => bindStateT.bind($$get)(one => bindStateT.bind(map(v => v + one | 0)(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))))(i2 => bindStateT.bind(monadStateStateT.state(v => Data$dTuple.$Tuple(
-  Data$dUnit.unit,
-  i2
-)))(() => bindStateT.bind(apply(map(Data$dSemiring.intAdd)(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))))(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))))(i3 => bindStateT.bind(monadStateStateT.state(s => {
-  const s$p = s + i3 | 0;
-  return Data$dTuple.$Tuple(s$p, s$p);
-}))(result => pure(Data$dShow.showIntImpl(i1 + result | 0)))))))))(1))();
+const test1 = /* #__PURE__ */ (() => {
+  const $0 = monadEffectState.liftEffect(Effect$dConsole.log("foo"))(1);
+  return () => {
+    const v1 = $0();
+    const v1$1 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))(v1._2)();
+    const v1$2 = $$get(v1$1._2)();
+    const v1$3 = map(v => v + v1$2._1 | 0)(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10)))(v1$2._2)();
+    const v1$4 = monadStateStateT.state(v => Data$dTuple.$Tuple(Data$dUnit.unit, v1$3._1))(v1$3._2)();
+    const v1$5 = apply(map(Data$dSemiring.intAdd)(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))))(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10)))(v1$4._2)();
+    const v1$6 = monadStateStateT.state(s => {
+      const s$p = s + v1$5._1 | 0;
+      return Data$dTuple.$Tuple(s$p, s$p);
+    })(v1$5._2)();
+    return pure(Data$dShow.showIntImpl(v1$1._1 + v1$6._1 | 0))(v1$6._2)();
+  };
+})();
 const program2 = dictMonadState => {
   const get1 = dictMonadState.state(s => Data$dTuple.$Tuple(s, s));
   return dictMonadEffect => {
@@ -58,4 +66,4 @@ const program1 = dictMonadEffect => {
   }))(result => pure1(Data$dShow.showIntImpl(i1 + result | 0)))))))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect)(1);
-export {apply, bindStateT, $$get as get, map, monadEffectState, monadStateStateT, program1, program2, pure, test1, test2, test3};
+export {apply, $$get as get, map, monadEffectState, monadStateStateT, program1, program2, pure, test1, test2, test3};
