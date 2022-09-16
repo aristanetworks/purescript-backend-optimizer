@@ -308,6 +308,7 @@ defaultDirectives =
   Control.Monad.State.Trans.applicativeStateT(..).pure arity=1
   Control.Monad.State.Trans.bindStateT(..).bind arity=1
   Control.Monad.State.Trans.monadEffectState(..).liftEffect arity=1
+  Control.Monad.State.Trans.monadStateStateT(..).state arity=1
 
   Control.Monad.Writer.Trans.functorWriterT(..).map arity=2
   Control.Monad.Writer.Trans.applyWriterT(..).apply arity=2
