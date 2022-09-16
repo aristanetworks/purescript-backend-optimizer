@@ -1,3 +1,4 @@
+-- @inline export program1 arity=1
 module Snapshot.TransformerExceptT02 where
 
 import Prelude
