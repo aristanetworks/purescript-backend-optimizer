@@ -5,35 +5,22 @@ import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
-const bindMaybeT = /* #__PURE__ */ Control$dMonad$dMaybe$dTrans.bindMaybeT(Effect.monadEffect);
 const pure = /* #__PURE__ */ (() => Control$dMonad$dMaybe$dTrans.applicativeMaybeT(Effect.monadEffect).pure)();
-const test1 = /* #__PURE__ */ (() => bindMaybeT.bind((() => {
+const test1 = /* #__PURE__ */ (() => {
   const $0 = Effect$dConsole.log("foo");
   return () => {
-    const a$p = $0();
-    return Data$dMaybe.$Maybe("Just", a$p);
+    $0();
+    const a$p = Effect$dRandom.randomInt(1)(10)();
+    const a$p$1 = Effect$dRandom.randomInt(1)(10)();
+    const $4 = a$p$1 + 1 | 0;
+    const a$p$2 = Effect$dRandom.randomInt(1)(10)();
+    const a$p$3 = Effect$dRandom.randomInt(1)(10)();
+    const v1 = Data$dMaybe.applyMaybe.apply(Data$dMaybe.$Maybe("Just", $7 => a$p$2 + $7 | 0))(Data$dMaybe.$Maybe("Just", a$p$3));
+    if (v1.tag === "Nothing") { return Data$dMaybe.Nothing; }
+    if (v1.tag === "Just") { return pure(((1 + a$p | 0) + $4 | 0) + v1._1 | 0)(); }
+    $runtime.fail();
   };
-})())(() => bindMaybeT.bind((() => {
-  const $1 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $1();
-    return Data$dMaybe.$Maybe("Just", a$p);
-  };
-})())(i1 => bindMaybeT.bind((() => {
-  const $2 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $2();
-    return Data$dMaybe.$Maybe("Just", a$p + 1 | 0);
-  };
-})())(i2 => bindMaybeT.bind((() => {
-  const $3 = Effect$dRandom.randomInt(1)(10);
-  const $4 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $3();
-    const a$p$1 = $4();
-    return Data$dMaybe.applyMaybe.apply(Data$dMaybe.$Maybe("Just", $7 => a$p + $7 | 0))(Data$dMaybe.$Maybe("Just", a$p$1));
-  };
-})())(i3 => pure(((1 + i1 | 0) + i2 | 0) + i3 | 0))))))();
+})();
 const program1 = dictMonadEffect => {
   const Monad0 = dictMonadEffect.Monad0();
   const bindMaybeT1 = Control$dMonad$dMaybe$dTrans.bindMaybeT(Monad0);
@@ -73,4 +60,4 @@ const program1 = dictMonadEffect => {
   })())))(i3 => pure1(((1 + i1 | 0) + i2 | 0) + i3 | 0)))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
-export {bindMaybeT, program1, pure, test1, test2};
+export {program1, pure, test1, test2};
