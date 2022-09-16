@@ -1,4 +1,5 @@
-// @inline export test2 always
+// @inline export program1 arity=1
+// @inline export program2 arity=1
 import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dReader$dTrans from "../Control.Monad.Reader.Trans/index.js";
 import * as Data$dSemiring from "../Data.Semiring/index.js";
@@ -6,9 +7,18 @@ import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
-const monadReaderReaderT = /* #__PURE__ */ Control$dMonad$dReader$dTrans.monadReaderReaderT(Effect.monadEffect);
 const monadEffectReader = /* #__PURE__ */ Control$dMonad$dReader$dTrans.monadEffectReader(Effect$dClass.monadEffectEffect);
-const test4 = dictMonadEffect => {
+const monadReaderReaderT = /* #__PURE__ */ Control$dMonad$dReader$dTrans.monadReaderReaderT(Effect.monadEffect);
+const test1 = () => {
+  Effect$dConsole.log("foo")();
+  const a = Effect$dRandom.randomInt(1)(10)();
+  const a$p = Effect$dRandom.randomInt(1)(10)();
+  const a$p$1 = Effect$dRandom.randomInt(1)(10)();
+  const a$p$2 = Effect$dRandom.randomInt(1)(10)();
+  const a$1 = Effect$dRandom.randomInt(10)(20)();
+  return ((((4 + a | 0) + (a$p + 1 | 0) | 0) + (a$p$1 + a$p$2 | 0) | 0) + 5 | 0) + a$1 | 0;
+};
+const program2 = dictMonadEffect => {
   const Monad0 = dictMonadEffect.Monad0();
   const Bind1 = Monad0.Bind1();
   const bindReaderT1 = Control$dMonad$dReader$dTrans.bindReaderT(Bind1);
@@ -32,8 +42,37 @@ const test4 = dictMonadEffect => {
     return v => $16;
   }))))));
 };
-const test5 = /* #__PURE__ */ test4(Effect$dClass.monadEffectEffect)(5);
-const test2 = dictMonadReader => {
+const test3 = /* #__PURE__ */ (() => {
+  const bindReaderT1 = Control$dMonad$dReader$dTrans.bindReaderT(Effect.bindEffect);
+  const liftEffect1 = Control$dMonad$dReader$dTrans.monadEffectReader(Effect$dClass.monadEffectEffect).liftEffect;
+  const local1 = Control$dMonad$dReader$dTrans.monadReaderReaderT(Effect.monadEffect).local;
+  return bindReaderT1.bind(liftEffect1(Effect$dConsole.log("foo")))(() => bindReaderT1.bind(liftEffect1(Effect$dRandom.randomInt(1)(10)))(i1 => bindReaderT1.bind((() => {
+    const $5 = liftEffect1(Effect$dRandom.randomInt(1)(10));
+    return x => {
+      const $7 = $5(x);
+      return () => {
+        const a$p = $7();
+        return a$p + 1 | 0;
+      };
+    };
+  })())(i2 => bindReaderT1.bind((() => {
+    const $6 = liftEffect1(Effect$dRandom.randomInt(1)(10));
+    const $7 = liftEffect1(Effect$dRandom.randomInt(1)(10));
+    return r => {
+      const $9 = $6(r);
+      const $10 = $7(r);
+      return () => {
+        const a$p = $9();
+        const a$p$1 = $10();
+        return a$p + a$p$1 | 0;
+      };
+    };
+  })())(i3 => bindReaderT1.bind(Effect.pureE)(five => bindReaderT1.bind(local1(v => v * 2 | 0)(bindReaderT1.bind(Effect.pureE)(ten => liftEffect1(Effect$dRandom.randomInt(ten)(20)))))(i4 => {
+    const $9 = ((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0;
+    return v => () => $9;
+  }))))))(5);
+})();
+const program1 = dictMonadReader => {
   const ask1 = dictMonadReader.MonadAsk0().ask;
   return dictMonadEffect => {
     const Monad0 = dictMonadEffect.Monad0();
@@ -46,7 +85,7 @@ const test2 = dictMonadReader => {
     ) + i4 | 0)))))));
   };
 };
-const test3 = /* #__PURE__ */ (() => {
+const test2 = /* #__PURE__ */ (() => {
   const ask1 = monadReaderReaderT.MonadAsk0().ask;
   const Monad0 = monadEffectReader.Monad0();
   const Bind1 = Monad0.Bind1();
@@ -76,13 +115,4 @@ const test3 = /* #__PURE__ */ (() => {
     return x => $11(x * 2 | 0);
   })())(i4 => pure1(((((4 + i1 | 0) + i2 | 0) + i3 | 0) + five | 0) + i4 | 0)))))))(5);
 })();
-const test1 = () => {
-  Effect$dConsole.log("foo")();
-  const a = Effect$dRandom.randomInt(1)(10)();
-  const a$p = Effect$dRandom.randomInt(1)(10)();
-  const a$p$1 = Effect$dRandom.randomInt(1)(10)();
-  const a$p$2 = Effect$dRandom.randomInt(1)(10)();
-  const a$1 = Effect$dRandom.randomInt(10)(20)();
-  return ((((4 + a | 0) + (a$p + 1 | 0) | 0) + (a$p$1 + a$p$2 | 0) | 0) + 5 | 0) + a$1 | 0;
-};
-export {monadEffectReader, monadReaderReaderT, test1, test2, test3, test4, test5};
+export {monadEffectReader, monadReaderReaderT, program1, program2, test1, test2, test3};
