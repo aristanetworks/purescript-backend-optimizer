@@ -290,6 +290,8 @@ defaultDirectives =
   -- <TODO>
 
   -- transformers
+  Control.Monad.Except.Trans.bindExceptT(..).bind arity=1
+
   Control.Monad.Reader.Trans.bindReaderT(..).bind arity=1
   Control.Monad.Reader.Trans.monadEffectReader(..).liftEffect arity=1
   Control.Monad.Reader.Trans.monadReaderReaderT(..).local arity=1

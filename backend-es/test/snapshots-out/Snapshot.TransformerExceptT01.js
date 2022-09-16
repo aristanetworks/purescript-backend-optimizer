@@ -7,7 +7,6 @@ import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
-const bindExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.bindExceptT(Effect.monadEffect);
 const map1 = f => a => () => {
   const a$p = a();
   return (() => {
@@ -19,41 +18,49 @@ const map1 = f => a => () => {
 const apply = /* #__PURE__ */ (() => Control$dMonad$dExcept$dTrans.applyExceptT(Effect.monadEffect).apply)();
 const applicativeExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.applicativeExceptT(Effect.monadEffect);
 const monadThrowExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.monadThrowExceptT(Effect.monadEffect);
-const test1 = /* #__PURE__ */ (() => bindExceptT.bind((() => {
+const test1 = /* #__PURE__ */ (() => {
   const $0 = Effect$dConsole.log("foo");
   return () => {
-    const a$p = $0();
-    return Data$dEither.$Either("Right", a$p);
+    $0();
+    const a$p = Effect$dRandom.randomInt(1)(10)();
+    const v2 = map1(v => v + 4 | 0)((() => {
+      const $3 = Effect$dRandom.randomInt(1)(10);
+      return () => {
+        const a$p$1 = $3();
+        return Data$dEither.$Either("Right", a$p$1 + 1 | 0);
+      };
+    })())();
+    if (v2.tag === "Left") { return Data$dEither.$Either("Left", v2._1); }
+    if (v2.tag === "Right") {
+      const v2$1 = apply(map1(Data$dSemiring.intAdd)((() => {
+        const $4 = Effect$dRandom.randomInt(1)(10);
+        return () => {
+          const a$p$1 = $4();
+          return Data$dEither.$Either("Right", a$p$1);
+        };
+      })()))((() => {
+        const $4 = Effect$dRandom.randomInt(1)(10);
+        return () => {
+          const a$p$1 = $4();
+          return Data$dEither.$Either("Right", a$p$1);
+        };
+      })())();
+      if (v2$1.tag === "Left") { return Data$dEither.$Either("Left", v2$1._1); }
+      if (v2$1.tag === "Right") {
+        const $5 = monadThrowExceptT.throwError("error");
+        const v2$2 = (() => {
+          if ((a$p + v2._1 | 0) < v2$1._1) { return $5; }
+          return applicativeExceptT.pure(Data$dUnit.unit);
+        })()();
+        if (v2$2.tag === "Left") { return Data$dEither.$Either("Left", v2$2._1); }
+        if (v2$2.tag === "Right") { return applicativeExceptT.pure(((1 + a$p | 0) + v2._1 | 0) + v2$1._1 | 0)(); }
+        $runtime.fail();
+      }
+      $runtime.fail();
+    }
+    $runtime.fail();
   };
-})())(() => bindExceptT.bind((() => {
-  const $1 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $1();
-    return Data$dEither.$Either("Right", a$p);
-  };
-})())(i1 => bindExceptT.bind(map1(v => v + 4 | 0)((() => {
-  const $2 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $2();
-    return Data$dEither.$Either("Right", a$p + 1 | 0);
-  };
-})()))(i2 => bindExceptT.bind(apply(map1(Data$dSemiring.intAdd)((() => {
-  const $3 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $3();
-    return Data$dEither.$Either("Right", a$p);
-  };
-})()))((() => {
-  const $3 = Effect$dRandom.randomInt(1)(10);
-  return () => {
-    const a$p = $3();
-    return Data$dEither.$Either("Right", a$p);
-  };
-})()))(i3 => bindExceptT.bind((() => {
-  const $4 = monadThrowExceptT.throwError("error");
-  if ((i1 + i2 | 0) < i3) { return $4; }
-  return applicativeExceptT.pure(Data$dUnit.unit);
-})())(() => applicativeExceptT.pure(((1 + i1 | 0) + i2 | 0) + i3 | 0)))))))();
+})();
 const program2 = dictMonadThrow => dictMonadEffect => {
   const Monad0 = dictMonadEffect.Monad0();
   const Bind1 = Monad0.Bind1();
@@ -113,4 +120,4 @@ const program1 = dictMonadEffect => {
   })())(() => applicativeExceptT1.pure(((1 + i1 | 0) + i2 | 0) + i3 | 0))))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
-export {applicativeExceptT, apply, bindExceptT, map1, monadThrowExceptT, program1, program2, test1, test2, test3};
+export {applicativeExceptT, apply, map1, monadThrowExceptT, program1, program2, test1, test2, test3};
