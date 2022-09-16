@@ -47,9 +47,8 @@ const test1 = /* #__PURE__ */ (() => {
       })())();
       if (v2$1.tag === "Left") { return Data$dEither.$Either("Left", v2$1._1); }
       if (v2$1.tag === "Right") {
-        const $5 = monadThrowExceptT.throwError("error");
         const v2$2 = (() => {
-          if ((a$p + v2._1 | 0) < v2$1._1) { return $5; }
+          if ((a$p + v2._1 | 0) < v2$1._1) { return () => Data$dEither.$Either("Left", "error"); }
           return applicativeExceptT.pure(Data$dUnit.unit);
         })()();
         if (v2$2.tag === "Left") { return Data$dEither.$Either("Left", v2$2._1); }

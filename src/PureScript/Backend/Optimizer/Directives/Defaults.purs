@@ -291,6 +291,7 @@ defaultDirectives =
 
   -- transformers
   Control.Monad.Except.Trans.bindExceptT(..).bind arity=1
+  Control.Monad.Except.Trans.monadThrowExceptT(..).throwError arity=1
 
   Control.Monad.Reader.Trans.bindReaderT(..).bind arity=1
   Control.Monad.Reader.Trans.monadEffectReader(..).liftEffect arity=1
