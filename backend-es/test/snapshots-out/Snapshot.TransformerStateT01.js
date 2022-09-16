@@ -12,18 +12,18 @@ const monadEffectState = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadEffec
 const monadStateStateT = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadStateStateT(Effect.monadEffect);
 const $$get = /* #__PURE__ */ (() => monadStateStateT.state(s => Data$dTuple.$Tuple(s, s)))();
 const test1 = /* #__PURE__ */ (() => {
-  const $0 = monadEffectState.liftEffect(Effect$dConsole.log("foo"))(1);
+  const $0 = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dConsole.log("foo"))(1);
   return () => {
     const v1 = $0();
-    const v1$1 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))(v1._2)();
+    const v1$1 = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10))(v1._2)();
     const v1$2 = $$get(v1$1._2)();
-    const a$p = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))(v1$2._2)();
+    const a$p = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10))(v1$2._2)();
     const $5 = a$p._1 + v1$2._1 | 0;
     const v1$3 = monadStateStateT.state(v => Data$dTuple.$Tuple(Data$dUnit.unit, $5))(a$p._2)();
     const bind = Control$dMonad$dState$dTrans.bindStateT(Effect.monadEffect).bind;
     const pure = Control$dMonad$dState$dTrans.applicativeStateT(Effect.monadEffect).pure;
-    const $9 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
-    const $10 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
+    const $9 = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10));
+    const $10 = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10));
     const v1$4 = bind(s => {
       const $12 = $9(s);
       return () => {
