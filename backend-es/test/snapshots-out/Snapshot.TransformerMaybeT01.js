@@ -6,7 +6,6 @@ import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
-const apply = /* #__PURE__ */ (() => Control$dMonad$dMaybe$dTrans.applyMaybeT(Effect.monadEffect).apply)();
 const test1 = /* #__PURE__ */ (() => {
   const $0 = Effect$dConsole.log("foo");
   return () => {
@@ -14,19 +13,17 @@ const test1 = /* #__PURE__ */ (() => {
     const a$p = Effect$dRandom.randomInt(1)(10)();
     const a$p$1 = Effect$dRandom.randomInt(1)(10)();
     const $4 = a$p$1 + 5 | 0;
-    const v1 = apply((() => {
-      const $5 = Effect$dRandom.randomInt(1)(10);
-      return () => {
-        const a$p$2 = $5();
-        return Data$dMaybe.$Maybe("Just", $7 => a$p$2 + $7 | 0);
-      };
-    })())((() => {
-      const $5 = Effect$dRandom.randomInt(1)(10);
-      return () => {
-        const a$p$2 = $5();
-        return Data$dMaybe.$Maybe("Just", a$p$2);
-      };
-    })())();
+    const bind = Control$dMonad$dMaybe$dTrans.bindMaybeT(Effect.monadEffect).bind;
+    const pure = Control$dMonad$dMaybe$dTrans.applicativeMaybeT(Effect.monadEffect).pure;
+    const $7 = Effect$dRandom.randomInt(1)(10);
+    const $8 = Effect$dRandom.randomInt(1)(10);
+    const v1 = bind(() => {
+      const a$p$2 = $7();
+      return Data$dMaybe.$Maybe("Just", $10 => a$p$2 + $10 | 0);
+    })(f$p => bind(() => {
+      const a$p$2 = $8();
+      return Data$dMaybe.$Maybe("Just", a$p$2);
+    })(a$p$2 => pure(f$p(a$p$2))))();
     if (v1.tag === "Nothing") { return Data$dMaybe.Nothing; }
     if (v1.tag === "Just") { return Data$dMaybe.$Maybe("Just", ((1 + a$p | 0) + $4 | 0) + v1._1 | 0); }
     $runtime.fail();
@@ -71,4 +68,4 @@ const program1 = dictMonadEffect => {
   })())))(i3 => pure1(((1 + i1 | 0) + i2 | 0) + i3 | 0)))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
-export {apply, program1, test1, test2};
+export {program1, test1, test2};
