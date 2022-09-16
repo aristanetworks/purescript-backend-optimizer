@@ -1,4 +1,5 @@
 // @inline export program1 arity=1
+// @inline export program2 arity=2
 import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dExcept$dTrans from "../Control.Monad.Except.Trans/index.js";
 import * as Data$dEither from "../Data.Either/index.js";
@@ -99,7 +100,31 @@ const program2 = dictMonadError => {
     }))(i4 => Applicative0.pure((((1 + i1 | 0) + i2 | 0) + i3 | 0) + i4 | 0))))));
   };
 };
-const test3 = /* #__PURE__ */ program2(monadErrorExceptT)(/* #__PURE__ */ Control$dMonad$dExcept$dTrans.monadEffectExceptT(Effect$dClass.monadEffectEffect));
+const test3 = /* #__PURE__ */ (() => {
+  const throwError1 = monadErrorExceptT.MonadThrow0().throwError;
+  const $1 = Control$dMonad$dExcept$dTrans.monadEffectExceptT(Effect$dClass.monadEffectEffect);
+  const Monad0 = $1.Monad0();
+  const Bind1 = Monad0.Bind1();
+  const Apply0 = Bind1.Apply0();
+  const map3 = Apply0.Functor0().map;
+  const Applicative0 = Monad0.Applicative0();
+  return Bind1.bind($1.liftEffect(Effect$dConsole.log("foo")))(() => Bind1.bind($1.liftEffect(Effect$dRandom.randomInt(1)(10)))(i1 => Bind1.bind(map3(v => v + 4 | 0)($1.liftEffect(Effect$dRandom.randomInt(1)(10))))(i2 => Bind1.bind(Apply0.apply(map3(Data$dSemiring.intAdd)($1.liftEffect(Effect$dRandom.randomInt(1)(10))))($1.liftEffect(Effect$dRandom.randomInt(1)(10))))(i3 => Bind1.bind((() => {
+    const $11 = Bind1.bind($1.liftEffect(Effect$dRandom.randomInt(1)(10)))(i5 => Bind1.bind((() => {
+      const $12 = throwError1("below 5");
+      if (i5 < 5) { return $12; }
+      return Applicative0.pure(Data$dUnit.unit);
+    })())(() => Applicative0.pure(i5)));
+    return () => {
+      const v2 = $11();
+      if (v2.tag === "Left") {
+        if (i2 < 5) { return Applicative0.pure(8)(); }
+        return throwError1(v2._1)();
+      }
+      if (v2.tag === "Right") { return Data$dEither.$Either("Right", v2._1); }
+      $runtime.fail();
+    };
+  })())(i4 => Applicative0.pure((((1 + i1 | 0) + i2 | 0) + i3 | 0) + i4 | 0))))));
+})();
 const program1 = dictMonadEffect => {
   const Monad0 = dictMonadEffect.Monad0();
   const bindExceptT1 = Control$dMonad$dExcept$dTrans.bindExceptT(Monad0);
