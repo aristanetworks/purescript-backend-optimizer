@@ -11,24 +11,31 @@ import * as Effect$dRandom from "../Effect.Random/index.js";
 const monadEffectState = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadEffectState(Effect$dClass.monadEffectEffect);
 const monadStateStateT = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadStateStateT(Effect.monadEffect);
 const $$get = /* #__PURE__ */ (() => monadStateStateT.state(s => Data$dTuple.$Tuple(s, s)))();
-const map = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.functorStateT(Effect.functorEffect).map)();
 const test1 = /* #__PURE__ */ (() => {
   const $0 = monadEffectState.liftEffect(Effect$dConsole.log("foo"))(1);
   return () => {
     const v1 = $0();
     const v1$1 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))(v1._2)();
     const v1$2 = $$get(v1$1._2)();
-    const v1$3 = map(v => v + v1$2._1 | 0)(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10)))(v1$2._2)();
-    const v1$4 = monadStateStateT.state(v => Data$dTuple.$Tuple(Data$dUnit.unit, v1$3._1))(v1$3._2)();
+    const a$p = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))(v1$2._2)();
+    const $5 = a$p._1 + v1$2._1 | 0;
+    const v1$3 = monadStateStateT.state(v => Data$dTuple.$Tuple(Data$dUnit.unit, $5))(a$p._2)();
     const bind = Control$dMonad$dState$dTrans.bindStateT(Effect.monadEffect).bind;
     const pure = Control$dMonad$dState$dTrans.applicativeStateT(Effect.monadEffect).pure;
-    const $8 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
-    const v1$5 = bind(map(Data$dSemiring.intAdd)(monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10))))(f$p => bind($8)(a$p => pure(f$p(a$p))))(v1$4._2)();
-    const v1$6 = monadStateStateT.state(s => {
-      const s$p = s + v1$5._1 | 0;
+    const $9 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
+    const $10 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
+    const v1$4 = bind(s => {
+      const $12 = $9(s);
+      return () => {
+        const a$p$1 = $12();
+        return Data$dTuple.$Tuple($14 => a$p$1._1 + $14 | 0, a$p$1._2);
+      };
+    })(f$p => bind($10)(a$p$1 => pure(f$p(a$p$1))))(v1$3._2)();
+    const v1$5 = monadStateStateT.state(s => {
+      const s$p = s + v1$4._1 | 0;
       return Data$dTuple.$Tuple(s$p, s$p);
-    })(v1$5._2)();
-    return Data$dTuple.$Tuple(Data$dShow.showIntImpl(v1$1._1 + v1$6._1 | 0), v1$6._2);
+    })(v1$4._2)();
+    return Data$dTuple.$Tuple(Data$dShow.showIntImpl(v1$1._1 + v1$5._1 | 0), v1$5._2);
   };
 })();
 const program2 = dictMonadState => {
@@ -67,4 +74,4 @@ const program1 = dictMonadEffect => {
   }))(result => pure1(Data$dShow.showIntImpl(i1 + result | 0)))))))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect)(1);
-export {$$get as get, map, monadEffectState, monadStateStateT, program1, program2, test1, test2, test3};
+export {$$get as get, monadEffectState, monadStateStateT, program1, program2, test1, test2, test3};

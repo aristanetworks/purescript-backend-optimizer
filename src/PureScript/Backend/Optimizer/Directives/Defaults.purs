@@ -303,6 +303,7 @@ defaultDirectives =
   Control.Monad.Maybe.Trans.applicativeMaybeT(..).pure arity=1
   Control.Monad.Maybe.Trans.bindMaybeT(..).bind arity=1
 
+  Control.Monad.State.Trans.functorStateT(..).map arity=1
   Control.Monad.State.Trans.applyStateT(..).apply arity=1
   Control.Monad.State.Trans.applicativeStateT(..).pure arity=1
   Control.Monad.State.Trans.bindStateT(..).bind arity=1
