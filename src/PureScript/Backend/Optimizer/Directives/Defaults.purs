@@ -295,6 +295,7 @@ defaultDirectives =
   Control.Monad.Reader.Trans.monadReaderReaderT(..).local arity=1
 
   Control.Monad.Maybe.Trans.bindMaybeT(..).bind arity=1
+  Control.Monad.Maybe.Trans.applicativeMaybeT(..).pure arity=1
 
   Control.Monad.Writer.Trans.functorWriterT(..).map arity=2
   Control.Monad.Writer.Trans.applyWriterT(..).apply arity=2

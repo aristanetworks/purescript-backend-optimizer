@@ -1,11 +1,9 @@
 import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dMaybe$dTrans from "../Control.Monad.Maybe.Trans/index.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
-import * as Effect from "../Effect/index.js";
 import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
-const pure = /* #__PURE__ */ (() => Control$dMonad$dMaybe$dTrans.applicativeMaybeT(Effect.monadEffect).pure)();
 const test1 = /* #__PURE__ */ (() => {
   const $0 = Effect$dConsole.log("foo");
   return () => {
@@ -17,7 +15,7 @@ const test1 = /* #__PURE__ */ (() => {
     const a$p$3 = Effect$dRandom.randomInt(1)(10)();
     const v1 = Data$dMaybe.applyMaybe.apply(Data$dMaybe.$Maybe("Just", $7 => a$p$2 + $7 | 0))(Data$dMaybe.$Maybe("Just", a$p$3));
     if (v1.tag === "Nothing") { return Data$dMaybe.Nothing; }
-    if (v1.tag === "Just") { return pure(((1 + a$p | 0) + $4 | 0) + v1._1 | 0)(); }
+    if (v1.tag === "Just") { return Data$dMaybe.$Maybe("Just", ((1 + a$p | 0) + $4 | 0) + v1._1 | 0); }
     $runtime.fail();
   };
 })();
@@ -60,4 +58,4 @@ const program1 = dictMonadEffect => {
   })())))(i3 => pure1(((1 + i1 | 0) + i2 | 0) + i3 | 0)))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
-export {program1, pure, test1, test2};
+export {program1, test1, test2};
