@@ -3,8 +3,8 @@ module Snapshot.TransformerStateT01 where
 import Prelude
 
 import Control.Monad.State (class MonadState, get, modify, put, runStateT)
-import Control.Monad.State.Trans (StateT(..))
-import Data.Tuple (Tuple(..))
+import Control.Monad.State.Trans (StateT)
+import Data.Tuple (Tuple)
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console as Console
