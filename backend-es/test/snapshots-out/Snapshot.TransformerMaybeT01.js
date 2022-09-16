@@ -1,9 +1,9 @@
+// @inline export program1 arity=1
 import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dMaybe$dTrans from "../Control.Monad.Maybe.Trans/index.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dSemiring from "../Data.Semiring/index.js";
 import * as Effect from "../Effect/index.js";
-import * as Effect$dClass from "../Effect.Class/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import * as Effect$dRandom from "../Effect.Random/index.js";
 const test1 = /* #__PURE__ */ (() => {
@@ -67,5 +67,40 @@ const program1 = dictMonadEffect => {
     };
   })())))(i3 => pure1(((1 + i1 | 0) + i2 | 0) + i3 | 0)))));
 };
-const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
+const test2 = /* #__PURE__ */ (() => {
+  const bindMaybeT1 = Control$dMonad$dMaybe$dTrans.bindMaybeT(Effect.monadEffect);
+  const apply1 = Control$dMonad$dMaybe$dTrans.applyMaybeT(Effect.monadEffect).apply;
+  const pure1 = Control$dMonad$dMaybe$dTrans.applicativeMaybeT(Effect.monadEffect).pure;
+  return bindMaybeT1.bind((() => {
+    const $3 = Effect$dConsole.log("foo");
+    return () => {
+      const a$p = $3();
+      return Data$dMaybe.$Maybe("Just", a$p);
+    };
+  })())(() => bindMaybeT1.bind((() => {
+    const $4 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $4();
+      return Data$dMaybe.$Maybe("Just", a$p);
+    };
+  })())(i1 => bindMaybeT1.bind((() => {
+    const $5 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $5();
+      return Data$dMaybe.$Maybe("Just", a$p + 5 | 0);
+    };
+  })())(i2 => bindMaybeT1.bind(apply1((() => {
+    const $6 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $6();
+      return Data$dMaybe.$Maybe("Just", $8 => a$p + $8 | 0);
+    };
+  })())((() => {
+    const $6 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $6();
+      return Data$dMaybe.$Maybe("Just", a$p);
+    };
+  })()))(i3 => pure1(((1 + i1 | 0) + i2 | 0) + i3 | 0)))));
+})();
 export {program1, test1, test2};
