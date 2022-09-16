@@ -13,7 +13,6 @@ const monadStateStateT = /* #__PURE__ */ Control$dMonad$dState$dTrans.monadState
 const $$get = /* #__PURE__ */ (() => monadStateStateT.state(s => Data$dTuple.$Tuple(s, s)))();
 const map = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.functorStateT(Effect.functorEffect).map)();
 const apply = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.applyStateT(Effect.monadEffect).apply)();
-const pure = /* #__PURE__ */ (() => Control$dMonad$dState$dTrans.applicativeStateT(Effect.monadEffect).pure)();
 const test1 = /* #__PURE__ */ (() => {
   const $0 = monadEffectState.liftEffect(Effect$dConsole.log("foo"))(1);
   return () => {
@@ -27,7 +26,7 @@ const test1 = /* #__PURE__ */ (() => {
       const s$p = s + v1$5._1 | 0;
       return Data$dTuple.$Tuple(s$p, s$p);
     })(v1$5._2)();
-    return pure(Data$dShow.showIntImpl(v1$1._1 + v1$6._1 | 0))(v1$6._2)();
+    return Data$dTuple.$Tuple(Data$dShow.showIntImpl(v1$1._1 + v1$6._1 | 0), v1$6._2);
   };
 })();
 const program2 = dictMonadState => {
@@ -66,4 +65,4 @@ const program1 = dictMonadEffect => {
   }))(result => pure1(Data$dShow.showIntImpl(i1 + result | 0)))))))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect)(1);
-export {apply, $$get as get, map, monadEffectState, monadStateStateT, program1, program2, pure, test1, test2, test3};
+export {apply, $$get as get, map, monadEffectState, monadStateStateT, program1, program2, test1, test2, test3};
