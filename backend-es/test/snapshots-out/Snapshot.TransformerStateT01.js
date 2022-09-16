@@ -18,8 +18,8 @@ const test1 = /* #__PURE__ */ (() => {
     const a$p = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10))(v1$1._2)();
     const bind = Control$dMonad$dState$dTrans.bindStateT(Effect.monadEffect).bind;
     const pure = Control$dMonad$dState$dTrans.applicativeStateT(Effect.monadEffect).pure;
-    const $6 = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10));
-    const $7 = Control$dMonad$dState$dTrans.monadTransStateT.lift(Effect.monadEffect)(Effect$dRandom.randomInt(1)(10));
+    const $6 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
+    const $7 = monadEffectState.liftEffect(Effect$dRandom.randomInt(1)(10));
     const v1$2 = bind(s => {
       const $9 = $6(s);
       return () => {
