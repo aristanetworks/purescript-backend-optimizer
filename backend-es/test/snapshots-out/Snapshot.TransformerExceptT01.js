@@ -15,7 +15,6 @@ const map1 = f => a => () => {
     $runtime.fail();
   })();
 };
-const applicativeExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.applicativeExceptT(Effect.monadEffect);
 const monadThrowExceptT = /* #__PURE__ */ Control$dMonad$dExcept$dTrans.monadThrowExceptT(Effect.monadEffect);
 const test1 = /* #__PURE__ */ (() => {
   const $0 = Effect$dConsole.log("foo");
@@ -48,10 +47,10 @@ const test1 = /* #__PURE__ */ (() => {
       if (v2$1.tag === "Right") {
         const v2$2 = (() => {
           if ((a$p + v2._1 | 0) < v2$1._1) { return () => Data$dEither.$Either("Left", "error"); }
-          return applicativeExceptT.pure(Data$dUnit.unit);
+          return () => Data$dEither.$Either("Right", Data$dUnit.unit);
         })()();
         if (v2$2.tag === "Left") { return Data$dEither.$Either("Left", v2$2._1); }
-        if (v2$2.tag === "Right") { return applicativeExceptT.pure(((1 + a$p | 0) + v2._1 | 0) + v2$1._1 | 0)(); }
+        if (v2$2.tag === "Right") { return Data$dEither.$Either("Right", ((1 + a$p | 0) + v2._1 | 0) + v2$1._1 | 0); }
         $runtime.fail();
       }
       $runtime.fail();
@@ -118,4 +117,4 @@ const program1 = dictMonadEffect => {
   })())(() => applicativeExceptT1.pure(((1 + i1 | 0) + i2 | 0) + i3 | 0))))));
 };
 const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
-export {applicativeExceptT, map1, monadThrowExceptT, program1, program2, test1, test2, test3};
+export {map1, monadThrowExceptT, program1, program2, test1, test2, test3};

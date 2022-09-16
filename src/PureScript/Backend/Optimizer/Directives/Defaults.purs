@@ -291,6 +291,7 @@ defaultDirectives =
 
   -- transformers
   Control.Monad.Except.Trans.applyExceptT(..).apply arity=1
+  Control.Monad.Except.Trans.applicativeExceptT(..).pure arity=1
   Control.Monad.Except.Trans.bindExceptT(..).bind arity=1
   Control.Monad.Except.Trans.monadThrowExceptT(..).throwError arity=1
 
