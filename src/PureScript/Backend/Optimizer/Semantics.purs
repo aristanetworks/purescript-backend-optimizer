@@ -76,11 +76,18 @@ type LetBindingAssoc a =
   , binding :: a
   }
 
+type EffectBindingAssoc a =
+  { ident :: Maybe Ident
+  , level :: Level
+  , binding :: a
+  , pure :: Boolean
+  }
+
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
-  | RewriteEffectBindAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
+  | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
   | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
   | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
@@ -306,9 +313,13 @@ instance Eval BackendExpr where
               goBinding env' = case _ of
                 List.Nil ->
                   eval env' body
-                List.Cons b bs ->
-                  SemEffectBind b.ident (eval env' b.binding) \nextBinding ->
-                    goBinding (bindLocal env (One nextBinding)) bs
+                List.Cons b bs
+                  | b.pure ->
+                      makeLet b.ident (eval env' b.binding) \nextBinding ->
+                        goBinding (bindLocal env (One nextBinding)) bs
+                  | otherwise ->
+                      SemEffectBind b.ident (eval env' b.binding) \nextBinding ->
+                        goBinding (bindLocal env (One nextBinding)) bs
             goBinding env (List.fromFoldable bindings)
           RewriteStop qual ->
             NeutStop qual
@@ -1198,14 +1209,27 @@ build ctx = case _ of
         expr'
   expr@(EffectBind ident1 level1 (ExprSyntax _ (EffectBind ident2 level2 binding2 body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
-      [ { ident: ident2, level: level2, binding: binding2 }
-      , { ident: ident1, level: level1, binding: body2 }
+      [ { ident: ident2, level: level2, binding: binding2, pure: false }
+      , { ident: ident1, level: level1, binding: body2, pure: false }
+      ]
+      body1
+  expr@(EffectBind ident1 level1 (ExprSyntax _ (Let ident2 level2 binding2 body2)) body1) ->
+    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
+      [ { ident: ident2, level: level2, binding: binding2, pure: true }
+      , { ident: ident1, level: level1, binding: body2, pure: false }
       ]
       body1
   expr@(EffectBind ident1 level1 (ExprRewrite _ (RewriteEffectBindAssoc bindings body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
-      (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
+      (Array.snoc bindings { ident: ident1, level: level1, binding: body2, pure: false })
       body1
+  expr@(EffectBind ident1 level1 (ExprRewrite _ (RewriteLetAssoc bindings body2)) body1) ->
+    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
+      (Array.snoc (withPure <$> bindings) { ident: ident1, level: level1, binding: body2, pure: false })
+      body1
+    where
+    withPure { ident, level, binding } =
+      { ident, level, binding, pure: true }
   EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
     build ctx $ Let ident level binding body
   Branch pairs (Just def) | Just expr <- simplifyBranches ctx pairs def ->
@@ -1541,9 +1565,38 @@ freeze init = Tuple (analysisOf init) (go init)
         RewriteStop qual ->
           NeutralExpr $ Var qual
         RewriteLetAssoc bindings body ->
-          reassocBindings Let go bindings body
+          case NonEmptyArray.fromArray bindings of
+            Just bindings' -> do
+              let
+                { ident, level, binding } = foldl1Array
+                  ( \inner outer -> outer
+                      { binding =
+                          NeutralExpr $ Let inner.ident inner.level inner.binding (go outer.binding)
+                      }
+                  )
+                  (\outer -> outer { binding = go outer.binding })
+                  bindings'
+              NeutralExpr $ Let ident level binding (go body)
+            Nothing ->
+              go body
         RewriteEffectBindAssoc bindings body ->
-          reassocBindings EffectBind go bindings body
+          case NonEmptyArray.fromArray bindings of
+            Just bindings' -> do
+              let
+                { ident, level, binding } = foldl1Array
+                  ( \inner outer -> outer
+                      { binding =
+                          if inner.pure then
+                            NeutralExpr $ Let inner.ident inner.level inner.binding (go outer.binding)
+                          else
+                            NeutralExpr $ EffectBind inner.ident inner.level inner.binding (go outer.binding)
+                      }
+                  )
+                  (\outer -> outer { binding = go outer.binding })
+                  bindings'
+              NeutralExpr $ Let ident level binding (go body)
+            Nothing ->
+              go body
         RewriteUnpackOp ident level op body ->
           case op of
             UnpackRecord props ->
@@ -1571,28 +1624,6 @@ freeze init = Tuple (analysisOf init) (go init)
               NeutralExpr $ PrimOp $ Op2 op2 (go lhs) branches'
     ExprBacktrack ->
       NeutralExpr $ Fail "Failed pattern match"
-
-reassocBindings
-  :: (Maybe Ident -> Level -> NeutralExpr -> NeutralExpr -> BackendSyntax NeutralExpr)
-  -> (BackendExpr -> NeutralExpr)
-  -> Array (LetBindingAssoc BackendExpr)
-  -> BackendExpr
-  -> NeutralExpr
-reassocBindings f g bindings body =
-  case NonEmptyArray.fromArray bindings of
-    Just bindings' -> do
-      let
-        { ident, level, binding } = foldl1Array
-          ( \inner outer -> outer
-              { binding =
-                  NeutralExpr $ f inner.ident inner.level inner.binding (g outer.binding)
-              }
-          )
-          (\outer -> outer { binding = g outer.binding })
-          bindings'
-      NeutralExpr $ f ident level binding (g body)
-    Nothing ->
-      g body
 
 evalMkFn :: Env -> Int -> BackendSemantics -> MkFn BackendSemantics
 evalMkFn env n sem
