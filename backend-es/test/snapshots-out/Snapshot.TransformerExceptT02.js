@@ -51,22 +51,26 @@ const test1 = /* #__PURE__ */ (() => {
         })(a$p$1 => pure(f$p(a$p$1))))();
         if (v2$2.tag === "Left") { return Data$dEither.$Either("Left", v2$2._1); }
         if (v2$2.tag === "Right") {
-          const $9 = Effect$dRandom.randomInt(1)(10);
-          const v2$3 = monadErrorExceptT.catchError(() => {
-            const a$p$1 = $9();
-            const v2$3 = (() => {
-              if (a$p$1 < 5) { return () => Data$dEither.$Either("Left", "below 5"); }
-              return () => Data$dEither.$Either("Right", Data$dUnit.unit);
-            })()();
-            if (v2$3.tag === "Left") { return Data$dEither.$Either("Left", v2$3._1); }
-            if (v2$3.tag === "Right") { return Data$dEither.$Either("Right", a$p$1); }
+          const a$p$1 = Effect$dRandom.randomInt(1)(10)();
+          const v2$3 = (() => {
+            if (a$p$1 < 5) { return () => Data$dEither.$Either("Left", "below 5"); }
+            return () => Data$dEither.$Either("Right", Data$dUnit.unit);
+          })()();
+          const v2$4 = (() => {
+            if (v2$3.tag === "Left") { return () => Data$dEither.$Either("Left", v2$3._1); }
+            if (v2$3.tag === "Right") { return () => Data$dEither.$Either("Right", a$p$1); }
             $runtime.fail();
-          })(e => {
-            if (v2$1._1 < 5) { return () => Data$dEither.$Either("Right", 8); }
-            return () => Data$dEither.$Either("Left", e);
-          })();
-          if (v2$3.tag === "Left") { return Data$dEither.$Either("Left", v2$3._1); }
-          if (v2$3.tag === "Right") { return Data$dEither.$Either("Right", (((1 + a$p | 0) + v2$1._1 | 0) + v2$2._1 | 0) + v2$3._1 | 0); }
+          })()();
+          const v2$5 = (() => {
+            if (v2$4.tag === "Left") {
+              if (v2$1._1 < 5) { return () => Data$dEither.$Either("Right", 8); }
+              return () => Data$dEither.$Either("Left", v2$4._1);
+            }
+            if (v2$4.tag === "Right") { return () => Data$dEither.$Either("Right", v2$4._1); }
+            $runtime.fail();
+          })()();
+          if (v2$5.tag === "Left") { return Data$dEither.$Either("Left", v2$5._1); }
+          if (v2$5.tag === "Right") { return Data$dEither.$Either("Right", (((1 + a$p | 0) + v2$1._1 | 0) + v2$2._1 | 0) + v2$5._1 | 0); }
           $runtime.fail();
         }
         $runtime.fail();
