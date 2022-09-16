@@ -1,3 +1,4 @@
+// @inline export program1 arity=1
 import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dExcept$dTrans from "../Control.Monad.Except.Trans/index.js";
 import * as Data$dEither from "../Data.Either/index.js";
@@ -116,5 +117,45 @@ const program1 = dictMonadEffect => {
     return applicativeExceptT1.pure(Data$dUnit.unit);
   })())(() => applicativeExceptT1.pure(((1 + i1 | 0) + i2 | 0) + i3 | 0))))));
 };
-const test2 = /* #__PURE__ */ program1(Effect$dClass.monadEffectEffect);
+const test2 = /* #__PURE__ */ (() => {
+  const bindExceptT1 = Control$dMonad$dExcept$dTrans.bindExceptT(Effect.monadEffect);
+  const apply1 = Control$dMonad$dExcept$dTrans.applyExceptT(Effect.monadEffect).apply;
+  const applicativeExceptT1 = Control$dMonad$dExcept$dTrans.applicativeExceptT(Effect.monadEffect);
+  const throwError1 = Control$dMonad$dExcept$dTrans.monadThrowExceptT(Effect.monadEffect).throwError;
+  return bindExceptT1.bind((() => {
+    const $4 = Effect$dConsole.log("foo");
+    return () => {
+      const a$p = $4();
+      return Data$dEither.$Either("Right", a$p);
+    };
+  })())(() => bindExceptT1.bind((() => {
+    const $5 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $5();
+      return Data$dEither.$Either("Right", a$p);
+    };
+  })())(i1 => bindExceptT1.bind((() => {
+    const $6 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $6();
+      return Data$dEither.$Either("Right", a$p + 5 | 0);
+    };
+  })())(i2 => bindExceptT1.bind(apply1((() => {
+    const $7 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $7();
+      return Data$dEither.$Either("Right", $9 => a$p + $9 | 0);
+    };
+  })())((() => {
+    const $7 = Effect$dRandom.randomInt(1)(10);
+    return () => {
+      const a$p = $7();
+      return Data$dEither.$Either("Right", a$p);
+    };
+  })()))(i3 => bindExceptT1.bind((() => {
+    const $8 = throwError1("error");
+    if ((i1 + i2 | 0) < i3) { return $8; }
+    return applicativeExceptT1.pure(Data$dUnit.unit);
+  })())(() => applicativeExceptT1.pure(((1 + i1 | 0) + i2 | 0) + i3 | 0))))));
+})();
 export {map1, monadThrowExceptT, program1, program2, test1, test2, test3};

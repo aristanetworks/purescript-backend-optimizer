@@ -1,8 +1,8 @@
+-- @inline export program1 arity=1
 module Snapshot.TransformerExceptT01 where
 
 import Prelude
 
-import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except.Trans (class MonadThrow, ExceptT(..), runExceptT, throwError)
 import Data.Either (Either(..))
 import Effect (Effect)
