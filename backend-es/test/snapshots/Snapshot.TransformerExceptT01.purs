@@ -1,4 +1,5 @@
 -- @inline export program1 arity=1
+-- @inline export program2 arity=2
 module Snapshot.TransformerExceptT01 where
 
 import Prelude
