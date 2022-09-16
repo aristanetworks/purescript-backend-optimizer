@@ -53,7 +53,7 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (foldMap, foldl)
-import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex)
+import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.Map (Map, SemigroupMap(..))
@@ -264,17 +264,24 @@ inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBack
       case Map.lookup (EvalExtern qual) directives of
         Just dirs -> do
           let
-            newDirs = Map.toUnfoldable dirs # Array.mapMaybe case _ of
-              Tuple InlineRef (InlineArity n) ->
-                Just $ Tuple InlineRef (InlineArity (n - NonEmptyArray.length args))
-              Tuple (InlineSpineProp prop) dir ->
-                Just $ Tuple (InlineProp prop) dir
-              _ ->
-                Nothing
-          if Array.null newDirs then
+            newDirs = foldrWithIndex
+              ( \ix dir accum -> case ix, dir of
+                  InlineRef, (InlineArity n) ->
+                    accum
+                      # Map.insert InlineRef (InlineArity (n - NonEmptyArray.length args))
+                  InlineSpineProp prop, _ ->
+                    accum
+                      # Map.insert (InlineProp prop) dir
+                      # Map.insert (InlineSpineProp prop) dir
+                  _, _ ->
+                    accum
+              )
+              Map.empty
+              dirs
+          if Map.isEmpty newDirs then
             Nothing
           else
-            Just $ Map.fromFoldable newDirs
+            Just newDirs
         _ ->
           Nothing
     ExternExpr _ (NeutralExpr (Accessor (NeutralExpr (App (NeutralExpr (Var qual)) _)) (GetProp prop))) ->
