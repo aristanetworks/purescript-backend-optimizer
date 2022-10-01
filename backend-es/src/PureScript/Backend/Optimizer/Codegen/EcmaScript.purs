@@ -150,10 +150,18 @@ renameTopLevel ident env = fromMaybe (Tuple ident RefStrict) $ Map.lookup (Codeg
 esCodegenModule :: forall a. CodegenOptions -> BackendImplementations -> BackendModule -> Dodo.Doc a
 esCodegenModule options implementations mod = do
   let
+    topLevelBound :: Map Ident Int
+    topLevelBound = foldl
+      ( \bs { bindings } ->
+          foldr (flip Map.insert 1 <<< fst) bs bindings
+      )
+      (foldr (flip Map.insert 1) Map.empty mod.foreign)
+      mod.bindings
+
     codegenEnv :: CodegenEnv
     codegenEnv =
       { currentModule: mod.name
-      , bound: Map.empty
+      , bound: topLevelBound
       , names: Map.empty
       , emitPure: true
       , options
