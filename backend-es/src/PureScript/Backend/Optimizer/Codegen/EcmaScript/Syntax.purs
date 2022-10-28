@@ -1,372 +1,372 @@
-module PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax where
+module PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax
+  ( EsSyntax(..)
+  , EsAssignment(..)
+  , EsArrayElement(..)
+  , EsObjectElement(..)
+  , EsBinaryOp(..)
+  , EsUnaryOp(..)
+  , EsRuntimeOp(..)
+  , EsPrec(..)
+  , EsAnalysis(..)
+  , EsExpr(..)
+  , EsIdent(..)
+  , esAnalysisOf
+  , build
+  , print
+  , class HasSyntax
+  , syntaxOf
+  , esArrowFunction
+  , esCurriedFunction
+  , esBinding
+  , fromIdent
+  ) where
 
 import Prelude
 
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Foldable (class Foldable, fold, foldMap, foldlDefault, foldrDefault)
+import Data.Array.NonEmpty as NonEmptyArray
+import Data.Foldable (class Foldable, fold, foldMap, foldlDefault, foldr, foldrDefault)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Tuple (Tuple(..), snd)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeProp, esIdent, esIndex, esInt, esModuleName, esNumber, esString)
-import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName, Qualified(..))
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esIdent, esIndex, esInt, esModuleName, esNumber, esString)
+import PureScript.Backend.Optimizer.CoreFn (Ident(..), ModuleName, Qualified(..))
 
-data ESSyntax a
-  = ESString String
-  | ESNumber Number
-  | ESInt Int
-  | ESBoolean Boolean
-  | ESArray (Array (ESArrayElement a))
-  | ESObject (Array (ESObjectElement a))
-  | ESAccess a String
-  | ESIndex a Int
-  | ESIdent (Qualified Ident)
-  | ESRuntime (ESRuntimeOp a)
-  | ESCall a (Array a)
-  | ESBinary ESBinaryOp a a
-  | ESUnary ESUnaryOp a
-  | ESAssign ESAssignment a
-  | ESArrowFunction (Array Ident) (Array a)
-  | ESConst (NonEmptyArray (Tuple Ident a))
-  | ESLet (NonEmptyArray (Tuple Ident (Maybe a)))
-  | ESIfElse a (Array a) (Array a)
-  | ESWhile a (Array a)
-  | ESReturn a
-  | ESContinue
-  | ESUndefined
+data EsIdent
+  = Embedded Ident String
+  | Generated String
 
-derive instance Functor ESSyntax
+data EsSyntax a
+  = EsString String
+  | EsNumber Number
+  | EsInt Int
+  | EsBoolean Boolean
+  | EsArray (Array (EsArrayElement a))
+  | EsObject (Array (EsObjectElement a))
+  | EsAccess a String
+  | EsIndex a Int
+  | EsIdent (Qualified EsIdent)
+  | EsRuntime (EsRuntimeOp a)
+  | EsCall a (Array a)
+  | EsBinary EsBinaryOp a a
+  | EsUnary EsUnaryOp a
+  | EsAssign EsAssignment a
+  | EsArrowFunction (Array Ident) (Array a)
+  | EsCommentTrailing a String
+  | EsConst (NonEmptyArray (Tuple Ident a))
+  | EsLet (NonEmptyArray (Tuple Ident (Maybe a)))
+  | EsIfElse a (Array a) (Array a)
+  | EsWhile a (Array a)
+  | EsReturn a
+  | EsContinue
+  | EsUndefined
 
-instance Foldable ESSyntax where
+derive instance Functor EsSyntax
+
+instance Foldable EsSyntax where
   foldr a = foldrDefault a
   foldl a = foldlDefault a
   foldMap f = case _ of
-    ESString _ -> mempty
-    ESNumber _ -> mempty
-    ESInt _ -> mempty
-    ESBoolean _ -> mempty
-    ESArray as -> foldMap (foldMap f) as
-    ESObject as -> foldMap (foldMap f) as
-    ESAccess a _ -> f a
-    ESIndex a _ -> f a
-    ESIdent _ -> mempty
-    ESRuntime a -> foldMap f a
-    ESCall a bs -> f a <> foldMap f bs
-    ESBinary _ a b -> f a <> f b
-    ESUnary _ a -> f a
-    ESAssign _ a -> f a
-    ESArrowFunction _ as -> foldMap f as
-    ESConst as -> foldMap (foldMap f) as
-    ESLet as -> foldMap (foldMap (foldMap f)) as
-    ESIfElse a bs cs -> f a <> foldMap f bs <> foldMap f cs
-    ESWhile a bs -> f a <> foldMap f bs
-    ESReturn a -> f a
-    ESContinue -> mempty
-    ESUndefined -> mempty
+    EsString _ -> mempty
+    EsNumber _ -> mempty
+    EsInt _ -> mempty
+    EsBoolean _ -> mempty
+    EsArray as -> foldMap (foldMap f) as
+    EsObject as -> foldMap (foldMap f) as
+    EsAccess a _ -> f a
+    EsIndex a _ -> f a
+    EsIdent _ -> mempty
+    EsRuntime a -> foldMap f a
+    EsCall a bs -> f a <> foldMap f bs
+    EsBinary _ a b -> f a <> f b
+    EsUnary _ a -> f a
+    EsAssign _ a -> f a
+    EsArrowFunction _ as -> foldMap f as
+    EsCommentTrailing a _ -> f a
+    EsConst as -> foldMap (foldMap f) as
+    EsLet as -> foldMap (foldMap (foldMap f)) as
+    EsIfElse a bs cs -> f a <> foldMap f bs <> foldMap f cs
+    EsWhile a bs -> f a <> foldMap f bs
+    EsReturn a -> f a
+    EsContinue -> mempty
+    EsUndefined -> mempty
 
-data ESAssignment
-  = ESAssignIdent Ident
-  | ESAssignAccess ESAssignment String
+data EsAssignment
+  = EsAssignIdent Ident
+  | EsAssignAccess EsAssignment String
 
-data ESArrayElement a
-  = ESArrayValue a
-  | ESArraySpread a
+data EsArrayElement a
+  = EsArrayValue a
+  | EsArraySpread a
 
-derive instance Functor ESArrayElement
+derive instance Functor EsArrayElement
 
-instance Foldable ESArrayElement where
+instance Foldable EsArrayElement where
   foldr a = foldrDefault a
   foldl a = foldlDefault a
   foldMap f = case _ of
-    ESArrayValue a -> f a
-    ESArraySpread a -> f a
+    EsArrayValue a -> f a
+    EsArraySpread a -> f a
 
-data ESObjectElement a
-  = ESObjectPun String
-  | ESObjectField String a
-  | ESObjectSpread a
+data EsObjectElement a
+  = EsObjectPun String
+  | EsObjectField String a
+  | EsObjectSpread a
 
-derive instance Functor ESObjectElement
+derive instance Functor EsObjectElement
 
-instance Foldable ESObjectElement where
+instance Foldable EsObjectElement where
   foldr a = foldrDefault a
   foldl a = foldlDefault a
   foldMap f = case _ of
-    ESObjectPun _ -> mempty
-    ESObjectField _ a -> f a
-    ESObjectSpread a -> f a
+    EsObjectPun _ -> mempty
+    EsObjectField _ a -> f a
+    EsObjectSpread a -> f a
 
-data ESBinaryOp
-  = ESOr
-  | ESAnd
-  | ESLessThan
-  | ESLessThanEqual
-  | ESGreaterThan
-  | ESGreaterThanEqual
-  | ESAdd
-  | ESSubtract
-  | ESDivide
-  | ESMultiply
-  | ESBitAnd
-  | ESBitOr
-  | ESBitShiftLeft
-  | ESBitShitRight
-  | ESBitXor
-  | ESZeroFillShiftRight
-  | ESEquals
-  | ESNotEquals
+data EsBinaryOp
+  = EsOr
+  | EsAnd
+  | EsLessThan
+  | EsLessThanEqual
+  | EsGreaterThan
+  | EsGreaterThanEqual
+  | EsAdd
+  | EsSubtract
+  | EsDivide
+  | EsMultiply
+  | EsBitAnd
+  | EsBitOr
+  | EsBitShiftLeft
+  | EsBitShitRight
+  | EsBitXor
+  | EsZeroFillShiftRight
+  | EsEquals
+  | EsNotEquals
 
-data ESUnaryOp
-  = ESNot
-  | ESNegate
-  | ESBitNegate
+data EsUnaryOp
+  = EsNot
+  | EsNegate
+  | EsBitNegate
 
-data ESPrec
-  = ESPrecStatement
-  | ESPrecControl
-  | ESPrecArrow
-  | ESPrecAssign
-  | ESPrecBinary Int
-  | ESPrecPrefix
-  | ESPrecCall
-  | ESPrecAtom
+data EsPrec
+  = EsPrecStatement
+  | EsPrecControl
+  | EsPrecArrow
+  | EsPrecAssign
+  | EsPrecBinary Int
+  | EsPrecPrefix
+  | EsPrecCall
+  | EsPrecAtom
 
-derive instance Eq ESPrec
-derive instance Ord ESPrec
+derive instance Eq EsPrec
+derive instance Ord EsPrec
 
-precOf :: forall a. ESSyntax a -> ESPrec
-precOf = case _ of
-  ESString _ -> ESPrecAtom
-  ESNumber _ -> ESPrecAtom
-  ESInt _ -> ESPrecAtom
-  ESBoolean _ -> ESPrecAtom
-  ESArray _ -> ESPrecAtom
-  ESObject _ -> ESPrecAtom
-  ESAccess _ _ -> ESPrecCall
-  ESIndex _ _ -> ESPrecCall
-  ESIdent _ -> ESPrecAtom
-  ESRuntime _ -> ESPrecCall
-  ESCall _ _ -> ESPrecCall
-  ESBinary op _ _ -> ESPrecBinary (precOfOp op)
-  ESUnary _ _ -> ESPrecPrefix
-  ESAssign _ _ -> ESPrecAssign
-  ESArrowFunction _ _ -> ESPrecArrow
-  ESConst _ -> ESPrecStatement
-  ESLet _ -> ESPrecStatement
-  ESIfElse _ _ _ -> ESPrecControl
-  ESWhile _ _ -> ESPrecControl
-  ESReturn _ -> ESPrecStatement
-  ESContinue -> ESPrecStatement
-  ESUndefined -> ESPrecAtom
-  where
-  precOfOp = case _ of
-    ESOr -> 1
-    ESAnd -> 2
-    ESBitOr -> 3
-    ESBitXor -> 4
-    ESBitAnd -> 5
-    ESEquals -> 6
-    ESNotEquals -> 6
-    ESLessThan -> 7
-    ESLessThanEqual -> 7
-    ESGreaterThan -> 7
-    ESGreaterThanEqual -> 7
-    ESBitShiftLeft -> 8
-    ESBitShitRight -> 8
-    ESZeroFillShiftRight -> 8
-    ESAdd -> 9
-    ESSubtract -> 9
-    ESDivide -> 10
-    ESMultiply -> 10
+data EsRuntimeOp a
+  = EsBinding a
+  | EsFail
 
-data ESRuntimeOp a
-  = ESBinding a
-  | ESFail
+derive instance Functor EsRuntimeOp
 
-derive instance Functor ESRuntimeOp
-
-instance Foldable ESRuntimeOp where
+instance Foldable EsRuntimeOp where
   foldMap f = case _ of
-    ESBinding a -> f a
-    ESFail -> mempty
+    EsBinding a -> f a
+    EsFail -> mempty
   foldr a = foldrDefault a
   foldl a = foldlDefault a
 
-data ESExpr = ESExpr ESAnalysis (ESSyntax ESExpr)
+data EsExpr = EsExpr EsAnalysis (EsSyntax EsExpr)
 
-newtype ESAnalysis = ESAnalysis
+newtype EsAnalysis = EsAnalysis
   { deps :: Set ModuleName
   , runtime :: Boolean
+  , pure :: Boolean
   }
 
-instance Semigroup ESAnalysis where
-  append (ESAnalysis a) (ESAnalysis b) = ESAnalysis
+instance Semigroup EsAnalysis where
+  append (EsAnalysis a) (EsAnalysis b) = EsAnalysis
     { deps: a.deps <> b.deps
     , runtime: a.runtime || b.runtime
+    , pure: a.pure && b.pure
     }
 
-instance Monoid ESAnalysis where
-  mempty = ESAnalysis { deps: mempty, runtime: false }
+instance Monoid EsAnalysis where
+  mempty = EsAnalysis { deps: mempty, runtime: false, pure: true }
 
-needsDep :: ModuleName -> ESAnalysis -> ESAnalysis
-needsDep mn (ESAnalysis a) = ESAnalysis a { deps = Set.insert mn a.deps }
+needsDep :: ModuleName -> EsAnalysis -> EsAnalysis
+needsDep mn (EsAnalysis a) = EsAnalysis a { deps = Set.insert mn a.deps }
 
-needsRuntime :: ESAnalysis -> ESAnalysis
-needsRuntime (ESAnalysis a) = ESAnalysis a { runtime = true }
+needsRuntime :: EsAnalysis -> EsAnalysis
+needsRuntime (EsAnalysis a) = EsAnalysis a { runtime = true }
 
-esAnalysisOf :: ESExpr -> ESAnalysis
-esAnalysisOf (ESExpr a _) = a
+notPure :: EsAnalysis -> EsAnalysis
+notPure (EsAnalysis a) = EsAnalysis a { pure = false }
 
-build :: ESSyntax ESExpr -> ESExpr
+esAnalysisOf :: EsExpr -> EsAnalysis
+esAnalysisOf (EsExpr a _) = a
+
+build :: EsSyntax EsExpr -> EsExpr
 build syn = case syn of
-  ESIdent (Qualified (Just mn) _) ->
-    ESExpr (needsDep mn mempty) syn
-  ESRuntime op ->
-    ESExpr (needsRuntime (foldMap esAnalysisOf op)) syn
+  EsIdent (Qualified (Just mn) _) ->
+    EsExpr (needsDep mn mempty) syn
+  EsRuntime op ->
+    EsExpr (needsRuntime (foldMap esAnalysisOf op)) syn
   _ ->
-    ESExpr (foldMap esAnalysisOf syn) syn
+    EsExpr (pureAnn (foldMap esAnalysisOf syn)) syn
+    where
+    pureAnn = case syn of
+      EsAccess _ _ -> notPure
+      EsIndex _ _ -> notPure
+      EsBinary _ _ _ -> notPure
+      EsUnary _ _ -> notPure
+      EsAssign _ _ -> notPure
+      EsArrowFunction _ _ -> notPure
+      _ -> identity
 
 class HasSyntax a where
-  syntaxOf :: a -> ESSyntax a
+  syntaxOf :: a -> EsSyntax a
 
-wrapPrec :: forall a. ESPrec -> Tuple ESPrec (Dodo.Doc a) -> Dodo.Doc a
+wrapPrec :: forall a. EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
 wrapPrec p1 (Tuple p2 doc)
   | p2 > p1 = Dodo.Common.jsParens doc
   | otherwise = doc
 
-printSyntax :: forall x a. HasSyntax x => ESSyntax x -> Tuple ESPrec (Dodo.Doc a)
-printSyntax syn = case syn of
-  ESString str ->
-    Tuple ESPrecAtom $ esString str
-  ESNumber num ->
-    Tuple ESPrecAtom $ esNumber num
-  ESInt int ->
-    Tuple ESPrecAtom $ esInt int
-  ESBoolean bool ->
-    Tuple ESPrecAtom $ esBoolean bool
-  ESArray as ->
-    Tuple ESPrecAtom $ printArray as
-  ESObject as ->
-    Tuple ESPrecAtom $ printObject as
-  ESIdent (Qualified mb ident) ->
+print :: forall x a. HasSyntax x => EsSyntax x -> Tuple EsPrec (Dodo.Doc a)
+print syn = case syn of
+  EsString str ->
+    Tuple EsPrecAtom $ esString str
+  EsNumber num ->
+    Tuple EsPrecAtom $ esNumber num
+  EsInt int ->
+    Tuple EsPrecAtom $ esInt int
+  EsBoolean bool ->
+    Tuple EsPrecAtom $ esBoolean bool
+  EsArray as ->
+    Tuple EsPrecAtom $ printArray as
+  EsObject as ->
+    Tuple EsPrecAtom $ printObject as
+  EsIdent (Qualified mb ident) ->
     case mb of
       Nothing ->
-        Tuple ESPrecAtom $ esIdent ident
+        Tuple EsPrecAtom $ printIdent ident
       Just mn ->
-        Tuple ESPrecCall $ esModuleName mn <> Dodo.text "." <> esIdent ident
-  ESAccess a prop -> do
-    let p1 = ESPrecCall
-    let a' = wrapPrec p1 (printSyntax (syntaxOf a))
+        Tuple EsPrecCall $ esModuleName mn <> Dodo.text "." <> printIdent ident
+  EsAccess a prop -> do
+    let p1 = EsPrecCall
+    let a' = wrapPrec p1 (print (syntaxOf a))
     Tuple p1 $ esAccessor a' prop
-  ESIndex a ix -> do
-    let p1 = ESPrecCall
-    let a' = wrapPrec p1 (printSyntax (syntaxOf a))
+  EsIndex a ix -> do
+    let p1 = EsPrecCall
+    let a' = wrapPrec p1 (print (syntaxOf a))
     Tuple p1 $ esIndex a' ix
-  ESRuntime op ->
-    Tuple ESPrecCall $ case op of
-      ESBinding a ->
-        esApp (Dodo.text "$runtime.binding") [ snd (printSyntax (syntaxOf a)) ]
-      ESFail ->
+  EsRuntime op ->
+    Tuple EsPrecCall $ case op of
+      EsBinding a ->
+        esApp (Dodo.text "$runtime.binding") [ snd (print (syntaxOf a)) ]
+      EsFail ->
         Dodo.text "$runtime.fail()"
-  ESCall a bs -> do
-    let p1 = ESPrecCall
-    let a' = wrapPrec p1 (printSyntax (syntaxOf a))
-    Tuple ESPrecCall $ esApp a' (snd <<< printSyntax <<< syntaxOf <$> bs)
-  ESBinary op a b -> do
-    let Tuple pn str = printESBinaryOp op
-    let p1 = ESPrecBinary pn
-    let a' = printSyntax (syntaxOf a)
-    let b' = printSyntax (syntaxOf b)
+  EsCall a bs -> do
+    let p1 = EsPrecCall
+    let a' = wrapPrec p1 (print (syntaxOf a))
+    Tuple EsPrecCall $ esApp a' (snd <<< print <<< syntaxOf <$> bs)
+  EsBinary op a b -> do
+    let Tuple pn str = printEsBinaryOp op
+    let p1 = EsPrecBinary pn
+    let a' = print (syntaxOf a)
+    let b' = print (syntaxOf b)
     Tuple p1 $ Dodo.words [ wrapPrec p1 a', Dodo.text str, wrapPrec p1 b' ]
-  ESUnary op a -> do
-    let p1 = ESPrecPrefix
-    let a' = wrapPrec p1 (printSyntax (syntaxOf a))
-    Tuple p1 $  Dodo.words [ Dodo.text (printESUnaryOp op), a' ]
-  ESAssign asn b ->
-    Tuple ESPrecStatement $ Dodo.words [ printAssignment asn, Dodo.text "=", snd (printSyntax (syntaxOf b)) ]
-  ESArrowFunction args a ->
-    Tuple ESPrecArrow $ printArrowFunction args a
-  ESConst bindings ->
-    Tuple ESPrecStatement $ printConst bindings
-  ESLet bindings ->
-    Tuple ESPrecStatement $ printLet bindings
-  ESIfElse a bs cs ->
-    Tuple ESPrecControl $ printIfElse a bs cs
-  ESWhile a bs ->
-    Tuple ESPrecControl $ printWhile a bs
-  ESReturn a ->
-    Tuple ESPrecStatement $ Dodo.words [ Dodo.text "return", snd (printSyntax (syntaxOf a)) ]
-  ESContinue ->
-    Tuple ESPrecStatement $ Dodo.text "continue"
-  ESUndefined ->
-    Tuple ESPrecAtom $ Dodo.text "undefined"
+  EsUnary op a -> do
+    let p1 = EsPrecPrefix
+    let a' = wrapPrec p1 (print (syntaxOf a))
+    Tuple p1 $  Dodo.words [ Dodo.text (printEsUnaryOp op), a' ]
+  EsAssign asn b ->
+    Tuple EsPrecStatement $ Dodo.words [ printAssignment asn, Dodo.text "=", snd (print (syntaxOf b)) ]
+  EsArrowFunction args a ->
+    Tuple EsPrecArrow $ printArrowFunction args a
+  EsCommentTrailing a comment -> do
+    let Tuple p doc = print (syntaxOf a)
+    Tuple p $ Dodo.words [ doc, Dodo.text "/*", Dodo.text comment, Dodo.text "*/" ]
+  EsConst bindings ->
+    Tuple EsPrecStatement $ printConst bindings
+  EsLet bindings ->
+    Tuple EsPrecStatement $ printLet bindings
+  EsIfElse a bs cs ->
+    Tuple EsPrecControl $ printIfElse a bs cs
+  EsWhile a bs ->
+    Tuple EsPrecControl $ printWhile a bs
+  EsReturn a ->
+    Tuple EsPrecStatement $ Dodo.words [ Dodo.text "return", snd (print (syntaxOf a)) ]
+  EsContinue ->
+    Tuple EsPrecStatement $ Dodo.text "continue"
+  EsUndefined ->
+    Tuple EsPrecAtom $ Dodo.text "undefined"
 
-printESBinaryOp :: ESBinaryOp -> Tuple Int String
-printESBinaryOp = case _ of
-  ESOr -> Tuple 1 "||"
-  ESAnd -> Tuple 2 "&&"
-  ESBitOr -> Tuple 3 "|"
-  ESBitXor -> Tuple 4 "^"
-  ESBitAnd -> Tuple 5 "&"
-  ESEquals -> Tuple 6 "==="
-  ESNotEquals -> Tuple 6 "!=="
-  ESLessThan -> Tuple 7 "<"
-  ESLessThanEqual -> Tuple 7 "<="
-  ESGreaterThan -> Tuple 7 ">"
-  ESGreaterThanEqual -> Tuple 7 ">="
-  ESBitShiftLeft -> Tuple 8 "<<"
-  ESBitShitRight -> Tuple 8 ">>"
-  ESZeroFillShiftRight -> Tuple 8 ">>>"
-  ESAdd -> Tuple 9 "+"
-  ESSubtract -> Tuple 9 "-"
-  ESDivide -> Tuple 10 "/"
-  ESMultiply -> Tuple 10 "*"
+printEsBinaryOp :: EsBinaryOp -> Tuple Int String
+printEsBinaryOp = case _ of
+  EsOr -> Tuple 1 "||"
+  EsAnd -> Tuple 2 "&&"
+  EsBitOr -> Tuple 3 "|"
+  EsBitXor -> Tuple 4 "^"
+  EsBitAnd -> Tuple 5 "&"
+  EsEquals -> Tuple 6 "==="
+  EsNotEquals -> Tuple 6 "!=="
+  EsLessThan -> Tuple 7 "<"
+  EsLessThanEqual -> Tuple 7 "<="
+  EsGreaterThan -> Tuple 7 ">"
+  EsGreaterThanEqual -> Tuple 7 ">="
+  EsBitShiftLeft -> Tuple 8 "<<"
+  EsBitShitRight -> Tuple 8 ">>"
+  EsZeroFillShiftRight -> Tuple 8 ">>>"
+  EsAdd -> Tuple 9 "+"
+  EsSubtract -> Tuple 9 "-"
+  EsDivide -> Tuple 10 "/"
+  EsMultiply -> Tuple 10 "*"
 
-printESUnaryOp :: ESUnaryOp -> String
-printESUnaryOp = case _ of
-  ESNot -> "!"
-  ESNegate -> "-"
-  ESBitNegate -> "~"
+printEsUnaryOp :: EsUnaryOp -> String
+printEsUnaryOp = case _ of
+  EsNot -> "!"
+  EsNegate -> "-"
+  EsBitNegate -> "~"
 
-printArrayElement :: forall x a. HasSyntax x => ESArrayElement x -> Dodo.Doc a
+printArrayElement :: forall x a. HasSyntax x => EsArrayElement x -> Dodo.Doc a
 printArrayElement = case _ of
-  ESArrayValue a ->
-    snd (printSyntax (syntaxOf a))
-  ESArraySpread a ->
-    snd (printSyntax (syntaxOf a)) <> Dodo.text "..."
+  EsArrayValue a ->
+    snd (print (syntaxOf a))
+  EsArraySpread a ->
+    snd (print (syntaxOf a)) <> Dodo.text "..."
 
-printObjectElement :: forall x a. HasSyntax x => ESObjectElement x -> Dodo.Doc a
+printObjectElement :: forall x a. HasSyntax x => EsObjectElement x -> Dodo.Doc a
 printObjectElement = case _ of
-  ESObjectPun field ->
+  EsObjectPun field ->
     Dodo.text (fromMaybe field (esEscapeProp field))
-  ESObjectField field a ->
+  EsObjectField field a ->
     Dodo.text (fromMaybe field (esEscapeProp field))
       <> Dodo.text ":"
       <> Dodo.space
-      <> snd (printSyntax (syntaxOf a))
-  ESObjectSpread a ->
-    snd (printSyntax (syntaxOf a)) <> Dodo.text "..."
+      <> snd (print (syntaxOf a))
+  EsObjectSpread a ->
+    snd (print (syntaxOf a)) <> Dodo.text "..."
 
-printArray :: forall x a. HasSyntax x => Array (ESArrayElement x) -> Dodo.Doc a
+printArray :: forall x a. HasSyntax x => Array (EsArrayElement x) -> Dodo.Doc a
 printArray =
   Dodo.Common.jsSquares
     <<< Dodo.foldWithSeparator Dodo.Common.trailingComma
     <<< map printArrayElement
 
-printObject :: forall x a. HasSyntax x => Array (ESObjectElement x) -> Dodo.Doc a
+printObject :: forall x a. HasSyntax x => Array (EsObjectElement x) -> Dodo.Doc a
 printObject =
   Dodo.Common.jsCurlies
     <<< Dodo.foldWithSeparator Dodo.Common.trailingComma
     <<< map printObjectElement
 
-printAssignment :: forall a. ESAssignment -> Dodo.Doc a
+printAssignment :: forall a. EsAssignment -> Dodo.Doc a
 printAssignment = case _ of
-  ESAssignIdent ident ->
+  EsAssignIdent ident ->
     esIdent ident
-  ESAssignAccess a prop ->
+  EsAssignAccess a prop ->
     esAccessor (printAssignment a) prop
 
 printArrowFunction :: forall x a. HasSyntax x => Array Ident -> Array x -> Dodo.Doc a
@@ -377,21 +377,21 @@ printArrowFunction args stmts = Dodo.words
       Dodo.Common.jsParens $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ esIdent <$> args
   , Dodo.text "=>"
   , case stmts of
-      [ stmt ] | ESReturn a <- syntaxOf stmt ->
+      [ stmt ] | EsReturn a <- syntaxOf stmt ->
         case syntaxOf a of
-          ESObject as ->
+          EsObject as ->
             Dodo.Common.jsParens $ printObject as
           other ->
-            snd $ printSyntax other
+            snd $ print other
       _ ->
         Dodo.Common.jsCurlies $ Dodo.lines $ printStatement <$> stmts
   ]
 
 printStatement :: forall x a. HasSyntax x => x -> Dodo.Doc a
 printStatement x = do
-  let Tuple prec doc = printSyntax (syntaxOf x)
+  let Tuple prec doc = print (syntaxOf x)
   case prec of
-    ESPrecControl ->
+    EsPrecControl ->
       doc
     _ ->
       doc <> Dodo.text ";"
@@ -408,7 +408,7 @@ printLet bindings = do
               Nothing ->
                 esIdent ident
               Just b ->
-                esAssign ident (snd (printSyntax (syntaxOf b)))
+                esAssign ident (snd (print (syntaxOf b)))
         )
         bindings
     ]
@@ -421,7 +421,7 @@ printConst bindings = do
     [ kw
     , Dodo.foldWithSeparator sep $ map
         ( \(Tuple ident b) ->
-            esAssign ident (snd (printSyntax (syntaxOf b)))
+            esAssign ident (snd (print (syntaxOf b)))
         )
         bindings
     ]
@@ -430,7 +430,7 @@ printIfElse :: forall x a. HasSyntax x => x -> Array x -> Array x -> Dodo.Doc a
 printIfElse cond as bs = Dodo.lines
   [ Dodo.flexGroup $ Dodo.words
       [ Dodo.text "if"
-      , Dodo.Common.jsParens $ snd $ printSyntax $ syntaxOf cond
+      , Dodo.Common.jsParens $ snd $ print $ syntaxOf cond
       , fold
           [ Dodo.text "{"
           , Dodo.spaceBreak
@@ -454,7 +454,7 @@ printIfElse cond as bs = Dodo.lines
 printWhile :: forall x a. HasSyntax x => x -> Array x -> Dodo.Doc a
 printWhile cond as = Dodo.flexGroup $ Dodo.words
   [ Dodo.text "while"
-  , Dodo.Common.jsParens $ snd $ printSyntax $ syntaxOf cond
+  , Dodo.Common.jsParens $ snd $ print $ syntaxOf cond
   , fold
       [ Dodo.text "{"
       , Dodo.spaceBreak
@@ -463,3 +463,31 @@ printWhile cond as = Dodo.flexGroup $ Dodo.words
       , Dodo.text "}"
       ]
   ]
+
+printIdent :: forall a. EsIdent -> Dodo.Doc a
+printIdent = Dodo.text <<< printIdentString
+
+printIdentString :: EsIdent -> String
+printIdentString = case _ of
+  Embedded (Ident id) "" ->
+    esEscapeIdent id
+  Embedded (Ident id) suff ->
+    esEscapeIdent id <> "$" <> suff
+  Generated id ->
+    id
+
+fromIdent :: Ident -> EsIdent
+fromIdent = flip Embedded ""
+
+esArrowFunction :: Array Ident -> Array EsExpr -> EsExpr
+esArrowFunction args = build <<< EsArrowFunction args
+
+esCurriedFunction :: Array Ident -> Array EsExpr -> EsExpr
+esCurriedFunction args stmts = case Array.unsnoc args of
+  Nothing ->
+    esArrowFunction [] stmts
+  Just { init, last } ->
+    foldr (\a -> build <<< EsArrowFunction [ a ] <<< pure) (build (EsArrowFunction [ last ] stmts)) init
+
+esBinding :: Ident -> EsExpr -> EsExpr
+esBinding ident expr = build $ EsConst $ NonEmptyArray.singleton $ Tuple ident expr
