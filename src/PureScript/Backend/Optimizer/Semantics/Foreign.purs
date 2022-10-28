@@ -35,6 +35,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , control_monad_st_internal_new
     , control_monad_st_internal_pure
     , control_monad_st_internal_read
+    , control_monad_st_internal_run
     , control_monad_st_internal_write
     , data_array_length
     , data_array_unsafeIndexImpl
@@ -75,6 +76,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , effect_ref_new
     , effect_ref_read
     , effect_ref_write
+    , effect_unsafe_unsafePerformEffect
     , partial_unsafe_unsafePartial
     , record_builder_copyRecord
     , record_builder_unsafeDelete
@@ -116,6 +118,9 @@ effect_ref_write = Tuple (qualified "Effect.Ref" "write") effectRefWrite
 effect_ref_modify :: ForeignSemantics
 effect_ref_modify = Tuple (qualified "Effect.Ref" "modify") effectRefModify
 
+effect_unsafe_unsafePerformEffect :: ForeignSemantics
+effect_unsafe_unsafePerformEffect = Tuple (qualified "Effect.Unsafe" "unsafePerformEffect") effectUnsafePerform
+
 control_monad_st_internal_bind :: ForeignSemantics
 control_monad_st_internal_bind = Tuple (qualified "Control.Monad.ST.Internal" "bind_") effectBind
 
@@ -130,6 +135,9 @@ control_monad_st_internal_new = Tuple (qualified "Control.Monad.ST.Internal" "ne
 
 control_monad_st_internal_read :: ForeignSemantics
 control_monad_st_internal_read = Tuple (qualified "Control.Monad.ST.Internal" "read") effectRefRead
+
+control_monad_st_internal_run :: ForeignSemantics
+control_monad_st_internal_run = Tuple (qualified "Control.Monad.ST.Internal" "run") effectUnsafePerform
 
 control_monad_st_internal_write :: ForeignSemantics
 control_monad_st_internal_write = Tuple (qualified "Control.Monad.ST.Internal" "write") effectRefWrite
@@ -400,6 +408,13 @@ effectRefModify env _ = case _ of
       SemLet Nothing ref \ref' ->
         SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
           NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
+  _ ->
+    Nothing
+
+effectUnsafePerform :: ForeignEval
+effectUnsafePerform _ _ = case _ of
+  [ ExternApp [ SemEffectPure a ] ] ->
+    Just a
   _ ->
     Nothing
 
