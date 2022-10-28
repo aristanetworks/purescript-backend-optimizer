@@ -1,13 +1,12 @@
 import * as $runtime from "../runtime.js";
-import * as Control$dMonad$dST$dUncurried from "../Control.Monad.ST.Uncurried/index.js";
-import * as Data$dUnit from "../Data.Unit/index.js";
+import * as Control$dMonad$dST$dInternal from "../Control.Monad.ST.Internal/index.js";
+import * as Data$dShow from "../Data.Show/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import {random} from "./foreign.js";
-const swallow = dictApplicative => v => dictApplicative.pure(Data$dUnit.unit);
-const test1 = /* #__PURE__ */ () => /* #__PURE__ */ Control$dMonad$dST$dUncurried.mkSTFn1(m => () => Data$dUnit.unit)(12);
 const test2 = () => {
-  random();
-  return Effect$dConsole.log("unit")();
+  const n = random();
+  return Effect$dConsole.log(Data$dShow.showIntImpl(Control$dMonad$dST$dInternal.run(() => n)))();
 };
-export {swallow, test1, test2};
+const test1 = () => 12;
+export {test1, test2};
 export * from "./foreign.js";

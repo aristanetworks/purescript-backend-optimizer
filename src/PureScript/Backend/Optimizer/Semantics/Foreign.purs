@@ -241,8 +241,8 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
         SemLam Nothing \val ->
           goRunFn env (n' - 1) head (Array.snoc tail val)
 
-uncurried_mk_effectish :: String -> String -> Int -> ForeignSemantics
-uncurried_mk_effectish modu fname n = Tuple (qualified modu (fname <> show n)) go
+mkEffectFn :: String -> String -> Int -> ForeignSemantics
+mkEffectFn mod name n = Tuple (qualified mod (name <> show n)) go
   where
   go env _ = case _ of
     [ ExternApp [ sem ] ] ->
@@ -251,13 +251,13 @@ uncurried_mk_effectish modu fname n = Tuple (qualified modu (fname <> show n)) g
       Nothing
 
 effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
-effect_uncurried_mkEffectFn = uncurried_mk_effectish "Effect.Uncurried" "mkEffectFn"
+effect_uncurried_mkEffectFn = mkEffectFn "Effect.Uncurried" "mkEffectFn"
 
 control_monad_st_uncurried_mkSTFn :: Int -> ForeignSemantics
-control_monad_st_uncurried_mkSTFn = uncurried_mk_effectish "Effect.Uncurried" "mkEffectFn"
+control_monad_st_uncurried_mkSTFn = mkEffectFn "Control.Monad.ST.Uncurried" "mkSTFn"
 
-uncurried_run_effectish :: String -> String -> Int -> ForeignSemantics
-uncurried_run_effectish modu fname n = Tuple (qualified modu (fname <> show n)) go
+runEffectFn :: String -> String -> Int -> ForeignSemantics
+runEffectFn mod name n = Tuple (qualified mod (name <> show n)) go
   where
   go env _ = case _ of
     [ ExternApp items ]
@@ -275,10 +275,10 @@ uncurried_run_effectish modu fname n = Tuple (qualified modu (fname <> show n)) 
         goRunEffectFn env (Array.snoc acc nextArg) head args
 
 effect_uncurried_runEffectFn :: Int -> ForeignSemantics
-effect_uncurried_runEffectFn = uncurried_run_effectish "Effect.Uncurried" "runEffectFn"
+effect_uncurried_runEffectFn = runEffectFn "Effect.Uncurried" "runEffectFn"
 
 control_monad_st_uncurried_runSTFn :: Int -> ForeignSemantics
-control_monad_st_uncurried_runSTFn = uncurried_run_effectish "Control.Monad.ST.Uncurried" "runSTFn"
+control_monad_st_uncurried_runSTFn = runEffectFn "Control.Monad.ST.Uncurried" "runSTFn"
 
 data_heytingAlgebra_boolConj :: ForeignSemantics
 data_heytingAlgebra_boolConj = Tuple (qualified "Data.HeytingAlgebra" "boolConj") $ primBinaryOperator OpBooleanAnd
