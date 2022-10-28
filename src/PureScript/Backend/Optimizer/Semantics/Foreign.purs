@@ -251,11 +251,10 @@ uncurried_mk_effectish modu fname n = Tuple (qualified modu (fname <> show n)) g
       Nothing
 
 effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
-effect_uncurried_mkEffectFn n = uncurried_mk_effectish "Effect.Uncurried" "mkEffectFn"
+effect_uncurried_mkEffectFn = uncurried_mk_effectish "Effect.Uncurried" "mkEffectFn"
 
 control_monad_st_uncurried_mkSTFn :: Int -> ForeignSemantics
-control_monad_st_uncurried_mkSTFn n = uncurried_mk_effectish "Effect.Uncurried" "mkEffectFn"
-
+control_monad_st_uncurried_mkSTFn = uncurried_mk_effectish "Effect.Uncurried" "mkEffectFn"
 
 uncurried_run_effectish :: String -> String -> Int -> ForeignSemantics
 uncurried_run_effectish modu fname n = Tuple (qualified modu (fname <> show n)) go
@@ -267,6 +266,13 @@ uncurried_run_effectish modu fname n = Tuple (qualified modu (fname <> show n)) 
           Just $ goRunEffectFn env [] head $ List.fromFoldable tail
     _ ->
       Nothing
+
+  goRunEffectFn env acc head = case _ of
+    List.Nil ->
+      evalUncurriedEffectApp env head acc
+    List.Cons arg args ->
+      SemLet Nothing arg \nextArg ->
+        goRunEffectFn env (Array.snoc acc nextArg) head args
 
 effect_uncurried_runEffectFn :: Int -> ForeignSemantics
 effect_uncurried_runEffectFn = uncurried_run_effectish "Effect.Uncurried" "runEffectFn"
