@@ -19,6 +19,7 @@
   , "record"
   , "refs"
   , "safe-coerce"
+  , "st"
   , "strings"
   , "tuples"
   , "type-equality"

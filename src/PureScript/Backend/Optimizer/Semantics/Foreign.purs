@@ -35,6 +35,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , control_monad_st_internal_new
     , control_monad_st_internal_pure
     , control_monad_st_internal_read
+    , control_monad_st_internal_run
     , control_monad_st_internal_write
     , data_array_length
     , data_array_unsafeIndexImpl
@@ -75,6 +76,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , effect_ref_new
     , effect_ref_read
     , effect_ref_write
+    , effect_unsafe_unsafePerformEffect
     , partial_unsafe_unsafePartial
     , record_builder_copyRecord
     , record_builder_unsafeDelete
@@ -92,6 +94,8 @@ coreForeignSemantics = Map.fromFoldable semantics
       <> map data_function_uncurried_runFn oneToTen
       <> map effect_uncurried_mkEffectFn oneToTen
       <> map effect_uncurried_runEffectFn oneToTen
+      <> map control_monad_st_uncurried_mkSTFn oneToTen
+      <> map control_monad_st_uncurried_runSTFn oneToTen
 
   oneToTen =
     Array.range 1 10
@@ -114,6 +118,9 @@ effect_ref_write = Tuple (qualified "Effect.Ref" "write") effectRefWrite
 effect_ref_modify :: ForeignSemantics
 effect_ref_modify = Tuple (qualified "Effect.Ref" "modify") effectRefModify
 
+effect_unsafe_unsafePerformEffect :: ForeignSemantics
+effect_unsafe_unsafePerformEffect = Tuple (qualified "Effect.Unsafe" "unsafePerformEffect") effectUnsafePerform
+
 control_monad_st_internal_bind :: ForeignSemantics
 control_monad_st_internal_bind = Tuple (qualified "Control.Monad.ST.Internal" "bind_") effectBind
 
@@ -128,6 +135,9 @@ control_monad_st_internal_new = Tuple (qualified "Control.Monad.ST.Internal" "ne
 
 control_monad_st_internal_read :: ForeignSemantics
 control_monad_st_internal_read = Tuple (qualified "Control.Monad.ST.Internal" "read") effectRefRead
+
+control_monad_st_internal_run :: ForeignSemantics
+control_monad_st_internal_run = Tuple (qualified "Control.Monad.ST.Internal" "run") effectUnsafePerform
 
 control_monad_st_internal_write :: ForeignSemantics
 control_monad_st_internal_write = Tuple (qualified "Control.Monad.ST.Internal" "write") effectRefWrite
@@ -239,8 +249,8 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
         SemLam Nothing \val ->
           goRunFn env (n' - 1) head (Array.snoc tail val)
 
-effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
-effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn" <> show n)) go
+mkEffectFn :: String -> String -> Int -> ForeignSemantics
+mkEffectFn mod name n = Tuple (qualified mod (name <> show n)) go
   where
   go env _ = case _ of
     [ ExternApp [ sem ] ] ->
@@ -248,8 +258,14 @@ effect_uncurried_mkEffectFn n = Tuple (qualified "Effect.Uncurried" ("mkEffectFn
     _ ->
       Nothing
 
-effect_uncurried_runEffectFn :: Int -> ForeignSemantics
-effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffectFn" <> show n)) go
+effect_uncurried_mkEffectFn :: Int -> ForeignSemantics
+effect_uncurried_mkEffectFn = mkEffectFn "Effect.Uncurried" "mkEffectFn"
+
+control_monad_st_uncurried_mkSTFn :: Int -> ForeignSemantics
+control_monad_st_uncurried_mkSTFn = mkEffectFn "Control.Monad.ST.Uncurried" "mkSTFn"
+
+runEffectFn :: String -> String -> Int -> ForeignSemantics
+runEffectFn mod name n = Tuple (qualified mod (name <> show n)) go
   where
   go env _ = case _ of
     [ ExternApp items ]
@@ -265,6 +281,12 @@ effect_uncurried_runEffectFn n = Tuple (qualified "Effect.Uncurried" ("runEffect
     List.Cons arg args ->
       SemLet Nothing arg \nextArg ->
         goRunEffectFn env (Array.snoc acc nextArg) head args
+
+effect_uncurried_runEffectFn :: Int -> ForeignSemantics
+effect_uncurried_runEffectFn = runEffectFn "Effect.Uncurried" "runEffectFn"
+
+control_monad_st_uncurried_runSTFn :: Int -> ForeignSemantics
+control_monad_st_uncurried_runSTFn = runEffectFn "Control.Monad.ST.Uncurried" "runSTFn"
 
 data_heytingAlgebra_boolConj :: ForeignSemantics
 data_heytingAlgebra_boolConj = Tuple (qualified "Data.HeytingAlgebra" "boolConj") $ primBinaryOperator OpBooleanAnd
@@ -386,6 +408,13 @@ effectRefModify env _ = case _ of
       SemLet Nothing ref \ref' ->
         SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
           NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
+  _ ->
+    Nothing
+
+effectUnsafePerform :: ForeignEval
+effectUnsafePerform _ _ = case _ of
+  [ ExternApp [ SemEffectPure a ] ] ->
+    Just a
   _ ->
     Nothing
 
