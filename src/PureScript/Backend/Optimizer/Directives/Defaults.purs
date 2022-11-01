@@ -129,4 +129,34 @@ defaultDirectives =
   Effect.Ref.modify arity=2
   Record.Builder.build arity=1
   Record.Builder.rename arity=8
+
+  -- transformers
+  Control.Monad.Except.Trans.applyExceptT(..).apply arity=1
+  Control.Monad.Except.Trans.applicativeExceptT(..).pure arity=1
+  Control.Monad.Except.Trans.bindExceptT(..).bind arity=1
+  Control.Monad.Except.Trans.monadThrowExceptT(..).throwError arity=1
+  Control.Monad.Except.Trans.monadErrorExceptT(..).catchError arity=1
+
+  Control.Monad.Reader.Trans.bindReaderT(..).bind arity=1
+  Control.Monad.Reader.Trans.monadEffectReader(..).liftEffect arity=1
+  Control.Monad.Reader.Trans.monadReaderReaderT(..).local arity=1
+
+  Control.Monad.Maybe.Trans.applyMaybeT(..).apply arity=1
+  Control.Monad.Maybe.Trans.applicativeMaybeT(..).pure arity=1
+  Control.Monad.Maybe.Trans.bindMaybeT(..).bind arity=1
+
+  Control.Monad.State.Trans.functorStateT(..).map arity=1
+  Control.Monad.State.Trans.applyStateT(..).apply arity=1
+  Control.Monad.State.Trans.applicativeStateT(..).pure arity=1
+  Control.Monad.State.Trans.bindStateT(..).bind arity=1
+  Control.Monad.State.Trans.monadEffectState(..).liftEffect arity=2
+  Control.Monad.State.Trans.monadStateStateT(..).state arity=1
+
+  Control.Monad.Writer.Trans.functorWriterT(..).map arity=2
+  Control.Monad.Writer.Trans.applyWriterT(..).apply arity=2
+  Control.Monad.Writer.Trans.applicativeWriterT(..).pure arity=1
+  Control.Monad.Writer.Trans.bindWriterT(..).bind arity=2
+  Control.Monad.Writer.Trans.monadEffectWriter(..).liftEffect arity=1
+  Control.Monad.Writer.Trans.monadTellWriterT(..).tell arity=1
+  Control.Monad.Writer.Trans.monadTransWriterT(..).lift arity=2
   """
