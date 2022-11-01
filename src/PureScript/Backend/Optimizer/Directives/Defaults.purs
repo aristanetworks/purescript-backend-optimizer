@@ -3,8 +3,22 @@ module PureScript.Backend.Optimizer.Directives.Defaults where
 defaultDirectives :: String
 defaultDirectives =
   """
-  -- Prelude
+  -- bifunctors
+  Control.Biapply.biapplyFirst arity=1
+  Control.Biapply.biapplySecond arity=1
 
+  -- const
+  Data.Const.applicativeConst arity=1
+
+  -- enums
+  Data.Enum.Generic.genericPred arity=1
+  Data.Enum.Generic.genericSucc arity=1
+  Data.Enum.Generic.genericEnumConstructor(..).genericPred' arity=1
+  Data.Enum.Generic.genericEnumConstructor(..).genericSucc' arity=1
+  Data.Enum.Generic.genericEnumSum(..).genericPred' arity=1
+  Data.Enum.Generic.genericEnumSum(..).genericSucc' arity=1
+
+  -- prelude
   Control.Applicative.liftA1 arity=1
   Control.Applicative.when arity=1
   Control.Applicative.unless arity=1
@@ -43,19 +57,7 @@ defaultDirectives =
   Data.Bounded.boundedRecord arity=2
 
   Data.Bounded.Generic.genericBottom arity=1
-  Data.Bounded.Generic.genericBottom' arity=1
-  Data.Bounded.Generic.genericBottomNoArguments.genericBottom' always
-  Data.Bounded.Generic.genericBottomArgument.genericBottom' arity=1
-  Data.Bounded.Generic.genericBottomSum.genericBottom' arity=1
-  Data.Bounded.Generic.genericBottomProduct.genericBottom' arity=2
-  Data.Bounded.Generic.genericBottomConstructor.genericBottom' arity=1
   Data.Bounded.Generic.genericTop arity=1
-  Data.Bounded.Generic.genericTop' arity=1
-  Data.Bounded.Generic.genericTopNoArguments.genericTop' always
-  Data.Bounded.Generic.genericTopArgument.genericTop' arity=1
-  Data.Bounded.Generic.genericTopSum.genericTop' arity=1
-  Data.Bounded.Generic.genericTopProduct.genericTop' arity=2
-  Data.Bounded.Generic.genericTopConstructor.genericTop' arity=1
 
   Data.DivisionRing.leftDiv arity=1
   Data.DivisionRing.rightDiv arity=1
@@ -124,9 +126,13 @@ defaultDirectives =
   Data.Show.showRecordFieldsConsNil arity=2
   Data.Show.showRecordFieldsCons arity=3
 
-  Control.Monad.ST.Internal.modify arity=2
-  Effect.applyEffect.apply arity=2
-  Effect.Ref.modify arity=2
+  -- record
   Record.Builder.build arity=1
   Record.Builder.rename arity=8
+
+  -- refs
+  Effect.Ref.modify arity=2
+
+  -- st
+  Control.Monad.ST.Internal.modify arity=2
   """
