@@ -60,7 +60,7 @@ const test1 = test1$a0$copy => {
       $runtime.fail();
     }
     $runtime.fail();
-  };
+  }
   return test1$r;
 };
 export {test1};

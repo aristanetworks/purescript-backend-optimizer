@@ -20,7 +20,7 @@ const test = /* #__PURE__ */ (() => {
           }
           k$a0 = m - 1 | 0;
           continue;
-        };
+        }
         return k$r;
       };
       if (n === 0) {
@@ -34,7 +34,7 @@ const test = /* #__PURE__ */ (() => {
       }
       k(n - 1 | 0);
       continue;
-    };
+    }
     return go$r;
   };
   return go;

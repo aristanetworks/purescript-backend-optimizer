@@ -30,7 +30,7 @@ const $test2test1 = ($test2test1$b$copy, $test2test1$a0$copy) => {
       $test2test1$a0 = $1 - 2 | 0;
       continue;
     }
-  };
+  }
   return $test2test1$r;
 };
 const test2 = m => $test2test1(0, m);

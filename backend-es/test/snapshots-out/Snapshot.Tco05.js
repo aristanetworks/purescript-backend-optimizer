@@ -22,7 +22,7 @@ const span = p => arr => {
         continue;
       }
       $runtime.fail();
-    };
+    }
     return go$r;
   };
   return go(0);

@@ -27,6 +27,6 @@ const test1 = r => {
   }
   if (r.type === "baz") { return r.value; }
   if (r.type === "foo") { return Data$dShow.showIntImpl(r.value); }
-  return Partial._crashWith("Data.Variant: pattern match failure [" + (r.type + "]"));
+  return Partial._crashWith("Data.Variant: pattern match failure [" + r.type + "]");
 };
 export {match, test1, variantBuildMatch, variantBuildMatchCons, variantBuildMatchNil};

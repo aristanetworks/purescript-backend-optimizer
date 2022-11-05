@@ -32,7 +32,7 @@ import Node.Glob.Basic (expandGlobsCwd)
 import Node.Path as Path
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (buildModules)
-import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
@@ -93,7 +93,7 @@ runSnapshotTests { accept, filter } = do
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backend ->
             if Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths && shouldCompare name then do
-              let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule { intTags: false } build.implementations backend
+              let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: false } build.implementations backend
               void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
             else
               mempty

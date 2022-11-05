@@ -18,6 +18,6 @@ const test1 = r => {
     return "false";
   }
   if (r.type === "foo") { return Data$dShow.showIntImpl(r.value); }
-  return Partial._crashWith("Data.Variant: pattern match failure [" + (r.type + "]"));
+  return Partial._crashWith("Data.Variant: pattern match failure [" + r.type + "]");
 };
 export {test1, test2, test3};
