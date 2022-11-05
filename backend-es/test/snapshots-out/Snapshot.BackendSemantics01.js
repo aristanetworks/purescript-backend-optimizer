@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test4 = "\u0000";
 const test3 = "￿";
 const test2 = -2147483647;

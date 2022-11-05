@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dST$dUncurried from "../Control.Monad.ST.Uncurried/index.js";
 import {f, g} from "./foreign.js";
 const test6 = /* #__PURE__ */ (() => {

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {a, b} from "./foreign.js";
 const test7 = /* #__PURE__ */ (() => ~a)();
 const test6 = /* #__PURE__ */ (() => a >>> b)();

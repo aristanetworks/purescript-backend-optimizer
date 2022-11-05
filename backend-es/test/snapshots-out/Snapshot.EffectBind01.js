@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 const test1 = /* #__PURE__ */ (() => {
   const $0 = Effect$dConsole.log("1");

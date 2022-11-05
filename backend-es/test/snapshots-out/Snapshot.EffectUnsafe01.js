@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Effect$dUnsafe from "../Effect.Unsafe/index.js";
 import {random} from "./foreign.js";
 const test2 = /* #__PURE__ */ Effect$dUnsafe.unsafePerformEffect(() => {

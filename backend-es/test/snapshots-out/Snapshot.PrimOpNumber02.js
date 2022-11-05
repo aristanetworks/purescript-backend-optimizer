@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test11 = [-1.5, 1.5];
 const numValues = op => [op(1.5)(1.0), op(1.5)(2.0), op(2.5)(1.0), op(1.5)(-2.0), op(-1.5)(2.0), op(-1.5)(-1.0)];
 const test1 = [2.5, 3.5, 3.5, -0.5, 0.5, -2.5];

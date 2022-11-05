@@ -28,7 +28,7 @@ import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (Usage(..))
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esComment, esEscapeIdent)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline (esInlineMap)
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsArrayElement(..), EsBinaryOp(..), EsExpr(..), EsIdent(..), EsModuleStatement(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, defaultPrintOptions, esAnalysisOf, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, printModuleStatement, toEsIdent, toEsIdentWith)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsAnalysis(..), EsArrayElement(..), EsBinaryOp(..), EsExpr(..), EsIdent(..), EsModuleStatement(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, defaultPrintOptions, esAnalysisOf, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, printModuleStatement, toEsIdent, toEsIdentWith)
 import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendImplementations, BackendModule, BackendBindingGroup)
@@ -210,9 +210,11 @@ codegenModule options implementations mod = do
     modDeps :: Array ModuleName
     modDeps = Set.toUnfoldable (foldMap (_.deps <<< unwrap <<< esAnalysisOf) modBindings)
 
+    EsAnalysis s = foldMap esAnalysisOf modBindings
+
     modStatements :: Dodo.Doc a
     modStatements = Dodo.lines $ map (printModuleStatement defaultPrintOptions) $ fold
-      [ [ EsImportAllAs (Generated "$runtime") "../runtime.js" ]
+      [ Monoid.guard s.runtime $ [ EsImportAllAs (Generated "$runtime") "../runtime.js" ]
       , (\mn -> EsImportAllAs (toEsIdent mn) (esModulePath mn)) <$> modDeps
       , Monoid.guard (not (Array.null foreignImports)) [ EsImport foreignImports (esForeignModulePath mod.name) ]
       , EsStatement <<< uncurry (codegenCtorForType codegenEnv) <$> dataTypes

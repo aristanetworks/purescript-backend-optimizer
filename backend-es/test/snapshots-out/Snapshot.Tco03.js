@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test = /* #__PURE__ */ (() => {
   const go = go$a0$copy => {
     let go$a0 = go$a0$copy, go$c = true, go$r;

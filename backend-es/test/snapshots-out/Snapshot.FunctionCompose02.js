@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {f, g} from "./foreign.js";
 const test4 = x => g(f(g(f(g(x)))));
 const test3 = x => f(g(f(g(x))));

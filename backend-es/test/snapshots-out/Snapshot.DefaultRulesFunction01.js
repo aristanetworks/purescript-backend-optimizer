@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {f, g} from "./foreign.js";
 const test6 = a => a;
 const test5 = a => v => a;

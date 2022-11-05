@@ -1,5 +1,4 @@
 // @inline export variantBuildMatchCons arity=5
-import * as $runtime from "../runtime.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dVariant from "../Data.Variant/index.js";
 import * as Partial from "../Partial/index.js";

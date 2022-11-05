@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {g, r} from "./foreign.js";
 const test9 = /* #__PURE__ */ (() => {
   const $0 = g(42);

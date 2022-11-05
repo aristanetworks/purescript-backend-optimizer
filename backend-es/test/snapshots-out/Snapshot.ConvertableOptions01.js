@@ -1,7 +1,6 @@
 // @inline ConvertableOptions.convertRecordOptionsCons arity=6
 // @inline ConvertableOptions.convertRecordOptionsNil always
 // @inline export flub always
-import * as $runtime from "../runtime.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 import {flubImpl} from "./foreign.js";
 const defaultOptions = {foo: 42, baz: Data$dMaybe.Nothing};

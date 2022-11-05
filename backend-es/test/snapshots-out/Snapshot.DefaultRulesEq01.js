@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 import {x} from "./foreign.js";
 const eq = ra => rb => ra.bar === rb.bar && ra.baz === rb.baz && ra.foo === rb.foo;

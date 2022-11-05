@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Partial from "../Partial/index.js";
 const test3 = {type: "foo", value: 42};

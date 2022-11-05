@@ -2,7 +2,6 @@
 // @inline Heterogeneous.Mapping.hmapWithIndexRecord arity=2
 // @inline Heterogeneous.Mapping.mapRecordWithIndexCons arity=5
 // @inline Heterogeneous.Mapping.mapRecordWithIndexNil.mapRecordWithIndexBuilder arity=2
-import * as $runtime from "../runtime.js";
 import * as Data$dTuple from "../Data.Tuple/index.js";
 const test2 = /* #__PURE__ */ (() => {
   const $0 = Data$dTuple.Tuple("bar");

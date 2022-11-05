@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const g = v => "b";
 const f = v => "a";
 const test1 = x => "a";

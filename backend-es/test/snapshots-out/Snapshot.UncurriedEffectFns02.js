@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
 import {random} from "./foreign.js";

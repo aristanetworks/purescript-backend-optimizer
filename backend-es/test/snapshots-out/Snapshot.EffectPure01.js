@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {a} from "./foreign.js";
 const test2 = /* #__PURE__ */ (() => {
   const $0 = a + 1 | 0;

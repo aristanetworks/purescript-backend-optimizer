@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const NewTypeInt = x => x;
 const test1 = v => {
   if (v === 1) { return "1"; }

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dFoldable from "../Data.Foldable/index.js";
 import * as Data$dSemiring from "../Data.Semiring/index.js";
 const sum = /* #__PURE__ */ Data$dFoldable.foldlArray(Data$dSemiring.intAdd)(0);

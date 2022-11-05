@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 import {f, g} from "./foreign.js";
 const test4 = /* #__PURE__ */ (() => {

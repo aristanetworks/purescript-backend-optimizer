@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dUnit from "../Data.Unit/index.js";

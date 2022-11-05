@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test7 = 2;
 const test6 = 1073741568;
 const test5 = 3;

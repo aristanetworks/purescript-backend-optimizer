@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 const Id = x => x;
 const monadId = {Applicative0: () => applicativeId, Bind1: () => bindId};

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const $Html = (tag, _1, _2) => ({tag, _1, _2});
 const Elem = value0 => value1 => $Html("Elem", value0, value1);
 const Text = value0 => $Html("Text", value0);

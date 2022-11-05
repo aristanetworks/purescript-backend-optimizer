@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test1 = v => v1 => {
   if (v === 1) {
     if (v1 === 1) { return "1.1"; }
