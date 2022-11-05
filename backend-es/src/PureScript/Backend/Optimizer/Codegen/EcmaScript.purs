@@ -31,7 +31,7 @@ import PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsAnalysis(..), EsArrayElement(..), EsBinaryOp(..), EsExpr(..), EsIdent(..), EsModuleStatement(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, defaultPrintOptions, esAnalysisOf, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, printModuleStatement, toEsIdent, toEsIdentWith)
 import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
-import PureScript.Backend.Optimizer.Convert (BackendImplementations, BackendModule, BackendBindingGroup)
+import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations, BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
@@ -214,7 +214,7 @@ codegenModule options implementations mod = do
 
     modStatements :: Dodo.Doc a
     modStatements = Dodo.lines $ map (printModuleStatement defaultPrintOptions) $ fold
-      [ Monoid.guard s.runtime $ [ EsImportAllAs (Generated "$runtime") "../runtime.js" ]
+      [ Monoid.guard s.runtime [ EsImportAllAs (Generated "$runtime") "../runtime.js" ]
       , (\mn -> EsImportAllAs (toEsIdent mn) (esModulePath mn)) <$> modDeps
       , Monoid.guard (not (Array.null foreignImports)) [ EsImport foreignImports (esForeignModulePath mod.name) ]
       , EsStatement <<< uncurry (codegenCtorForType codegenEnv) <$> dataTypes
@@ -567,7 +567,6 @@ codegenTcoJoin mode expr =
     else
       build $ EsReturn Nothing
   ]
-
 
 codegenLit :: CodegenEnv -> Literal TcoExpr -> EsExpr
 codegenLit env = case _ of

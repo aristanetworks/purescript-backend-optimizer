@@ -382,7 +382,7 @@ printArrayElement opts = case _ of
   EsArrayValue a ->
     snd (print opts (syntaxOf a))
   EsArraySpread a ->
-     Dodo.text "..." <> snd (print opts (syntaxOf a))
+    Dodo.text "..." <> snd (print opts (syntaxOf a))
 
 printObjectElement :: forall a. PrintOptions -> EsObjectElement EsExpr -> Dodo.Doc a
 printObjectElement opts = case _ of
@@ -414,9 +414,9 @@ printArrowFunction opts args stmts = Dodo.words
       [ arg ] -> do
         let str = printIdentString arg
         if isJust $ String.stripPrefix (String.Pattern "$__unused") str then
-            Dodo.text "()"
+          Dodo.text "()"
         else
-            Dodo.text str
+          Dodo.text str
       _ ->
         Dodo.Common.jsParens $ Dodo.foldWithSeparator Dodo.Common.trailingComma $ printIdent <$> args
   , Dodo.text "=>"
