@@ -23,6 +23,7 @@
   , "strings"
   , "tuples"
   , "type-equality"
+  , "unsafe-coerce"
   , "variant"
   ]
 , packages = ../../../packages.dhall
