@@ -29,7 +29,7 @@ import PureScript.Backend.Optimizer.Analysis (Usage(..))
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esComment, esEscapeIdent)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsAnalysis(..), EsArrayElement(..), EsBinaryOp(..), EsExpr(..), EsIdent(..), EsModuleStatement(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, defaultPrintOptions, esAnalysisOf, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, printModuleStatement, toEsIdent, toEsIdentWith)
-import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem)
+import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, tcoAnalysisOf)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations, BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
@@ -388,18 +388,14 @@ codegenBlockStatements = go []
           go (Array.snoc acc line) mode env' body
     Branch bs def ->
       acc <> codegenBlockBranches mode env bs def
-    UncurriedEffectApp a bs | mode.effect -> do
-      let line = build $ EsCall (codegenExpr env a) (codegenExpr env <$> bs)
-      Array.snoc acc $ build $ EsReturn $ Just line
-    EffectBind ident lvl eff body@(TcoExpr (TcoAnalysis { usages }) _) | mode.effect -> do
+    EffectBind ident lvl eff body | mode.effect -> do
       let binding = codegenBindEffect env eff
-      case Map.lookup (TcoLocal ident lvl) usages of
-        Just (Usage { total }) | total > 0 -> do
-          let Tuple newIdent env' = freshName RefStrict ident lvl env
-          let line = esBinding (toEsIdent newIdent) binding
-          go (Array.snoc acc line) mode env' body
-        _ ->
-          go (Array.snoc acc binding) mode env body
+      if isUsed (TcoLocal ident lvl) $ tcoAnalysisOf body then do
+        let Tuple newIdent env' = freshName RefStrict ident lvl env
+        let line = esBinding (toEsIdent newIdent) binding
+        go (Array.snoc acc line) mode env' body
+      else
+        go (Array.snoc acc binding) mode env body
     EffectPure expr' | mode.effect ->
       acc <> codegenBlockReturn (mode { effect = false }) env expr'
     App (TcoExpr _ (Local ident lvl)) bs
@@ -428,14 +424,11 @@ codegenLazyInits :: Array Ident -> Array EsExpr
 codegenLazyInits = map \id -> esBinding (toEsIdent id) $ build $ EsCall (build (EsIdent (Qualified Nothing (asLazyIdent id)))) []
 
 codegenBlockReturn :: BlockMode -> CodegenEnv -> TcoExpr -> Array EsExpr
-codegenBlockReturn mode env tcoExpr@(TcoExpr _ expr)
+codegenBlockReturn mode env tcoExpr
   | Just tco <- Tco.unwindTcoScope mode.tcoScope =
-      codegenTcoReturn mode tco (codegenExpr env tcoExpr)
-  | mode.effect = case expr of
-      PrimEffect eff ->
-        pure $ build $ EsReturn $ Just $ codegenPrimEffect env eff
-      _ ->
-        pure $ build $ EsReturn $ Just $ build $ EsCall (codegenExpr env tcoExpr) []
+      codegenTcoReturn mode tco $ codegenExpr env tcoExpr
+  | mode.effect =
+      pure $ build $ EsReturn $ Just $ codegenBindEffect env tcoExpr
   | otherwise =
       pure $ build $ EsReturn $ Just $ codegenExpr env tcoExpr
 
@@ -452,13 +445,15 @@ codegenBlockBranches mode env bs def =
       Tuple (codegenExpr env a) $ codegenBlockStatements mode env b
 
 codegenBindEffect :: CodegenEnv -> TcoExpr -> EsExpr
-codegenBindEffect env expr@(TcoExpr _ expr') = case expr' of
+codegenBindEffect env tcoExpr@(TcoExpr _ expr) = case expr of
   PrimEffect a ->
     codegenPrimEffect env a
   UncurriedEffectApp a bs ->
     build $ EsCall (codegenExpr env a) (codegenExpr env <$> bs)
+  Branch _ _ ->
+    build $ EsCall (esArrowFunction [] (codegenBlockStatements effectMode env tcoExpr)) []
   _ ->
-    build $ EsCall (codegenExpr env expr) []
+    build $ EsCall (codegenExpr env tcoExpr) []
 
 codegenPrimEffect :: CodegenEnv -> BackendEffect TcoExpr -> EsExpr
 codegenPrimEffect env = case _ of
@@ -823,3 +818,10 @@ shouldInlineApp :: CodegenEnv -> Qualified Ident -> Array TcoExpr -> Maybe EsExp
 shouldInlineApp env qual args = do
   fn <- Map.lookup qual esInlineMap
   fn (codegenExpr env) qual args
+
+isUsed :: TcoRef -> TcoAnalysis -> Boolean
+isUsed ref (TcoAnalysis { usages }) = case Map.lookup ref usages of
+  Just (Usage { total }) ->
+    total > 0
+  _ ->
+    false
