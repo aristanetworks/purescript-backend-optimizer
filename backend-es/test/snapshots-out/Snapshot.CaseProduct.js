@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const $Product3 = (_1, _2, _3) => ({tag: "Product3", _1, _2, _3});
 const Product3 = value0 => value1 => value2 => $Product3(value0, value1, value2);
 const test1 = v => {

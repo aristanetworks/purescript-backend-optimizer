@@ -1,5 +1,4 @@
 // @inline Snapshot.BranchSpecialization01.eqTest.eq arity=2
-import * as $runtime from "../runtime.js";
 const $Test = tag => ({tag});
 const Foo = /* #__PURE__ */ $Test("Foo");
 const Bar = /* #__PURE__ */ $Test("Bar");

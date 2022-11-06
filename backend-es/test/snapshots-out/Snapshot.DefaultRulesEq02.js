@@ -1,5 +1,4 @@
-import * as $runtime from "../runtime.js";
-const test6 = y => !("hello" === y.bar && (!y.baz && 42 === y.foo));
+const test6 = y => !("hello" === y.bar && !y.baz && 42 === y.foo);
 const test5 = y => 12 !== y;
 const test4 = a => a !== 12;
 const test3 = a => 12 !== a;

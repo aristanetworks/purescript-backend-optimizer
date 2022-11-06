@@ -1,6 +1,5 @@
 // @inline export  watUnit(..).wat1 arity=1
 // @inline export  watUnit(..).wat2 arity=1
-import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 import * as Type$dEquality from "../Type.Equality/index.js";
 import {testImpl} from "./foreign.js";

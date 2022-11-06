@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Control$dMonad$dST$dInternal from "../Control.Monad.ST.Internal/index.js";
 const test3 = /* #__PURE__ */ Control$dMonad$dST$dInternal.run(() => {
   const nRef = {value: 1};

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {a, b} from "./foreign.js";
 const test6 = /* #__PURE__ */ (() => a >= b)();
 const test5 = /* #__PURE__ */ (() => a <= b)();

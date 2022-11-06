@@ -49,17 +49,17 @@ const test = x => {
                 continue;
               }
               $runtime.fail();
-            };
+            }
             return loop$2$r;
           };
           loop$2(s3);
           continue;
-        };
+        }
         return loop$1$r;
       };
       loop$1(s2);
       continue;
-    };
+    }
     return loop$r;
   };
   return loop(0)(Data$dList$dTypes.Nil);

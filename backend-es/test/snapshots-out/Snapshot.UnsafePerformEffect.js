@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 import * as Effect$dUnsafe from "../Effect.Unsafe/index.js";
 const test = f => {

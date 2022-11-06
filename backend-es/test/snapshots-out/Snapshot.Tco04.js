@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const $test2test1 = ($test2test1$b$copy, $test2test1$a0$copy) => {
   let $test2test1$b = $test2test1$b$copy, $test2test1$a0 = $test2test1$a0$copy, $test2test1$c = true, $test2test1$r;
   while ($test2test1$c) {
@@ -30,7 +29,7 @@ const $test2test1 = ($test2test1$b$copy, $test2test1$a0$copy) => {
       $test2test1$a0 = $1 - 2 | 0;
       continue;
     }
-  };
+  }
   return $test2test1$r;
 };
 const test2 = m => $test2test1(0, m);

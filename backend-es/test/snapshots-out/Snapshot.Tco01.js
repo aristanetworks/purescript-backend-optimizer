@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test = test$a0$copy => {
   let test$a0 = test$a0$copy, test$c = true, test$r;
   while (test$c) {
@@ -10,7 +9,7 @@ const test = test$a0$copy => {
     }
     test$a0 = n - 1 | 0;
     continue;
-  };
+  }
   return test$r;
 };
 export {test};

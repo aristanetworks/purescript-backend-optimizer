@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Effect from "../Effect/index.js";
 import {random} from "./foreign.js";
 const MyEffect = x => x;

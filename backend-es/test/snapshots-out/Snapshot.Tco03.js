@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test = /* #__PURE__ */ (() => {
   const go = go$a0$copy => {
     let go$a0 = go$a0$copy, go$c = true, go$r;
@@ -20,7 +19,7 @@ const test = /* #__PURE__ */ (() => {
           }
           k$a0 = m - 1 | 0;
           continue;
-        };
+        }
         return k$r;
       };
       if (n === 0) {
@@ -34,7 +33,7 @@ const test = /* #__PURE__ */ (() => {
       }
       k(n - 1 | 0);
       continue;
-    };
+    }
     return go$r;
   };
   return go;

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dUnit from "../Data.Unit/index.js";
 const test = random => value => () => {
   const x = random();

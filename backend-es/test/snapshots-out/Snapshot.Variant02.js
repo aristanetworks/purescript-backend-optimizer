@@ -1,5 +1,4 @@
 // @inline export variantBuildMatchCons arity=5
-import * as $runtime from "../runtime.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dVariant from "../Data.Variant/index.js";
 import * as Partial from "../Partial/index.js";
@@ -27,6 +26,6 @@ const test1 = r => {
   }
   if (r.type === "baz") { return r.value; }
   if (r.type === "foo") { return Data$dShow.showIntImpl(r.value); }
-  return Partial._crashWith("Data.Variant: pattern match failure [" + (r.type + "]"));
+  return Partial._crashWith("Data.Variant: pattern match failure [" + r.type + "]");
 };
 export {match, test1, variantBuildMatch, variantBuildMatchCons, variantBuildMatchNil};

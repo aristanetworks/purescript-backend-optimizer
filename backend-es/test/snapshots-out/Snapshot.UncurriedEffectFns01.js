@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Effect$dUncurried from "../Effect.Uncurried/index.js";
 import {f, g} from "./foreign.js";
 const test6 = /* #__PURE__ */ (() => {

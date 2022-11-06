@@ -35,7 +35,7 @@ import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Process as Process
 import Node.Stream as Stream
-import PureScript.Backend.Optimizer.Codegen.EcmaScript (esCodegenModule, esModulePath)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
@@ -201,7 +201,7 @@ main cliRoot =
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
     , onCodegenAfter: mempty
     , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } -> do
-        let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ esCodegenModule { intTags: args.intTags } build.implementations backendMod
+        let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
         writeTextFile UTF8 (Path.concat [ modPath, "index.js" ]) formatted

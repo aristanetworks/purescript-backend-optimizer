@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dSemigroup from "../Data.Semigroup/index.js";
 import {x} from "./foreign.js";
 const append = ra => rb => ({bar: Data$dSemigroup.concatArray(ra.bar)(rb.bar), foo: ra.foo + rb.foo});

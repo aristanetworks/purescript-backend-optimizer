@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const test7 = "[1,2,3,4]";
 const test6 = "{ bar: true, foo: \"1\" }";
 const test5 = "'w'";

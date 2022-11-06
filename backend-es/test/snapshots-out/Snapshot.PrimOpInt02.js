@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dEuclideanRing from "../Data.EuclideanRing/index.js";
 const test11 = [-1, 1];
 const intValues = op => [op(1)(1), op(1)(2), op(2)(1), op(1)(-2), op(-1)(2), op(-1)(-1)];

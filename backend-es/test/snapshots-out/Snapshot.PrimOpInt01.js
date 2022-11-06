@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dEuclideanRing from "../Data.EuclideanRing/index.js";
 import {a, b} from "./foreign.js";
 const test9 = /* #__PURE__ */ (() => a * b | 0)();

@@ -29,7 +29,7 @@ const test = x => Data$dArray.reverse(toUnfoldable((() => {
         $runtime.fail();
       })();
       continue;
-    };
+    }
     return loop$r;
   };
   return loop(x.length - 1 | 0)(Data$dList$dTypes.Nil);

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import {random} from "./foreign.js";
 const test = () => {
   const x = random();

@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 import * as Data$dShow from "../Data.Show/index.js";
 const $Product3 = (_1, _2, _3) => ({tag: "Product3", _1, _2, _3});
 const Product3 = value0 => value1 => value2 => $Product3(value0, value1, value2);

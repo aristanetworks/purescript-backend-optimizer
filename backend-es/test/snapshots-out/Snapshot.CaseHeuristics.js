@@ -1,4 +1,3 @@
-import * as $runtime from "../runtime.js";
 const $Column = (tag, _1, _2) => ({tag, _1, _2});
 const Zero = /* #__PURE__ */ $Column("Zero");
 const One = value0 => $Column("One", value0);
