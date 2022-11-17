@@ -15,7 +15,6 @@ const test1 = test1$a0$copy => {
         return;
       }
       test1$a0 = Data$dSemigroup.concatArray([y, x, 3, y, 5, 6, 7, 8, 9, 10, x, 12, 13, 14, 15, 16, 17])(arr);
-      return;
     };
     if (v.tag === "Just") {
       if (v._1 === 2) {

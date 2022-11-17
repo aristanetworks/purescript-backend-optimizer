@@ -53,12 +53,10 @@ const test = x => {
             return loop$2$r;
           };
           loop$2(s3);
-          continue;
         }
         return loop$1$r;
       };
       loop$1(s2);
-      continue;
     }
     return loop$r;
   };

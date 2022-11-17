@@ -28,7 +28,6 @@ const test = x => Data$dArray.reverse(toUnfoldable((() => {
         if (v1.tag === "Nothing") { return acc; }
         $runtime.fail();
       })();
-      continue;
     }
     return loop$r;
   };

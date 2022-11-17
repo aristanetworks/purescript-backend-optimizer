@@ -1,6 +1,5 @@
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
-import * as Data$dUnit from "../Data.Unit/index.js";
 import {mb} from "./foreign.js";
 const test5 = /* #__PURE__ */ (() => {
   if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", mb._1); }
@@ -15,7 +14,7 @@ const test3 = /* #__PURE__ */ (() => {
   return Data$dMaybe.Nothing;
 })();
 const test2 = /* #__PURE__ */ (() => {
-  if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", Data$dUnit.unit); }
+  if (mb.tag === "Just") { return Data$dMaybe.$Maybe("Just", undefined); }
   return Data$dMaybe.Nothing;
 })();
 const test1 = /* #__PURE__ */ (() => {

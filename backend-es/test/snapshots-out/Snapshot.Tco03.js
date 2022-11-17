@@ -18,7 +18,6 @@ const test = /* #__PURE__ */ (() => {
             continue;
           }
           k$a0 = m - 1 | 0;
-          continue;
         }
         return k$r;
       };
@@ -32,7 +31,6 @@ const test = /* #__PURE__ */ (() => {
         continue;
       }
       k(n - 1 | 0);
-      continue;
     }
     return go$r;
   };

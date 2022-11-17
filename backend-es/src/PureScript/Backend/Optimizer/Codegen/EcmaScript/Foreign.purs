@@ -9,26 +9,41 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), evalApp, evalPrimOp)
-import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSemantics, qualified)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), evalApp, evalPrimOp, makeLet)
+import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignSemantics, ForeignEval, qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator2(..))
 import PureScript.Backend.Optimizer.Utils (foldr1Array)
 
 esForeignSemantics :: Map (Qualified Ident) ForeignEval
-esForeignSemantics = Map.fromFoldable semantics
-  where
-  semantics =
-    [ data_bounded_topInt
-    , data_bounded_bottomInt
-    , data_bounded_topChar
-    , data_bounded_bottomChar
-    , data_enum_toCharCode
-    , data_show_showCharImpl
-    , data_show_showIntImpl
-    , data_show_showNumberImpl
-    , data_show_showStringImpl
-    , data_show_showArrayImpl
-    ]
+esForeignSemantics = Map.fromFoldable
+  [ data_array_st_unsafeFreeze
+  , data_array_st_unsafeThaw
+  , data_bounded_topInt
+  , data_bounded_bottomInt
+  , data_bounded_topChar
+  , data_bounded_bottomChar
+  , data_enum_toCharCode
+  , data_show_showCharImpl
+  , data_show_showIntImpl
+  , data_show_showNumberImpl
+  , data_show_showStringImpl
+  , data_show_showArrayImpl
+  , data_unit_unit
+  ]
+
+data_array_st_unsafeFreeze :: ForeignSemantics
+data_array_st_unsafeFreeze = Tuple (qualified "Data.Array.ST" "unsafeFreeze") unsafeSTCoerce
+
+data_array_st_unsafeThaw :: ForeignSemantics
+data_array_st_unsafeThaw = Tuple (qualified "Data.Array.ST" "unsafeThaw") unsafeSTCoerce
+
+unsafeSTCoerce :: ForeignEval
+unsafeSTCoerce _ _ = case _ of
+  [ ExternApp [ ref ] ] ->
+    Just $ makeLet Nothing ref \nextRef ->
+      SemEffectPure nextRef
+  _ ->
+    Nothing
 
 data_bounded_topInt :: ForeignSemantics
 data_bounded_topInt = Tuple (qualified "Data.Bounded" "topInt") go
@@ -92,6 +107,15 @@ data_show_showArrayImpl = Tuple (qualified "Data.Show" "showArrayImpl") go
           let showVal val = evalApp env showDict [ val ]
           let foldFn next acc = appendStrings (showVal next) $ appendStrings (litString ",") acc
           appendStrings (litString "[") $ foldr1Array foldFn (\last -> appendStrings (showVal last) (litString "]")) nea
+    _ ->
+      Nothing
+
+data_unit_unit :: ForeignSemantics
+data_unit_unit = Tuple (qualified "Data.Unit" "unit") go
+  where
+  go _ _ = case _ of
+    [] ->
+      Just NeutPrimUndefined
     _ ->
       Nothing
 

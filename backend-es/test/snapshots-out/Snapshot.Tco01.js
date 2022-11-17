@@ -8,7 +8,6 @@ const test = test$a0$copy => {
       continue;
     }
     test$a0 = n - 1 | 0;
-    continue;
   }
   return test$r;
 };
