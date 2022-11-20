@@ -39,7 +39,7 @@ data CodegenRefType = RefStrict | RefLazy
 type CodegenName = Tuple Ident CodegenRefType
 
 data CodegenRef
-  = CodegenLocal Ident Level
+  = CodegenLocal (Maybe Ident) Level
   | CodegenTopLevel Ident
 
 derive instance Eq CodegenRef
@@ -109,23 +109,41 @@ toTcoJoin tcoScope role = case _ of
 boundTopLevel :: Ident -> CodegenEnv -> CodegenEnv
 boundTopLevel ident (CodegenEnv env) = CodegenEnv env { bound = Map.insert ident 1 env.bound }
 
+genName :: CodegenEnv -> Tuple Ident CodegenEnv
+genName (CodegenEnv env) =
+  case Map.lookup (Ident "") env.bound of
+    Nothing -> do
+      let fresh = Ident "$0"
+      Tuple fresh $ CodegenEnv env
+        { bound = Map.insert (Ident "") 1 env.bound
+        }
+    Just n -> do
+      let fresh = Ident ("$" <> show n)
+      Tuple fresh $ CodegenEnv env
+        { bound = Map.insert (Ident "") (n + 1) env.bound
+        }
+
 freshName :: CodegenRefType -> Maybe Ident -> Level -> CodegenEnv -> Tuple Ident CodegenEnv
-freshName refType ident lvl (CodegenEnv env) = case ident of
-  Nothing ->
-    Tuple (Ident ("$" <> show (unwrap lvl))) (CodegenEnv env)
-  Just id ->
-    case Map.lookup id env.bound of
-      Nothing ->
-        Tuple id $ CodegenEnv env
-          { bound = Map.insert id 1 env.bound
-          , names = Map.insert (CodegenLocal id lvl) (Tuple id refType) env.names
-          }
-      Just n -> do
-        let fresh = Ident (unwrap id <> "$" <> show n)
-        Tuple fresh $ CodegenEnv env
-          { bound = Map.insert id (n + 1) env.bound
-          , names = Map.insert (CodegenLocal id lvl) (Tuple fresh refType) env.names
-          }
+freshName refType ident lvl (CodegenEnv env) = do
+  let base = foldMap unwrap ident
+  case Map.lookup (Ident base) env.bound of
+    Nothing -> do
+      let
+        fresh
+          | String.null base =
+              Ident "$0"
+          | otherwise =
+              Ident base
+      Tuple fresh $ CodegenEnv env
+        { bound = Map.insert (Ident base) 1 env.bound
+        , names = Map.insert (CodegenLocal ident lvl) (Tuple fresh refType) env.names
+        }
+    Just n -> do
+      let fresh = Ident (base <> "$" <> show n)
+      Tuple fresh $ CodegenEnv env
+        { bound = Map.insert (Ident base) (n + 1) env.bound
+        , names = Map.insert (CodegenLocal ident lvl) (Tuple fresh refType) env.names
+        }
 
 freshNames :: forall f. Traversable f => CodegenRefType -> CodegenEnv -> f LocalRef -> Accum CodegenEnv (f Ident)
 freshNames refType = mapAccumL \env' (Tuple ident level) -> do
@@ -147,7 +165,7 @@ strictCodegenRef ref (CodegenEnv env) = CodegenEnv env { names = Map.update (Jus
 
 renameLocal :: Maybe Ident -> Level -> CodegenEnv -> CodegenName
 renameLocal ident lvl (CodegenEnv env) =
-  case ident >>= \id -> Map.lookup (CodegenLocal id lvl) env.names of
+  case Map.lookup (CodegenLocal ident lvl) env.names of
     Nothing ->
       Tuple (esLocalIdent ident lvl) RefStrict
     Just id ->
@@ -313,7 +331,7 @@ codegenBlockStatements = go []
             let lines = codegenTcoMutualLoopBindings mode' env'' tcoIdent (NonEmptyArray.zip tcoNames tco)
             go (acc <> lines) mode env'' body
       | otherwise -> do
-          let group = NonEmptyArray.toArray $ flip CodegenLocal lvl <<< fst <$> bindings
+          let group = NonEmptyArray.toArray $ flip CodegenLocal lvl <<< Just <<< fst <$> bindings
           let lazyBindings = NonEmptyArray.partition (isLazyBinding currentModule group) bindings
           let result1 = freshBindingGroup RefLazy lvl env lazyBindings.no
           let result2 = freshBindingGroup RefStrict lvl result1.accum lazyBindings.yes
@@ -329,6 +347,16 @@ codegenBlockStatements = go []
           let Tuple tcoIdent env' = freshName RefStrict ident lvl env
           let line = codegenTcoJoinBinding mode env tcoIdent tco
           go (Array.snoc acc line) (pushTcoJoin (Tuple ident lvl) mode) env' body
+      -- HACK: This simplifies the case where, within an effect block, if a let
+      -- binding to an effect is immediately invoked in a bind, it will get
+      -- inlined. This doesn't happen in the usual semantics, but can arise
+      -- through effect loop inlining. A less hacky solution would entail more
+      -- analysis and simplification on the ES AST.
+      | mode.effect
+      , TcoExpr a1 (EffectBind ident2 lvl2 (TcoExpr a2 (Local ident3 lvl3)) next) <- body
+      , ident == ident3 && lvl == lvl3
+      , totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) == 1 ->
+          go acc mode env $ TcoExpr a1 (EffectBind ident2 lvl2 binding next)
       | otherwise -> do
           let Tuple ident' env' = freshName RefStrict ident lvl env
           let line = esBinding (toEsIdent ident') (codegenExpr env binding)
@@ -337,7 +365,7 @@ codegenBlockStatements = go []
       acc <> codegenBlockBranches mode env bs def
     EffectBind ident lvl eff body | mode.effect -> do
       let binding = codegenBindEffect env eff
-      if isUsed (TcoLocal ident lvl) $ tcoAnalysisOf body then do
+      if totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) > 0 then do
         let Tuple newIdent env' = freshName RefStrict ident lvl env
         let line = esBinding (toEsIdent newIdent) binding
         go (Array.snoc acc line) mode env' body
@@ -742,10 +770,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
       not $ Array.elem (CodegenTopLevel ident) group
     Var _ ->
       true
-    Local (Just ident) lvl ->
+    Local ident lvl ->
       not $ Array.elem (CodegenLocal ident lvl) group
-    Local _ _ ->
-      true
     Lit lit ->
       all go lit
     Accessor a _ ->
@@ -786,9 +812,9 @@ lookupCtorMeta (CodegenEnv env) qual = case Map.lookup qual env.implementations 
       <> "."
       <> unwrap (unQualified qual)
 
-isUsed :: TcoRef -> TcoAnalysis -> Boolean
-isUsed ref (TcoAnalysis { usages }) = case Map.lookup ref usages of
+totalUsagesOf :: TcoRef -> TcoAnalysis -> Int
+totalUsagesOf ref (TcoAnalysis { usages }) = case Map.lookup ref usages of
   Just (Usage { total }) ->
-    total > 0
+    total
   _ ->
-    false
+    0

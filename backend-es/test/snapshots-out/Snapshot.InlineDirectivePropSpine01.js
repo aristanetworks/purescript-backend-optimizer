@@ -4,8 +4,8 @@ import {testImpl} from "./foreign.js";
 const watUnit = dictTypeEquals => (
   {
     wat: (() => {
-      const $1 = dictTypeEquals.proof(a => a);
-      return x => testImpl($1(x));
+      const $0 = dictTypeEquals.proof(a => a);
+      return x => testImpl($0(x));
     })()
   }
 );

@@ -8,7 +8,7 @@ const test1 = test1$a0$copy => {
     const arr = test1$a0;
     const v = Data$dArray.index(arr)(arr.length - 1 | 0);
     const v1 = Data$dArray.index(arr)(0);
-    const $3 = (x, y) => {
+    const $0 = (x, y) => {
       if (b) {
         test1$c = false;
         test1$r = [];
@@ -24,7 +24,7 @@ const test1 = test1$a0$copy => {
             test1$r = arr;
             continue;
           }
-          $3(v1._1, v._1);
+          $0(v1._1, v._1);
           continue;
         }
         if (v1.tag === "Nothing") {
@@ -40,7 +40,7 @@ const test1 = test1$a0$copy => {
         continue;
       }
       if (v1.tag === "Just") {
-        $3(v1._1, v._1);
+        $0(v1._1, v._1);
         continue;
       }
       $runtime.fail();

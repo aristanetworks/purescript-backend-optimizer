@@ -5,8 +5,8 @@ const test9 = /* #__PURE__ */ (() => {
     const ref = {value: $0};
     const prev = ref.value;
     ref.value = prev + 1 | 0;
-    const $4 = ref.value;
-    ref.value = 1 + $4 | 0;
+    const $1 = ref.value;
+    ref.value = 1 + $1 | 0;
     return ref.value;
   };
 })();

@@ -2,8 +2,8 @@ import * as Data$dTuple from "../Data.Tuple/index.js";
 const State = x => x;
 const functorState = {
   map: f => v => next1 => s1 => v(s2 => {
-    const $5 = next1(s2);
-    return x => $5(f(x));
+    const $0 = next1(s2);
+    return x => $0(f(x));
   })(s1)
 };
 const monadState = {Applicative0: () => applicativeState, Bind1: () => bindState};

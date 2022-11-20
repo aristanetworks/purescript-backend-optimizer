@@ -129,6 +129,11 @@ foreachLoop env _ = case _ of
     let loopHead = codegenExpr env' arr
     let loopBody = codegenBlockStatements effectLoopMode env' body
     Just $ build $ EsForOf (EsBindingIdent (toEsIdent ident')) loopHead loopBody
+  InlineApp [ arr, TcoExpr _ (Abs args body) ] | [ Tuple ident lvl ] <- NonEmptyArray.toArray args -> do
+    let Tuple ident' env' = freshName RefStrict ident lvl env
+    let loopHead = codegenExpr env' arr
+    let loopBody = codegenBlockStatements effectLoopMode env' body
+    Just $ build $ EsArrowFunction [] [ build $ EsForOf (EsBindingIdent (toEsIdent ident')) loopHead loopBody ]
   _ ->
     Nothing
 

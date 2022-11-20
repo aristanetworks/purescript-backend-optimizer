@@ -1053,29 +1053,6 @@ quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
   go ctx = case _ of
-    SemExtern _ _ sem ->
-      go ctx (force sem)
-    SemLam ident k -> do
-      let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level
-    SemMkFn pro -> do
-      let
-        loop ctx' idents = case _ of
-          MkFnNext ident k -> do
-            let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
-          MkFnApplied body ->
-            build ctx' $ UncurriedAbs idents $ quote ctx' body
-      loop ctx [] pro
-    SemMkEffectFn pro -> do
-      let
-        loop ctx' idents = case _ of
-          MkFnNext ident k -> do
-            let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
-          MkFnApplied body ->
-            build ctx' $ UncurriedEffectAbs idents $ quote ctx' body
-      loop ctx [] pro
     sem@(SemLet _ _ _) ->
       goBlock ctx sem
     sem@(SemLetRec _ _) ->
@@ -1086,6 +1063,29 @@ quote = go
       goBlock ctx sem
     sem@(SemBranch _ _) ->
       goBlock ctx sem
+    SemExtern _ _ sem ->
+      go ctx (force sem)
+    SemLam ident k -> do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+    SemMkFn pro -> do
+      let
+        loop ctx' idents = case _ of
+          MkFnNext ident k -> do
+            let Tuple lvl ctx'' = nextLevel ctx'
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
+          MkFnApplied body ->
+            build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
+      loop ctx [] pro
+    SemMkEffectFn pro -> do
+      let
+        loop ctx' idents = case _ of
+          MkFnNext ident k -> do
+            let Tuple lvl ctx'' = nextLevel ctx'
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
+          MkFnApplied body ->
+            build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
+      loop ctx [] pro
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->

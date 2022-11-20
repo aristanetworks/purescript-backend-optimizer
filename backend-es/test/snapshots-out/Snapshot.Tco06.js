@@ -10,10 +10,10 @@ const $gf = ($gf$b$copy, $gf$a0$copy, $gf$a1$copy) => {
     }
     if ($gf$b === 1) {
       const a = $gf$a0, b = $gf$a1;
-      const $2 = a + b | 0;
+      const $0 = a + b | 0;
       $gf$b = 1;
-      $gf$a0 = $2;
-      $gf$a1 = $2 + 1 | 0;
+      $gf$a0 = $0;
+      $gf$a1 = $0 + 1 | 0;
       continue;
     }
   }
