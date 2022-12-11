@@ -31,7 +31,7 @@ import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules)
 import PureScript.Backend.Optimizer.Convert (BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, ModuleName(..), Qualified)
 import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
-import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull)
+import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
 import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap)
@@ -40,7 +40,12 @@ import PureScript.CST.Errors (printParseError)
 
 coreFnModulesFromOutput :: String -> NonEmptyArray String -> Aff (Either (NonEmptyArray (Tuple FilePath String)) (List (Module Ann)))
 coreFnModulesFromOutput path globs = runExceptT do
-  go <<< foldl resumePull emptyPull =<< modulesFromPaths <<< Set.toUnfoldable =<< lift (expandGlobs path ((_ <> "/corefn.json") <$> NonEmptyArray.toArray globs))
+  paths <- Set.toUnfoldable <$> lift (expandGlobs path ((_ <> "/corefn.json") <$> NonEmptyArray.toArray globs))
+  case NonEmptyArray.toArray globs of
+    [ "**" ] ->
+      sortModules <$> modulesFromPaths paths
+    _ ->
+      go <<< foldl resumePull emptyPull =<< modulesFromPaths paths
   where
   modulesFromPaths paths = ExceptT do
     { left, right } <- separate <$> parTraverse readCoreFnModule paths
