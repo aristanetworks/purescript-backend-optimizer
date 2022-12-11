@@ -17,10 +17,9 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Optimizer.Analysis (Usage(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName, Qualified(..))
 import PureScript.Backend.Optimizer.Semantics (NeutralExpr(..))
-import PureScript.Backend.Optimizer.Syntax (BackendSyntax(..), Level, Pair(..))
+import PureScript.Backend.Optimizer.Syntax (BackendEffect(..), BackendSyntax(..), Level, Pair(..))
 
 type LocalRef = Tuple (Maybe Ident) Level
 type TcoScope = List TcoScopeItem
@@ -78,8 +77,31 @@ unwindTcoScope = go List.Nil
 
 type TcoEnv = Array (Tuple TcoRef Int)
 
+newtype TcoUsage = TcoUsage
+  { total :: Int
+  , arities :: Set Int
+  , call :: Int
+  , readWrite :: Int
+  }
+
+instance Semigroup TcoUsage where
+  append (TcoUsage a) (TcoUsage b) = TcoUsage
+    { total: a.total + b.total
+    , arities: Set.union a.arities b.arities
+    , call: a.call + b.call
+    , readWrite: a.readWrite + b.readWrite
+    }
+
+instance Monoid TcoUsage where
+  mempty = TcoUsage
+    { total: 0
+    , arities: Set.empty
+    , call: 0
+    , readWrite: 0
+    }
+
 newtype TcoAnalysis = TcoAnalysis
-  { usages :: Map TcoRef Usage
+  { usages :: Map TcoRef TcoUsage
   , tailCalls :: Map TcoRef Int
   , role :: TcoRole
   }
@@ -131,8 +153,13 @@ overTcoAnalysis f (TcoExpr a b) = TcoExpr (f a) b
 
 tcoCall :: TcoRef -> Int -> TcoAnalysis -> TcoAnalysis
 tcoCall ident arity (TcoAnalysis s) = TcoAnalysis s
-  { usages = Map.insertWith append ident (Usage { total: 1, captured: mempty, arities: Set.singleton arity, call: 1, access: 0, case: 0, update: 0 }) s.usages
+  { usages = Map.insertWith append ident (TcoUsage { total: 1, call: 1, arities: Set.singleton arity, readWrite: 0 }) s.usages
   , tailCalls = Map.insert ident 1 s.tailCalls
+  }
+
+tcoRefEffect :: TcoRef -> TcoAnalysis -> TcoAnalysis
+tcoRefEffect ident (TcoAnalysis s) = TcoAnalysis s
+  { usages = Map.insertWith append ident (TcoUsage { total: 1, call: 0, arities: Set.empty, readWrite: 1 }) s.usages
   }
 
 tcoNoTailCalls :: TcoAnalysis -> TcoAnalysis
@@ -147,7 +174,7 @@ withTcoRole role (TcoAnalysis s) = TcoAnalysis s { role = role }
 isUniformTailCall :: TcoAnalysis -> TcoRef -> Int -> Maybe Boolean
 isUniformTailCall (TcoAnalysis s) ref arity = do
   numTailCalls <- Map.lookup ref s.tailCalls
-  Usage u <- Map.lookup ref s.usages
+  TcoUsage u <- Map.lookup ref s.usages
   case Set.toUnfoldable u.arities of
     [ n ] ->
       Just $ n == arity && u.total == numTailCalls
@@ -238,6 +265,15 @@ analyze env (NeutralExpr expr) = case expr of
     let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
     let analysis2 = tcoCall (TcoTopLevel ident) (Array.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ UncurriedApp hd' tl'
+  PrimEffect (EffectRefRead ref@(NeutralExpr (Local ident level))) -> do
+    let ref' = analyze env ref
+    let analysis = tcoRefEffect (TcoLocal ident level) mempty
+    TcoExpr analysis $ PrimEffect (EffectRefRead ref')
+  PrimEffect (EffectRefWrite ref@(NeutralExpr (Local ident level)) val) -> do
+    let ref' = analyze env ref
+    let val' = analyze env val
+    let analysis = tcoRefEffect (TcoLocal ident level) $ tcoAnalysisOf val'
+    TcoExpr analysis $ PrimEffect (EffectRefWrite ref' val')
   Branch branches def -> do
     let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze env a)) (analyze env b)) branches
     let def' = analyze env <$> def

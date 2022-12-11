@@ -1,8 +1,8 @@
 const test3 = /* #__PURE__ */ (() => {
-  const nRef = {value: 1};
-  const mRef = {value: 2};
-  const n = nRef.value;
-  const m = mRef.value;
+  let nRef = 1;
+  let mRef = 2;
+  const n = nRef;
+  const m = mRef;
   return n + m | 0;
 })();
 const test2 = 3;

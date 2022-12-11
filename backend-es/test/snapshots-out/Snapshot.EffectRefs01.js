@@ -2,12 +2,12 @@ import {g, r} from "./foreign.js";
 const test9 = /* #__PURE__ */ (() => {
   const $0 = g(42);
   return () => {
-    const ref = {value: $0};
-    const prev = ref.value;
-    ref.value = prev + 1 | 0;
-    const $1 = ref.value;
-    ref.value = 1 + $1 | 0;
-    return ref.value;
+    let ref = $0;
+    const prev = ref;
+    ref = prev + 1 | 0;
+    const $1 = ref;
+    ref = 1 + $1 | 0;
+    return ref;
   };
 })();
 const test8 = /* #__PURE__ */ (() => {

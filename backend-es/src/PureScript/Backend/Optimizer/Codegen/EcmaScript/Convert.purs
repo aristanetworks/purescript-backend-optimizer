@@ -24,17 +24,16 @@ import Data.String.CodeUnits as SCU
 import Data.Traversable (class Traversable, Accum, mapAccumL, traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.Backend.Optimizer.Analysis (Usage(..))
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esEscapeIdent)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsArrayElement(..), EsBinaryOp(..), EsBindingPattern(..), EsExpr(..), EsIdent(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, toEsIdent, toEsIdentWith)
-import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, tcoAnalysisOf)
+import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoUsage(..), tcoAnalysisOf)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 
-data CodegenRefType = RefStrict | RefLazy
+data CodegenRefType = RefStrict | RefLazy | RefUnboxed
 
 type CodegenName = Tuple Ident CodegenRefType
 
@@ -384,6 +383,11 @@ codegenBlockStatements = go []
           _ ->
             mode
       acc <> codegenBlockBranches mode' env bs def
+    EffectBind ident lvl (TcoExpr _ (PrimEffect (EffectRefNew val))) body
+      | mode.effect && canUnboxRef (TcoLocal ident lvl) (tcoAnalysisOf body) -> do
+          let Tuple ident' env' = freshName RefUnboxed ident lvl env
+          let line = codegenUnboxedRefBinding env ident' val
+          go (Array.snoc acc line) mode env' body
     EffectBind ident lvl eff body | mode.effect ->
       if totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) > 0 then do
         let Tuple newIdent env' = freshName RefStrict ident lvl env
@@ -475,13 +479,22 @@ codegenBindEffect env tcoExpr@(TcoExpr _ expr) = case expr of
     build $ EsCall (codegenExpr env tcoExpr) []
 
 codegenPrimEffect :: CodegenEnv -> BackendEffect TcoExpr -> EsExpr
-codegenPrimEffect env = case _ of
+codegenPrimEffect env@(CodegenEnv { names }) = case _ of
   EffectRefNew a ->
     build $ EsObject [ codegenObjectElement env $ Prop "value" a ]
+  EffectRefRead a@(TcoExpr _ (Local ident lvl))
+    | Just (Tuple _ RefUnboxed) <- Map.lookup (CodegenLocal ident lvl) names ->
+        codegenExpr env a
   EffectRefRead a ->
     build $ EsAccess (codegenExpr env a) "value"
+  EffectRefWrite a@(TcoExpr _ (Local ident lvl)) b
+    | Just (Tuple _ RefUnboxed) <- Map.lookup (CodegenLocal ident lvl) names ->
+        build $ EsAssign (codegenExpr env a) (codegenExpr env b)
   EffectRefWrite a b ->
     build $ EsAssign (build (EsAccess (codegenExpr env a) "value")) (codegenExpr env b)
+
+codegenUnboxedRefBinding :: CodegenEnv -> Ident -> TcoExpr -> EsExpr
+codegenUnboxedRefBinding env ident expr = build $ EsLet $ NonEmptyArray.singleton $ Tuple (toEsIdent ident) $ Just $ codegenExpr env expr
 
 codegenTcoJoinBinding :: BlockMode -> CodegenEnv -> Ident -> TcoJoin -> EsExpr
 codegenTcoJoinBinding mode env tcoIdent tco = do
@@ -630,6 +643,8 @@ codegenTag opts (Ident ctor) { tag }
 codegenName :: CodegenName -> EsExpr
 codegenName (Tuple ident refType) = case refType of
   RefStrict ->
+    build $ EsIdent $ Qualified Nothing $ toEsIdent ident
+  RefUnboxed ->
     build $ EsIdent $ Qualified Nothing $ toEsIdent ident
   RefLazy ->
     build $ EsCall (build (EsIdent (Qualified Nothing (asLazyIdent ident)))) []
@@ -830,7 +845,14 @@ lookupCtorMeta (CodegenEnv env) qual = case Map.lookup qual env.implementations 
 
 totalUsagesOf :: TcoRef -> TcoAnalysis -> Int
 totalUsagesOf ref (TcoAnalysis { usages }) = case Map.lookup ref usages of
-  Just (Usage { total }) ->
+  Just (TcoUsage { total }) ->
     total
   _ ->
     0
+
+canUnboxRef :: TcoRef -> TcoAnalysis -> Boolean
+canUnboxRef ref (TcoAnalysis { usages }) = case Map.lookup ref usages of
+  Just (TcoUsage { total, readWrite }) ->
+    total == readWrite
+  Nothing ->
+    false

@@ -35,7 +35,6 @@ newtype Usage = Usage
   , access :: Int
   , case :: Int
   , update :: Int
-  , readWrite :: Int
   }
 
 derive instance Newtype Usage _
@@ -49,7 +48,6 @@ instance Semigroup Usage where
     , access: a.access + b.access
     , case: a.case + b.case
     , update: a.update + b.update
-    , readWrite: a.readWrite + b.readWrite
     }
 
 instance Monoid Usage where
@@ -61,7 +59,6 @@ instance Monoid Usage where
     , access: 0
     , case: 0
     , update: 0
-    , readWrite: 0
     }
 
 data Complexity = Trivial | Deref | KnownSize | NonTrivial
@@ -150,7 +147,6 @@ used level = do
         , access: 0
         , case: 0
         , update: 0
-        , readWrite: 0
         }
     }
 
