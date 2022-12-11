@@ -95,7 +95,7 @@ effect_whileE :: EsInline
 effect_whileE = Tuple (qualified "Effect" "whileE") whileLoop
 
 effect_unsafe_unsafePerformEffect :: EsInline
-effect_unsafe_unsafePerformEffect  = Tuple (qualified "Effect.Unsafe" "unsafePerformEffect") go
+effect_unsafe_unsafePerformEffect = Tuple (qualified "Effect.Unsafe" "unsafePerformEffect") go
   where
   go env _ = case _ of
     InlineApp [ eff ] ->
@@ -156,7 +156,7 @@ foreign_object_st_delete :: EsInline
 foreign_object_st_delete = Tuple (qualified "Foreign.Object.ST" "delete") go
   where
   go env _ = case _ of
-    InlineApp [ TcoExpr _ (Lit (LitString key)), b  ] ->
+    InlineApp [ TcoExpr _ (Lit (LitString key)), b ] ->
       Just $ makeThunk $ build $ EsUnary EsDelete $ build (EsAccess (codegenExpr env b) key)
     InlineApp [ a, b ] ->
       Just $ makeThunk $ build $ EsUnary EsDelete $ build (EsIndex (codegenExpr env b) (codegenExpr env a))

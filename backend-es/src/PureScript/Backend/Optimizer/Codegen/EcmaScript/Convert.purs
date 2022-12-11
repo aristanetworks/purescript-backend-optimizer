@@ -285,7 +285,7 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   Update a props ->
     build $ EsObject $ Array.cons (EsObjectSpread (codegenExpr env a)) $ codegenObjectElement env <$> props
   CtorDef ct ty tag [] ->
-    codegenCtor env  currentModule ct ty tag []
+    codegenCtor env currentModule ct ty tag []
   CtorDef ct ty tag fields ->
     esCurriedFunction (toEsIdent <<< Ident <$> fields)
       [ build $ EsReturn $ Just $ codegenCtor env currentModule ct ty tag $

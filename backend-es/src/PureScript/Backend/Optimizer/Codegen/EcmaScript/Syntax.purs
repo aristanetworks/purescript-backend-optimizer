@@ -142,8 +142,7 @@ data EsObjectElement a
 
 derive instance Functor EsObjectElement
 
-data EsBindingPattern
-  = EsBindingIdent EsIdent
+data EsBindingPattern = EsBindingIdent EsIdent
 
 instance Foldable EsObjectElement where
   foldr a = foldrDefault a
@@ -303,7 +302,7 @@ build syn = case syn of
       _ -> identity
 
 buildStatements :: Array EsExpr -> Tuple EsAnalysis (Array EsExpr)
-buildStatements =  traverse go
+buildStatements = traverse go
   where
   go expr = case expr of
     _ | Just expr' <- inlineLoopBlockStatement expr ->
