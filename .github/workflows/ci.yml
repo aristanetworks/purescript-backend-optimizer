@@ -55,4 +55,4 @@ jobs:
 
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest'
-        run: purs-tidy check src backend-es/src backend-es/test/*.purs
+        run: npm run format:check
