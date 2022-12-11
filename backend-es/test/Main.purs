@@ -7,16 +7,14 @@ import Ansi.Output (foreground, withGraphics)
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
 import Data.Array as Array
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Foldable as Foldable
 import Data.Map as Map
-import Data.Maybe (isJust)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
 import Data.Set as Set
-import Data.String (Pattern(..))
-import Data.String as String
 import Data.String.CodeUnits as SCU
 import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..))
@@ -43,7 +41,7 @@ import Test.Utils (bufferToUTF8, execWithStdin, spawnFromParent)
 
 type TestArgs =
   { accept :: Boolean
-  , filter :: Array String
+  , filter :: NonEmptyArray String
   }
 
 argParser :: ArgParser TestArgs
@@ -57,8 +55,8 @@ argParser =
     , filter:
         ArgParser.argument [ "--filter", "-f" ]
           "Filter tests matching a prefix"
-          # ArgParser.unfolded
-          # map (map String.toLower)
+          # ArgParser.unfolded1
+          # ArgParser.default (pure "Snapshot.*")
     }
 
 main :: Effect Unit
@@ -77,7 +75,7 @@ runSnapshotTests { accept, filter } = do
   snapshotDir <- liftEffect Process.cwd
   snapshotPaths <- expandGlobsCwd [ "*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
-  coreFnModulesFromOutput "output" >>= case _ of
+  coreFnModulesFromOutput "output" filter >>= case _ of
     Left errors -> do
       for_ errors \(Tuple filePath err) -> do
         Console.error $ filePath <> " " <> err
@@ -85,14 +83,11 @@ runSnapshotTests { accept, filter } = do
     Right coreFnModules -> do
       let
         { directives } = parseDirectiveFile defaultDirectives
-        shouldCompare
-          | Array.null filter = const true
-          | otherwise = \name -> Array.any (isJust <<< flip String.stripPrefix (String.toLower name) <<< Pattern) filter
       coreFnModules # buildModules
         { directives
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backend ->
-            if Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths && shouldCompare name then do
+            if Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths then do
               let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: false } build.implementations backend
               void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
             else

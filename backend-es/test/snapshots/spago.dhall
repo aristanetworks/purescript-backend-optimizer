@@ -7,6 +7,7 @@
   , "either"
   , "exists"
   , "foldable-traversable"
+  , "foreign-object"
   , "functions"
   , "heterogeneous"
   , "identity"

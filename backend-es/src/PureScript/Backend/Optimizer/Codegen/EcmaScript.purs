@@ -13,9 +13,10 @@ import Data.Set as Set
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Dodo as Dodo
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esComment)
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Convert (CodegenEnv(..), CodegenOptions, InlineAppSpine, asCtorIdent, codegenCtorForType, codegenTopLevelBindingGroup)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Convert (CodegenEnv(..), CodegenOptions, InlineSpine, asCtorIdent, codegenCtorForType, codegenTopLevelBindingGroup)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Inline (esInlineMap)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (EsAnalysis(..), EsExpr, EsIdent(..), EsModuleStatement(..), defaultPrintOptions, esAnalysisOf, printModuleStatement, toEsIdent)
+import PureScript.Backend.Optimizer.Codegen.Tco (TcoExpr)
 import PureScript.Backend.Optimizer.Convert (BackendImplementations, BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName(..), ProperName, Qualified)
 import PureScript.Backend.Optimizer.Semantics (DataTypeMeta)
@@ -31,7 +32,7 @@ codegenModule options implementations mod = do
       (foldr (flip Map.insert 1) Map.empty mod.foreign)
       mod.bindings
 
-    inlineApp :: CodegenEnv -> Qualified Ident -> InlineAppSpine -> Maybe EsExpr
+    inlineApp :: CodegenEnv -> Qualified Ident -> InlineSpine TcoExpr -> Maybe EsExpr
     inlineApp env qual spine = do
       fn <- Map.lookup qual esInlineMap
       fn env qual spine

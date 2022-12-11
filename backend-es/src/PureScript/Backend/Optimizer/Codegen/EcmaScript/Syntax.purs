@@ -42,10 +42,11 @@ import Data.Newtype (class Newtype)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esEscapeSpecial, esIndex, esInt, esModuleName, esNumber, esString)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esEscapeSpecial, esIndex, esInt, esModuleName, esNumber, esString, esTernary)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), ModuleName(..), Qualified(..))
 
 data EsModuleStatement a
@@ -73,7 +74,8 @@ data EsSyntax a
   | EsIndex a a
   | EsIdent (Qualified EsIdent)
   | EsRuntime (EsRuntimeOp a)
-  | EsCall a (Array a)
+  | EsCall a (Array (EsArrayElement a))
+  | EsTernary a a a
   | EsBinary EsBinaryOp a a
   | EsUnary EsUnaryOp a
   | EsAssign a a
@@ -104,7 +106,8 @@ instance Foldable EsSyntax where
     EsIndex a b -> f a <> f b
     EsIdent _ -> mempty
     EsRuntime a -> foldMap f a
-    EsCall a bs -> f a <> foldMap f bs
+    EsCall a bs -> f a <> foldMap (foldMap f) bs
+    EsTernary a b c -> f a <> f b <> f c
     EsBinary _ a b -> f a <> f b
     EsUnary _ a -> f a
     EsAssign _ a -> f a
@@ -174,6 +177,7 @@ data EsUnaryOp
   = EsNot
   | EsNegate
   | EsBitNegate
+  | EsDelete
 
 data EsPrec
   = EsPrecStatement
@@ -247,22 +251,45 @@ build syn = case syn of
     EsExpr (needsDep mn mempty) syn
   EsRuntime op ->
     EsExpr (needsRuntime (foldMap esAnalysisOf op)) syn
-  EsCall (EsExpr _ (EsArrowFunction [] [ EsExpr _ (EsReturn (Just expr)) ])) [] ->
-    expr
+  EsCall (EsExpr _ (EsArrowFunction [] bs)) []
+    | Just expr <- inlineCallBlock bs ->
+        expr
+  EsReturn (Just b)
+    | Just expr' <- inlineLoopBlockStatement b ->
+        expr'
   EsReturn (Just (EsExpr _ EsUndefined)) ->
     build $ EsReturn Nothing
   EsArrowFunction as bs
     | Just (EsExpr _ (EsReturn Nothing)) <- Array.last bs ->
         build $ EsArrowFunction as $ Array.dropEnd 1 bs
+  EsArrowFunction as [ block ]
+    | Just bs <- inlineReturnBlock block ->
+        build $ EsArrowFunction as bs
+  EsArrowFunction as bs -> do
+    let Tuple s bs' = buildStatements bs
+    EsExpr (alwaysPure s) $ EsArrowFunction as bs'
+  EsIfElse a [ block ] cs
+    | Just bs <- inlineReturnBlock block ->
+        build $ EsIfElse a bs cs
+  EsIfElse a bs [ block ]
+    | Just cs <- inlineReturnBlock block ->
+        build $ EsIfElse a bs cs
+  EsIfElse a bs cs -> do
+    let Tuple s1 bs' = buildStatements bs
+    let Tuple s2 cs' = buildStatements cs
+    EsExpr (esAnalysisOf a <> s1 <> s2) $ EsIfElse a bs' cs'
   EsWhile a bs
-    | Just (EsExpr _ EsContinue) <- Array.last bs ->
-        build $ EsWhile a $ Array.dropEnd 1 bs
+    | Just bs' <- removeTrailingContinue bs ->
+        build $ EsWhile a bs'
+    | otherwise -> do
+        let Tuple s bs' = buildStatements bs
+        EsExpr (esAnalysisOf a <> s) $ EsWhile a bs'
   EsForOf a b cs
-    | Just (EsExpr _ EsContinue) <- Array.last cs ->
-        build $ EsForOf a b $ Array.dropEnd 1 cs
-    | Just (EsExpr _ (EsIfElse d es [])) <- Array.last cs
-    , Just (EsExpr _ EsContinue) <- Array.last es ->
-        build $ EsForOf a b $ Array.snoc (Array.dropEnd 1 cs) $ build $ EsIfElse d (Array.dropEnd 1 es) []
+    | Just cs' <- removeTrailingContinue cs ->
+        build $ EsForOf a b cs'
+    | otherwise -> do
+        let Tuple s cs' = buildStatements cs
+        EsExpr (esAnalysisOf b <> s) $ EsForOf a b cs'
   _ ->
     EsExpr (pureAnn (foldMap esAnalysisOf syn)) syn
     where
@@ -274,6 +301,55 @@ build syn = case syn of
       EsAssign _ _ -> notPure
       EsArrowFunction _ _ -> alwaysPure
       _ -> identity
+
+buildStatements :: Array EsExpr -> Tuple EsAnalysis (Array EsExpr)
+buildStatements =  traverse go
+  where
+  go expr = case expr of
+    _ | Just expr' <- inlineLoopBlockStatement expr ->
+      go expr'
+    _ ->
+      Tuple (esAnalysisOf expr) expr
+
+inlineReturnBlock :: EsExpr -> Maybe (Array EsExpr)
+inlineReturnBlock (EsExpr _ expr) = case expr of
+  EsReturn (Just (EsExpr _ (EsCall (EsExpr _ (EsArrowFunction [] bs)) []))) ->
+    Just bs
+  _ ->
+    Nothing
+
+inlineCallBlock :: Array EsExpr -> Maybe EsExpr
+inlineCallBlock = case _ of
+  [ EsExpr _ (EsReturn (Just expr)) ] ->
+    Just expr
+  [ EsExpr _ (EsIfElse a [ EsExpr _ (EsReturn (Just b)) ] []), EsExpr _ (EsReturn (Just c)) ] ->
+    Just $ build $ EsTernary a b c
+  _ ->
+    Nothing
+
+inlineLoopBlockStatement :: EsExpr -> Maybe EsExpr
+inlineLoopBlockStatement (EsExpr _ expr) = case expr of
+  EsCall (EsExpr _ (EsArrowFunction [] [ b@(EsExpr _ loop) ])) []
+    | isLoop loop ->
+        Just b
+  _ ->
+    Nothing
+
+removeTrailingContinue :: Array EsExpr -> Maybe (Array EsExpr)
+removeTrailingContinue stmts = case Array.last stmts of
+  Just (EsExpr s (EsIfElse a bs []))
+    | Just cs <- removeTrailingContinue bs ->
+        Just $ Array.snoc (Array.dropEnd 1 stmts) $ EsExpr s $ EsIfElse a cs []
+  Just (EsExpr _ EsContinue) ->
+    Just (Array.dropEnd 1 stmts)
+  _ ->
+    Nothing
+
+isLoop :: forall a. EsSyntax a -> Boolean
+isLoop = case _ of
+  EsForOf _ _ _ -> true
+  EsWhile _ _ -> true
+  _ -> false
 
 class HasSyntax a where
   syntaxOf :: a -> EsSyntax a
@@ -341,10 +417,16 @@ print opts syn = case syn of
     let p1 = EsPrecCall
     let as = syntaxOf a
     let a' = wrapPrec p1 (print opts as)
-    let doc = esApp a' (snd <<< print opts <<< syntaxOf <$> bs)
+    let doc = esApp a' (printArrayElement opts <$> bs)
     Tuple EsPrecCall $ case as of
       EsCall _ _ -> doc
       _ -> printPure opts doc
+  EsTernary a b c -> do
+    let p1 = EsPrecArrow
+    let a' = print opts (syntaxOf a)
+    let b' = print opts (syntaxOf b)
+    let c' = print opts (syntaxOf c)
+    Tuple p1 $ esTernary (wrapPrec p1 a') (wrapPrec p1 b') (wrapPrec p1 c')
   EsBinary op a b -> do
     let Tuple pn str = printEsBinaryOp op
     let p1 = EsPrecBinary pn
@@ -407,6 +489,7 @@ printEsUnaryOp = case _ of
   EsNot -> "!"
   EsNegate -> "-"
   EsBitNegate -> "~"
+  EsDelete -> "delete "
 
 printArrayElement :: forall a. PrintOptions -> EsArrayElement EsExpr -> Dodo.Doc a
 printArrayElement opts = case _ of

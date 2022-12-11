@@ -53,14 +53,14 @@ newtype CodegenEnv = CodegenEnv
   { bound :: Map Ident Int
   , currentModule :: ModuleName
   , implementations :: BackendImplementations
-  , inlineApp :: CodegenEnv -> Qualified Ident -> InlineAppSpine -> Maybe EsExpr
+  , inlineApp :: CodegenEnv -> Qualified Ident -> InlineSpine TcoExpr -> Maybe EsExpr
   , names :: Map CodegenRef CodegenName
   , options :: CodegenOptions
   }
 
-data InlineAppSpine
-  = InlineApp (Array TcoExpr)
-  | InlineEffectApp (Array TcoExpr)
+data InlineSpine a
+  = InlineApp (Array a)
+  | InlineEffectApp (Array a)
 
 type TcoBinding =
   { arguments :: NonEmptyArray (Tuple (Maybe Ident) Level)
@@ -74,9 +74,16 @@ type TcoJoin =
   , body :: TcoExpr
   }
 
+data ReturnMode
+  = Return
+  | Discard ReturnMode
+  | Continue
+
+derive instance Eq ReturnMode
+
 type BlockMode =
   { effect :: Boolean
-  , returnContinue :: Boolean
+  , return :: ReturnMode
   , tco :: Boolean
   , tcoScope :: TcoScope
   , tcoJoins :: Set LocalRef
@@ -175,13 +182,13 @@ renameTopLevel :: Ident -> CodegenEnv -> CodegenName
 renameTopLevel ident (CodegenEnv env) = fromMaybe (Tuple ident RefStrict) $ Map.lookup (CodegenTopLevel ident) env.names
 
 pureMode :: BlockMode
-pureMode = { effect: false, returnContinue: false, tco: false, tcoScope: List.Nil, tcoJoins: Set.empty }
+pureMode = { effect: false, return: Return, tco: false, tcoScope: List.Nil, tcoJoins: Set.empty }
 
 effectMode :: BlockMode
 effectMode = pureMode { effect = true }
 
 effectLoopMode :: BlockMode
-effectLoopMode = effectMode { returnContinue = true }
+effectLoopMode = effectMode { return = Continue }
 
 pushTcoScope :: TcoScopeItem -> BlockMode -> BlockMode
 pushTcoScope scopeItem mode = mode { tco = true, tcoScope = List.Cons scopeItem mode.tcoScope }
@@ -243,7 +250,7 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
               TcoExpr _ PrimUndefined ->
                 build $ EsCall hd []
               arg ->
-                build $ EsCall hd [ codegenExpr env arg ]
+                build $ EsCall hd [ EsArrayValue $ codegenExpr env arg ]
           )
           (codegenExpr env a)
           bs
@@ -259,12 +266,17 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
         | Just expr' <- inlineApp env qual (InlineApp bs) ->
             expr'
       _ ->
-        build $ EsCall (codegenExpr env a) (codegenExpr env <$> bs)
+        build $ EsCall (codegenExpr env a) (EsArrayValue <<< codegenExpr env <$> bs)
   UncurriedEffectAbs idents body -> do
     let result = freshNames RefStrict env idents
     esArrowFunction (toEsIdent <$> result.value) (codegenBlockStatements effectMode result.accum body)
-  UncurriedEffectApp _ _ ->
-    codegenEffectBlock env tcoExpr
+  UncurriedEffectApp a bs ->
+    case a of
+      TcoExpr _ (Var qual)
+        | Just expr' <- inlineApp env qual (InlineEffectApp bs) ->
+            expr'
+      _ ->
+        codegenEffectBlock env tcoExpr
   Accessor a (GetProp prop) ->
     build $ EsAccess (codegenExpr env a) prop
   Accessor a (GetOffset ix) ->
@@ -301,6 +313,8 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   EffectBind _ _ _ _ ->
     codegenEffectBlock env tcoExpr
   EffectPure _ ->
+    codegenEffectBlock env tcoExpr
+  EffectDefer _ ->
     codegenEffectBlock env tcoExpr
 
 codegenPureBlock :: CodegenEnv -> TcoExpr -> EsExpr
@@ -347,35 +361,41 @@ codegenBlockStatements = go []
           let Tuple tcoIdent env' = freshName RefStrict ident lvl env
           let line = codegenTcoJoinBinding mode env tcoIdent tco
           go (Array.snoc acc line) (pushTcoJoin (Tuple ident lvl) mode) env' body
-      -- HACK: This simplifies the case where, within an effect block, if a let
-      -- binding to an effect is immediately invoked in a bind, it will get
-      -- inlined. This doesn't happen in the usual semantics, but can arise
-      -- through effect loop inlining. A less hacky solution would entail more
-      -- analysis and simplification on the ES AST.
+      -- -- HACK: This simplifies the case where, within an effect block, if a let
+      -- -- binding to an effect is immediately invoked in a bind, it will get
+      -- -- inlined. This doesn't happen in the usual semantics, but can arise
+      -- -- through effect loop inlining. A less hacky solution would entail more
+      -- -- analysis and simplification on the ES AST.
       | mode.effect
       , TcoExpr a1 (EffectBind ident2 lvl2 (TcoExpr a2 (Local ident3 lvl3)) next) <- body
       , ident == ident3 && lvl == lvl3
       , totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) == 1 ->
+          -- trace { mode, expr: b } \_ ->
           go acc mode env $ TcoExpr a1 (EffectBind ident2 lvl2 binding next)
       | otherwise -> do
           let Tuple ident' env' = freshName RefStrict ident lvl env
           let line = esBinding (toEsIdent ident') (codegenExpr env binding)
           go (Array.snoc acc line) mode env' body
-    Branch bs def ->
-      acc <> codegenBlockBranches mode env bs def
-    EffectBind ident lvl eff body | mode.effect -> do
-      let binding = codegenBindEffect env eff
+    Branch bs def -> do
+      let
+        mode' = case mode.return of
+          Discard ret ->
+            mode { return = ret }
+          _ ->
+            mode
+      acc <> codegenBlockBranches mode' env bs def
+    EffectBind ident lvl eff body | mode.effect ->
       if totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) > 0 then do
         let Tuple newIdent env' = freshName RefStrict ident lvl env
-        let line = esBinding (toEsIdent newIdent) binding
+        let line = esBinding (toEsIdent newIdent) $ codegenBindEffect env eff
         go (Array.snoc acc line) mode env' body
-      else
-        go (Array.snoc acc binding) mode env body
+      else do
+        let lines = codegenBlockStatements (mode { return = Discard mode.return }) env eff
+        go (acc <> lines) mode env body
     EffectPure expr' | mode.effect ->
-      if mode.returnContinue then
-        Array.snoc acc $ build EsContinue
-      else
-        acc <> codegenBlockReturn (mode { effect = false }) env expr'
+      acc <> codegenBlockReturn (mode { effect = false }) env expr'
+    EffectDefer expr' | mode.effect ->
+      go acc mode env expr'
     App (TcoExpr _ (Local ident lvl)) bs
       | Just tco <- Tco.popTcoScope (TcoLocal ident lvl) mode.tcoScope ->
           acc <> codegenTcoJump mode tco (codegenExpr env <$> NonEmptyArray.toArray bs)
@@ -405,20 +425,25 @@ codegenBlockReturn :: BlockMode -> CodegenEnv -> TcoExpr -> Array EsExpr
 codegenBlockReturn mode env tcoExpr
   | Just tco <- Tco.unwindTcoScope mode.tcoScope =
       codegenTcoReturn mode tco $ codegenExpr env tcoExpr
-  | mode.effect && mode.returnContinue =
-      [ codegenBindEffect env tcoExpr
-      , build $ EsContinue
-      ]
   | mode.effect = do
       let expr = codegenBindEffect env tcoExpr
-      if isVoidReturn expr then
-        [ expr
-        , build $ EsReturn Nothing
-        ]
-      else
-        pure $ build $ EsReturn $ Just expr
+      case mode.return of
+        Continue ->
+          [ expr
+          , build $ EsContinue
+          ]
+        Discard _ ->
+          pure expr
+        Return ->
+          pure $ build $ EsReturn $ Just expr
   | otherwise =
-      pure $ build $ EsReturn $ Just $ codegenExpr env tcoExpr
+      case mode.return of
+        Continue ->
+          pure $ build $ EsContinue
+        Discard _ ->
+          []
+        Return ->
+          pure $ build $ EsReturn $ Just $ codegenExpr env tcoExpr
 
 isVoidReturn :: EsExpr -> Boolean
 isVoidReturn (EsExpr _ a) = case a of
@@ -439,25 +464,13 @@ codegenBlockBranches mode env bs def =
       Tuple (codegenExpr env a) $ codegenBlockStatements mode env b
 
 codegenBindEffect :: CodegenEnv -> TcoExpr -> EsExpr
-codegenBindEffect env@(CodegenEnv { inlineApp }) tcoExpr@(TcoExpr _ expr) = case expr of
+codegenBindEffect env tcoExpr@(TcoExpr _ expr) = case expr of
   PrimEffect a ->
     codegenPrimEffect env a
   Branch _ _ ->
     build $ EsCall (esArrowFunction [] (codegenBlockStatements effectMode env tcoExpr)) []
-  Var qual
-    | Just expr' <- inlineApp env qual (InlineEffectApp []) ->
-        expr'
-  App (TcoExpr _ (Var qual)) bs
-    | Just expr' <- inlineApp env qual (InlineEffectApp (NonEmptyArray.toArray bs)) ->
-        expr'
-  UncurriedApp (TcoExpr _ (Var qual)) bs
-    | Just expr' <- inlineApp env qual (InlineEffectApp bs) ->
-        expr'
-  UncurriedEffectApp (TcoExpr _ (Var qual)) bs
-    | Just expr' <- inlineApp env qual (InlineEffectApp bs) ->
-        expr'
   UncurriedEffectApp a bs ->
-    build $ EsCall (codegenExpr env a) (codegenExpr env <$> bs)
+    build $ EsCall (codegenExpr env a) (EsArrayValue <<< codegenExpr env <$> bs)
   _ ->
     build $ EsCall (codegenExpr env tcoExpr) []
 
@@ -502,7 +515,7 @@ codegenTcoMutualLoopBindings mode env tcoIdent bindings = case NonEmptyArray.toA
               let { value: idents } = freshNames RefStrict env args
               Tuple (EsBindingIdent (toEsIdent ident)) $ esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray idents)
                 [ build $ EsReturn $ Just $ build $ EsCall (build (EsIdent (Qualified Nothing (toEsIdent tcoIdent))))
-                    $ Array.cons (build (EsInt ix)) (build <<< EsIdent <<< Qualified Nothing <<< toEsIdent <$> NonEmptyArray.toArray idents)
+                    $ Array.cons (EsArrayValue (build (EsInt ix))) (EsArrayValue <<< build <<< EsIdent <<< Qualified Nothing <<< toEsIdent <$> NonEmptyArray.toArray idents)
                 ]
           )
           bindings'
@@ -599,12 +612,13 @@ codegenCtor :: CodegenEnv -> ModuleName -> ConstructorType -> ProperName -> Iden
 codegenCtor env@(CodegenEnv { currentModule, options }) mod ct name tag values = case ct of
   SumType -> do
     let ctorMeta = lookupCtorMeta env (Qualified (Just mod) tag)
-    build $ EsCall ctorName $ Array.cons (codegenTag options tag ctorMeta) values
+    build $ EsCall ctorName $ Array.cons (EsArrayValue (codegenTag options tag ctorMeta)) ctorValues
   ProductType ->
-    build $ EsCall ctorName values
+    build $ EsCall ctorName ctorValues
   where
   ctorName = build $ EsIdent $ Qualified ctorModule $ asCtorIdent name
   ctorModule = if mod == currentModule then Nothing else Just mod
+  ctorValues = EsArrayValue <$> values
 
 codegenTag :: CodegenOptions -> Ident -> CtorMeta -> EsExpr
 codegenTag opts (Ident ctor) { tag }
@@ -765,6 +779,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
     EffectBind _ _ _ _ ->
       true
     EffectPure _ ->
+      true
+    EffectDefer _ ->
       true
     Var (Qualified (Just mn) ident) | mn == currentModule ->
       not $ Array.elem (CodegenTopLevel ident) group

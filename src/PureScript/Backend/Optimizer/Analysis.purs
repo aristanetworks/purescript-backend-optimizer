@@ -35,6 +35,7 @@ newtype Usage = Usage
   , access :: Int
   , case :: Int
   , update :: Int
+  , readWrite :: Int
   }
 
 derive instance Newtype Usage _
@@ -48,6 +49,7 @@ instance Semigroup Usage where
     , access: a.access + b.access
     , case: a.case + b.case
     , update: a.update + b.update
+    , readWrite: a.readWrite + b.readWrite
     }
 
 instance Monoid Usage where
@@ -59,6 +61,7 @@ instance Monoid Usage where
     , access: 0
     , case: 0
     , update: 0
+    , readWrite: 0
     }
 
 data Complexity = Trivial | Deref | KnownSize | NonTrivial
@@ -147,6 +150,7 @@ used level = do
         , access: 0
         , case: 0
         , update: 0
+        , readWrite: 0
         }
     }
 
@@ -224,6 +228,11 @@ analyze externAnalysis expr = case expr of
       $ bump
       $ analysisOf a <> bound lvl (analysisOf b)
   EffectPure a ->
+    withResult Unknown
+      $ capture CaptureClosure
+      $ bump
+      $ analysisOf a
+  EffectDefer a ->
     withResult Unknown
       $ capture CaptureClosure
       $ bump
@@ -378,12 +387,15 @@ analyzeEffectBlock externAnalysis expr = case expr of
       $ bump
       $ foldMap (analysisOf <<< snd) as <> analysisOf b
   EffectBind _ lvl a b ->
-    -- withResult (resultOf b)
     withResult Unknown
       $ complex NonTrivial
       $ bump
       $ analysisOf a <> bound lvl (analysisOf b)
   EffectPure a ->
+    withResult Unknown
+      $ bump
+      $ analysisOf a
+  EffectDefer a ->
     withResult Unknown
       $ bump
       $ analysisOf a

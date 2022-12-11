@@ -14,7 +14,6 @@ const $gf = ($gf$b$copy, $gf$a0$copy, $gf$a1$copy) => {
       $gf$b = 1;
       $gf$a0 = $0;
       $gf$a1 = $0 + 1 | 0;
-      continue;
     }
   }
   return $gf$r;

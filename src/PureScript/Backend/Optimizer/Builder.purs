@@ -15,7 +15,6 @@ import Data.Tuple (Tuple)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
-import PureScript.Backend.Optimizer.CoreFn.Sort (sortModules)
 import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
@@ -36,7 +35,7 @@ type BuildOptions m =
 -- | See `PureScript.Backend.Optimizer.CoreFn.Sort.sortModules`.
 buildModules :: forall m. Monad m => BuildOptions m -> List (Module Ann) -> m Unit
 buildModules options coreFnModules =
-  void $ foldM go { directives: options.directives, implementations: Map.empty, moduleIndex: 0 } (sortModules coreFnModules)
+  void $ foldM go { directives: options.directives, implementations: Map.empty, moduleIndex: 0 } coreFnModules
   where
   moduleCount = List.length coreFnModules
   go { directives, implementations, moduleIndex } coreFnModule = do

@@ -13,11 +13,13 @@ module PureScript.Backend.Optimizer.Codegen.EcmaScript.Common
   , esModuleName
   , esNumber
   , esString
+  , esTernary
   ) where
 
 import Prelude
 
 import Data.Argonaut as Json
+import Data.Array (fold)
 import Data.Array as Array
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
@@ -228,6 +230,22 @@ esComment = case _ of
     Dodo.text "//" <> Dodo.text str
   BlockComment str ->
     Dodo.text "/*" <> Dodo.text str <> Dodo.text "*/"
+
+esTernary :: forall a. Dodo.Doc a -> Dodo.Doc a -> Dodo.Doc a -> Dodo.Doc a
+esTernary a b c =
+  Dodo.flexGroup $ fold
+    [ a
+    , Dodo.spaceBreak
+    , Dodo.indent $ fold
+        [ Dodo.text "?"
+        , Dodo.space
+        , Dodo.alignCurrentColumn b
+        , Dodo.spaceBreak
+        , Dodo.text ":"
+        , Dodo.space
+        , Dodo.alignCurrentColumn c
+        ]
+    ]
 
 esEscapeString :: String -> String
 esEscapeString = Json.stringify <<< Json.fromString

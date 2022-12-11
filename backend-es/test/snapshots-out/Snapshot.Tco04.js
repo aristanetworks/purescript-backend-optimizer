@@ -27,7 +27,6 @@ const $test2test1 = ($test2test1$b$copy, $test2test1$a0$copy) => {
       }
       $test2test1$b = 1;
       $test2test1$a0 = $0 - 2 | 0;
-      continue;
     }
   }
   return $test2test1$r;
