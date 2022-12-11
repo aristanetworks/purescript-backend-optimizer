@@ -22,8 +22,7 @@ const test1 = hi => () => {
   while ($$continue) {
     const n = count;
     if (n < hi) {
-      const $0 = n + 1 | 0;
-      count = $0;
+      count = n + 1 | 0;
       continue;
     }
     $$continue = false;

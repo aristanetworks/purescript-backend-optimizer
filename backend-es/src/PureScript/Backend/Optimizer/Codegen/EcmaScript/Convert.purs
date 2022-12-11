@@ -26,7 +26,7 @@ import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esEscapeIdent)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsArrayElement(..), EsBinaryOp(..), EsBindingPattern(..), EsExpr(..), EsIdent(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, toEsIdent, toEsIdentWith)
-import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoUsage(..), tcoAnalysisOf)
+import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoUsage(..), tcoAnalysisOf, unTcoExpr)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
@@ -383,19 +383,21 @@ codegenBlockStatements = go []
           _ ->
             mode
       acc <> codegenBlockBranches mode' env bs def
-    EffectBind ident lvl (TcoExpr _ (PrimEffect (EffectRefNew val))) body
-      | mode.effect && canUnboxRef (TcoLocal ident lvl) (tcoAnalysisOf body) -> do
-          let Tuple ident' env' = freshName RefUnboxed ident lvl env
-          let line = codegenUnboxedRefBinding env ident' val
-          go (Array.snoc acc line) mode env' body
     EffectBind ident lvl eff body | mode.effect ->
-      if totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) > 0 then do
-        let Tuple newIdent env' = freshName RefStrict ident lvl env
-        let line = esBinding (toEsIdent newIdent) $ codegenBindEffect env eff
-        go (Array.snoc acc line) mode env' body
-      else do
-        let lines = codegenBlockStatements (mode { return = Discard mode.return }) env eff
-        go (acc <> lines) mode env body
+      case unTcoExpr eff of
+        PrimEffect (EffectRefNew val)
+          | canUnboxRef (TcoLocal ident lvl) (tcoAnalysisOf body) -> do
+              let Tuple ident' env' = freshName RefUnboxed ident lvl env
+              let line = codegenUnboxedRefBinding env ident' val
+              go (Array.snoc acc line) mode env' body
+        _
+          | totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) > 0 -> do
+              let Tuple newIdent env' = freshName RefStrict ident lvl env
+              let line = esBinding (toEsIdent newIdent) $ codegenBindEffect env eff
+              go (Array.snoc acc line) mode env' body
+          | otherwise -> do
+              let lines = codegenBlockStatements (mode { return = Discard mode.return }) env eff
+              go (acc <> lines) mode env body
     EffectPure expr' | mode.effect ->
       acc <> codegenBlockReturn (mode { effect = false }) env expr'
     EffectDefer expr' | mode.effect ->
