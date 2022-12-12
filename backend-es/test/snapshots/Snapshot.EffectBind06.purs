@@ -4,13 +4,11 @@ import Prelude
 
 import Effect (Effect)
 
-foreign import random :: Effect Int
-
-test :: Effect Int
-test = do
+test :: Effect Int -> Effect Int
+test random = do
   x <- random
   n <- do
-    x <- random
+    x <- random  -- Shadowed on purpose
     y <- random
     pure $ x + y
   m <- random

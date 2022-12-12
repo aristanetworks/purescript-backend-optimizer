@@ -1,4 +1,9 @@
-import {f} from "./foreign.js";
+// @inline export f never
+const test1 = a => {
+  if (a) { return [1, 2, 3]; }
+  return [];
+};
+const f = x => x;
 const test2 = /* #__PURE__ */ (() => {
   const $0 = f([1, 2, 3]);
   return a => {
@@ -6,9 +11,4 @@ const test2 = /* #__PURE__ */ (() => {
     return [];
   };
 })();
-const test1 = a => {
-  if (a) { return [1, 2, 3]; }
-  return [];
-};
-export {test1, test2};
-export * from "./foreign.js";
+export {f, test1, test2};

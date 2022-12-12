@@ -12,10 +12,8 @@ test1 x = do
   , unsafePartial fromJust a <> ", Universe"
   ]
 
-foreign import f :: String -> String -> String
-
-test2 :: Int -> String
-test2 x = do
+test2 :: (String -> String -> String) -> Int -> String
+test2 f x = do
   let a = if x > 42 then Just "Hello" else Nothing
   f (unsafePartial fromJust a <> ", World") (unsafePartial fromJust a <> ", Universe")
 

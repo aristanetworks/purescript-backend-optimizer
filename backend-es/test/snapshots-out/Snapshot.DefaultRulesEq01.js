@@ -1,5 +1,6 @@
-import {x} from "./foreign.js";
+// @inline export x never
 const eq = ra => rb => ra.bar === rb.bar && ra.baz === rb.baz && ra.foo === rb.foo;
+const x = v => "???";
 const test9 = /* #__PURE__ */ (() => "hello" === x())();
 const test8 = false;
 const test7 = false;
@@ -13,5 +14,4 @@ const test10 = /* #__PURE__ */ (() => {
   return rb => $0 === rb.bar && rb.baz && 42 === rb.foo;
 })();
 const test1 = eq;
-export {eq, test1, test10, test2, test3, test4, test5, test6, test7, test8, test9};
-export * from "./foreign.js";
+export {eq, test1, test10, test2, test3, test4, test5, test6, test7, test8, test9, x};

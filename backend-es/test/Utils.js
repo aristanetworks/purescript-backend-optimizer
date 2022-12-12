@@ -1,6 +1,6 @@
-export const loadModuleMainImpl = onError => onSuccess => path => () => {
+export const loadModuleMainImpl = onError => onSuccessMain => onSuccess => path => () => {
   import(path).then(
-    mod => onSuccess(mod.main)(),
+    mod => mod.main ? onSuccessMain(mod.main)() : onSuccess(),
     err => onError(err)()
   );
 }

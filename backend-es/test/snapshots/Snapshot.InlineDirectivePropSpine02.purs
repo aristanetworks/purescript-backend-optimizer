@@ -1,14 +1,15 @@
--- @inline export  watUnit(..).wat1 arity=1
--- @inline export  watUnit(..).wat2 arity=1
+-- @inline export watUnit(..).wat1 arity=1
+-- @inline export watUnit(..).wat2 arity=1
+-- @inline export testImpl never
 module Snapshot.InlineDirectivePropSpine02 where
 
 import Prelude
 
-import Data.Tuple (Tuple)
 import Type.Equality (class TypeEquals)
 import Type.Equality as TypeEquals
 
-foreign import testImpl :: forall a b. Unit -> Unit
+testImpl :: Unit -> Unit
+testImpl = identity
 
 class Wat a b | b -> a where
   wat1 :: a -> b

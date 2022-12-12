@@ -1,6 +1,7 @@
 -- @inline ConvertableOptions.convertRecordOptionsCons arity=6
 -- @inline ConvertableOptions.convertRecordOptionsNil always
 -- @inline export flub always
+-- @inline export flubImpl never
 module Snapshot.ConvertableOptions01
   ( test1
   , test2
@@ -9,8 +10,8 @@ module Snapshot.ConvertableOptions01
   ) where
 
 import Prelude
-import ConvertableOptions
-import Data.Maybe
+import ConvertableOptions (class ConvertOption, class ConvertOptionsWithDefaults, convertOptionsWithDefaults)
+import Data.Maybe (Maybe(..))
 
 type Optional =
   ( foo :: Int
@@ -55,9 +56,17 @@ flub provided = flubImpl all
   all :: { | All }
   all = convertOptionsWithDefaults Flub defaultOptions provided
 
-foreign import flubImpl :: { | All } -> String
+flubImpl :: { | All } -> String
+flubImpl _ = "???"
 
+test1 :: String
 test1 = flub { bar: "Hello" }
+
+test2 :: String
 test2 = flub { foo: 99, bar: "Hello" }
+
+test3 :: String
 test3 = flub { foo: 99, bar: "Hello", baz: Just true }
+
+test4 :: String
 test4 = flub { foo: 99, bar: 42, baz: true }

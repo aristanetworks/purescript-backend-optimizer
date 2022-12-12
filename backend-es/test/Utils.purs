@@ -3,6 +3,7 @@ module Test.Utils where
 import Prelude
 
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
 import Data.Posix.Signal (Signal(..))
 import Effect (Effect)
 import Effect.Aff (Aff, Error, effectCanceler, error, makeAff, throwError)
@@ -46,11 +47,11 @@ bufferToUTF8 = liftEffect <<< map (ImmutableBuffer.toString UTF8) <<< freeze
 mkdirp :: FilePath -> Aff Unit
 mkdirp path = FS.mkdir' path { recursive: true, mode: mkPerms Perms.all Perms.all Perms.all }
 
-foreign import loadModuleMainImpl :: (Error -> Effect Unit) -> (Effect Unit -> Effect Unit) -> FilePath -> Effect Unit
+foreign import loadModuleMainImpl :: (Error -> Effect Unit) -> (Effect Unit -> Effect Unit) -> Effect Unit -> FilePath -> Effect Unit
 
-loadModuleMain :: FilePath -> Aff (Effect Unit)
+loadModuleMain :: FilePath -> Aff (Maybe (Effect Unit))
 loadModuleMain path = makeAff \k -> do
-  loadModuleMainImpl (k <<< Left) (k <<< Right) path
+  loadModuleMainImpl (k <<< Left) (k <<< Right <<< Just) (k (Right Nothing)) path
   mempty
 
 copyFile :: FilePath -> FilePath -> Aff Unit

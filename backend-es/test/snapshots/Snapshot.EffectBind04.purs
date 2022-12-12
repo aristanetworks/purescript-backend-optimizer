@@ -5,10 +5,8 @@ import Prelude
 import Effect (Effect)
 import Effect.Class.Console as Console
 
-foreign import random :: Effect Int
-
-test1 :: Effect Unit
-test1 = do
+test1 :: Effect Int -> Effect Unit
+test1 random = do
   n <- random
   if n > 100 then
     Console.log "Too hot"
@@ -17,8 +15,8 @@ test1 = do
   else
     Console.log "Just right"
 
-test2 :: Effect Unit
-test2 = do
+test2 :: Effect Int -> Effect Unit
+test2 random = do
   n <- random
   if n > 100 then
     Console.log "Too hot"

@@ -1,10 +1,12 @@
+-- @inline export x never
 module Snapshot.DefaultRulesEq01 where
 
 import Prelude
 
 type R = { foo :: Int, bar :: String, baz :: Boolean }
 
-foreign import x :: Unit -> String
+x :: Unit -> String
+x _ = "???"
 
 test1 :: R -> R -> Boolean
 test1 = eq

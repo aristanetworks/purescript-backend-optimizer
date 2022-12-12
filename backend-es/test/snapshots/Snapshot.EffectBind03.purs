@@ -23,10 +23,8 @@ instance Bind MyEffect where
 
 instance Monad MyEffect
 
-foreign import random :: MyEffect Int
-
-test :: MyEffect Int
-test = do
+test :: MyEffect Int -> MyEffect Int
+test random = do
   a <- random
   b <- random
   pure $ a + b

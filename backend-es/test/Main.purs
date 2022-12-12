@@ -10,7 +10,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Either (Either(..))
-import Data.Foldable (foldl, for_)
+import Data.Foldable (foldMap, foldl, for_)
 import Data.Foldable as Foldable
 import Data.Lazy as Lazy
 import Data.List as List
@@ -108,8 +108,6 @@ runSnapshotTests { accept, filter } = do
               formatted = Lazy.defer \_ ->
                 Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
                   codegenModule { intTags: false } build.implementations backend
-            when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
-              void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
             when (Set.member (ModuleName name) unitTestNeeds) do
               let testFileDir = Path.concat [ testOut, name ]
               let testFilePath = Path.concat [ testFileDir, "index.js" ]
@@ -119,6 +117,8 @@ runSnapshotTests { accept, filter } = do
                 let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
                 let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
                 copyFile foreignSiblingPath foreignOutputPath
+            when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
+              void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
             let total = show build.moduleCount
             let index = show (build.moduleIndex + 1)
@@ -132,7 +132,7 @@ runSnapshotTests { accept, filter } = do
           snapshotFilePath = Path.concat [ snapshotsOut, name <> ".js" ]
           runAcceptedTest =
             if Set.member (ModuleName name) unitTestRoots then do
-              result <- attempt <<< liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
+              result <- attempt $ foldMap liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
               case result of
                 Left err -> do
                   Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
