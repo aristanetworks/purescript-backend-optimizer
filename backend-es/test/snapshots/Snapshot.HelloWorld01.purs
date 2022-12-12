@@ -5,5 +5,5 @@ import Prelude
 import Effect (Effect)
 import Effect.Class.Console as Console
 
-main :: Effect Unit
-main = Console.log "Hello, World!"
+test :: Effect Unit
+test = Console.log "Hello, World!"

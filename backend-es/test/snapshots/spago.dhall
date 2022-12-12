@@ -1,6 +1,7 @@
 { name = "snapshots"
 , dependencies =
   [ "arrays"
+  , "assert"
   , "console"
   , "convertable-options"
   , "effect"
