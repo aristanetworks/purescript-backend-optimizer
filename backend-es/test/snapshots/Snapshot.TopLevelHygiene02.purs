@@ -1,4 +1,4 @@
-module Snapshow.TopLevelHygiene02 where
+module Snapshot.TopLevelHygiene02 where
 
 import Snapshot.TopLevelHygiene01 (test1)
 
