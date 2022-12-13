@@ -1,23 +1,17 @@
--- @inline export f never
--- @inline export g never
 module Snapshot.FunctionCompose02 (test1, test2, test3, test4) where
 
 import Prelude
 
-f :: Int -> Int
-f = identity
+type F = Int -> Int
 
-g :: Int -> Int
-g = identity
+test1 :: F -> F -> F
+test1 f g = f <<< g
 
-test1 :: Int -> Int
-test1 = f <<< g
+test2 :: F -> F -> F
+test2 f g = g <<< (f <<< g)
 
-test2 :: Int -> Int
-test2 = g <<< (f <<< g)
+test3 :: F -> F -> F
+test3 f g = (f <<< g) <<< (f <<< g)
 
-test3 :: Int -> Int
-test3 = (f <<< g) <<< (f <<< g)
-
-test4 :: Int -> Int
-test4 = ((g <<< f) <<< g) <<< (f <<< g)
+test4 :: F -> F -> F
+test4 f g = ((g <<< f) <<< g) <<< (f <<< g)

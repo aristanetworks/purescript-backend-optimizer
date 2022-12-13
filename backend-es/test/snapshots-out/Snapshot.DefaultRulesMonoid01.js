@@ -1,14 +1,12 @@
-// @inline export f never
-const test1 = a => {
-  if (a) { return [1, 2, 3]; }
-  return [];
-};
-const f = x => x;
-const test2 = /* #__PURE__ */ (() => {
+const test2 = f => {
   const $0 = f([1, 2, 3]);
   return a => {
     if (a) { return $0; }
     return [];
   };
-})();
-export {f, test1, test2};
+};
+const test1 = a => {
+  if (a) { return [1, 2, 3]; }
+  return [];
+};
+export {test1, test2};

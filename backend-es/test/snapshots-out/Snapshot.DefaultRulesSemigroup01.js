@@ -1,7 +1,3 @@
-// @inline export f never
-// @inline export g never
-const g = v => "???";
-const f = v => "???";
-const test1 = x => f(x) + g(x);
-const test2 = x => f(x) + g(x) + f(x) + g(x);
-export {f, g, test1, test2};
+const test2 = f => g => x => f(x) + g(x) + f(x) + g(x);
+const test1 = f => g => x => f(x) + g(x);
+export {test1, test2};

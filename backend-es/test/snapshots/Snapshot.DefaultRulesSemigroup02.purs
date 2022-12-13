@@ -1,12 +1,8 @@
--- @inline export x never
 module Snapshot.DefaultRulesSemigroup02 where
 
 import Prelude
 
 type R = { foo :: String, bar :: Array String }
-
-x :: Unit -> String
-x _ = "???"
 
 test1 :: R -> R -> R
 test1 = append

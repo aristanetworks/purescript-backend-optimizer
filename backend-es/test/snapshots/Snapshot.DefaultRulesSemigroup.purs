@@ -1,17 +1,11 @@
--- @inline export f never
--- @inline export g never
 module Snapshot.DefaultRulesSemigroup01 where
 
 import Prelude
 
-f :: Int -> String
-f _ = "???"
+type F = Int -> String
 
-g :: Int -> String
-g _ = "???"
+test1 :: F -> F -> Int -> String
+test1 f g = f <> g
 
-test1 :: Int -> String
-test1 = f <> g
-
-test2 :: Int -> String
-test2 = f <> g <> f <> g
+test2 :: F -> F -> Int -> String
+test2 f g = f <> g <> f <> g

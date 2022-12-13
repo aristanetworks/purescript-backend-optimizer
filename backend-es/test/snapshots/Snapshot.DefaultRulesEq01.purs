@@ -1,12 +1,8 @@
--- @inline export x never
 module Snapshot.DefaultRulesEq01 where
 
 import Prelude
 
 type R = { foo :: Int, bar :: String, baz :: Boolean }
-
-x :: Unit -> String
-x _ = "???"
 
 test1 :: R -> R -> Boolean
 test1 = eq
@@ -29,11 +25,11 @@ test6 = eq { foo: 42, bar: "hello", baz: false } { foo: 42, bar: "hello", baz: f
 test7 :: Boolean
 test7 = eq { foo: 42, bar: "hello", baz: false } { foo: 43, bar: "hello", baz: false }
 
-test8 :: Boolean
-test8 = eq { foo: 42, bar: "hello", baz: false } { foo: 43, bar: x unit, baz: false }
+test8 :: (Unit -> String) -> Boolean
+test8 x = eq { foo: 42, bar: "hello", baz: false } { foo: 43, bar: x unit, baz: false }
 
-test9 :: Boolean
-test9 = eq { foo: 42, bar: "hello", baz: true } { foo: 42, bar: x unit, baz: true }
+test9 :: (Unit -> String) -> Boolean
+test9 x = eq { foo: 42, bar: "hello", baz: true } { foo: 42, bar: x unit, baz: true }
 
-test10 :: R -> Boolean
-test10 = eq { foo: 42, bar: x unit, baz: true }
+test10 :: (Unit -> String) -> R -> Boolean
+test10 x = eq { foo: 42, bar: x unit, baz: true }

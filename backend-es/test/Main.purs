@@ -126,7 +126,7 @@ runSnapshotTests { accept, filter } = do
             result <- attempt $ foldMap liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
             case result, failsWith of
               Left err, Just msg
-                | Error.message err /= msg -> do
+                | not $ String.contains (Pattern msg) $ Error.message err -> do
                     Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
                     Console.log $ Error.message err
                     pure false
