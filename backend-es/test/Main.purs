@@ -6,24 +6,20 @@ import Ansi.Codes (Color(..))
 import Ansi.Output (foreground, withGraphics)
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
-import Control.Alternative (guard)
+import Data.Array (findMap)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Either (Either(..))
-import Data.Foldable (foldMap, foldl, for_)
+import Data.Foldable (foldMap, for_)
 import Data.Foldable as Foldable
-import Data.Lazy as Lazy
-import Data.List as List
-import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
-import Data.Set (Set)
 import Data.Set as Set
 import Data.String (Pattern(..))
+import Data.String as String
 import Data.String.CodeUnits as SCU
-import Data.String.CodeUnits as String
 import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
@@ -42,7 +38,8 @@ import PureScript.Backend.Optimizer.Builder (buildModules)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
-import PureScript.Backend.Optimizer.CoreFn (Bind(..), Binding(..), Ident(..), Module(..), ModuleName(..), importName, moduleName)
+import PureScript.Backend.Optimizer.Convert (BackendModule)
+import PureScript.Backend.Optimizer.CoreFn (Comment(..), Module(..), ModuleName(..))
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
@@ -95,30 +92,25 @@ runSnapshotTests { accept, filter } = do
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      let depIndex = Map.fromFoldable $ moduleWithDependencies <$> coreFnModules
-      let unitTestRoots = Set.fromFoldable $ List.mapMaybe (\m -> guard (hasMain m) $> moduleName m) coreFnModules
-      let unitTestNeeds = transitiveDependencies depIndex unitTestRoots
-      unless (Set.isEmpty unitTestNeeds) do
-        copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
+      copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       coreFnModules # buildModules
         { directives
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backend -> do
             let
-              formatted = Lazy.defer \_ ->
+              formatted =
                 Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
                   codegenModule { intTags: false } build.implementations backend
-            when (Set.member (ModuleName name) unitTestNeeds) do
-              let testFileDir = Path.concat [ testOut, name ]
-              let testFilePath = Path.concat [ testFileDir, "index.js" ]
-              mkdirp testFileDir
-              FS.writeTextFile UTF8 testFilePath $ Lazy.force formatted
-              unless (Set.isEmpty backend.foreign) do
-                let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
-                let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
-                copyFile foreignSiblingPath foreignOutputPath
+            let testFileDir = Path.concat [ testOut, name ]
+            let testFilePath = Path.concat [ testFileDir, "index.js" ]
+            mkdirp testFileDir
+            FS.writeTextFile UTF8 testFilePath formatted
+            unless (Set.isEmpty backend.foreign) do
+              let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
+              let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
+              copyFile foreignSiblingPath foreignOutputPath
             when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
-              void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
+              void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backend))) outputRef
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
             let total = show build.moduleCount
             let index = show (build.moduleIndex + 1)
@@ -127,63 +119,47 @@ runSnapshotTests { accept, filter } = do
             pure coreFnMod
         }
       outputModules <- liftEffect $ Ref.read outputRef
-      results <- forWithIndex outputModules \name output -> do
+      results <- forWithIndex outputModules \name (Tuple output failsWith) -> do
         let
           snapshotFilePath = Path.concat [ snapshotsOut, name <> ".js" ]
-          runAcceptedTest =
-            if Set.member (ModuleName name) unitTestRoots then do
-              result <- attempt $ foldMap liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
-              case result of
-                Left err -> do
-                  Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
-                  Console.log $ Error.message err
-                  pure false
-                _ ->
-                  pure true
-            else
-              pure true
+          runAcceptedTest = do
+            result <- attempt $ foldMap liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
+            case result, failsWith of
+              Left err, Just msg
+                | Error.message err /= msg -> do
+                    Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
+                    Console.log $ Error.message err
+                    pure false
+              Right _, Just _ -> do
+                Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " succeeded when it should have failed."
+                pure false
+              _, _ ->
+                pure true
         attempt (FS.readTextFile UTF8 snapshotFilePath) >>= case _ of
           Left _ -> do
             Console.log $ withGraphics (foreground Yellow) "✓" <> " " <> name <> " saved."
-            FS.writeTextFile UTF8 snapshotFilePath (Lazy.force output)
+            FS.writeTextFile UTF8 snapshotFilePath output
             pure true
           Right prevOutput
-            | Lazy.force output == prevOutput ->
+            | output == prevOutput ->
                 runAcceptedTest
             | accept -> do
                 Console.log $ withGraphics (foreground Yellow) "✓" <> " " <> name <> " accepted."
-                FS.writeTextFile UTF8 snapshotFilePath $ Lazy.force output
+                FS.writeTextFile UTF8 snapshotFilePath output
                 runAcceptedTest
             | otherwise -> do
                 Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
-                diff <- bufferToUTF8 <<< _.stdout =<< execWithStdin ("diff " <> snapshotFilePath <> " -") (Lazy.force output)
+                diff <- bufferToUTF8 <<< _.stdout =<< execWithStdin ("diff " <> snapshotFilePath <> " -") output
                 Console.log diff
                 pure false
       unless (Foldable.and results) do
         liftEffect $ Process.exit 1
 
-hasMain :: forall a. Module a -> Boolean
-hasMain (Module { decls, name: ModuleName name }) =
-  isJust (String.stripPrefix (Pattern "Snapshot.") name) && Array.any go decls
+hasFails :: BackendModule -> Maybe String
+hasFails = findMap go <<< _.comments
   where
   go = case _ of
-    NonRec (Binding _ (Ident "main") _) ->
-      true
+    LineComment comm ->
+      String.stripPrefix (Pattern "@fails ") (String.trim comm)
     _ ->
-      false
-
-moduleWithDependencies :: forall a. Module a -> Tuple ModuleName (Set ModuleName)
-moduleWithDependencies (Module { imports, name }) = Tuple name (Set.fromFoldable $ Array.filter (_ /= name) $ importName <$> imports)
-
-transitiveDependencies :: Map ModuleName (Set ModuleName) -> Set ModuleName -> Set ModuleName
-transitiveDependencies index = foldl go mempty
-  where
-  go res name
-    | Set.member name res =
-        res
-    | otherwise =
-        case Map.lookup name index of
-          Just deps ->
-            foldl go (Set.insert name res) deps
-          Nothing ->
-            res
+      Nothing

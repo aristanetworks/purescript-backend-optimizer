@@ -1,3 +1,4 @@
+// @fails Binding demanded before initialized
 import * as $runtime from "../runtime.js";
 const test = /* #__PURE__ */ (() => {
   const test3 = n => {
