@@ -185,5 +185,5 @@ transitiveDependencies index = foldl go mempty
         case Map.lookup name index of
           Just deps ->
             foldl go (Set.insert name res) deps
-          Nothing  ->
+          Nothing ->
             res
