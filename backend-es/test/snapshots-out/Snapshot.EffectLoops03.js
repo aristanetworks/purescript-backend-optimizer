@@ -4,9 +4,9 @@ const test4 = cond => ref => () => {
     const a = ref.value;
     if (a < 10) {
       Effect$dConsole.log("foo")();
-      continue;
+    } else {
+      Effect$dConsole.log("wat")();
     }
-    Effect$dConsole.log("wat")();
   }
 };
 const test3 = cond => ref => () => {

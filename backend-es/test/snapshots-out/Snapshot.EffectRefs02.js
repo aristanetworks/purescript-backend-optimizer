@@ -23,9 +23,9 @@ const test1 = hi => () => {
     const n = count;
     if (n < hi) {
       count = n + 1 | 0;
-      continue;
+    } else {
+      $$continue = false;
     }
-    $$continue = false;
   }
   return count;
 };

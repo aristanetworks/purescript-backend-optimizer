@@ -4,10 +4,10 @@ const test4 = cond => ref => () => {
     if (a < 10) {
       const $0 = ref.value;
       ref.value = $0 + 1 | 0;
-      continue;
+    } else {
+      const $0 = ref.value;
+      ref.value = $0 + 2 | 0;
     }
-    const $0 = ref.value;
-    ref.value = $0 + 2 | 0;
   }
 };
 const test3 = cond => ref => () => {

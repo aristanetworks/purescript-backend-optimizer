@@ -36,7 +36,8 @@ import Prelude
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, fold, foldMap, foldlDefault, foldr, foldrDefault)
+import Data.Foldable (class Foldable, fold, foldMap, foldl, foldlDefault, foldr, foldrDefault)
+import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (class Newtype)
 import Data.Set (Set)
@@ -600,29 +601,49 @@ printBindingValue opts val@(EsExpr (EsAnalysis s) _)
       snd $ print opts (syntaxOf val)
 
 printIfElse :: forall a. PrintOptions -> EsExpr -> Array EsExpr -> Array EsExpr -> Dodo.Doc a
-printIfElse opts cond as bs = Dodo.lines
-  [ Dodo.flexGroup $ Dodo.words
-      [ Dodo.text "if"
-      , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond
-      , fold
+printIfElse opts cond as bs = do
+  let Tuple last conds = toIfElseChain (List.singleton (Tuple cond as)) bs
+  foldl
+    ( \elseDoc (Tuple cond' as') -> do
+        let
+          ifDoc = Dodo.words
+            [ Dodo.text "if"
+            , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond'
+            , fold
+                [ Dodo.text "{"
+                , Dodo.spaceBreak
+                , Dodo.indent $ Dodo.lines $ printStatement opts <$> as'
+                , Dodo.spaceBreak
+                , Dodo.text "}"
+                ]
+            ]
+        if Dodo.isEmpty elseDoc then
+          Dodo.flexGroup ifDoc
+        else
+          Dodo.words
+            [ ifDoc
+            , Dodo.text "else"
+            , elseDoc
+            ]
+    )
+    ( if Array.null last then
+        mempty
+      else
+        fold
           [ Dodo.text "{"
           , Dodo.spaceBreak
-          , Dodo.indent $ Dodo.lines $ printStatement opts <$> as
+          , Dodo.indent $ Dodo.lines $ printStatement opts <$> last
           , Dodo.spaceBreak
           , Dodo.text "}"
           ]
-      ]
-  , if Array.null bs then
-      mempty
-    else
-      Dodo.flexGroup $ fold
-        [ Dodo.text "else"
-        , Dodo.spaceBreak
-        , Dodo.indent $ Dodo.lines $ printStatement opts <$> bs
-        , Dodo.spaceBreak
-        , Dodo.text "}"
-        ]
-  ]
+    )
+    conds
+  where
+  toIfElseChain acc = case _ of
+    [ EsExpr _ (EsIfElse cond' as' bs') ] ->
+      toIfElseChain (List.Cons (Tuple cond' as') acc) bs'
+    bs' ->
+      Tuple bs' acc
 
 printWhile :: forall a. PrintOptions -> EsExpr -> Array EsExpr -> Dodo.Doc a
 printWhile opts cond as

@@ -3,10 +3,10 @@ const test4 = ref => arr => () => {
     if (a < 10) {
       const $0 = ref.value;
       ref.value = $0 + a | 0;
-      continue;
+    } else {
+      const $0 = ref.value;
+      ref.value = $0 + 1 | 0;
     }
-    const $0 = ref.value;
-    ref.value = $0 + 1 | 0;
   }
 };
 const test3 = ref => arr => () => {

@@ -4,9 +4,9 @@ const test4 = arr => () => {
   for (const a of arr) {
     if (a < 10) {
       Effect$dConsole.log(Data$dShow.showIntImpl(a))();
-      continue;
+    } else {
+      Effect$dConsole.log("wat")();
     }
-    Effect$dConsole.log("wat")();
   }
 };
 const test3 = arr => () => {

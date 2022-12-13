@@ -5,9 +5,9 @@ const test4 = lo => hi => () => {
   for (const a of $runtime.range(lo, hi)) {
     if (a < 10) {
       Effect$dConsole.log(Data$dShow.showIntImpl(a))();
-      continue;
+    } else {
+      Effect$dConsole.log("wat")();
     }
-    Effect$dConsole.log("wat")();
   }
 };
 const test3 = lo => hi => () => {
