@@ -1228,7 +1228,7 @@ build ctx = case _ of
     withPure { ident, level, binding } =
       { ident, level, binding, pure: true }
   EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
-    build ctx $ Let ident level binding body
+    build ctx $ EffectDefer $ build ctx $ Let ident level binding body
   EffectBind ident level (ExprSyntax _ (EffectDefer binding)) body ->
     build ctx $ EffectBind ident level binding body
   EffectBind ident level binding (ExprSyntax _ (EffectDefer body)) ->
