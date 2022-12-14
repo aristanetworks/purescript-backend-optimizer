@@ -369,7 +369,6 @@ codegenBlockStatements = go []
       , TcoExpr a1 (EffectBind ident2 lvl2 (TcoExpr a2 (Local ident3 lvl3)) next) <- body
       , ident == ident3 && lvl == lvl3
       , totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) == 1 ->
-          -- trace { mode, expr: b } \_ ->
           go acc mode env $ TcoExpr a1 (EffectBind ident2 lvl2 binding next)
       | otherwise -> do
           let Tuple ident' env' = freshName RefStrict ident lvl env

@@ -1,11 +1,11 @@
 { name = "snapshots"
 , dependencies =
   [ "arrays"
-  , "assert"
   , "console"
   , "convertable-options"
   , "effect"
   , "either"
+  , "exceptions"
   , "exists"
   , "foldable-traversable"
   , "foreign-object"

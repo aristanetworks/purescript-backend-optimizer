@@ -13,7 +13,7 @@ import Data.Either (Either(..))
 import Data.Foldable (foldMap, for_)
 import Data.Foldable as Foldable
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
 import Data.Set as Set
@@ -24,7 +24,7 @@ import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
 import Effect (Effect)
-import Effect.Aff (Aff, attempt, launchAff_)
+import Effect.Aff (Aff, Error, attempt, launchAff_)
 import Effect.Aff as Error
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
@@ -79,7 +79,7 @@ runSnapshotTests { accept, filter } = do
   liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
   spawnFromParent "spago" [ "build", "-u", "-g corefn" ]
   snapshotDir <- liftEffect Process.cwd
-  snapshotPaths <- expandGlobsCwd [ "*.purs" ]
+  snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
   let snapshotsOut = Path.concat [ "..", "snapshots-out" ]
   let testOut = Path.concat [ "..", "test-out" ]
@@ -124,16 +124,15 @@ runSnapshotTests { accept, filter } = do
           snapshotFilePath = Path.concat [ snapshotsOut, name <> ".js" ]
           runAcceptedTest = do
             result <- attempt $ foldMap liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
-            case result, failsWith of
-              Left err, Just msg
-                | not $ String.contains (Pattern msg) $ Error.message err -> do
-                    Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
-                    Console.log $ Error.message err
-                    pure false
-              Right _, Just _ -> do
+            case result of
+              Left err | matchesFail err failsWith -> do
+                Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
+                Console.log $ Error.message err
+                pure false
+              Right _ | isJust failsWith -> do
                 Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " succeeded when it should have failed."
                 pure false
-              _, _ ->
+              _ ->
                 pure true
         attempt (FS.readTextFile UTF8 snapshotFilePath) >>= case _ of
           Left _ -> do
@@ -163,3 +162,10 @@ hasFails = findMap go <<< _.comments
       String.stripPrefix (Pattern "@fails ") (String.trim comm)
     _ ->
       Nothing
+
+matchesFail :: Error -> Maybe String -> Boolean
+matchesFail err = case _ of
+  Just msg ->
+    not $ String.contains (Pattern msg) $ Error.message err
+  Nothing ->
+    true

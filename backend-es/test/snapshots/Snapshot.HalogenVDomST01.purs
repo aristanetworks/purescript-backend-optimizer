@@ -1,4 +1,4 @@
-module Snapshot.HalogenVDomST where
+module Snapshot.HalogenVDomST01 where
 
 import Prelude
 
@@ -17,12 +17,12 @@ import Partial.Unsafe as Partial
 diffWithIxE
   :: forall b c d
    . EffectFn5
-      (Array b)
-      (Array c)
-      (EffectFn3 Int b c d)
-      (EffectFn2 Int b Unit)
-      (EffectFn2 Int c d)
-      (Array d)
+       (Array b)
+       (Array c)
+       (EffectFn3 Int b c d)
+       (EffectFn2 Int b Unit)
+       (EffectFn2 Int c d)
+       (Array d)
 diffWithIxE = mkEffectFn5 \a1 a2 f1 f2 f3 -> do
   a3 <- liftST $ STArray.new
   let l1 = Array.length a1
@@ -47,14 +47,15 @@ diffWithIxE = mkEffectFn5 \a1 a2 f1 f2 f3 -> do
   liftST $ STArray.unsafeFreeze a3
 
 diffWithKeyAndIxE
-  :: forall a b c d. EffectFn6
-      (Object a)
-      (Array b)
-      (b → String)
-      (EffectFn4 String Int a b c)
-      (EffectFn2 String a d)
-      (EffectFn3 String Int b c)
-      (Object c)
+  :: forall a b c d
+   . EffectFn6
+       (Object a)
+       (Array b)
+       (b -> String)
+       (EffectFn4 String Int a b c)
+       (EffectFn2 String a d)
+       (EffectFn3 String Int b c)
+       (Object c)
 diffWithKeyAndIxE = mkEffectFn6 \o1 as fk f1 f2 f3 -> do
   o2 <- liftST STObject.new
   forE 0 (Array.length as) \i -> do
