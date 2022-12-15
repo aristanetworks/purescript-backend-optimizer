@@ -502,14 +502,14 @@ printEsBinaryOp opts f1 (EsExpr _ lhs) (EsExpr _ rhs) =
     _ ->
       wrapPrecGte p1 (print opts rhs)
 
-type EsBinaryFixity  =
+type EsBinaryFixity =
   { associative :: Boolean
   , precedence :: Int
   , symbol :: String
   }
 
 esBinaryFixity :: EsBinaryOp -> EsBinaryFixity
-esBinaryFixity= case _ of
+esBinaryFixity = case _ of
   EsOr -> fixity true 1 "||"
   EsAnd -> fixity true 2 "&&"
   EsBitOr -> fixity true 3 "|"
