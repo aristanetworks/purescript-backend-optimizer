@@ -439,12 +439,8 @@ print opts syn = case syn of
     let b' = print opts (syntaxOf b)
     let c' = print opts (syntaxOf c)
     Tuple p1 $ esTernary (wrapPrecGte p1 a') (wrapPrecGte p1 b') (wrapPrec p1 c')
-  EsBinary op a b -> do
-    let Tuple pn str = printEsBinaryOp op
-    let p1 = EsPrecBinary pn
-    let a' = print opts (syntaxOf a)
-    let b' = print opts (syntaxOf b)
-    Tuple p1 $ Dodo.words [ wrapPrec p1 a', Dodo.text str, wrapPrec p1 b' ]
+  EsBinary op lhs rhs -> do
+    printEsBinaryOp opts (esBinaryFixity op) lhs rhs
   EsUnary op a -> do
     let p1 = EsPrecPrefix
     let a' = wrapPrec p1 (print opts (syntaxOf a))
@@ -475,26 +471,66 @@ print opts syn = case syn of
   EsUndefined ->
     Tuple EsPrecAtom $ Dodo.text "undefined"
 
-printEsBinaryOp :: EsBinaryOp -> Tuple Int String
-printEsBinaryOp = case _ of
-  EsOr -> Tuple 1 "||"
-  EsAnd -> Tuple 2 "&&"
-  EsBitOr -> Tuple 3 "|"
-  EsBitXor -> Tuple 4 "^"
-  EsBitAnd -> Tuple 5 "&"
-  EsEquals -> Tuple 6 "==="
-  EsNotEquals -> Tuple 6 "!=="
-  EsLessThan -> Tuple 7 "<"
-  EsLessThanEqual -> Tuple 7 "<="
-  EsGreaterThan -> Tuple 7 ">"
-  EsGreaterThanEqual -> Tuple 7 ">="
-  EsBitShiftLeft -> Tuple 8 "<<"
-  EsBitShitRight -> Tuple 8 ">>"
-  EsZeroFillShiftRight -> Tuple 8 ">>>"
-  EsAdd -> Tuple 9 "+"
-  EsSubtract -> Tuple 9 "-"
-  EsDivide -> Tuple 10 "/"
-  EsMultiply -> Tuple 10 "*"
+printEsBinaryOp :: forall a. PrintOptions -> EsBinaryFixity -> EsExpr -> EsExpr -> Tuple EsPrec (Dodo.Doc a)
+printEsBinaryOp opts f1 (EsExpr _ lhs) (EsExpr _ rhs) =
+  Tuple p1 $ Dodo.words [ lhsDoc, Dodo.text f1.symbol, rhsDoc ]
+  where
+  p1 :: EsPrec
+  p1 = EsPrecBinary f1.precedence
+
+  lhsDoc :: Dodo.Doc a
+  lhsDoc = case lhs of
+    EsBinary op2 lhs' rhs' -> do
+      let f2 = esBinaryFixity op2
+      let doc = snd $ printEsBinaryOp opts f2 lhs' rhs'
+      if f2.precedence >= f1.precedence then
+        doc
+      else
+        Dodo.Common.jsParens doc
+    _ ->
+      wrapPrecGte p1 (print opts lhs)
+
+  rhsDoc :: Dodo.Doc a
+  rhsDoc = case rhs of
+    EsBinary binOp2 lhs' rhs' -> do
+      let f2 = esBinaryFixity binOp2
+      let doc = snd $ printEsBinaryOp opts f2 lhs' rhs'
+      if (f1.symbol == f2.symbol && f1.associative) || f2.precedence > f1.precedence then
+        doc
+      else
+        Dodo.Common.jsParens doc
+    _ ->
+      wrapPrecGte p1 (print opts rhs)
+
+type EsBinaryFixity  =
+  { associative :: Boolean
+  , precedence :: Int
+  , symbol :: String
+  }
+
+esBinaryFixity :: EsBinaryOp -> EsBinaryFixity
+esBinaryFixity= case _ of
+  EsOr -> fixity true 1 "||"
+  EsAnd -> fixity true 2 "&&"
+  EsBitOr -> fixity true 3 "|"
+  EsBitXor -> fixity true 4 "^"
+  EsBitAnd -> fixity true 5 "&"
+  EsEquals -> fixity false 6 "==="
+  EsNotEquals -> fixity false 6 "!=="
+  EsLessThan -> fixity false 7 "<"
+  EsLessThanEqual -> fixity false 7 "<="
+  EsGreaterThan -> fixity false 7 ">"
+  EsGreaterThanEqual -> fixity false 7 ">="
+  EsBitShiftLeft -> fixity false 8 "<<"
+  EsBitShitRight -> fixity false 8 ">>"
+  EsZeroFillShiftRight -> fixity false 8 ">>>"
+  EsAdd -> fixity true 9 "+"
+  EsSubtract -> fixity true 9 "-"
+  EsDivide -> fixity true 10 "/"
+  EsMultiply -> fixity true 10 "*"
+  where
+  fixity associative precedence symbol =
+    { associative, precedence, symbol }
 
 printEsUnaryOp :: EsUnaryOp -> String
 printEsUnaryOp = case _ of
