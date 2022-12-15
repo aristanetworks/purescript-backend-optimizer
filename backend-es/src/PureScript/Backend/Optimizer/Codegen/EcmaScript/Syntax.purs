@@ -1,3 +1,4 @@
+-- @inline export wrapPrecWith arity=1
 module PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax
   ( EsModuleStatement(..)
   , EsSyntax(..)
@@ -355,8 +356,17 @@ class HasSyntax a where
   syntaxOf :: a -> EsSyntax a
 
 wrapPrec :: forall a. EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
-wrapPrec p1 (Tuple p2 doc)
-  | p2 < p1 =
+wrapPrec = wrapPrecWith (>)
+
+wrapPrecGte :: forall a. EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
+wrapPrecGte = wrapPrecWith (>=)
+
+wrapPrecWith
+  :: forall a
+   . (EsPrec -> EsPrec -> Boolean)
+  -> EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
+wrapPrecWith f p1 (Tuple p2 doc)
+  | f p1 p2 =
       case p2 of
         EsPrecArrow ->
           Dodo.text "(" <> doc <> Dodo.text ")"
@@ -426,7 +436,7 @@ print opts syn = case syn of
     let a' = print opts (syntaxOf a)
     let b' = print opts (syntaxOf b)
     let c' = print opts (syntaxOf c)
-    Tuple p1 $ esTernary (wrapPrec p1 a') (wrapPrec p1 b') (wrapPrec p1 c')
+    Tuple p1 $ esTernary (wrapPrecGte p1 a') (wrapPrecGte p1 b') (wrapPrec p1 c')
   EsBinary op a b -> do
     let Tuple pn str = printEsBinaryOp op
     let p1 = EsPrecBinary pn
