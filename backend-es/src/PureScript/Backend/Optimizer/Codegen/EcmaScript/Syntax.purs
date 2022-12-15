@@ -364,7 +364,9 @@ wrapPrecGte = wrapPrecWith (>=)
 wrapPrecWith
   :: forall a
    . (EsPrec -> EsPrec -> Boolean)
-  -> EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
+  -> EsPrec
+  -> Tuple EsPrec (Dodo.Doc a)
+  -> Dodo.Doc a
 wrapPrecWith f p1 (Tuple p2 doc)
   | f p1 p2 =
       case p2 of
