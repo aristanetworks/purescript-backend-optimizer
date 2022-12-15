@@ -4,8 +4,6 @@ import Prelude
 
 type R = { foo :: String, bar :: Array String }
 
-foreign import x :: Unit -> String
-
 test1 :: R -> R -> R
 test1 = append
 

@@ -1,4 +1,3 @@
-import {random} from "./foreign.js";
 const MyEffect = x => x;
 const functorMyEffect = {
   map: f => v => () => {
@@ -23,10 +22,9 @@ const applyMyEffect = {
   Functor0: () => functorMyEffect
 };
 const applicativeMyEffect = {pure: x => () => x, Apply0: () => applyMyEffect};
-const test = () => {
+const test = random => () => {
   const a$p = random();
   const a$p$1 = random();
   return a$p + a$p$1 | 0;
 };
 export {MyEffect, applicativeMyEffect, applyMyEffect, bindMyEffect, functorMyEffect, monadMyEffect, test};
-export * from "./foreign.js";

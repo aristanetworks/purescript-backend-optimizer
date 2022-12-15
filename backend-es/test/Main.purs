@@ -6,12 +6,14 @@ import Ansi.Codes (Color(..))
 import Ansi.Output (foreground, withGraphics)
 import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
+import Data.Array (findMap)
 import Data.Array as Array
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Either (Either(..))
-import Data.Foldable (for_)
+import Data.Foldable (foldMap, for_)
 import Data.Foldable as Foldable
 import Data.Map as Map
-import Data.Maybe (isJust)
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
 import Data.Set as Set
@@ -22,7 +24,8 @@ import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..))
 import Dodo as Dodo
 import Effect (Effect)
-import Effect.Aff (Aff, attempt, launchAff_)
+import Effect.Aff (Aff, Error, attempt, launchAff_)
+import Effect.Aff as Error
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
@@ -35,15 +38,16 @@ import PureScript.Backend.Optimizer.Builder (buildModules)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
-import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.Convert (BackendModule)
+import PureScript.Backend.Optimizer.CoreFn (Comment(..), Module(..), ModuleName(..))
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
-import Test.Utils (bufferToUTF8, execWithStdin, spawnFromParent)
+import Test.Utils (bufferToUTF8, copyFile, execWithStdin, loadModuleMain, mkdirp, spawnFromParent)
 
 type TestArgs =
   { accept :: Boolean
-  , filter :: Array String
+  , filter :: NonEmptyArray String
   }
 
 argParser :: ArgParser TestArgs
@@ -57,8 +61,8 @@ argParser =
     , filter:
         ArgParser.argument [ "--filter", "-f" ]
           "Filter tests matching a prefix"
-          # ArgParser.unfolded
-          # map (map String.toLower)
+          # ArgParser.unfolded1
+          # ArgParser.default (pure "Snapshot.*")
     }
 
 main :: Effect Unit
@@ -75,28 +79,38 @@ runSnapshotTests { accept, filter } = do
   liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
   spawnFromParent "spago" [ "build", "-u", "-g corefn" ]
   snapshotDir <- liftEffect Process.cwd
-  snapshotPaths <- expandGlobsCwd [ "*.purs" ]
+  snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
-  coreFnModulesFromOutput "output" >>= case _ of
+  let snapshotsOut = Path.concat [ "..", "snapshots-out" ]
+  let testOut = Path.concat [ "..", "test-out" ]
+  mkdirp snapshotsOut
+  mkdirp testOut
+  coreFnModulesFromOutput "output" filter >>= case _ of
     Left errors -> do
       for_ errors \(Tuple filePath err) -> do
         Console.error $ filePath <> " " <> err
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
-      let
-        { directives } = parseDirectiveFile defaultDirectives
-        shouldCompare
-          | Array.null filter = const true
-          | otherwise = \name -> Array.any (isJust <<< flip String.stripPrefix (String.toLower name) <<< Pattern) filter
+      let { directives } = parseDirectiveFile defaultDirectives
+      copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       coreFnModules # buildModules
         { directives
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
-        , onCodegenModule: \build (Module { name: ModuleName name, path }) backend ->
-            if Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths && shouldCompare name then do
-              let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: false } build.implementations backend
-              void $ liftEffect $ Ref.modify (Map.insert name formatted) outputRef
-            else
-              mempty
+        , onCodegenModule: \build (Module { name: ModuleName name, path }) backend -> do
+            let
+              formatted =
+                Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
+                  codegenModule { intTags: false } build.implementations backend
+            let testFileDir = Path.concat [ testOut, name ]
+            let testFilePath = Path.concat [ testFileDir, "index.js" ]
+            mkdirp testFileDir
+            FS.writeTextFile UTF8 testFilePath formatted
+            unless (Set.isEmpty backend.foreign) do
+              let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
+              let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
+              copyFile foreignSiblingPath foreignOutputPath
+            when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
+              void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backend))) outputRef
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
             let total = show build.moduleCount
             let index = show (build.moduleIndex + 1)
@@ -105,20 +119,33 @@ runSnapshotTests { accept, filter } = do
             pure coreFnMod
         }
       outputModules <- liftEffect $ Ref.read outputRef
-      results <- forWithIndex outputModules \name output -> do
-        let snapshotFilePath = Path.concat [ "..", "snapshots-out", name <> ".js" ]
+      results <- forWithIndex outputModules \name (Tuple output failsWith) -> do
+        let
+          snapshotFilePath = Path.concat [ snapshotsOut, name <> ".js" ]
+          runAcceptedTest = do
+            result <- attempt $ foldMap liftEffect =<< loadModuleMain =<< liftEffect (Path.resolve [ testOut, name ] "index.js")
+            case result of
+              Left err | matchesFail err failsWith -> do
+                Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
+                Console.log $ Error.message err
+                pure false
+              Right _ | isJust failsWith -> do
+                Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " succeeded when it should have failed."
+                pure false
+              _ ->
+                pure true
         attempt (FS.readTextFile UTF8 snapshotFilePath) >>= case _ of
           Left _ -> do
             Console.log $ withGraphics (foreground Yellow) "✓" <> " " <> name <> " saved."
             FS.writeTextFile UTF8 snapshotFilePath output
             pure true
           Right prevOutput
-            | output == prevOutput -> do
-                pure true
+            | output == prevOutput ->
+                runAcceptedTest
             | accept -> do
                 Console.log $ withGraphics (foreground Yellow) "✓" <> " " <> name <> " accepted."
                 FS.writeTextFile UTF8 snapshotFilePath output
-                pure true
+                runAcceptedTest
             | otherwise -> do
                 Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
                 diff <- bufferToUTF8 <<< _.stdout =<< execWithStdin ("diff " <> snapshotFilePath <> " -") output
@@ -126,3 +153,19 @@ runSnapshotTests { accept, filter } = do
                 pure false
       unless (Foldable.and results) do
         liftEffect $ Process.exit 1
+
+hasFails :: BackendModule -> Maybe String
+hasFails = findMap go <<< _.comments
+  where
+  go = case _ of
+    LineComment comm ->
+      String.stripPrefix (Pattern "@fails ") (String.trim comm)
+    _ ->
+      Nothing
+
+matchesFail :: Error -> Maybe String -> Boolean
+matchesFail err = case _ of
+  Just msg ->
+    not $ String.contains (Pattern msg) $ Error.message err
+  Nothing ->
+    true

@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
@@ -279,7 +279,7 @@ runEffectFn mod name n = Tuple (qualified mod (name <> show n)) go
     List.Nil ->
       evalUncurriedEffectApp env head acc
     List.Cons arg args ->
-      SemLet Nothing arg \nextArg ->
+      makeLet Nothing arg \nextArg ->
         goRunEffectFn env (Array.snoc acc nextArg) head args
 
 effect_uncurried_runEffectFn :: Int -> ForeignSemantics
@@ -333,7 +333,7 @@ unsafe_coerce_unsafeCoerce = Tuple (qualified "Unsafe.Coerce" "unsafeCoerce") go
 primBinaryOperator :: BackendOperator2 -> ForeignEval
 primBinaryOperator op env _ = case _ of
   [ ExternApp [ a ] ] ->
-    Just $ SemLet Nothing a \a' ->
+    Just $ makeLet Nothing a \a' ->
       SemLam Nothing \b' ->
         evalPrimOp env (Op2 op a' b')
   _ ->
@@ -359,53 +359,59 @@ primOrdOperator op env _ = case _ of
     Nothing
 
 effectBind :: ForeignEval
-effectBind _ _ = case _ of
+effectBind env _ = case _ of
   [ ExternApp [ eff, SemLam ident next ] ] ->
-    Just $ SemLet Nothing eff \nextEff ->
+    Just $ makeLet Nothing eff \nextEff ->
       SemEffectBind ident nextEff next
+  [ ExternApp [ eff, k ] ] ->
+    Just $ makeLet Nothing eff \nextEff ->
+      makeLet Nothing k \nextK ->
+        SemEffectBind Nothing nextEff \a ->
+          evalApp env nextK [ a ]
   _ -> Nothing
 
 effectMap :: ForeignEval
 effectMap env _ = case _ of
-  [ ExternApp [ fn, val ] ] ->
-    Just $ SemLet Nothing fn \fn' ->
-      SemEffectBind Nothing val \nextVal ->
-        SemEffectPure (evalApp env fn' [ nextVal ])
+  [ ExternApp [ fn ] ] ->
+    Just $ makeLet Nothing fn \fn' ->
+      SemLam Nothing \val ->
+        SemEffectBind Nothing val \nextVal ->
+          SemEffectPure (evalApp env fn' [ nextVal ])
   _ -> Nothing
 
 effectPure :: ForeignEval
 effectPure _ _ = case _ of
   [ ExternApp [ val ] ] ->
-    Just $ SemLet Nothing val SemEffectPure
+    Just $ makeLet Nothing val SemEffectPure
   _ -> Nothing
 
 effectRefNew :: ForeignEval
 effectRefNew _ _ = case _ of
   [ ExternApp [ val ] ] ->
-    Just $ SemLet Nothing val \val' ->
+    Just $ makeLet Nothing val \val' ->
       NeutPrimEffect $ EffectRefNew val'
   _ -> Nothing
 
 effectRefRead :: ForeignEval
 effectRefRead _ _ = case _ of
   [ ExternApp [ val ] ] ->
-    Just $ SemLet Nothing val \val' ->
+    Just $ makeLet Nothing val \val' ->
       NeutPrimEffect $ EffectRefRead val'
   _ -> Nothing
 
 effectRefWrite :: ForeignEval
 effectRefWrite _ _ = case _ of
   [ ExternApp [ val, ref ] ] ->
-    Just $ SemLet Nothing val \val' ->
-      SemLet Nothing ref \ref' ->
+    Just $ makeLet Nothing val \val' ->
+      makeLet Nothing ref \ref' ->
         NeutPrimEffect $ EffectRefWrite ref' val'
   _ -> Nothing
 
 effectRefModify :: ForeignEval
 effectRefModify env _ = case _ of
   [ ExternApp [ fn, ref ] ] ->
-    Just $ SemLet Nothing fn \fn' ->
-      SemLet Nothing ref \ref' ->
+    Just $ makeLet Nothing fn \fn' ->
+      makeLet Nothing ref \ref' ->
         SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
           NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
   _ ->
@@ -571,7 +577,7 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
       let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
       Just $ evalUpdate env r [ update ]
     [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
-      Just $ SemLet Nothing r \r' -> do
+      Just $ makeLet Nothing r \r' -> do
         let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
         evalUpdate env r [ update ]
     _ ->

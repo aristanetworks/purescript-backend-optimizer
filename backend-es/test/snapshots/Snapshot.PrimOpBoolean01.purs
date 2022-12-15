@@ -2,15 +2,29 @@ module Snapshot.PrimOpBoolean01 where
 
 import Prelude
 
-foreign import a :: Boolean
-foreign import b :: Boolean
+test1 :: Boolean -> Boolean -> Boolean
+test1 a b = a && b
 
-test1 = a && b
-test2 = a || b
-test3 = a == b
-test4 = a /= b
-test5 = a < b
-test6 = a > b
-test7 = a <= b
-test8 = a >= b
-test9 = not a
+test2 :: Boolean -> Boolean -> Boolean
+test2 a b = a || b
+
+test3 :: Boolean -> Boolean -> Boolean
+test3 a b = a == b
+
+test4 :: Boolean -> Boolean -> Boolean
+test4 a b = a /= b
+
+test5 :: Boolean -> Boolean -> Boolean
+test5 a b = a < b
+
+test6 :: Boolean -> Boolean -> Boolean
+test6 a b = a > b
+
+test7 :: Boolean -> Boolean -> Boolean
+test7 a b = a <= b
+
+test8 :: Boolean -> Boolean -> Boolean
+test8 a b = a >= b
+
+test9 :: Boolean -> Boolean
+test9 a = not a

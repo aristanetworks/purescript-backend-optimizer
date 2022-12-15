@@ -16,6 +16,12 @@ export function binding(init) {
   };
 }
 
+export function* range(lo, hi) {
+  for (let i = lo; i < hi; i++) {
+    yield i;
+  }
+}
+
 export function fail() {
   throw new Error("Failed pattern match");
 }

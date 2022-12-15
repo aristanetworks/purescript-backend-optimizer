@@ -2,10 +2,8 @@ module Snapshot.KnownConstructor07 where
 
 import Prelude
 
-foreign import f :: Int -> Int
-
-test :: Int -> { foo :: Int, bar :: Int }
-test y = do
+test :: (Int -> Int) -> Int -> { foo :: Int, bar :: Int }
+test f y = do
   let
     -- Test a regression where poor analysis resulted
     -- in duplicated calls to `f y`.

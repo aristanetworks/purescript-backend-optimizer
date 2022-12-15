@@ -43,6 +43,7 @@ data BackendSemantics
   | SemLetRec (NonEmptyArray (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemEffectPure BackendSemantics
+  | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (Lazy (SemConditional BackendSemantics))) (Maybe (Lazy BackendSemantics))
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
@@ -258,6 +259,8 @@ instance Eval f => Eval (BackendSyntax f) where
         SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
     EffectPure val ->
       guardFail (eval env val) SemEffectPure
+    EffectDefer val ->
+      guardFail (eval env val) SemEffectDefer
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
     Update lhs updates ->
@@ -1053,11 +1056,36 @@ quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
   go ctx = case _ of
+    -- Block constructors
+    SemLet ident binding k -> do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+    SemLetRec bindings k -> do
+      let Tuple level ctx' = nextLevel ctx
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
+      build ctx $ LetRec level
+        (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
+        (quote ctx' $ k neutBindings)
+    SemEffectBind ident binding k -> do
+      let ctx' = ctx { effect = true }
+      let Tuple level ctx'' = nextLevel ctx'
+      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level
+    SemEffectPure sem ->
+      build ctx $ EffectPure (quote (ctx { effect = false }) sem)
+    SemEffectDefer sem ->
+      build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
+    SemBranch branches def -> do
+      let ctx' = ctx { effect = false }
+      let quoteCond (SemConditional a k) = buildPair ctx' (quote ctx' a) (quote ctx (k Nothing))
+      let branches' = quoteCond <<< force <$> branches
+      fromMaybe ExprBacktrack $ foldr (buildBranchCond ctx) (quote ctx <<< force <$> def) branches'
+
+    -- Non-block constructors
     SemExtern _ _ sem ->
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1065,7 +1093,7 @@ quote = go
             let Tuple lvl ctx'' = nextLevel ctx'
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
-            build ctx' $ UncurriedAbs idents $ quote ctx' body
+            build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
     SemMkEffectFn pro -> do
       let
@@ -1074,18 +1102,8 @@ quote = go
             let Tuple lvl ctx'' = nextLevel ctx'
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
-            build ctx' $ UncurriedEffectAbs idents $ quote ctx' body
+            build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
-    sem@(SemLet _ _ _) ->
-      goBlock ctx sem
-    sem@(SemLetRec _ _) ->
-      goBlock ctx sem
-    sem@(SemEffectBind _ _ _) ->
-      goBlock ctx sem
-    sem@(SemEffectPure _) ->
-      goBlock ctx sem
-    sem@(SemBranch _ _) ->
-      goBlock ctx sem
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
@@ -1099,14 +1117,17 @@ quote = go
     NeutCtorDef _ ct ty tag fields ->
       build ctx $ CtorDef ct ty tag fields
     NeutUncurriedApp hd spine -> do
-      let hd' = quote ctx hd
-      build ctx $ UncurriedApp hd' (quote ctx <$> spine)
+      let ctx' = ctx { effect = false }
+      let hd' = quote ctx' hd
+      build ctx $ UncurriedApp hd' (quote ctx' <$> spine)
     NeutUncurriedEffectApp hd spine -> do
-      let hd' = quote ctx hd
-      build ctx $ UncurriedEffectApp hd' (quote ctx <$> spine)
+      let ctx' = ctx { effect = false }
+      let hd' = quote ctx' hd
+      build ctx $ UncurriedEffectApp hd' (quote ctx' <$> spine)
     NeutApp hd spine -> do
-      let hd' = quote ctx hd
-      case NonEmptyArray.fromArray (quote ctx <$> spine) of
+      let ctx' = ctx { effect = false }
+      let hd' = quote ctx' hd
+      case NonEmptyArray.fromArray (quote ctx' <$> spine) of
         Nothing ->
           hd'
         Just args ->
@@ -1120,37 +1141,13 @@ quote = go
     NeutPrimOp op ->
       build ctx $ PrimOp (quote ctx <$> op)
     NeutPrimEffect eff ->
-      build ctx $ PrimEffect (quote ctx <$> eff)
+      build ctx $ PrimEffect (quote (ctx { effect = false }) <$> eff)
     NeutPrimUndefined ->
       build ctx PrimUndefined
     NeutFail err ->
       build ctx $ Fail err
     NeutBacktrack ->
       ExprBacktrack
-
-  goBlock ctx = case _ of
-    SemLet ident binding k -> do
-      let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
-    SemLetRec bindings k -> do
-      let Tuple level ctx' = nextLevel ctx
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
-      build ctx $ LetRec level
-        (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
-        (quote ctx' $ k neutBindings)
-    SemEffectBind ident binding k -> do
-      let Tuple level ctx' = nextLevel ctx
-      let bindingCtx = if isKnownEffectSemantics binding then ctx else ctx { effect = false }
-      build ctx $ EffectBind ident level (quote bindingCtx binding) $ quote (ctx' { effect = true }) $ k $ NeutLocal ident level
-    SemEffectPure sem ->
-      build ctx $ EffectPure (quote (ctx { effect = false }) sem)
-    SemBranch branches def -> do
-      let ctx' = ctx { effect = false }
-      let quoteCond (SemConditional a k) = buildPair ctx' (quote ctx' a) (quote ctx (k Nothing))
-      let branches' = quoteCond <<< force <$> branches
-      fromMaybe ExprBacktrack $ foldr (buildBranchCond ctx) (quote ctx <<< force <$> def) branches'
-    _ ->
-      unsafeCrashWith "goBlock: impossible"
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of
@@ -1231,7 +1228,15 @@ build ctx = case _ of
     withPure { ident, level, binding } =
       { ident, level, binding, pure: true }
   EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
-    build ctx $ Let ident level binding body
+    build ctx $ EffectDefer $ build ctx $ Let ident level binding body
+  EffectBind ident level (ExprSyntax _ (EffectDefer binding)) body ->
+    build ctx $ EffectBind ident level binding body
+  EffectBind ident level binding (ExprSyntax _ (EffectDefer body)) ->
+    build ctx $ EffectBind ident level binding body
+  EffectBind _ level binding (ExprSyntax _ (EffectPure (ExprSyntax _ (Local _ level2)))) | level == level2 ->
+    binding
+  EffectDefer expr@(ExprSyntax _ (EffectDefer _)) ->
+    expr
   Branch pairs (Just def) | Just expr <- simplifyBranches ctx pairs def ->
     expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
@@ -1514,6 +1519,7 @@ isAbs = syntaxOf >>> case _ of
   Just (Abs _ _) -> true
   Just (UncurriedAbs _ _) -> true
   Just (UncurriedEffectAbs _ _) -> true
+  Just (EffectDefer _) -> true
   _ -> false
 
 isKnownEffect :: BackendExpr -> Boolean
@@ -1521,13 +1527,7 @@ isKnownEffect = syntaxOf >>> case _ of
   Just (PrimEffect _) -> true
   Just (UncurriedEffectApp _ _) -> true
   Just (EffectBind _ _ _ _) -> true
-  _ -> false
-
-isKnownEffectSemantics :: BackendSemantics -> Boolean
-isKnownEffectSemantics = case _ of
-  NeutPrimEffect _ -> true
-  NeutUncurriedEffectApp _ _ -> true
-  SemEffectBind _ _ _ -> true
+  Just (EffectDefer _) -> true
   _ -> false
 
 newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)

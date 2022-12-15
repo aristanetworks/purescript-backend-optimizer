@@ -1,7 +1,9 @@
+-- @fails Binding demanded before initialized
 module Snapshot.RecursiveBindingGroup02 where
 
 import Prelude
 
+test :: Int
 test = test1.bar
   where
   test1 =

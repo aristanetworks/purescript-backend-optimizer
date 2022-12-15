@@ -11,16 +11,15 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Newtype (class Newtype)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Optimizer.Analysis (Usage(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName, Qualified(..))
 import PureScript.Backend.Optimizer.Semantics (NeutralExpr(..))
-import PureScript.Backend.Optimizer.Syntax (BackendSyntax(..), Level, Pair(..))
+import PureScript.Backend.Optimizer.Syntax (BackendEffect(..), BackendSyntax(..), Level, Pair(..))
 
 type LocalRef = Tuple (Maybe Ident) Level
 type TcoScope = List TcoScopeItem
@@ -78,10 +77,45 @@ unwindTcoScope = go List.Nil
 
 type TcoEnv = Array (Tuple TcoRef Int)
 
+newtype TcoUsage = TcoUsage
+  { total :: Int
+  , arities :: Set Int
+  , call :: Int
+  , readWrite :: Int
+  }
+
+instance Semigroup TcoUsage where
+  append (TcoUsage a) (TcoUsage b) = TcoUsage
+    { total: a.total + b.total
+    , arities: Set.union a.arities b.arities
+    , call: a.call + b.call
+    , readWrite: a.readWrite + b.readWrite
+    }
+
+instance Monoid TcoUsage where
+  mempty = TcoUsage
+    { total: 0
+    , arities: Set.empty
+    , call: 0
+    , readWrite: 0
+    }
+
+data Total = Total | Partial | Root Total
+
+instance Semigroup Total where
+  append = case _, _ of
+    Partial, _ -> Partial
+    _, Partial -> Partial
+    _, _ -> Total
+
+instance Monoid Total where
+  mempty = Total
+
 newtype TcoAnalysis = TcoAnalysis
-  { usages :: Map TcoRef Usage
+  { usages :: Map TcoRef TcoUsage
   , tailCalls :: Map TcoRef Int
   , role :: TcoRole
+  , total :: Total
   }
 
 derive instance Newtype TcoAnalysis _
@@ -91,6 +125,7 @@ instance Semigroup TcoAnalysis where
     { usages: Map.unionWith append a.usages b.usages
     , tailCalls: Map.unionWith add a.tailCalls b.tailCalls
     , role: noTcoRole
+    , total: a.total <> b.total
     }
 
 instance Monoid TcoAnalysis where
@@ -98,6 +133,7 @@ instance Monoid TcoAnalysis where
     { usages: Map.empty
     , tailCalls: Map.empty
     , role: noTcoRole
+    , total: mempty
     }
 
 type TcoRole =
@@ -131,8 +167,13 @@ overTcoAnalysis f (TcoExpr a b) = TcoExpr (f a) b
 
 tcoCall :: TcoRef -> Int -> TcoAnalysis -> TcoAnalysis
 tcoCall ident arity (TcoAnalysis s) = TcoAnalysis s
-  { usages = Map.insertWith append ident (Usage { total: 1, captured: mempty, arities: Set.singleton arity, call: 1, access: 0, case: 0, update: 0 }) s.usages
+  { usages = Map.insertWith append ident (TcoUsage { total: 1, call: 1, arities: Set.singleton arity, readWrite: 0 }) s.usages
   , tailCalls = Map.insert ident 1 s.tailCalls
+  }
+
+tcoRefEffect :: TcoRef -> TcoAnalysis -> TcoAnalysis
+tcoRefEffect ident (TcoAnalysis s) = TcoAnalysis s
+  { usages = Map.insertWith append ident (TcoUsage { total: 1, call: 0, arities: Set.empty, readWrite: 1 }) s.usages
   }
 
 tcoNoTailCalls :: TcoAnalysis -> TcoAnalysis
@@ -141,13 +182,18 @@ tcoNoTailCalls (TcoAnalysis s) = TcoAnalysis s
   , role = s.role { joins = [] }
   }
 
+tcoTotal :: Total -> TcoAnalysis -> TcoAnalysis
+tcoTotal total (TcoAnalysis s) = TcoAnalysis s
+  { total = total
+  }
+
 withTcoRole :: TcoRole -> TcoAnalysis -> TcoAnalysis
 withTcoRole role (TcoAnalysis s) = TcoAnalysis s { role = role }
 
 isUniformTailCall :: TcoAnalysis -> TcoRef -> Int -> Maybe Boolean
 isUniformTailCall (TcoAnalysis s) ref arity = do
   numTailCalls <- Map.lookup ref s.tailCalls
-  Usage u <- Map.lookup ref s.usages
+  TcoUsage u <- Map.lookup ref s.usages
   case Set.toUnfoldable u.arities of
     [ n ] ->
       Just $ n == arity && u.total == numTailCalls
@@ -215,34 +261,46 @@ syntacticArity = case _ of
 analyze :: TcoEnv -> NeutralExpr -> TcoExpr
 analyze env (NeutralExpr expr) = case expr of
   Var ident ->
-    TcoExpr (tcoCall (TcoTopLevel ident) 0 mempty) $ Var ident
+    TcoExpr (tcoTotal Total $ tcoCall (TcoTopLevel ident) 0 mempty) $ Var ident
   Local ident level ->
-    TcoExpr (tcoCall (TcoLocal ident level) 0 mempty) $ Local ident level
+    TcoExpr (tcoTotal Total $ tcoCall (TcoLocal ident level) 0 mempty) $ Local ident level
   App hd@(NeutralExpr (Local ident level)) tl -> do
     let hd' = analyze env hd
     let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
-    let analysis2 = tcoCall (TcoLocal ident level) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
+    let analysis2 = tcoTotal Total $ tcoCall (TcoLocal ident level) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
   App hd@(NeutralExpr (Var ident)) tl -> do
     let hd' = analyze env hd
     let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
-    let analysis2 = tcoCall (TcoTopLevel ident) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
+    let analysis2 = tcoTotal Total $ tcoCall (TcoTopLevel ident) (NonEmptyArray.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ App hd' tl'
   UncurriedApp hd@(NeutralExpr (Local ident level)) tl -> do
     let hd' = analyze env hd
     let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
-    let analysis2 = tcoCall (TcoLocal ident level) (Array.length tl') (foldMap tcoAnalysisOf tl')
+    let analysis2 = tcoTotal Total $ tcoCall (TcoLocal ident level) (Array.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ UncurriedApp hd' tl'
   UncurriedApp hd@(NeutralExpr (Var ident)) tl -> do
     let hd' = analyze env hd
     let tl' = overTcoAnalysis tcoNoTailCalls <<< analyze env <$> tl
-    let analysis2 = tcoCall (TcoTopLevel ident) (Array.length tl') (foldMap tcoAnalysisOf tl')
+    let analysis2 = tcoTotal Total $ tcoCall (TcoTopLevel ident) (Array.length tl') (foldMap tcoAnalysisOf tl')
     TcoExpr analysis2 $ UncurriedApp hd' tl'
+  PrimEffect (EffectRefRead ref@(NeutralExpr (Local ident level))) -> do
+    let ref' = analyze env ref
+    let analysis = tcoTotal Total $ tcoRefEffect (TcoLocal ident level) mempty
+    TcoExpr analysis $ PrimEffect (EffectRefRead ref')
+  PrimEffect (EffectRefWrite ref@(NeutralExpr (Local ident level)) val) -> do
+    let ref' = analyze env ref
+    let val' = analyze env val
+    let analysis = tcoTotal Total $ tcoRefEffect (TcoLocal ident level) $ tcoAnalysisOf val'
+    TcoExpr analysis $ PrimEffect (EffectRefWrite ref' val')
   Branch branches def -> do
     let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze env a)) (analyze env b)) branches
     let def' = analyze env <$> def
-    let analysis = foldMap (foldMap tcoAnalysisOf) branches' <> foldMap tcoAnalysisOf def'
-    TcoExpr analysis $ Branch branches' def'
+    let analysis@(TcoAnalysis { total }) = foldMap (foldMap tcoAnalysisOf) branches' <> foldMap tcoAnalysisOf def'
+    if isJust def then
+      TcoExpr (tcoTotal (Root total) analysis) $ Branch branches' def'
+    else
+      TcoExpr (tcoTotal Partial analysis) $ Branch branches' def'
   Let ident level binding body -> do
     let binding' = analyze env binding
     let body' = analyze env body
@@ -251,10 +309,10 @@ analyze env (NeutralExpr expr) = case expr of
     let role = { isLoop: false, joins: foldMap (tcoRoleJoins env (tcoAnalysisOf body') <<< pure) refBinding }
     case refBinding of
       Just rb | hasTcoRole role -> do
-        let analysis = rb.analysis <> tcoAnalysisOf body'
+        let analysis = tcoTotal Total $ rb.analysis <> tcoAnalysisOf body'
         TcoExpr (withTcoRole role analysis) expr'
       _ -> do
-        let analysis = tcoNoTailCalls (tcoAnalysisOf binding') <> tcoAnalysisOf body'
+        let analysis = tcoTotal Total $ tcoNoTailCalls (tcoAnalysisOf binding') <> tcoAnalysisOf body'
         TcoExpr analysis expr'
   LetRec level bindings body -> do
     let group = localTcoEnvGroup level bindings
@@ -266,11 +324,11 @@ analyze env (NeutralExpr expr) = case expr of
     let isLoop = maybe false tcoRoleIsLoop refBindings
     let role = { isLoop, joins: foldMap (tcoRoleJoins env (tcoAnalysisOf body')) refBindings }
     if hasTcoRole role then do
-      let analysis = foldMap (foldMap _.analysis) refBindings <> tcoAnalysisOf body'
+      let analysis = tcoTotal Total $ foldMap (foldMap _.analysis) refBindings <> tcoAnalysisOf body'
       TcoExpr (withTcoRole role analysis) expr'
     else do
-      let analysis = tcoNoTailCalls (foldMap (foldMap tcoAnalysisOf) bindings') <> tcoAnalysisOf body'
+      let analysis = tcoTotal Total $ tcoNoTailCalls (foldMap (foldMap tcoAnalysisOf) bindings') <> tcoAnalysisOf body'
       TcoExpr analysis expr'
   _ -> do
     let expr' = analyze env <$> expr
-    TcoExpr (tcoNoTailCalls (foldMap tcoAnalysisOf expr')) expr'
+    TcoExpr (tcoTotal Total $ tcoNoTailCalls (foldMap tcoAnalysisOf expr')) expr'

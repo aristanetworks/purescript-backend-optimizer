@@ -228,6 +228,11 @@ analyze externAnalysis expr = case expr of
       $ capture CaptureClosure
       $ bump
       $ analysisOf a
+  EffectDefer a ->
+    withResult Unknown
+      $ capture CaptureClosure
+      $ bump
+      $ analysisOf a
   Abs args _ ->
     withResult KnownNeutral
       $ complex KnownSize
@@ -378,12 +383,15 @@ analyzeEffectBlock externAnalysis expr = case expr of
       $ bump
       $ foldMap (analysisOf <<< snd) as <> analysisOf b
   EffectBind _ lvl a b ->
-    -- withResult (resultOf b)
     withResult Unknown
       $ complex NonTrivial
       $ bump
       $ analysisOf a <> bound lvl (analysisOf b)
   EffectPure a ->
+    withResult Unknown
+      $ bump
+      $ analysisOf a
+  EffectDefer a ->
     withResult Unknown
       $ bump
       $ analysisOf a

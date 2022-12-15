@@ -2,8 +2,10 @@ module Snapshot.DefaultRulesSemigroup01 where
 
 import Prelude
 
-foreign import f :: Int -> String
-foreign import g :: Int -> String
+type F = Int -> String
 
-test1 = f <> g
-test2 = f <> g <> f <> g
+test1 :: F -> F -> Int -> String
+test1 f g = f <> g
+
+test2 :: F -> F -> Int -> String
+test2 f g = f <> g <> f <> g

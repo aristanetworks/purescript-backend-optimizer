@@ -16,14 +16,14 @@ const traverseFun1 = dictApplicative => {
 const rewriteBottomUpM = dictMonad => {
   const Apply0 = dictMonad.Applicative0().Apply0();
   const map = Apply0.Functor0().map;
-  const $3 = dictMonad.Bind1();
+  const $0 = dictMonad.Bind1();
   return k => {
     const go = a => {
-      if (a.tag === "Abs") { return map(Abs(a._1))($3.bind(go(a._2))(k)); }
-      if (a.tag === "App") { return Apply0.apply(map(App)($3.bind(go(a._1))(k)))($3.bind(go(a._2))(k)); }
+      if (a.tag === "Abs") { return map(Abs(a._1))($0.bind(go(a._2))(k)); }
+      if (a.tag === "App") { return Apply0.apply(map(App)($0.bind(go(a._1))(k)))($0.bind(go(a._2))(k)); }
       $runtime.fail();
     };
-    return a => $3.bind(go(a))(k);
+    return a => $0.bind(go(a))(k);
   };
 };
 const rewriteBottomUp = k => {

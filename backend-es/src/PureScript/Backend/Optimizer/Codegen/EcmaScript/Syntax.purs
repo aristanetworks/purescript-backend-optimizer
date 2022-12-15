@@ -1,8 +1,10 @@
+-- @inline export wrapPrecWith arity=1
 module PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax
   ( EsModuleStatement(..)
   , EsSyntax(..)
   , EsArrayElement(..)
   , EsObjectElement(..)
+  , EsBindingPattern(..)
   , EsBinaryOp(..)
   , EsUnaryOp(..)
   , EsRuntimeOp(..)
@@ -35,16 +37,18 @@ import Prelude
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, fold, foldMap, foldlDefault, foldr, foldrDefault)
+import Data.Foldable (class Foldable, fold, foldMap, foldl, foldlDefault, foldr, foldrDefault)
+import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (class Newtype)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esEscapeSpecial, esIndex, esInt, esModuleName, esNumber, esString)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esEscapeSpecial, esIndex, esInt, esModuleName, esNumber, esString, esTernary)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), ModuleName(..), Qualified(..))
 
 data EsModuleStatement a
@@ -72,16 +76,18 @@ data EsSyntax a
   | EsIndex a a
   | EsIdent (Qualified EsIdent)
   | EsRuntime (EsRuntimeOp a)
-  | EsCall a (Array a)
+  | EsCall a (Array (EsArrayElement a))
+  | EsTernary a a a
   | EsBinary EsBinaryOp a a
   | EsUnary EsUnaryOp a
   | EsAssign a a
   | EsArrowFunction (Array EsIdent) (Array a)
   | EsCommentTrailing a String
-  | EsConst (NonEmptyArray (Tuple EsIdent a))
+  | EsConst (NonEmptyArray (Tuple EsBindingPattern a))
   | EsLet (NonEmptyArray (Tuple EsIdent (Maybe a)))
   | EsIfElse a (Array a) (Array a)
   | EsWhile a (Array a)
+  | EsForOf EsBindingPattern a (Array a)
   | EsReturn (Maybe a)
   | EsContinue
   | EsUndefined
@@ -102,7 +108,8 @@ instance Foldable EsSyntax where
     EsIndex a b -> f a <> f b
     EsIdent _ -> mempty
     EsRuntime a -> foldMap f a
-    EsCall a bs -> f a <> foldMap f bs
+    EsCall a bs -> f a <> foldMap (foldMap f) bs
+    EsTernary a b c -> f a <> f b <> f c
     EsBinary _ a b -> f a <> f b
     EsUnary _ a -> f a
     EsAssign _ a -> f a
@@ -112,6 +119,7 @@ instance Foldable EsSyntax where
     EsLet as -> foldMap (foldMap (foldMap f)) as
     EsIfElse a bs cs -> f a <> foldMap f bs <> foldMap f cs
     EsWhile a bs -> f a <> foldMap f bs
+    EsForOf _ b cs -> f b <> foldMap f cs
     EsReturn a -> foldMap f a
     EsContinue -> mempty
     EsUndefined -> mempty
@@ -135,6 +143,8 @@ data EsObjectElement a
   | EsObjectSpread a
 
 derive instance Functor EsObjectElement
+
+data EsBindingPattern = EsBindingIdent EsIdent
 
 instance Foldable EsObjectElement where
   foldr a = foldrDefault a
@@ -168,6 +178,7 @@ data EsUnaryOp
   = EsNot
   | EsNegate
   | EsBitNegate
+  | EsDelete
 
 data EsPrec
   = EsPrecStatement
@@ -184,6 +195,7 @@ derive instance Ord EsPrec
 
 data EsRuntimeOp a
   = EsBinding a
+  | EsRange a a
   | EsFail
 
 derive instance Functor EsRuntimeOp
@@ -191,6 +203,7 @@ derive instance Functor EsRuntimeOp
 instance Foldable EsRuntimeOp where
   foldMap f = case _ of
     EsBinding a -> f a
+    EsRange a b -> f a <> f b
     EsFail -> mempty
   foldr a = foldrDefault a
   foldl a = foldlDefault a
@@ -239,6 +252,45 @@ build syn = case syn of
     EsExpr (needsDep mn mempty) syn
   EsRuntime op ->
     EsExpr (needsRuntime (foldMap esAnalysisOf op)) syn
+  EsCall (EsExpr _ (EsArrowFunction [] bs)) []
+    | Just expr <- inlineCallBlock bs ->
+        expr
+  EsReturn (Just b)
+    | Just expr' <- inlineLoopBlockStatement b ->
+        expr'
+  EsReturn (Just (EsExpr _ EsUndefined)) ->
+    build $ EsReturn Nothing
+  EsArrowFunction as bs
+    | Just (EsExpr _ (EsReturn Nothing)) <- Array.last bs ->
+        build $ EsArrowFunction as $ Array.dropEnd 1 bs
+  EsArrowFunction as [ block ]
+    | Just bs <- inlineReturnBlock block ->
+        build $ EsArrowFunction as bs
+  EsArrowFunction as bs -> do
+    let Tuple s bs' = buildStatements bs
+    EsExpr (alwaysPure s) $ EsArrowFunction as bs'
+  EsIfElse a [ block ] cs
+    | Just bs <- inlineReturnBlock block ->
+        build $ EsIfElse a bs cs
+  EsIfElse a bs [ block ]
+    | Just cs <- inlineReturnBlock block ->
+        build $ EsIfElse a bs cs
+  EsIfElse a bs cs -> do
+    let Tuple s1 bs' = buildStatements bs
+    let Tuple s2 cs' = buildStatements cs
+    EsExpr (esAnalysisOf a <> s1 <> s2) $ EsIfElse a bs' cs'
+  EsWhile a bs
+    | Just bs' <- removeTrailingContinue bs ->
+        build $ EsWhile a bs'
+    | otherwise -> do
+        let Tuple s bs' = buildStatements bs
+        EsExpr (esAnalysisOf a <> s) $ EsWhile a bs'
+  EsForOf a b cs
+    | Just cs' <- removeTrailingContinue cs ->
+        build $ EsForOf a b cs'
+    | otherwise -> do
+        let Tuple s cs' = buildStatements cs
+        EsExpr (esAnalysisOf b <> s) $ EsForOf a b cs'
   _ ->
     EsExpr (pureAnn (foldMap esAnalysisOf syn)) syn
     where
@@ -251,12 +303,72 @@ build syn = case syn of
       EsArrowFunction _ _ -> alwaysPure
       _ -> identity
 
+buildStatements :: Array EsExpr -> Tuple EsAnalysis (Array EsExpr)
+buildStatements = traverse go
+  where
+  go expr = case expr of
+    _ | Just expr' <- inlineLoopBlockStatement expr ->
+      go expr'
+    _ ->
+      Tuple (esAnalysisOf expr) expr
+
+inlineReturnBlock :: EsExpr -> Maybe (Array EsExpr)
+inlineReturnBlock (EsExpr _ expr) = case expr of
+  EsReturn (Just (EsExpr _ (EsCall (EsExpr _ (EsArrowFunction [] bs)) []))) ->
+    Just bs
+  _ ->
+    Nothing
+
+inlineCallBlock :: Array EsExpr -> Maybe EsExpr
+inlineCallBlock = case _ of
+  [ EsExpr _ (EsReturn (Just expr)) ] ->
+    Just expr
+  [ EsExpr _ (EsIfElse a [ EsExpr _ (EsReturn (Just b)) ] []), EsExpr _ (EsReturn (Just c)) ] ->
+    Just $ build $ EsTernary a b c
+  _ ->
+    Nothing
+
+inlineLoopBlockStatement :: EsExpr -> Maybe EsExpr
+inlineLoopBlockStatement (EsExpr _ expr) = case expr of
+  EsCall (EsExpr _ (EsArrowFunction [] [ b@(EsExpr _ loop) ])) []
+    | isLoop loop ->
+        Just b
+  _ ->
+    Nothing
+
+removeTrailingContinue :: Array EsExpr -> Maybe (Array EsExpr)
+removeTrailingContinue stmts = case Array.last stmts of
+  Just (EsExpr s (EsIfElse a bs []))
+    | Just cs <- removeTrailingContinue bs ->
+        Just $ Array.snoc (Array.dropEnd 1 stmts) $ EsExpr s $ EsIfElse a cs []
+  Just (EsExpr _ EsContinue) ->
+    Just (Array.dropEnd 1 stmts)
+  _ ->
+    Nothing
+
+isLoop :: forall a. EsSyntax a -> Boolean
+isLoop = case _ of
+  EsForOf _ _ _ -> true
+  EsWhile _ _ -> true
+  _ -> false
+
 class HasSyntax a where
   syntaxOf :: a -> EsSyntax a
 
 wrapPrec :: forall a. EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
-wrapPrec p1 (Tuple p2 doc)
-  | p2 < p1 =
+wrapPrec = wrapPrecWith (>)
+
+wrapPrecGte :: forall a. EsPrec -> Tuple EsPrec (Dodo.Doc a) -> Dodo.Doc a
+wrapPrecGte = wrapPrecWith (>=)
+
+wrapPrecWith
+  :: forall a
+   . (EsPrec -> EsPrec -> Boolean)
+  -> EsPrec
+  -> Tuple EsPrec (Dodo.Doc a)
+  -> Dodo.Doc a
+wrapPrecWith f p1 (Tuple p2 doc)
+  | f p1 p2 =
       case p2 of
         EsPrecArrow ->
           Dodo.text "(" <> doc <> Dodo.text ")"
@@ -306,22 +418,29 @@ print opts syn = case syn of
     Tuple EsPrecCall $ case op of
       EsBinding a ->
         printPure opts $ esApp (Dodo.text "$runtime.binding") [ snd (print opts (syntaxOf a)) ]
+      EsRange a b ->
+        esApp (Dodo.text "$runtime.range")
+          [ snd (print opts (syntaxOf a))
+          , snd (print opts (syntaxOf b))
+          ]
       EsFail ->
         Dodo.text "$runtime.fail()"
   EsCall a bs -> do
     let p1 = EsPrecCall
     let as = syntaxOf a
     let a' = wrapPrec p1 (print opts as)
-    let doc = esApp a' (snd <<< print opts <<< syntaxOf <$> bs)
+    let doc = esApp a' (printArrayElement opts <$> bs)
     Tuple EsPrecCall $ case as of
       EsCall _ _ -> doc
       _ -> printPure opts doc
-  EsBinary op a b -> do
-    let Tuple pn str = printEsBinaryOp op
-    let p1 = EsPrecBinary pn
+  EsTernary a b c -> do
+    let p1 = EsPrecArrow
     let a' = print opts (syntaxOf a)
     let b' = print opts (syntaxOf b)
-    Tuple p1 $ Dodo.words [ wrapPrec p1 a', Dodo.text str, wrapPrec p1 b' ]
+    let c' = print opts (syntaxOf c)
+    Tuple p1 $ esTernary (wrapPrecGte p1 a') (wrapPrecGte p1 b') (wrapPrec p1 c')
+  EsBinary op lhs rhs -> do
+    printEsBinaryOp opts (esBinaryFixity op) lhs rhs
   EsUnary op a -> do
     let p1 = EsPrecPrefix
     let a' = wrapPrec p1 (print opts (syntaxOf a))
@@ -341,6 +460,8 @@ print opts syn = case syn of
     Tuple EsPrecControl $ printIfElse opts a bs cs
   EsWhile a bs ->
     Tuple EsPrecControl $ printWhile opts a bs
+  EsForOf a b cs ->
+    Tuple EsPrecControl $ printForOf opts a b cs
   EsReturn (Just a) ->
     Tuple EsPrecStatement $ Dodo.words [ Dodo.text "return", snd (print opts (syntaxOf a)) ]
   EsReturn Nothing ->
@@ -350,32 +471,73 @@ print opts syn = case syn of
   EsUndefined ->
     Tuple EsPrecAtom $ Dodo.text "undefined"
 
-printEsBinaryOp :: EsBinaryOp -> Tuple Int String
-printEsBinaryOp = case _ of
-  EsOr -> Tuple 1 "||"
-  EsAnd -> Tuple 2 "&&"
-  EsBitOr -> Tuple 3 "|"
-  EsBitXor -> Tuple 4 "^"
-  EsBitAnd -> Tuple 5 "&"
-  EsEquals -> Tuple 6 "==="
-  EsNotEquals -> Tuple 6 "!=="
-  EsLessThan -> Tuple 7 "<"
-  EsLessThanEqual -> Tuple 7 "<="
-  EsGreaterThan -> Tuple 7 ">"
-  EsGreaterThanEqual -> Tuple 7 ">="
-  EsBitShiftLeft -> Tuple 8 "<<"
-  EsBitShitRight -> Tuple 8 ">>"
-  EsZeroFillShiftRight -> Tuple 8 ">>>"
-  EsAdd -> Tuple 9 "+"
-  EsSubtract -> Tuple 9 "-"
-  EsDivide -> Tuple 10 "/"
-  EsMultiply -> Tuple 10 "*"
+printEsBinaryOp :: forall a. PrintOptions -> EsBinaryFixity -> EsExpr -> EsExpr -> Tuple EsPrec (Dodo.Doc a)
+printEsBinaryOp opts f1 (EsExpr _ lhs) (EsExpr _ rhs) =
+  Tuple p1 $ Dodo.words [ lhsDoc, Dodo.text f1.symbol, rhsDoc ]
+  where
+  p1 :: EsPrec
+  p1 = EsPrecBinary f1.precedence
+
+  lhsDoc :: Dodo.Doc a
+  lhsDoc = case lhs of
+    EsBinary op2 lhs' rhs' -> do
+      let f2 = esBinaryFixity op2
+      let doc = snd $ printEsBinaryOp opts f2 lhs' rhs'
+      if f2.precedence >= f1.precedence then
+        doc
+      else
+        Dodo.Common.jsParens doc
+    _ ->
+      wrapPrecGte p1 (print opts lhs)
+
+  rhsDoc :: Dodo.Doc a
+  rhsDoc = case rhs of
+    EsBinary binOp2 lhs' rhs' -> do
+      let f2 = esBinaryFixity binOp2
+      let doc = snd $ printEsBinaryOp opts f2 lhs' rhs'
+      if (f1.symbol == f2.symbol && f1.associative) || f2.precedence > f1.precedence then
+        doc
+      else
+        Dodo.Common.jsParens doc
+    _ ->
+      wrapPrecGte p1 (print opts rhs)
+
+type EsBinaryFixity =
+  { associative :: Boolean
+  , precedence :: Int
+  , symbol :: String
+  }
+
+esBinaryFixity :: EsBinaryOp -> EsBinaryFixity
+esBinaryFixity = case _ of
+  EsOr -> fixity true 1 "||"
+  EsAnd -> fixity true 2 "&&"
+  EsBitOr -> fixity true 3 "|"
+  EsBitXor -> fixity true 4 "^"
+  EsBitAnd -> fixity true 5 "&"
+  EsEquals -> fixity false 6 "==="
+  EsNotEquals -> fixity false 6 "!=="
+  EsLessThan -> fixity false 7 "<"
+  EsLessThanEqual -> fixity false 7 "<="
+  EsGreaterThan -> fixity false 7 ">"
+  EsGreaterThanEqual -> fixity false 7 ">="
+  EsBitShiftLeft -> fixity false 8 "<<"
+  EsBitShitRight -> fixity false 8 ">>"
+  EsZeroFillShiftRight -> fixity false 8 ">>>"
+  EsAdd -> fixity true 9 "+"
+  EsSubtract -> fixity true 9 "-"
+  EsDivide -> fixity true 10 "/"
+  EsMultiply -> fixity true 10 "*"
+  where
+  fixity associative precedence symbol =
+    { associative, precedence, symbol }
 
 printEsUnaryOp :: EsUnaryOp -> String
 printEsUnaryOp = case _ of
   EsNot -> "!"
   EsNegate -> "-"
   EsBitNegate -> "~"
+  EsDelete -> "delete "
 
 printArrayElement :: forall a. PrintOptions -> EsArrayElement EsExpr -> Dodo.Doc a
 printArrayElement opts = case _ of
@@ -457,7 +619,7 @@ printLet opts bindings = do
         bindings
     ]
 
-printConst :: forall a. PrintOptions -> NonEmptyArray (Tuple EsIdent EsExpr) -> Dodo.Doc a
+printConst :: forall a. PrintOptions -> NonEmptyArray (Tuple EsBindingPattern EsExpr) -> Dodo.Doc a
 printConst opts bindings = do
   let kw = Dodo.text "const"
   let sep = Dodo.flexAlt (Dodo.text ", ") (Dodo.text ";" <> Dodo.break <> kw <> Dodo.space)
@@ -465,10 +627,15 @@ printConst opts bindings = do
     [ kw
     , Dodo.foldWithSeparator sep $ map
         ( \(Tuple ident b) ->
-            esAssign (printIdent ident) (printBindingValue opts b)
+            esAssign (printBindingPattern ident) (printBindingValue opts b)
         )
         bindings
     ]
+
+printBindingPattern :: forall a. EsBindingPattern -> Dodo.Doc a
+printBindingPattern = case _ of
+  EsBindingIdent ident ->
+    printIdent ident
 
 printBindingValue :: forall a. PrintOptions -> EsExpr -> Dodo.Doc a
 printBindingValue opts val@(EsExpr (EsAnalysis s) _)
@@ -482,41 +649,80 @@ printBindingValue opts val@(EsExpr (EsAnalysis s) _)
       snd $ print opts (syntaxOf val)
 
 printIfElse :: forall a. PrintOptions -> EsExpr -> Array EsExpr -> Array EsExpr -> Dodo.Doc a
-printIfElse opts cond as bs = Dodo.lines
-  [ Dodo.flexGroup $ Dodo.words
-      [ Dodo.text "if"
-      , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond
-      , fold
+printIfElse opts cond as bs = do
+  let Tuple last conds = toIfElseChain (List.singleton (Tuple cond as)) bs
+  foldl
+    ( \elseDoc (Tuple cond' as') -> do
+        let
+          ifDoc = Dodo.words
+            [ Dodo.text "if"
+            , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond'
+            , fold
+                [ Dodo.text "{"
+                , Dodo.spaceBreak
+                , Dodo.indent $ Dodo.lines $ printStatement opts <$> as'
+                , Dodo.spaceBreak
+                , Dodo.text "}"
+                ]
+            ]
+        if Dodo.isEmpty elseDoc then
+          Dodo.flexGroup ifDoc
+        else
+          Dodo.words
+            [ ifDoc
+            , Dodo.text "else"
+            , elseDoc
+            ]
+    )
+    ( if Array.null last then
+        mempty
+      else
+        fold
           [ Dodo.text "{"
           , Dodo.spaceBreak
-          , Dodo.indent $ Dodo.lines $ printStatement opts <$> as
+          , Dodo.indent $ Dodo.lines $ printStatement opts <$> last
           , Dodo.spaceBreak
           , Dodo.text "}"
           ]
-      ]
-  , if Array.null bs then
-      mempty
-    else
-      Dodo.flexGroup $ fold
-        [ Dodo.text "else"
-        , Dodo.spaceBreak
-        , Dodo.indent $ Dodo.lines $ printStatement opts <$> bs
-        , Dodo.spaceBreak
-        , Dodo.text "}"
-        ]
-  ]
+    )
+    conds
+  where
+  toIfElseChain acc = case _ of
+    [ EsExpr _ (EsIfElse cond' as' bs') ] ->
+      toIfElseChain (List.Cons (Tuple cond' as') acc) bs'
+    bs' ->
+      Tuple bs' acc
 
 printWhile :: forall a. PrintOptions -> EsExpr -> Array EsExpr -> Dodo.Doc a
-printWhile opts cond as = Dodo.flexGroup $ Dodo.words
-  [ Dodo.text "while"
-  , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond
-  , fold
-      [ Dodo.text "{"
-      , Dodo.spaceBreak
+printWhile opts cond as
+  | Array.null as = Dodo.words
+      [ Dodo.text "while"
+      , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond
+      ]
+  | otherwise = Dodo.lines
+      [ Dodo.words
+          [ Dodo.text "while"
+          , Dodo.Common.jsParens $ snd $ print opts $ syntaxOf cond
+          , Dodo.text "{"
+          ]
       , Dodo.indent $ Dodo.lines $ printStatement opts <$> as
-      , Dodo.spaceBreak
       , Dodo.text "}"
       ]
+
+printForOf :: forall a. PrintOptions -> EsBindingPattern -> EsExpr -> Array EsExpr -> Dodo.Doc a
+printForOf opts binder iter as = Dodo.lines
+  [ Dodo.words
+      [ Dodo.text "for"
+      , Dodo.Common.jsParens $ Dodo.words
+          [ Dodo.text "const"
+          , printBindingPattern binder
+          , Dodo.text "of"
+          , snd $ print opts (syntaxOf iter)
+          ]
+      , Dodo.text "{"
+      ]
+  , Dodo.indent $ Dodo.lines $ printStatement opts <$> as
+  , Dodo.text "}"
   ]
 
 printIdent :: forall a. EsIdent -> Dodo.Doc a
@@ -631,7 +837,7 @@ esCurriedFunction args stmts = case Array.unsnoc args of
     foldr (\a -> build <<< EsArrowFunction [ a ] <<< pure <<< build <<< EsReturn <<< Just) (build (EsArrowFunction [ last ] stmts)) init
 
 esBinding :: EsIdent -> EsExpr -> EsExpr
-esBinding ident expr = build $ EsConst $ NonEmptyArray.singleton $ Tuple ident expr
+esBinding ident expr = build $ EsConst $ NonEmptyArray.singleton $ Tuple (EsBindingIdent ident) expr
 
 esLazyBinding :: EsExpr -> EsExpr
 esLazyBinding = build <<< EsRuntime <<< EsBinding <<< build <<< EsArrowFunction [] <<< pure <<< build <<< EsReturn <<< Just

@@ -30,22 +30,22 @@ const test = x => {
                 loop$r = Data$dArray.reverse(toUnfoldable(acc));
                 continue;
               }
-              const $8 = s3$1 + 1 | 0;
+              const $0 = s3$1 + 1 | 0;
               const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[s3$1] | 0));
               if (v1.tag === "Nothing") {
-                loop$2$a0 = $8;
+                loop$2$a0 = $0;
                 continue;
               }
               if (v1.tag === "Just") {
-                const $10 = "2" + v1._1;
-                if ($10 !== "wat") {
+                const $1 = "2" + v1._1;
+                if ($1 !== "wat") {
                   loop$1$c = loop$2$c = false;
-                  loop$a0 = $8;
-                  loop$a1 = Data$dList$dTypes.$List("Cons", $10 + "1", acc);
+                  loop$a0 = $0;
+                  loop$a1 = Data$dList$dTypes.$List("Cons", $1 + "1", acc);
                   continue;
                 }
                 loop$2$c = false;
-                loop$1$a0 = $8;
+                loop$1$a0 = $0;
                 continue;
               }
               $runtime.fail();
@@ -53,12 +53,10 @@ const test = x => {
             return loop$2$r;
           };
           loop$2(s3);
-          continue;
         }
         return loop$1$r;
       };
       loop$1(s2);
-      continue;
     }
     return loop$r;
   };

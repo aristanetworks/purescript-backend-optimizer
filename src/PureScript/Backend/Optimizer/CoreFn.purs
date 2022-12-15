@@ -6,6 +6,7 @@ import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.String.CodeUnits as SCU
 import Data.Traversable (class Traversable, sequenceDefault, traverse)
 
 newtype Ident = Ident String
@@ -93,6 +94,9 @@ moduleName (Module mod) = mod.name
 data Import a = Import a ModuleName
 
 derive instance functorImport :: Functor Import
+
+importName :: forall a. Import a -> ModuleName
+importName (Import _ name) = name
 
 data ReExport = ReExport ModuleName Ident
 
@@ -223,3 +227,6 @@ litChildren = case _ of
   LitArray as -> as
   LitRecord ps -> propValue <$> ps
   _ -> []
+
+isPrimModule :: ModuleName -> Boolean
+isPrimModule (ModuleName name) = name == "Prim" || SCU.take 5 name == "Prim."
