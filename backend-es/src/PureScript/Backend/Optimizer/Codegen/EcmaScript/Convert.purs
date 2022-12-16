@@ -450,12 +450,6 @@ codegenBlockReturn mode env tcoExpr
         Return ->
           pure $ build $ EsReturn $ Just $ codegenExpr env tcoExpr
 
-isVoidReturn :: EsExpr -> Boolean
-isVoidReturn (EsExpr _ a) = case a of
-  EsWhile _ _ -> true
-  EsForOf _ _ _ -> true
-  _ -> false
-
 codegenBlockBranches :: BlockMode -> CodegenEnv -> Total -> NonEmptyArray (Pair TcoExpr) -> Maybe TcoExpr -> Array EsExpr
 codegenBlockBranches mode env total bs def = case total, def of
   Root Total, Just def'
