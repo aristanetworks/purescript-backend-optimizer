@@ -341,7 +341,7 @@ analyze externAnalysis expr = case expr of
       Just (Accessor _ _) ->
         analysis
       Just (Local _ lvl) ->
-        accessed lvl analysis
+        accessed lvl $ complex Deref analysis
       Just (Var qi) -> do
         let BackendAnalysis { args } = externAnalysis (Tuple qi (Just acc))
         withArgs args $ complex Trivial analysis
