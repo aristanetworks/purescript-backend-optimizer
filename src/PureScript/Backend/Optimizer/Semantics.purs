@@ -1475,9 +1475,11 @@ shouldInlineLet level a b = do
   case Map.lookup level s2.usages of
     Nothing ->
       true
-    Just (Usage { captured, total }) ->
+    Just (Usage { captured, total, call }) ->
       (s1.complexity == Trivial)
-        || (captured == CaptureNone && (total == 1 || (s1.complexity <= Deref && s1.size < 5)))
+        || (captured == CaptureNone && total == 1)
+        || (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5)
+        || (s1.complexity == Deref && call == total)
         || (s1.complexity == KnownSize && total == 1)
         || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
         || (isKnownEffect a && total == 1)
