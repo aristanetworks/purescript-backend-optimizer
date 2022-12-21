@@ -35,3 +35,8 @@ test10 a b = a / b
 test11 :: Number -> Number
 test11 a = -a
 
+test12 :: Number -> Number -> Number -> Number
+test12 a b c = a - (b - c)
+
+test13 :: Number -> Number -> Number -> Number
+test13 a b c = a / (b / c)

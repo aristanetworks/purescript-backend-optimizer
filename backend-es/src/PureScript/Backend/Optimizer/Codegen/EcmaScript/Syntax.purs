@@ -525,8 +525,8 @@ esBinaryFixity = case _ of
   EsBitShitRight -> fixity false 8 ">>"
   EsZeroFillShiftRight -> fixity false 8 ">>>"
   EsAdd -> fixity true 9 "+"
-  EsSubtract -> fixity true 9 "-"
-  EsDivide -> fixity true 10 "/"
+  EsSubtract -> fixity false 9 "-"
+  EsDivide -> fixity false 10 "/"
   EsMultiply -> fixity true 10 "*"
   where
   fixity associative precedence symbol =
