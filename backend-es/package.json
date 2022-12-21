@@ -1,6 +1,6 @@
 {
   "name": "purs-backend-es",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A modern ECMAScript optimizing backend for PureScript",
   "main": "index.js",
   "type": "module",
