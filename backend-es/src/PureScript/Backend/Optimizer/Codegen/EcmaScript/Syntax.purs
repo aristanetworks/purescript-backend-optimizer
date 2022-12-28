@@ -262,10 +262,10 @@ build syn = case syn of
     build $ EsReturn Nothing
   EsArrowFunction as bs
     | Just (EsExpr _ (EsReturn Nothing)) <- Array.last bs ->
-        build $ EsArrowFunction as $ Array.dropEnd 1 bs
+        esArrowFunction as $ Array.dropEnd 1 bs
   EsArrowFunction as [ block ]
     | Just bs <- inlineReturnBlock block ->
-        build $ EsArrowFunction as bs
+        esArrowFunction as bs
   EsArrowFunction as bs -> do
     let Tuple s bs' = buildStatements bs
     EsExpr (alwaysPure s) $ EsArrowFunction as bs'
@@ -641,7 +641,7 @@ printBindingValue :: forall a. PrintOptions -> EsExpr -> Dodo.Doc a
 printBindingValue opts val@(EsExpr (EsAnalysis s) _)
   | opts.pureAnns && not s.pure =
       snd $ print opts $ EsCall
-        ( build $ EsArrowFunction []
+        ( esArrowFunction []
             [ build $ EsReturn $ Just val ]
         )
         []
@@ -834,13 +834,13 @@ esCurriedFunction args stmts = case Array.unsnoc args of
   Nothing ->
     esArrowFunction [] stmts
   Just { init, last } ->
-    foldr (\a -> build <<< EsArrowFunction [ a ] <<< pure <<< build <<< EsReturn <<< Just) (build (EsArrowFunction [ last ] stmts)) init
+    foldr (\a -> esArrowFunction [ a ] <<< pure <<< build <<< EsReturn <<< Just) (esArrowFunction [ last ] stmts) init
 
 esBinding :: EsIdent -> EsExpr -> EsExpr
 esBinding ident expr = build $ EsConst $ NonEmptyArray.singleton $ Tuple (EsBindingIdent ident) expr
 
 esLazyBinding :: EsExpr -> EsExpr
-esLazyBinding = build <<< EsRuntime <<< EsBinding <<< build <<< EsArrowFunction [] <<< pure <<< build <<< EsReturn <<< Just
+esLazyBinding = build <<< EsRuntime <<< EsBinding <<< esArrowFunction [] <<< pure <<< build <<< EsReturn <<< Just
 
 esAssignIdent :: EsIdent -> EsExpr -> EsExpr
 esAssignIdent ident = build <<< EsAssign (build (EsIdent (Qualified Nothing ident)))
