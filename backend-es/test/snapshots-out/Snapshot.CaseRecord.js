@@ -10,11 +10,11 @@ const test5 = v => {
 };
 const test4 = v => {
   if (v.a > 0) { return v.a; }
-  return 0;
+  return 3;
 };
 const test3 = v => {
   if (v.a > 0) { return v.a; }
-  return 0;
+  return 3;
 };
 const test2 = v => {
   if (v.a.c === 2) {

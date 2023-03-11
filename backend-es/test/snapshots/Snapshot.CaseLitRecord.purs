@@ -22,14 +22,14 @@ test2 = case _ of
 test3 :: { a :: Int, b :: Int } -> Int
 test3 = case _ of
   { a } | a > 0 -> a
-  { a: _, b } | b > 0 -> b
-  _ -> 0
+  { a: _, b } | b > 1 -> b
+  _ -> 3
 
 test4 :: { a :: Int, b :: Int } -> Int
 test4 = case _ of
   { a, b: _ } | a > 0 -> a
-  { b } | b > 0 -> b
-  _ -> 0
+  { b } | b > 1 -> b
+  _ -> 3
 
 test5 :: { a :: Int, b :: Int } -> Int
 test5 = case _ of
