@@ -1,6 +1,6 @@
 // @inline export fromString arity=1
 import * as Data$dMaybe from "../Data.Maybe/index.js";
-const $Test = tag => ({tag});
+const $Test = tag => tag;
 const Foo = /* #__PURE__ */ $Test("Foo");
 const Bar = /* #__PURE__ */ $Test("Bar");
 const Baz = /* #__PURE__ */ $Test("Baz");
