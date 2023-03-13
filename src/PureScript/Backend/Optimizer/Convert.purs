@@ -58,7 +58,7 @@ import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromJust, maybe)
+import Data.Maybe (Maybe(..), fromJust, fromMaybe, maybe)
 import Data.Monoid as Monoid
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (class Newtype, over, unwrap)
@@ -657,7 +657,7 @@ normalizeCaseRows = normalizeProps =<< columnProps
             let keys = Set.fromFoldable fields
             maybe keys (append keys) acc
           _ ->
-            Set.empty
+            fromMaybe Set.empty acc
 
   normalizeProps :: Array (Set String) -> Array CaseRow -> Array CaseRow
   normalizeProps allFieldNames = map \nextRow ->
