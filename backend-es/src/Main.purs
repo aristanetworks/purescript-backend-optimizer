@@ -51,7 +51,6 @@ type BuildArgs =
   , foreignDir :: Maybe FilePath
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
-  , bareEnumSumTags :: Boolean
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -78,11 +77,6 @@ buildArgsParser =
     , intTags:
         ArgParser.flag [ "--int-tags" ]
           "Use integers for tags in codegen instead of strings."
-          # ArgParser.boolean
-          # ArgParser.default false
-    , bareEnumSumTags:
-        ArgParser.flag [ "--bare-enum-sum-tags" ]
-          "Do not wrap enum sum tags in objects."
           # ArgParser.boolean
           # ArgParser.default false
     }
@@ -207,7 +201,7 @@ main cliRoot =
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
     , onCodegenAfter: mempty
     , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } -> do
-        let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags, bareEnumSumTags: args.bareEnumSumTags } build.implementations backendMod
+        let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
         writeTextFile UTF8 (Path.concat [ modPath, "index.js" ]) formatted

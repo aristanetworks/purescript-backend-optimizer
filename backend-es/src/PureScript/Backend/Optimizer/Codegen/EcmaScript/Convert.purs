@@ -46,7 +46,6 @@ derive instance Ord CodegenRef
 
 type CodegenOptions =
   { intTags :: Boolean
-  , bareEnumSumTags :: Boolean
   }
 
 newtype CodegenEnv = CodegenEnv
@@ -667,7 +666,7 @@ codegenPrimOp env@(CodegenEnv { options }) = case _ of
       OpIsTag qual@(Qualified _ tag) ->
         case lookupCtorInfo env qual of
           { size, ctorMeta }
-            | options.bareEnumSumTags, size == 0 ->
+            | size == 0 ->
                 build $ EsBinary EsEquals expr $ codegenTag options tag ctorMeta
             | otherwise ->
                 build $ EsBinary EsEquals (build (EsAccess expr "tag")) $ codegenTag options tag ctorMeta
@@ -748,7 +747,7 @@ codegenCtorForType opts name meta = do
       let args = Array.cons (Generated "tag") fieldArgs
       let
         value
-          | opts.bareEnumSumTags, meta.size == 0 =
+          | meta.size == 0 =
               EsIdent $ Qualified Nothing (Generated "tag")
           | otherwise =
               EsObject $ EsObjectPun <$> args

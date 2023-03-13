@@ -100,7 +100,7 @@ runSnapshotTests { accept, filter } = do
             let
               formatted =
                 Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
-                  codegenModule { intTags: false, bareEnumSumTags: true } build.implementations backend
+                  codegenModule { intTags: false } build.implementations backend
             let testFileDir = Path.concat [ testOut, name ]
             let testFilePath = Path.concat [ testFileDir, "index.js" ]
             mkdirp testFileDir
