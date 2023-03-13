@@ -30,7 +30,7 @@ import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoE
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
-import PureScript.Backend.Optimizer.Semantics (DataTypeMeta, ExternImpl(..), NeutralExpr)
+import PureScript.Backend.Optimizer.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 
 data CodegenRefType = RefStrict | RefLazy | RefUnboxed
@@ -622,10 +622,10 @@ codegenObjectElement env (Prop p1 expr) =
       EsObjectField p1 other
 
 codegenCtor :: CodegenEnv -> ModuleName -> ConstructorType -> ProperName -> Ident -> Array EsExpr -> EsExpr
-codegenCtor env@(CodegenEnv { currentModule, options }) mod ct name tagIdent values = case ct of
+codegenCtor env@(CodegenEnv { currentModule, options }) mod ct name tag values = case ct of
   SumType -> do
-    let { tag } = lookupCtorInfo env (Qualified (Just mod) tagIdent)
-    build $ EsCall ctorName $ Array.cons (EsArrayValue (codegenTag options tagIdent tag)) ctorValues
+    let { ctorMeta } = lookupCtorInfo env (Qualified (Just mod) tag)
+    build $ EsCall ctorName $ Array.cons (EsArrayValue (codegenTag options tag ctorMeta)) ctorValues
   ProductType ->
     build $ EsCall ctorName ctorValues
   where
@@ -633,8 +633,8 @@ codegenCtor env@(CodegenEnv { currentModule, options }) mod ct name tagIdent val
   ctorModule = if mod == currentModule then Nothing else Just mod
   ctorValues = EsArrayValue <$> values
 
-codegenTag :: CodegenOptions -> Ident -> Int -> EsExpr
-codegenTag opts (Ident ctor) tag
+codegenTag :: CodegenOptions -> Ident -> CtorMeta -> EsExpr
+codegenTag opts (Ident ctor) { tag }
   | opts.intTags =
       build $ EsCommentTrailing (build (EsInt tag)) ctor
   | otherwise =
@@ -664,13 +664,13 @@ codegenPrimOp env@(CodegenEnv { options }) = case _ of
         build $ EsUnary EsNegate expr
       OpArrayLength ->
         build $ EsAccess expr "length"
-      OpIsTag qual@(Qualified _ tagIdent) ->
+      OpIsTag qual@(Qualified _ tag) ->
         case lookupCtorInfo env qual of
-          { size, tag }
+          { size, ctorMeta }
             | options.bareEnumSumTags, size == 0 ->
-                build $ EsBinary EsEquals expr $ codegenTag options tagIdent tag
+                build $ EsBinary EsEquals expr $ codegenTag options tag ctorMeta
             | otherwise ->
-                build $ EsBinary EsEquals (build (EsAccess expr "tag")) $ codegenTag options tagIdent tag
+                build $ EsBinary EsEquals (build (EsAccess expr "tag")) $ codegenTag options tag ctorMeta
   Op2 op a b -> do
     let expr1 = codegenExpr env a
     let expr2 = codegenExpr env b
@@ -733,7 +733,7 @@ codegenCtorForType opts name meta = do
       | otherwise =
           []
   case Map.toUnfoldable meta.constructors of
-    [ Tuple ctor { tag } ] -> do
+    [ Tuple ctor ctorMeta ] -> do
       -- Only add the tag for product types if we care what the name is,
       -- otherwise they are all 0 and it might as well not be there.
       let
@@ -741,7 +741,7 @@ codegenCtorForType opts name meta = do
           | opts.intTags =
               EsObjectPun <$> fieldArgs
           | otherwise =
-              Array.cons (EsObjectField "tag" (codegenTag opts ctor tag)) $ EsObjectPun <$> fieldArgs
+              Array.cons (EsObjectField "tag" (codegenTag opts ctor ctorMeta)) $ EsObjectPun <$> fieldArgs
       esBinding (asCtorIdent name) $ esArrowFunction fieldArgs
         [ build $ EsReturn $ Just $ build $ EsObject args ]
     _ -> do
@@ -843,11 +843,11 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
     UncurriedEffectApp _ _ ->
       false
 
-lookupCtorInfo :: CodegenEnv -> Qualified Ident -> { tag :: Int, size :: Int }
+lookupCtorInfo :: CodegenEnv -> Qualified Ident -> { ctorMeta :: CtorMeta, size :: Int }
 lookupCtorInfo (CodegenEnv env) qual = case Map.lookup qual env.implementations of
-  Just (Tuple _ (ExternCtor dm@{ size } _ _ tagIdent _))
-    | Just { tag } <- Map.lookup tagIdent dm.constructors ->
-        { tag, size }
+  Just (Tuple _ (ExternCtor dm@{ size } _ _ tag _))
+    | Just ctorMeta <- Map.lookup tag dm.constructors ->
+        { ctorMeta, size }
   _ ->
     unsafeCrashWith $ "Constructor meta not found: "
       <> foldMap unwrap (qualifiedModuleName qual)
