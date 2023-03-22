@@ -2,7 +2,7 @@
 // @inline export genericTest.from arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dGeneric$dRep from "../Data.Generic.Rep/index.js";
-const $Test = tag => ({tag});
+const $Test = tag => tag;
 const Foo = /* #__PURE__ */ $Test("Foo");
 const Bar = /* #__PURE__ */ $Test("Bar");
 const Baz = /* #__PURE__ */ $Test("Baz");
@@ -22,19 +22,19 @@ const genericTest = {
     $runtime.fail();
   },
   from: x => {
-    if (x.tag === "Foo") { return Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments); }
-    if (x.tag === "Bar") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)); }
-    if (x.tag === "Baz") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments))); }
-    if (x.tag === "Qux") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments))); }
+    if (x === "Foo") { return Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments); }
+    if (x === "Bar") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments)); }
+    if (x === "Baz") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inl", Data$dGeneric$dRep.NoArguments))); }
+    if (x === "Qux") { return Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.$Sum("Inr", Data$dGeneric$dRep.NoArguments))); }
     $runtime.fail();
   }
 };
 const showTest = {
   show: x => {
-    if (x.tag === "Foo") { return "Foo"; }
-    if (x.tag === "Bar") { return "Bar"; }
-    if (x.tag === "Baz") { return "Baz"; }
-    if (x.tag === "Qux") { return "Qux"; }
+    if (x === "Foo") { return "Foo"; }
+    if (x === "Bar") { return "Bar"; }
+    if (x === "Baz") { return "Baz"; }
+    if (x === "Qux") { return "Qux"; }
     $runtime.fail();
   }
 };
