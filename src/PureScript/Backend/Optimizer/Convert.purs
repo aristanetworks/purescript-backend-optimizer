@@ -576,13 +576,13 @@ binderToPattern = case _ of
       ctorPattern
         (PatProduct tyName ctorName)
         args
-        (\idx _ -> GetCtorField idx)
+        (\idx _ -> GetCtorField tyName ctorName idx)
         identity
     Just (IsConstructor SumType _) ->
       ctorPattern
         (PatSum tyName ctorName)
         args
-        (\idx _ -> GetCtorField idx)
+        (\idx _ -> GetCtorField tyName ctorName idx)
         identity
     _ ->
       unsafeCrashWith "binderToPattern - invalid meta"
