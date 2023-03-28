@@ -70,7 +70,7 @@ import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
-import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
+import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName(..), Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
 import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
@@ -443,19 +443,26 @@ toBackendExpr = case _ of
           makeLet Nothing (toBackendExpr expr) \tmp ->
             next (Array.snoc idents tmp)
       )
-      ( \idents ->
-          toInitialCaseRows idents alts \caseRows ->
+      ( \idents -> do
+          { dataTypes, implementations } <- ask
+          toInitialCaseRows dataTypes implementations idents alts \caseRows ->
             buildCaseTreeFromRows caseRows
       )
       exprs
       []
   where
-  toInitialCaseRows :: Array Level -> Array (CaseAlternative Ann) -> (Array CaseRow -> ConvertM BackendExpr) -> ConvertM BackendExpr
-  toInitialCaseRows idents alts useCaseRowsCb =
+  toInitialCaseRows
+    :: Map ProperName DataTypeMeta
+    -> BackendImplementations
+    -> Array Level
+    -> Array (CaseAlternative Ann)
+    -> (Array CaseRow -> ConvertM BackendExpr)
+    -> ConvertM BackendExpr
+  toInitialCaseRows dataTypes implementations idents alts useCaseRowsCb =
     foldr
       ( \(CaseAlternative bs g) mainCb caseRows -> do
           let
-            patterns = Array.zipWith (\ident b -> { column: ident, pattern: binderToPattern b }) idents bs
+            patterns = Array.zipWith (\ident b -> { column: ident, pattern: binderToPattern dataTypes implementations b }) idents bs
             args = Array.sort $ foldMap patternVars patterns
             buildCaseRow guardFn = { patterns, guardFn, vars: SemigroupMap Map.empty }
 
@@ -533,13 +540,13 @@ data PatternCase
 derive instance Eq PatternCase
 derive instance Ord PatternCase
 
-binderToPattern :: Binder Ann -> Pattern
-binderToPattern = case _ of
+binderToPattern :: Map ProperName DataTypeMeta -> BackendImplementations -> Binder Ann -> Pattern
+binderToPattern dataTypes implementations = case _ of
   BinderNull _ -> primitivePattern PatWild
   BinderVar _ var ->
     Pattern { vars: Set.singleton var, patternCase: PatWild, subterms: [] }
   BinderNamed _ var next -> do
-    let (Pattern r) = binderToPattern next
+    let (Pattern r) = binderToPattern dataTypes implementations next
     Pattern r { vars = Set.insert var r.vars }
   BinderLit _ lit -> case lit of
     LitInt a -> primitivePattern $ PatInt a
@@ -567,23 +574,25 @@ binderToPattern = case _ of
       | [ arg ] <- args ->
           -- We can safely expand the subterm here because the number of columns
           -- remains the same here.
-          binderToPattern arg
+          binderToPattern dataTypes implementations arg
       | otherwise ->
           unsafeCrashWith "Newtype binder didn't wrap 1 arg"
-    Just (IsConstructor ProductType _) ->
+    Just (IsConstructor ProductType _) -> do
+      let argsWithNames = Array.zip args $ lookupCtorFields tyName ctorName
       -- We cannot safely expand the fields here because the number of columns
       -- would change. So, any later rows' `BinderNull` or `BinderVar` would not similarly be expanded.
       ctorPattern
         (PatProduct tyName ctorName)
-        args
-        (\idx _ -> GetCtorField tyName ctorName idx)
-        identity
-    Just (IsConstructor SumType _) ->
+        argsWithNames
+        (\idx (Tuple _ fieldName) -> GetCtorField ctorName ProductType (unQualified tyName) (unQualified ctorName) fieldName idx)
+        fst
+    Just (IsConstructor SumType _) -> do
+      let argsWithNames = Array.zip args $ lookupCtorFields tyName ctorName
       ctorPattern
         (PatSum tyName ctorName)
-        args
-        (\idx _ -> GetCtorField tyName ctorName idx)
-        identity
+        argsWithNames
+        (\idx (Tuple _ fieldName) -> GetCtorField ctorName SumType (unQualified tyName) (unQualified ctorName) fieldName idx)
+        fst
     _ ->
       unsafeCrashWith "binderToPattern - invalid meta"
   where
@@ -602,9 +611,31 @@ binderToPattern = case _ of
     , patternCase
     , subterms: args # mapWithIndex \idx nextArg ->
         { accessor: buildAccessor idx nextArg
-        , pattern: binderToPattern $ toBinder nextArg
+        , pattern: binderToPattern dataTypes implementations $ toBinder nextArg
         }
     }
+
+  lookupCtorFields
+    :: Qualified ProperName
+    -> Qualified Ident
+    -> Array String
+  lookupCtorFields ty ctor =
+    case importedCtorFields <|> localCtorFields of
+      Just fields -> fields
+      Nothing -> unsafeCrashWith $ "Unable to get fields for type [" <> printQP ty <> "]'s constructor [" <> printQI ctor <> "]"
+    where
+    printQ :: forall a. (a -> String) -> Qualified a -> String
+    printQ printS (Qualified mbMod s) = maybe (printS s) (\(ModuleName mn) -> mn <> "." <> printS s) mbMod
+    printQP = printQ (\(ProperName s) -> s)
+    printQI = printQ (\(Ident i) -> i)
+
+    importedCtorFields = case Map.lookup ctor implementations of
+      Just (Tuple _ (ExternCtor _ _ _ _ fields)) -> Just fields
+      _ -> Nothing
+
+    localCtorFields = do
+      { constructors } <- Map.lookup (unQualified ty) dataTypes
+      _.fields <$> Map.lookup (unQualified ctor) constructors
 
 patternVars :: forall r. { pattern :: Pattern | r } -> Array Ident
 patternVars { pattern: Pattern { vars, subterms } } =

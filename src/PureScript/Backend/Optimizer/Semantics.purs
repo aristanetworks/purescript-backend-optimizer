@@ -518,7 +518,7 @@ evalAccessor initEnv initLhs accessor =
       , Just sem <- Array.index values n ->
           sem
     NeutData _ _ _ _ fields
-      | GetCtorField _ _ n <- accessor
+      | GetCtorField _ _ _ _ _ n <- accessor
       , Just (Tuple _ sem) <- Array.index fields n ->
           sem
     NeutFail err ->
