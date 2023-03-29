@@ -1,43 +1,49 @@
 module Snapshot.Exports
-  ( DataTypeOnly
-  , useDataTypeOnly
-  , DataTypeOnlyCtorNameChange
-  , useDataTypeOnlyCtorNameChange
-  , DataTypeAndCtor(..)
-  , NewtypeTypeOnly
-  , useNewtypeTypeOnly
-  , NewtypeTypeAndCtor(..)
+  ( Data_Unused_TypeOnly
+  , Data_Used_TypeOnly
+  , useData_Used_TypeOnly
+  , Data_TypeAndCtor(..)
+  , Newtype_Unused_TypeOnly
+  , Newtype_Used_TypeOnly
+  , useNewtype_Used_TypeOnly
+  , Newtype_TypeAndCtor(..)
   , TypeExported
-  , class ClassExported
-  , classExportedMember
+  , class Class_Exported
+  , classExported
   ) where
 
-data DataTypeOnly = DataTypeOnly Int
+data Data_Unused_TypeOnly = Data_Unused_TypeOnly
 
-useDataTypeOnly :: DataTypeOnly -> Int
-useDataTypeOnly (DataTypeOnly i) = i
+data Data_Used_TypeOnly = Data_Used_TypeOnly Int
 
-data DataTypeOnlyCtorNameChange = DataTypeOnlyCtor Int
+useData_Used_TypeOnly :: Data_Used_TypeOnly -> Int
+useData_Used_TypeOnly (Data_Used_TypeOnly i) = i
 
-useDataTypeOnlyCtorNameChange :: DataTypeOnlyCtorNameChange -> Int
-useDataTypeOnlyCtorNameChange (DataTypeOnlyCtor i) = i
+data Data_TypeAndCtor = Data_TypeAndCtor Int
 
-data DataTypeAndCtor = DataTypeAndCtor Int
+newtype Newtype_Unused_TypeOnly = Newtype_Unused_TypeOnly Int
 
-newtype NewtypeTypeOnly = NewtypeTypeOnly Int
+newtype Newtype_Used_TypeOnly = Newtype_Used_TypeOnly Int
 
-useNewtypeTypeOnly :: NewtypeTypeOnly -> Int
-useNewtypeTypeOnly (NewtypeTypeOnly i) = i
+useNewtype_Used_TypeOnly :: Newtype_Used_TypeOnly -> Int
+useNewtype_Used_TypeOnly (Newtype_Used_TypeOnly i) = i
 
-newtype NewtypeTypeAndCtor = NewtypeTypeAndCtor Int
+newtype Newtype_TypeAndCtor = Newtype_TypeAndCtor Int
 
 type TypeNoExport = Int
 
 type TypeExported = Int
 
-class ClassExported a where
-  classExportedMember :: a -> String
+class Class_NoExport_Unused a where
+  classNoExportUnused :: a -> String
 
-class ClassNoExport a where
-  classNoExportMember :: a -> String
+class Class_NoExport_Used a where
+  classNoExportUsed :: a -> String
 
+data Data_Instance_Unexported = Data_Instance_Unexported
+
+instance Class_NoExport_Used Data_Instance_Unexported where
+  classNoExportUsed _ = "Data_Instance_Unexported"
+
+class Class_Exported a where
+  classExported :: a -> String
