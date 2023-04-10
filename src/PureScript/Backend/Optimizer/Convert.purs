@@ -706,7 +706,7 @@ buildCaseLeaf row0 tailRows = do
             pairs <- for gs \(Tuple pred bodyFn) ->
               Pair <$> toBackendExpr pred <*> callFn bodyFn args
             fallback <- buildCaseTreeFromRows tailRows
-            buildM $ Branch pairs (Just fallback)
+            buildM $ Branch pairs fallback
         )
         orderedArgs
         []
@@ -940,7 +940,7 @@ makeGuard
   -> ConvertM BackendExpr
   -> ConvertM BackendExpr
 makeGuard lvl g inner def =
-  make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) (Just def)
+  make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) def
 
 makeUncurriedAbs
   :: Array Ident

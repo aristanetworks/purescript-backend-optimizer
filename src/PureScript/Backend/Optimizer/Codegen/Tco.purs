@@ -11,7 +11,7 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype)
 import Data.Set (Set)
 import Data.Set as Set
@@ -295,12 +295,9 @@ analyze env (NeutralExpr expr) = case expr of
     TcoExpr analysis $ PrimEffect (EffectRefWrite ref' val')
   Branch branches def -> do
     let branches' = map (\(Pair a b) -> Pair (overTcoAnalysis tcoNoTailCalls (analyze env a)) (analyze env b)) branches
-    let def' = analyze env <$> def
-    let analysis@(TcoAnalysis { total }) = foldMap (foldMap tcoAnalysisOf) branches' <> foldMap tcoAnalysisOf def'
-    if isJust def then
-      TcoExpr (tcoTotal (Root total) analysis) $ Branch branches' def'
-    else
-      TcoExpr (tcoTotal Partial analysis) $ Branch branches' def'
+    let def' = analyze env def
+    let analysis@(TcoAnalysis { total }) = foldMap (foldMap tcoAnalysisOf) branches' <> tcoAnalysisOf def'
+    TcoExpr (tcoTotal (Root total) analysis) $ Branch branches' def'
   Let ident level binding body -> do
     let binding' = analyze env binding
     let body' = analyze env body

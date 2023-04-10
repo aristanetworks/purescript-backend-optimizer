@@ -265,17 +265,8 @@ instance Eval f => Eval (BackendSyntax f) where
       evalAccessor env (eval env lhs) accessor
     Update lhs updates ->
       evalUpdate env (eval env lhs) (map (eval env) <$> updates)
-    Branch branches def -> do
-      let conds1 = evalPair env <$> branches
-      case def of
-        Just def' ->
-          evalBranches env conds1 (Just (defer \_ -> eval env def'))
-        Nothing ->
-          case (unwrap env).branchTry of
-            Nothing ->
-              evalBranches env conds1 Nothing
-            Just (Tuple conds2 def') ->
-              evalBranches env (NonEmptyArray.appendArray conds1 conds2) def'
+    Branch branches def ->
+      evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
@@ -1076,9 +1067,9 @@ quote = go
       build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
     SemBranch branches def -> do
       let ctx' = ctx { effect = false }
-      let quoteCond (SemConditional a k) = buildPair ctx' (quote ctx' a) (quote ctx (k Nothing))
+      let quoteCond (SemConditional a k) = Pair (quote ctx' a) (quote ctx (k Nothing))
       let branches' = quoteCond <<< force <$> branches
-      fromMaybe ExprBacktrack $ foldr (buildBranchCond ctx) (quote ctx <<< force <$> def) branches'
+      foldr (buildBranchCond ctx) (fromMaybe ExprBacktrack (quote ctx <<< force <$> def)) branches'
 
     -- Non-block constructors
     SemExtern _ _ sem ->
@@ -1186,22 +1177,22 @@ build ctx = case _ of
   Let _ level binding body
     | Just expr' <- shouldEtaReduce level binding body ->
         expr'
-  App (ExprSyntax analysis (Branch bs (Just def))) tl
+  App (ExprSyntax analysis (Branch bs def)) tl
     | Just expr' <- shouldDistributeBranchApps analysis bs def tl ->
         expr'
-  UncurriedApp (ExprSyntax analysis (Branch bs (Just def))) tl
+  UncurriedApp (ExprSyntax analysis (Branch bs def)) tl
     | Just expr' <- shouldDistributeBranchUncurriedApps analysis bs def tl ->
         expr'
-  Accessor (ExprSyntax analysis (Branch bs (Just def))) acc
+  Accessor (ExprSyntax analysis (Branch bs def)) acc
     | Just expr' <- shouldDistributeBranchAccessor analysis bs def acc ->
         expr'
-  PrimOp (Op1 op1 (ExprSyntax analysis (Branch bs (Just def))))
+  PrimOp (Op1 op1 (ExprSyntax analysis (Branch bs def)))
     | Just expr' <- shouldDistributeBranchPrimOp1 analysis bs def op1 ->
         expr'
-  PrimOp (Op2 op2 (ExprSyntax analysis (Branch bs (Just def))) rhs)
+  PrimOp (Op2 op2 (ExprSyntax analysis (Branch bs def)) rhs)
     | Just expr' <- shouldDistributeBranchPrimOp2L analysis bs def op2 rhs ->
         expr'
-  PrimOp (Op2 op2 lhs (ExprSyntax analysis (Branch bs (Just def))))
+  PrimOp (Op2 op2 lhs (ExprSyntax analysis (Branch bs def)))
     | Just expr' <- shouldDistributeBranchPrimOp2R analysis bs def lhs op2 ->
         expr'
   expr@(EffectBind ident1 level1 (ExprSyntax _ (EffectBind ident2 level2 binding2 body2)) body1) ->
@@ -1237,41 +1228,33 @@ build ctx = case _ of
     binding
   EffectDefer expr@(ExprSyntax _ (EffectDefer _)) ->
     expr
-  Branch pairs (Just def) | Just expr <- simplifyBranches ctx pairs def ->
+  Branch pairs def | Just expr <- simplifyBranches ctx pairs def ->
     expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr ->
     buildDefault ctx expr
 
-buildPair :: Ctx -> BackendExpr -> BackendExpr -> Pair BackendExpr
-buildPair ctx p1 = case _ of
-  ExprSyntax _ (Branch bs Nothing)
-    | [ Pair p2 b ] <- NonEmptyArray.toArray bs ->
-        Pair (build ctx $ PrimOp (Op2 OpBooleanAnd p1 p2)) b
-  p2 ->
-    Pair p1 p2
-
-buildBranchCond :: Ctx -> Pair BackendExpr -> Maybe BackendExpr -> Maybe BackendExpr
+buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
 buildBranchCond ctx (Pair a b) c = case b of
   ExprSyntax _ (Lit (LitBoolean true))
-    | Just (ExprSyntax _ (Lit (LitBoolean true))) <- c ->
+    | ExprSyntax _ (Lit (LitBoolean true)) <- c ->
         c
-    | Just (ExprSyntax _ (Lit (LitBoolean false))) <- c ->
-        Just a
-    | Just x@(ExprSyntax _ x') <- c, isBooleanTail x' ->
-        Just $ build ctx (PrimOp (Op2 OpBooleanOr a x))
+    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
+        a
+    | x@(ExprSyntax _ x') <- c, isBooleanTail x' ->
+        build ctx (PrimOp (Op2 OpBooleanOr a x))
   ExprSyntax _ (Lit (LitBoolean false))
-    | Just (ExprSyntax _ (Lit (LitBoolean false))) <- c ->
+    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
         c
     | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x1))) <- a
-    , Just (ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2)))) <- c
+    , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2))) <- c
     , isSameVariable x1 x2 ->
         c
   ExprBacktrack ->
     c
   _ ->
-    Just $ build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
+    build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
   where
   isSameVariable = case _, _ of
     Local _ l, Local _ r -> l == r
@@ -1300,7 +1283,7 @@ simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs of
     , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot (ExprSyntax _ (Local _ lvl2))))) body2 <- b
     , ExprSyntax _ (Fail _) <- def
     , lvl1 == lvl2 ->
-        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) (Just body2)
+        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
   _
     | ExprSyntax _ (Branch pairs2 def2) <- def ->
         Just $ build ctx (Branch (pairs <> pairs2) def2)
@@ -1391,7 +1374,7 @@ shouldDistributeBranches :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -
 shouldDistributeBranches ident level a body = do
   let BackendAnalysis s2 = analysisOf body
   case a of
-    ExprSyntax (BackendAnalysis s1) (Branch branches (Just def))
+    ExprSyntax (BackendAnalysis s1) (Branch branches def)
       | s2.size <= 128
       , s1.result == KnownNeutral
       , Just (Usage us) <- Map.lookup level s2.usages
@@ -1608,9 +1591,9 @@ freeze init = Tuple (analysisOf init) (go init)
             UnpackData qual ct ty tag values ->
               NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
         RewriteDistBranchesLet ident level branches def body ->
-          NeutralExpr $ Let ident level (NeutralExpr (Branch (map go <$> branches) (Just (go def)))) (go body)
+          NeutralExpr $ Let ident level (NeutralExpr (Branch (map go <$> branches) (go def))) (go body)
         RewriteDistBranchesOp branches def op -> do
-          let branches' = NeutralExpr $ Branch (map go <$> branches) (Just (go def))
+          let branches' = NeutralExpr $ Branch (map go <$> branches) (go def)
           case op of
             DistApp spine ->
               NeutralExpr $ App branches' (go <$> spine)
