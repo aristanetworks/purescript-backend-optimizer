@@ -455,8 +455,7 @@ codegenBlockBranches mode env total bs def = case total of
   Root Total | mode.return == Discard ->
     foldr (\p -> pure <<< build <<< uncurry EsIfElse (go p)) (codegenBlockStatements mode env def) bs
   _ ->
-    NonEmptyArray.toArray (build <<< flip (uncurry EsIfElse) [] <<< go <$> bs)
-      <> (codegenBlockStatements mode env) def
+    NonEmptyArray.toArray (build <<< flip (uncurry EsIfElse) [] <<< go <$> bs) <> codegenBlockStatements mode env def
   where
   go :: Pair TcoExpr -> Tuple EsExpr (Array EsExpr)
   go (Pair a b@(TcoExpr (TcoAnalysis s) b')) = case b' of
