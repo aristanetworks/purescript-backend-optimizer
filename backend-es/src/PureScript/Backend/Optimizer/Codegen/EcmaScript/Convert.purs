@@ -451,11 +451,10 @@ codegenBlockReturn mode env tcoExpr
           pure $ build $ EsReturn $ Just $ codegenExpr env tcoExpr
 
 codegenBlockBranches :: BlockMode -> CodegenEnv -> Total -> NonEmptyArray (Pair TcoExpr) -> TcoExpr -> Array EsExpr
-codegenBlockBranches mode env total bs def = case total, def of
-  Root Total, def'
-    | mode.return == Discard ->
-        foldr (\p -> pure <<< build <<< uncurry EsIfElse (go p)) (codegenBlockStatements mode env def') bs
-  _, _ ->
+codegenBlockBranches mode env total bs def = case total of
+  Root Total | mode.return == Discard ->
+    foldr (\p -> pure <<< build <<< uncurry EsIfElse (go p)) (codegenBlockStatements mode env def) bs
+  _ ->
     NonEmptyArray.toArray (build <<< flip (uncurry EsIfElse) [] <<< go <$> bs)
       <> (codegenBlockStatements mode env) def
   where
