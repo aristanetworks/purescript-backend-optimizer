@@ -14,7 +14,7 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
@@ -44,7 +44,7 @@ data BackendSemantics
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
-  | SemBranch (NonEmptyArray (Lazy (SemConditional BackendSemantics))) (Maybe (Lazy BackendSemantics))
+  | SemBranch (NonEmptyArray (Lazy (SemConditional BackendSemantics))) (Lazy BackendSemantics)
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
@@ -64,7 +64,7 @@ data BackendSemantics
 
 data SemConditional a = SemConditional a (Maybe (SemTry a) -> a)
 
-type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Maybe (Lazy a))
+type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Lazy a)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
@@ -266,7 +266,7 @@ instance Eval f => Eval (BackendSyntax f) where
     Update lhs updates ->
       evalUpdate env (eval env lhs) (map (eval env) <$> updates)
     Branch branches def ->
-      evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
+      evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
       evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
@@ -349,9 +349,9 @@ instance Eval BackendExpr where
                   []
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
-              $ evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
+              $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
           RewriteDistBranchesOp branches def op ->
-            rewriteBranches dist $ evalBranches env (evalPair env <$> branches) (Just (defer \_ -> eval env def))
+            rewriteBranches dist $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
             where
             dist = case op of
               DistApp spine ->
@@ -527,7 +527,7 @@ evalUpdate initEnv initLhs props =
     _ ->
       NeutUpdate lhs props
 
-evalBranches :: Env -> NonEmptyArray (Lazy (SemConditional BackendSemantics)) -> Maybe (Lazy BackendSemantics) -> BackendSemantics
+evalBranches :: Env -> NonEmptyArray (Lazy (SemConditional BackendSemantics)) -> Lazy BackendSemantics -> BackendSemantics
 evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
   where
   go acc conds def = case Array.uncons conds of
@@ -535,11 +535,11 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
       case force head of
         SemConditional (NeutLit (LitBoolean didMatch)) k ->
           if didMatch then
-            go acc [] (Just (defer \_ -> k (Just (Tuple tail def))))
+            go acc [] (defer \_ -> k (Just (Tuple tail def)))
           else
             go acc tail def
         SemConditional (NeutFail err) _ ->
-          go acc [] (Just (defer \_ -> NeutFail err))
+          go acc [] (defer \_ -> NeutFail err)
         _ ->
           go (Array.snoc acc head) tail def
     Nothing ->
@@ -547,11 +547,7 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
         Just bs ->
           SemBranch bs def
         Nothing ->
-          case def of
-            Just sem ->
-              force sem
-            Nothing ->
-              NeutBacktrack
+          force def
 
 rewriteBranches :: (BackendSemantics -> BackendSemantics) -> BackendSemantics -> BackendSemantics
 rewriteBranches k = go
@@ -562,7 +558,7 @@ rewriteBranches k = go
     SemLetRec a b ->
       SemLetRec a (go <$> b)
     SemBranch bs def ->
-      SemBranch (map (\(SemConditional a b) -> SemConditional a (go <$> b)) <$> bs) (map go <$> def)
+      SemBranch (map (\(SemConditional a b) -> SemConditional a (go <$> b)) <$> bs) (go <$> def)
     sem ->
       k sem
 
@@ -1069,7 +1065,7 @@ quote = go
       let ctx' = ctx { effect = false }
       let quoteCond (SemConditional a k) = Pair (quote ctx' a) (quote ctx (k Nothing))
       let branches' = quoteCond <<< force <$> branches
-      foldr (buildBranchCond ctx) (fromMaybe ExprBacktrack (quote ctx <<< force <$> def)) branches'
+      foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
     SemExtern _ _ sem ->
