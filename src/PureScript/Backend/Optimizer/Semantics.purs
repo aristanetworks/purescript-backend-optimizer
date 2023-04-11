@@ -44,7 +44,7 @@ data BackendSemantics
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
-  | SemBranch (NonEmptyArray (Lazy (SemConditional BackendSemantics))) (Lazy BackendSemantics)
+  | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
@@ -61,7 +61,7 @@ data BackendSemantics
   | NeutPrimEffect (BackendEffect BackendSemantics)
   | NeutPrimUndefined
 
-data SemConditional a = SemConditional a a
+data SemConditional a = SemConditional (Lazy a) (Lazy a)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
@@ -516,21 +516,20 @@ evalUpdate initEnv initLhs props =
     _ ->
       NeutUpdate lhs props
 
-evalBranches :: Env -> NonEmptyArray (Lazy (SemConditional BackendSemantics)) -> Lazy BackendSemantics -> BackendSemantics
+evalBranches :: Env -> NonEmptyArray (SemConditional BackendSemantics) -> Lazy BackendSemantics -> BackendSemantics
 evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
   where
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
-      case force head of
-        SemConditional (NeutLit (LitBoolean didMatch)) d ->
-          if didMatch then
-            go acc [] (defer \_ -> d)
-          else
-            go acc tail def
-        SemConditional (NeutFail err) _ ->
-          go acc [] (defer \_ -> NeutFail err)
-        _ ->
-          go (Array.snoc acc head) tail def
+      case head of
+        SemConditional c t -> case force c of
+          NeutLit (LitBoolean didMatch)
+            | didMatch -> go acc [] t
+            | otherwise -> go acc tail def
+          NeutFail err ->
+            go acc [] (defer \_ -> NeutFail err)
+          _ ->
+            go (Array.snoc acc head) tail def
     Nothing ->
       case NonEmptyArray.fromArray acc of
         Just bs ->
@@ -547,12 +546,12 @@ rewriteBranches k = go
     SemLetRec a b ->
       SemLetRec a (go <$> b)
     SemBranch bs def ->
-      SemBranch (map (\(SemConditional a b) -> SemConditional a (go b)) <$> bs) (go <$> def)
+      SemBranch ((\(SemConditional a b) -> SemConditional a (go <$> b)) <$> bs) (go <$> def)
     sem ->
       k sem
 
-evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
-evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (eval env b)
+evalPair :: forall f. Eval f => Env -> Pair f -> SemConditional BackendSemantics
+evalPair env (Pair a b) = SemConditional (defer \_ -> eval env a) (defer \_ -> eval env b)
 
 evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 evalAssocLet env sem go = case sem of
@@ -1052,8 +1051,8 @@ quote = go
       build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
     SemBranch branches def -> do
       let ctx' = ctx { effect = false }
-      let quoteCond (SemConditional a b) = Pair (quote ctx' a) (quote ctx b)
-      let branches' = quoteCond <<< force <$> branches
+      let quoteCond (SemConditional a b) = Pair (quote ctx' $ force a) (quote ctx $ force b)
+      let branches' = quoteCond <$> branches
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
