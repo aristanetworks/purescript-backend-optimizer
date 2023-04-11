@@ -61,9 +61,7 @@ data BackendSemantics
   | NeutPrimEffect (BackendEffect BackendSemantics)
   | NeutPrimUndefined
 
-data SemConditional a = SemConditional a ((SemTry a) -> a)
-
-type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Lazy a)
+data SemConditional a = SemConditional a a
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
@@ -524,9 +522,9 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
       case force head of
-        SemConditional (NeutLit (LitBoolean didMatch)) k ->
+        SemConditional (NeutLit (LitBoolean didMatch)) d ->
           if didMatch then
-            go acc [] (defer \_ -> k (Tuple tail def))
+            go acc [] (defer \_ -> d)
           else
             go acc tail def
         SemConditional (NeutFail err) _ ->
@@ -549,12 +547,12 @@ rewriteBranches k = go
     SemLetRec a b ->
       SemLetRec a (go <$> b)
     SemBranch bs def ->
-      SemBranch (map (\(SemConditional a b) -> SemConditional a (go <$> b)) <$> bs) (go <$> def)
+      SemBranch (map (\(SemConditional a b) -> SemConditional a (go b)) <$> bs) (go <$> def)
     sem ->
       k sem
 
 evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
-evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (\_ -> eval env b)
+evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (eval env b)
 
 evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 evalAssocLet env sem go = case sem of
@@ -1054,7 +1052,7 @@ quote = go
       build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
     SemBranch branches def -> do
       let ctx' = ctx { effect = false }
-      let quoteCond (SemConditional a k) = Pair (quote ctx' a) (quote ctx (k (Tuple [] def)))
+      let quoteCond (SemConditional a b) = Pair (quote ctx' a) (quote ctx b)
       let branches' = quoteCond <<< force <$> branches
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
