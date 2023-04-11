@@ -55,7 +55,6 @@ data BackendSemantics
   | NeutUpdate BackendSemantics (Array (Prop BackendSemantics))
   | NeutLit (Literal BackendSemantics)
   | NeutFail String
-  | NeutBacktrack
   | NeutUncurriedApp BackendSemantics (Array BackendSemantics)
   | NeutUncurriedEffectApp BackendSemantics (Array BackendSemantics)
   | NeutPrimOp (BackendOperator BackendSemantics)
@@ -69,7 +68,6 @@ type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Lazy a)
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
   | ExprRewrite BackendAnalysis BackendRewrite
-  | ExprBacktrack
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -126,7 +124,6 @@ instance HasAnalysis BackendExpr where
   analysisOf = case _ of
     ExprSyntax s _ -> s
     ExprRewrite s _ -> s
-    ExprBacktrack -> mempty
 
 instance HasSyntax BackendExpr where
   syntaxOf = case _ of
@@ -368,8 +365,6 @@ instance Eval BackendExpr where
                 evalPrimOp env <<< Op2 op2 (eval env lhs)
       ExprSyntax _ expr ->
         eval env expr
-      ExprBacktrack ->
-        NeutBacktrack
 
 instance Eval NeutralExpr where
   eval env (NeutralExpr a) = eval env a
@@ -1133,8 +1128,6 @@ quote = go
       build ctx PrimUndefined
     NeutFail err ->
       build ctx $ Fail err
-    NeutBacktrack ->
-      ExprBacktrack
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of
@@ -1247,8 +1240,6 @@ buildBranchCond ctx (Pair a b) c = case b of
     , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2))) <- c
     , isSameVariable x1 x2 ->
         c
-  ExprBacktrack ->
-    c
   _ ->
     build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
   where
@@ -1603,8 +1594,6 @@ freeze init = Tuple (analysisOf init) (go init)
               NeutralExpr $ PrimOp $ Op2 op2 branches' (go rhs)
             DistPrimOp2R lhs op2 ->
               NeutralExpr $ PrimOp $ Op2 op2 (go lhs) branches'
-    ExprBacktrack ->
-      NeutralExpr $ Fail "Failed pattern match"
 
 evalMkFn :: Env -> Int -> BackendSemantics -> MkFn BackendSemantics
 evalMkFn env n sem
