@@ -61,7 +61,7 @@ data BackendSemantics
   | NeutPrimEffect (BackendEffect BackendSemantics)
   | NeutPrimUndefined
 
-data SemConditional a = SemConditional a (Maybe (SemTry a) -> a)
+data SemConditional a = SemConditional a ((SemTry a) -> a)
 
 type SemTry a = Tuple (Array (Lazy (SemConditional a))) (Lazy a)
 
@@ -166,7 +166,6 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
-  , branchTry :: Maybe (SemTry BackendSemantics)
   }
 
 derive instance Newtype Env _
@@ -197,9 +196,6 @@ addStop (Env env) ref acc = Env env
       ref
       env.directives
   }
-
-withBranchTry :: Env -> Maybe (SemTry BackendSemantics) -> Env
-withBranchTry (Env env) branchTry = Env env { branchTry = branchTry }
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -530,7 +526,7 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
       case force head of
         SemConditional (NeutLit (LitBoolean didMatch)) k ->
           if didMatch then
-            go acc [] (defer \_ -> k (Just (Tuple tail def)))
+            go acc [] (defer \_ -> k (Tuple tail def))
           else
             go acc tail def
         SemConditional (NeutFail err) _ ->
@@ -558,7 +554,7 @@ rewriteBranches k = go
       k sem
 
 evalPair :: forall f. Eval f => Env -> Pair f -> Lazy (SemConditional BackendSemantics)
-evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (flip eval b <<< withBranchTry env)
+evalPair env (Pair a b) = defer \_ -> SemConditional (eval env a) (\_ -> eval env b)
 
 evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 evalAssocLet env sem go = case sem of
@@ -1058,7 +1054,7 @@ quote = go
       build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
     SemBranch branches def -> do
       let ctx' = ctx { effect = false }
-      let quoteCond (SemConditional a k) = Pair (quote ctx' a) (quote ctx (k Nothing))
+      let quoteCond (SemConditional a k) = Pair (quote ctx' a) (quote ctx (k (Tuple [] def)))
       let branches' = quoteCond <<< force <$> branches
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
