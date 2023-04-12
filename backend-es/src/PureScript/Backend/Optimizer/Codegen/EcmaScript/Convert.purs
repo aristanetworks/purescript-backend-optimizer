@@ -387,7 +387,7 @@ codegenBlockStatements = go []
             TcoExpr _ (Branch bs def) -> do
               let lines = codegenBlockBranches (mode { return = Discard }) env bs def -- TODO
               go (acc <> lines) mode env body
-            _ -> do            
+            _ -> do
               let line = codegenBindEffect env eff
               go (Array.snoc acc line) mode env body
     EffectBind ident lvl eff body
