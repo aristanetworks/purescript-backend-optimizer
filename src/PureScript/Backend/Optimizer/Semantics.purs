@@ -1224,8 +1224,8 @@ buildBranchCond ctx (Pair a b) c = case b of
         c
     | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
         a
-    | x@(ExprSyntax _ x') <- c, isBooleanTail x' ->
-        build ctx (PrimOp (Op2 OpBooleanOr a x))
+    | ExprSyntax _ x <- c, isBooleanTail x ->
+        build ctx (PrimOp (Op2 OpBooleanOr a c))
   ExprSyntax _ (Lit (LitBoolean false))
     | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
         c
