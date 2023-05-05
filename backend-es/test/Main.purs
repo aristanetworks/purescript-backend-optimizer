@@ -77,7 +77,7 @@ main = do
 runSnapshotTests :: TestArgs -> Aff Unit
 runSnapshotTests { accept, filter } = do
   liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
-  spawnFromParent "spago" [ "build", "-u", "-g corefn" ]
+  spawnFromParent "spago" [ "build", "-u", "-g", "corefn" ]
   snapshotDir <- liftEffect Process.cwd
   snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
