@@ -70,7 +70,7 @@ import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
-import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName(..), Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
+import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
 import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
@@ -622,13 +622,8 @@ binderToPattern dataTypes implementations = case _ of
   lookupCtorFields ty ctor =
     case importedCtorFields <|> localCtorFields of
       Just fields -> fields
-      Nothing -> unsafeCrashWith $ "Unable to get fields for type [" <> printQP ty <> "]'s constructor [" <> printQI ctor <> "]"
+      Nothing -> unsafeCrashWith "Invariant broken: could not determine pattern matched constructor's fields during conversion."
     where
-    printQ :: forall a. (a -> String) -> Qualified a -> String
-    printQ printS (Qualified mbMod s) = maybe (printS s) (\(ModuleName mn) -> mn <> "." <> printS s) mbMod
-    printQP = printQ (\(ProperName s) -> s)
-    printQI = printQ (\(Ident i) -> i)
-
     importedCtorFields = case Map.lookup ctor implementations of
       Just (Tuple _ (ExternCtor _ _ _ _ fields)) -> Just fields
       _ -> Nothing
