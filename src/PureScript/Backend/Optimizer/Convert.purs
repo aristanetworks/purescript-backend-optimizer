@@ -444,7 +444,7 @@ toBackendExpr = case _ of
           makeLet Nothing (toBackendExpr expr) \tmp ->
             next (Array.snoc idents tmp)
       )
-      ( \idents -> do
+      ( \idents ->
           toInitialCaseRows idents alts \caseRows ->
             buildCaseTreeFromRows caseRows
       )
