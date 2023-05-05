@@ -233,7 +233,7 @@ toBackendTopLevelBindingGroup env = case _ of
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives, branchTry: Nothing }
+  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives }
   let backendExpr = toBackendExpr cfn env
   let Tuple impl expr' = toExternImpl env group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
   { accum: env
@@ -706,7 +706,7 @@ buildCaseLeaf row0 tailRows = do
             pairs <- for gs \(Tuple pred bodyFn) ->
               Pair <$> toBackendExpr pred <*> callFn bodyFn args
             fallback <- buildCaseTreeFromRows tailRows
-            buildM $ Branch pairs (Just fallback)
+            buildM $ Branch pairs fallback
         )
         orderedArgs
         []
@@ -940,7 +940,7 @@ makeGuard
   -> ConvertM BackendExpr
   -> ConvertM BackendExpr
 makeGuard lvl g inner def =
-  make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) (Just def)
+  make $ Branch (NonEmptyArray.singleton (Pair (make (g (make (Local Nothing lvl)))) inner)) def
 
 makeUncurriedAbs
   :: Array Ident

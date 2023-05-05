@@ -314,7 +314,7 @@ analyze externAnalysis expr = case expr of
       analysisOf a
         <> capture CaptureBranch (analysisOf b)
         <> capture CaptureBranch (foldMap (foldMap analysisOf) (NonEmptyArray.tail bs))
-        <> capture CaptureBranch (foldMap analysisOf def)
+        <> capture CaptureBranch (analysisOf def)
   Fail _ ->
     complex NonTrivial
       $ analyzeDefault expr
