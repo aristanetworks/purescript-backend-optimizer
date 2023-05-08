@@ -1509,11 +1509,11 @@ optimize ctx env (Qualified mn (Ident id)) initN = go initN
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
-        case expr2 of
-          ExprSyntax (BackendAnalysis { rewrite }) _ | not rewrite ->
-            expr2
-          _ ->
-            go (n - 1) expr2
+        let BackendAnalysis { rewrite } = analysisOf expr2
+        if rewrite then
+          go (n - 1) expr2
+        else
+          expr2
 
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) (go init)
