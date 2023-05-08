@@ -10,7 +10,7 @@ import Effect.Aff (Aff, Error, effectCanceler, error, makeAff, throwError)
 import Effect.Class (liftEffect)
 import Node.Buffer (Buffer, freeze)
 import Node.Buffer.Immutable as ImmutableBuffer
-import Node.ChildProcess (ExecResult, Exit(..), defaultExecOptions, defaultSpawnOptions, inherit)
+import Node.ChildProcess (ChildProcess, ExecResult, Exit(..), defaultExecOptions)
 import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
@@ -24,7 +24,7 @@ import Node.Stream as Stream
 
 spawnFromParent :: String -> Array String -> Aff Unit
 spawnFromParent command args = makeAff \k -> do
-  childProc <- ChildProcess.spawn command args defaultSpawnOptions { stdio = inherit }
+  childProc <- spawnImpl command args
   ChildProcess.onExit childProc case _ of
     Normally code
       | code > 0 -> Process.exit code
@@ -46,6 +46,9 @@ bufferToUTF8 = liftEffect <<< map (ImmutableBuffer.toString UTF8) <<< freeze
 
 mkdirp :: FilePath -> Aff Unit
 mkdirp path = FS.mkdir' path { recursive: true, mode: mkPerms Perms.all Perms.all Perms.all }
+
+-- This is needed because node-child-process is missing the "shell" option.
+foreign import spawnImpl :: String -> Array String -> Effect ChildProcess
 
 foreign import loadModuleMainImpl :: (Error -> Effect Unit) -> (Effect Unit -> Effect Unit) -> Effect Unit -> FilePath -> Effect Unit
 
