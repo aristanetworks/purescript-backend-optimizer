@@ -26,7 +26,7 @@ import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esEscapeIdent)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (class ToEsIdent, EsArrayElement(..), EsBinaryOp(..), EsBindingPattern(..), EsExpr(..), EsIdent(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, esArrowFunction, esAssignIdent, esBinding, esCurriedFunction, esLazyBinding, printIdentString, toEsIdent, toEsIdentWith)
-import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoUsage(..), Total(..), tcoAnalysisOf)
+import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoExpr(..), TcoPop, TcoRef(..), TcoRole, TcoScope, TcoScopeItem, TcoUsage(..), tcoAnalysisOf)
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
@@ -375,7 +375,7 @@ codegenBlockStatements = go []
           let line = esBinding (toEsIdent ident') (codegenExpr env binding)
           go (Array.snoc acc line) mode env' body
     Branch bs def ->
-      acc <> codegenBlockBranches mode env analysis.total bs def
+      acc <> codegenBlockBranches mode env bs def
     EffectBind ident lvl (TcoExpr _ (PrimEffect (EffectRefNew val))) body
       | mode.effect && canUnboxRef (TcoLocal ident lvl) (tcoAnalysisOf body) -> do
           let Tuple ident' env' = freshName RefUnboxed ident lvl env
@@ -384,8 +384,8 @@ codegenBlockStatements = go []
     EffectBind ident lvl eff body
       | mode.effect && totalUsagesOf (TcoLocal ident lvl) (tcoAnalysisOf body) == 0 ->
           case eff of
-            TcoExpr (TcoAnalysis { total: Root Total }) (Branch bs def) -> do
-              let lines = codegenBlockBranches (mode { return = Discard }) env (Root Total) bs def -- TODO
+            TcoExpr _ (Branch bs def) -> do
+              let lines = codegenBlockBranches (mode { return = Discard }) env bs def -- TODO
               go (acc <> lines) mode env body
             _ -> do
               let line = codegenBindEffect env eff
@@ -450,19 +450,17 @@ codegenBlockReturn mode env tcoExpr
         Return ->
           pure $ build $ EsReturn $ Just $ codegenExpr env tcoExpr
 
-codegenBlockBranches :: BlockMode -> CodegenEnv -> Total -> NonEmptyArray (Pair TcoExpr) -> Maybe TcoExpr -> Array EsExpr
-codegenBlockBranches mode env total bs def = case total, def of
-  Root Total, Just def'
-    | mode.return == Discard ->
-        foldr (\p -> pure <<< build <<< uncurry EsIfElse (go p)) (codegenBlockStatements mode env def') bs
-  _, _ ->
-    NonEmptyArray.toArray (build <<< flip (uncurry EsIfElse) [] <<< go <$> bs)
-      <> maybe [] (codegenBlockStatements mode env) def
+codegenBlockBranches :: BlockMode -> CodegenEnv -> NonEmptyArray (Pair TcoExpr) -> TcoExpr -> Array EsExpr
+codegenBlockBranches mode env bs def = case mode.return of
+  Discard ->
+    foldr (\p -> pure <<< build <<< uncurry EsIfElse (go p)) (codegenBlockStatements mode env def) bs
+  _ ->
+    NonEmptyArray.toArray (build <<< flip (uncurry EsIfElse) [] <<< go <$> bs) <> codegenBlockStatements mode env def
   where
   go :: Pair TcoExpr -> Tuple EsExpr (Array EsExpr)
-  go (Pair a b@(TcoExpr (TcoAnalysis s) b')) = case b' of
+  go (Pair a b@(TcoExpr _ b')) = case b' of
     Branch next nextDef ->
-      Tuple (codegenExpr env a) $ codegenBlockBranches mode env s.total next nextDef
+      Tuple (codegenExpr env a) $ codegenBlockBranches mode env next nextDef
     _ ->
       Tuple (codegenExpr env a) $ codegenBlockStatements mode env b
 

@@ -28,7 +28,7 @@ data BackendSyntax a
   | EffectBind (Maybe Ident) Level a a
   | EffectPure a
   | EffectDefer a
-  | Branch (NonEmptyArray (Pair a)) (Maybe a)
+  | Branch (NonEmptyArray (Pair a)) a
   | PrimOp (BackendOperator a)
   | PrimEffect (BackendEffect a)
   | PrimUndefined
@@ -144,7 +144,7 @@ instance Foldable BackendSyntax where
     EffectBind _ _ b c -> f b <> f c
     EffectPure a -> f a
     EffectDefer a -> f a
-    Branch as b -> foldMap (foldMap f) as <> foldMap f b
+    Branch as b -> foldMap (foldMap f) as <> f b
     PrimOp a -> foldMap f a
     PrimEffect a -> foldMap f a
     PrimUndefined -> mempty
@@ -199,7 +199,7 @@ instance Traversable BackendSyntax where
     EffectDefer a ->
       EffectDefer <$> f a
     Branch as b ->
-      Branch <$> traverse (traverse f) as <*> traverse f b
+      Branch <$> traverse (traverse f) as <*> f b
     PrimOp a ->
       PrimOp <$> traverse f a
     PrimEffect a ->
