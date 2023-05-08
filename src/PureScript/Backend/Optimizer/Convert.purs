@@ -67,10 +67,11 @@ import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR, sequence, traverse)
+import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
-import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName)
+import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
 import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
@@ -454,8 +455,8 @@ toBackendExpr = case _ of
   toInitialCaseRows idents alts useCaseRowsCb =
     foldr
       ( \(CaseAlternative bs g) mainCb caseRows -> do
+          patterns <- Array.zipWithA (\ident b -> { column: ident, pattern: _ } <$> binderToPattern b) idents bs
           let
-            patterns = Array.zipWith (\ident b -> { column: ident, pattern: binderToPattern b }) idents bs
             args = Array.sort $ foldMap patternVars patterns
             buildCaseRow guardFn = { patterns, guardFn, vars: SemigroupMap Map.empty }
 
@@ -533,14 +534,13 @@ data PatternCase
 derive instance Eq PatternCase
 derive instance Ord PatternCase
 
-binderToPattern :: Binder Ann -> Pattern
+binderToPattern :: Binder Ann -> ConvertM Pattern
 binderToPattern = case _ of
   BinderNull _ -> primitivePattern PatWild
   BinderVar _ var ->
-    Pattern { vars: Set.singleton var, patternCase: PatWild, subterms: [] }
-  BinderNamed _ var next -> do
-    let (Pattern r) = binderToPattern next
-    Pattern r { vars = Set.insert var r.vars }
+    pure $ Pattern { vars: Set.singleton var, patternCase: PatWild, subterms: [] }
+  BinderNamed _ var next ->
+    map (over Pattern \r -> r { vars = Set.insert var r.vars }) $ binderToPattern next
   BinderLit _ lit -> case lit of
     LitInt a -> primitivePattern $ PatInt a
     LitNumber a -> primitivePattern $ PatNumber a
@@ -570,25 +570,29 @@ binderToPattern = case _ of
           binderToPattern arg
       | otherwise ->
           unsafeCrashWith "Newtype binder didn't wrap 1 arg"
-    Just (IsConstructor ProductType _) ->
+    Just (IsConstructor ProductType _) -> do
+      ctorFields <- lookupCtorFields tyName ctorName
+      let argsWithNames = Array.zip args ctorFields
       -- We cannot safely expand the fields here because the number of columns
       -- would change. So, any later rows' `BinderNull` or `BinderVar` would not similarly be expanded.
       ctorPattern
         (PatProduct tyName ctorName)
-        args
-        (\idx _ -> GetOffset idx)
-        identity
-    Just (IsConstructor SumType _) ->
+        argsWithNames
+        (\idx (Tuple _ fieldName) -> GetCtorField ctorName ProductType (unQualified tyName) (unQualified ctorName) fieldName idx)
+        fst
+    Just (IsConstructor SumType _) -> do
+      ctorFields <- lookupCtorFields tyName ctorName
+      let argsWithNames = Array.zip args ctorFields
       ctorPattern
         (PatSum tyName ctorName)
-        args
-        (\idx _ -> GetOffset idx)
-        identity
+        argsWithNames
+        (\idx (Tuple _ fieldName) -> GetCtorField ctorName SumType (unQualified tyName) (unQualified ctorName) fieldName idx)
+        fst
     _ ->
       unsafeCrashWith "binderToPattern - invalid meta"
   where
-  primitivePattern :: PatternCase -> Pattern
-  primitivePattern patternCase = Pattern { vars: Set.empty, patternCase, subterms: [] }
+  primitivePattern :: PatternCase -> ConvertM Pattern
+  primitivePattern patternCase = pure $ Pattern { vars: Set.empty, patternCase, subterms: [] }
 
   ctorPattern
     :: forall a
@@ -596,15 +600,35 @@ binderToPattern = case _ of
     -> Array a
     -> (Int -> a -> BackendAccessor)
     -> (a -> Binder Ann)
-    -> Pattern
-  ctorPattern patternCase args buildAccessor toBinder = Pattern
-    { vars: Set.empty
-    , patternCase
-    , subterms: args # mapWithIndex \idx nextArg ->
-        { accessor: buildAccessor idx nextArg
-        , pattern: binderToPattern $ toBinder nextArg
+    -> ConvertM Pattern
+  ctorPattern patternCase args buildAccessor toBinder = ado
+    subterms <- forWithIndex args \idx nextArg -> ado
+      pattern <- binderToPattern $ toBinder nextArg
+      in { accessor: buildAccessor idx nextArg, pattern }
+    in
+      Pattern
+        { vars: Set.empty
+        , patternCase
+        , subterms
         }
-    }
+
+  lookupCtorFields
+    :: Qualified ProperName
+    -> Qualified Ident
+    -> ConvertM (Array String)
+  lookupCtorFields ty ctor = do
+    { dataTypes, implementations } <- ask
+    case importedCtorFields implementations <|> localCtorFields dataTypes of
+      Just fields -> pure fields
+      Nothing -> unsafeCrashWith "Invariant broken: could not determine pattern matched constructor's fields during conversion."
+    where
+    importedCtorFields implementations = case Map.lookup ctor implementations of
+      Just (Tuple _ (ExternCtor _ _ _ _ fields)) -> Just fields
+      _ -> Nothing
+
+    localCtorFields dataTypes = do
+      { constructors } <- Map.lookup (unQualified ty) dataTypes
+      _.fields <$> Map.lookup (unQualified ctor) constructors
 
 patternVars :: forall r. { pattern :: Pattern | r } -> Array Ident
 patternVars { pattern: Pattern { vars, subterms } } =

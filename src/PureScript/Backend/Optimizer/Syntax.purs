@@ -51,7 +51,7 @@ sndPair (Pair _ a) = a
 data BackendAccessor
   = GetProp String
   | GetIndex Int
-  | GetOffset Int
+  | GetCtorField (Qualified Ident) ConstructorType ProperName Ident String Int
 
 derive instance Eq BackendAccessor
 derive instance Ord BackendAccessor

@@ -278,7 +278,7 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
         codegenEffectBlock env tcoExpr
   Accessor a (GetProp prop) ->
     build $ EsAccess (codegenExpr env a) prop
-  Accessor a (GetOffset ix) ->
+  Accessor a (GetCtorField _ _ _ _ _ ix) ->
     build $ EsAccess (codegenExpr env a) ("_" <> show (ix + 1))
   Accessor a (GetIndex ix) ->
     build $ EsIndex (codegenExpr env a) (build (EsInt ix))
