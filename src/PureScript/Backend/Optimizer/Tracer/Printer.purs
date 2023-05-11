@@ -51,9 +51,8 @@ printSteps modName allSteps = do
       | otherwise =
           { idx: acc.idx + 1
           , value:
-              D.lines
+              D.foldWithSeparator (D.break <> D.break <> (D.text $ power "=" 15) <> D.break <> D.break)
                 [ acc.value
-                , D.text $ power "=" 15
                 , foldlWithIndex (foldStep ident (NonEmptyArray.length steps - 1)) mempty $ NonEmptyArray.toArray steps
                 ]
           }
