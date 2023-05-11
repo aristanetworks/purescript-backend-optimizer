@@ -2,6 +2,7 @@ module PureScript.Backend.Optimizer.Tracer.Printer where
 
 import Prelude
 
+import Data.Array (fold)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, foldMap1)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -23,7 +24,17 @@ printSteps modName allSteps = do
       D.lines
         [ D.words
             [ printQualifiedIdent $ Qualified (Just modName) ident
-            , D.text $ if idx == 0 then "(Original expression)" else "(Step " <> show idx <> ("; Final" # guard (idx == lastIdx)) <> ")"
+            , wrapInParens $ fold
+                [ D.words
+                    [ D.text $ "Step"
+                    , D.text $ show idx
+                    ]
+                , case idx == 0, idx == lastIdx of
+                    true, true -> D.text "; Original/Final"
+                    true, _ -> D.text "; Original"
+                    _, true -> D.text "; Final"
+                    _, _ -> mempty
+                ]
             ]
         , D.indent $ printBackendExpr step
         ]
