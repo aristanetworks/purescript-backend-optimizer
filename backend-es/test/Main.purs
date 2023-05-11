@@ -43,12 +43,20 @@ import PureScript.Backend.Optimizer.CoreFn (Comment(..), Module(..), ModuleName(
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
+import PureScript.Backend.Optimizer.Tracer.Printer (printSteps)
 import Test.Utils (bufferToUTF8, copyFile, execWithStdin, loadModuleMain, mkdirp, spawnFromParent)
 
 type TestArgs =
   { accept :: Boolean
   , filter :: NonEmptyArray String
+  , shouldTrace :: Maybe TraceChoice
   }
+
+data TraceChoice
+  = TraceToSnapshotsOut
+  | TraceToStdOut
+
+derive instance Eq TraceChoice
 
 argParser :: ArgParser TestArgs
 argParser =
@@ -63,6 +71,16 @@ argParser =
           "Filter tests matching a prefix"
           # ArgParser.unfolded1
           # ArgParser.default (pure "Snapshot.*")
+    , shouldTrace:
+        ArgParser.argument [ "--trace", "-t" ]
+          "Trace optimization steps to stdout ('stdout') or to the corresponding file in the `snapshots-out` dir ('snapshots'). Disabled when unused."
+          # ArgParser.unformat "OPTION"
+              ( case _ of
+                  "stdout" -> Right TraceToStdOut
+                  "snapshots" -> Right TraceToSnapshotsOut
+                  x -> Left $ "Expected 'stdout' or 'snapshots' but got '" <> x <> "'"
+              )
+          # ArgParser.optional
     }
 
 main :: Effect Unit
@@ -75,7 +93,7 @@ main = do
       launchAff_ $ runSnapshotTests args
 
 runSnapshotTests :: TestArgs -> Aff Unit
-runSnapshotTests { accept, filter } = do
+runSnapshotTests { accept, filter, shouldTrace } = do
   liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
   spawnFromParent "spago" [ "build -u \"-g corefn\"" ]
   snapshotDir <- liftEffect Process.cwd
@@ -92,6 +110,7 @@ runSnapshotTests { accept, filter } = do
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
+      let tracingEnabled = isJust shouldTrace
       copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       coreFnModules # buildModules
         { directives
@@ -117,6 +136,18 @@ runSnapshotTests { accept, filter } = do
             let padding = power " " (SCU.length total - SCU.length index)
             Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
             pure coreFnMod
+        , traceOptimization: \filePath _ _ -> do
+            tracingEnabled && (isJust $ String.stripPrefix (String.Pattern "./Snapshot") filePath)
+        , onTraceSteps: \_ modName@(ModuleName name) allSteps -> for_ shouldTrace \traceChoice -> do
+            let doc = printSteps modName allSteps
+            case traceChoice of
+              TraceToStdOut ->
+                Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
+              TraceToSnapshotsOut -> do
+                let modPath = Path.concat [ snapshotsOut, name ]
+                mkdirp modPath
+                FS.writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
+                  $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
         }
       outputModules <- liftEffect $ Ref.read outputRef
       results <- forWithIndex outputModules \name (Tuple output failsWith) -> do

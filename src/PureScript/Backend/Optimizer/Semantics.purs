@@ -12,6 +12,7 @@ import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
+import Data.List.NonEmpty as NonEmptyList
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -1514,6 +1515,24 @@ optimize ctx env (Qualified mn (Ident id)) initN = go initN
           go (n - 1) expr2
         else
           expr2
+
+optimizeWithSteps :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (NonEmptyArray BackendExpr) BackendExpr
+optimizeWithSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
+  go (pure originalExpr) initN originalExpr
+  where
+  go steps n expr1
+    | n == 0 = do
+        -- expr1
+        let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
+        unsafeCrashWith $ name <> ": Possible infinite optimization loop."
+    | otherwise = do
+        let expr2 = quote ctx (eval env expr1)
+        let BackendAnalysis { rewrite } = analysisOf expr2
+        let updatedSteps = NonEmptyList.cons expr2 steps
+        if rewrite then
+          go updatedSteps (n - 1) expr2
+        else
+          Tuple (NonEmptyArray.reverse $ NonEmptyArray.fromFoldable1 updatedSteps) expr2
 
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) (go init)

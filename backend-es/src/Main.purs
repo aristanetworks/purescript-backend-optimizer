@@ -14,6 +14,8 @@ import Data.Monoid (guard, power)
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(..))
 import Data.Set as Set
+import Data.Set.NonEmpty (NonEmptySet)
+import Data.Set.NonEmpty as NonEmptySet
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
@@ -38,8 +40,9 @@ import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
-import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
-import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
+import PureScript.Backend.Optimizer.CoreFn (Ident, Module(..), ModuleName(..), Qualified(..))
+import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics, qualified)
+import PureScript.Backend.Optimizer.Tracer.Printer (printSteps)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -51,6 +54,7 @@ type BuildArgs =
   , foreignDir :: Maybe FilePath
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
+  , traceIdentifiers :: Maybe (NonEmptySet (Qualified Ident))
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -79,6 +83,17 @@ buildArgsParser =
           "Use integers for tags in codegen instead of strings."
           # ArgParser.boolean
           # ArgParser.default false
+    , traceIdentifiers:
+        ArgParser.argument [ "--trace" ]
+          "Trace the optimizations done for a single top-level identifier (e.g. Module.identifier) (optional)."
+          # ArgParser.unformat "Path.To.Module.identifier"
+              ( \s -> do
+                  case Array.unsnoc $ String.split (Pattern ".") s of
+                    Nothing -> Left $ "Module name not specified: " <> s
+                    Just { init, last } -> Right $ qualified (String.joinWith "." init) last
+              )
+          # ArgParser.many
+          <#> NonEmptySet.fromFoldable
     }
 
 data TargetPlatform = Browser | Node
@@ -221,7 +236,24 @@ main cliRoot =
         let padding = power " " (SCU.length total - SCU.length index)
         Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
         pure coreFnMod
+    , onTraceSteps
+    , traceOptimization
     }
+    where
+    { onTraceSteps, traceOptimization } = case args.traceIdentifiers of
+      Nothing ->
+        { traceOptimization: \_ _ _ -> false
+        , onTraceSteps: \_ _ _ -> pure unit
+        }
+      Just idents ->
+        { traceOptimization: \_ modName ident -> NonEmptySet.member (Qualified (Just modName) ident) idents
+        , onTraceSteps: \_ modName@(ModuleName name) allSteps -> do
+            let doc = printSteps modName allSteps
+            let modPath = Path.concat [ args.outputDir, name ]
+            mkdirp modPath
+            writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
+              $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
+        }
 
   bundleCmd :: Boolean -> BundleArgs -> BuildArgs -> Aff Unit
   bundleCmd shouldInvokeMain bundleArgs args = do

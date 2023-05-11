@@ -28,7 +28,7 @@ import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules)
-import PureScript.Backend.Optimizer.Convert (BackendModule)
+import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, ModuleName(..), Qualified)
 import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
@@ -87,6 +87,8 @@ basicBuildMain
      , onCodegenAfter :: Aff Unit
      , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
      , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
+     , traceOptimization :: String -> ModuleName -> Ident -> Boolean
+     , onTraceSteps :: String -> ModuleName -> OptimizationSteps -> Aff Unit
      }
   -> Aff Unit
 basicBuildMain options = do
@@ -108,5 +110,7 @@ basicBuildMain options = do
         , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule
+        , onTraceSteps: options.onTraceSteps
+        , traceOptimization: options.traceOptimization
         }
       options.onCodegenAfter

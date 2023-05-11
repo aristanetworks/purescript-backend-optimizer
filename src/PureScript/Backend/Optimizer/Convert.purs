@@ -52,6 +52,7 @@ import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Bifunctor (lmap)
 import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
@@ -73,7 +74,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize, optimizeWithSteps)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -106,6 +107,8 @@ type ConvertEnv =
   , toLevel :: Map Ident Level
   , implementations :: BackendImplementations
   , moduleImplementations :: BackendImplementations
+  , optimizationSteps :: OptimizationSteps
+  , traceOptimization :: ModuleName -> Ident -> Boolean
   , directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , rewriteLimit :: Int
@@ -113,7 +116,7 @@ type ConvertEnv =
 
 type ConvertM = Function ConvertEnv
 
-toBackendModule :: Module Ann -> ConvertM BackendModule
+toBackendModule :: Module Ann -> ConvertM (Tuple OptimizationSteps BackendModule)
 toBackendModule (Module mod) env = do
   let
     directives :: DirectiveHeaderResult
@@ -196,17 +199,18 @@ toBackendModule (Module mod) env = do
       mn <- qualifiedModuleName qi
       mn <$ guard (mn /= mod.name && mn /= ModuleName "Prim")
 
-  { name: mod.name
-  , comments: mod.comments
-  , imports: usedImports
-  , dataTypes: Map.filter (Array.any (isBindingUsed usedBindings.accum) <<< Map.toUnfoldable <<< _.constructors) dataTypes
-  , bindings: usedBindings.value
-  , exports: localExports
-  , reExports: Set.fromFoldable mod.reExports
-  , implementations: moduleBindings.accum.moduleImplementations
-  , directives: directives.exports
-  , foreign: Set.fromFoldable mod.foreign
-  }
+  Tuple moduleBindings.accum.optimizationSteps $
+    { name: mod.name
+    , comments: mod.comments
+    , imports: usedImports
+    , dataTypes: Map.filter (Array.any (isBindingUsed usedBindings.accum) <<< Map.toUnfoldable <<< _.constructors) dataTypes
+    , bindings: usedBindings.value
+    , exports: localExports
+    , reExports: Set.fromFoldable mod.reExports
+    , implementations: moduleBindings.accum.moduleImplementations
+    , directives: directives.exports
+    , foreign: Set.fromFoldable mod.foreign
+    }
 
 type WithDeps = Tuple (Set (Qualified Ident))
 
@@ -232,14 +236,28 @@ toBackendTopLevelBindingGroup env = case _ of
   overValue f a =
     a { value = f a.value }
 
+-- | For the NonEmptyArray,
+-- | - `head` = the original expression
+-- | - `last` = the final optimized expression
+-- | - everything in-between the two are the steps that were taken from `head` to `last`
+type OptimizationSteps = Map Ident (NonEmptyArray BackendExpr)
+
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives }
+  let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
-  let Tuple impl expr' = toExternImpl env group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
+  let
+    Tuple mbSteps optimizedExpr =
+      if env.traceOptimization env.currentModule ident then do
+        lmap Just $ optimizeWithSteps (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr
+      else do
+        Tuple Nothing $ optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr
+  let Tuple impl expr' = toExternImpl env group optimizedExpr
   { accum: env
-      { implementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.implementations
-      , moduleImplementations = Map.insert (Qualified (Just env.currentModule) ident) impl env.moduleImplementations
+      { implementations = Map.insert qualifiedIdent impl env.implementations
+      , moduleImplementations = Map.insert qualifiedIdent impl env.moduleImplementations
+      , optimizationSteps = maybe env.optimizationSteps (\steps -> Map.insert ident steps env.optimizationSteps) mbSteps
       , directives =
           case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
             Just dirs ->
