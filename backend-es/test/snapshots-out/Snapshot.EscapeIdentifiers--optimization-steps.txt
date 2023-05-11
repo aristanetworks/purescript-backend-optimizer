@@ -1,0 +1,17 @@
+Snapshot.EscapeIdentifiers.Wat$Dict (Step 0; Original)
+  (\x@v0 -> 
+    x@v0
+  )
+---------------
+Snapshot.EscapeIdentifiers.Wat$Dict (Step 1; Final)
+  (\x@v0 -> 
+    x@v0
+  )
+
+===============
+
+Snapshot.EscapeIdentifiers.wat"a.b ?$$ \" \u2192" (Step 0; Original)
+  }
+---------------
+Snapshot.EscapeIdentifiers.wat"a.b ?$$ \" \u2192" (Step 1; Final)
+  }

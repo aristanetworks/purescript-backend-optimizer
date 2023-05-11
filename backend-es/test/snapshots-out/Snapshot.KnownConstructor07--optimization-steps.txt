@@ -1,0 +1,120 @@
+Snapshot.KnownConstructor07.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.KnownConstructor07.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.KnownConstructor07.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringInt)
+---------------
+Snapshot.KnownConstructor07.sub (Step 1; Final)
+  Data.Ring.intSub
+
+===============
+
+Snapshot.KnownConstructor07.test (Step 0; Original)
+  (\f@v0 -> \y@v1 -> 
+    let z@v2 =
+      (f@v0 y@v1);
+    let a@v3 =
+      { foo =
+          z@v2
+      , bar =
+          z@v2
+      };
+    let b@v4 =
+      {#- Rewrite - Inline -#}
+      let v@v4 =
+        a@v3;
+      { foo =
+          ((Snapshot.KnownConstructor07.add (
+            a@v3
+          ).foo) 1)
+      , bar =
+          (
+            v@v4
+          ).bar
+      };
+    {#- Rewrite - Inline -#}
+    let c@v5 =
+      {#- Rewrite - Inline -#}
+      let v@v5 =
+        b@v4;
+      { bar =
+          ((Snapshot.KnownConstructor07.sub (
+            b@v4
+          ).bar) 2)
+      , foo =
+          (
+            v@v5
+          ).foo
+      };
+    c@v5
+  )
+---------------
+Snapshot.KnownConstructor07.test (Step 1)
+  (\f@v0 -> \y@v1 -> 
+    let z@v2 =
+      (f@v0 y@v1);
+    [[ UnpackOp
+      For identifier a@v3
+        Unpack record
+        labels = ["foo","bar"]
+      inside
+        [[ UnpackOp
+          For identifier b@v4
+            Unpack record
+            labels = ["foo","bar"]
+          inside
+            { bar =
+                let v5 =
+                  (
+                    b@v4
+                  ).bar;
+                {#- Rewrite - Inline -#}
+                let v6 =
+                  (\v6 -> 
+                    (subtract v5 v6)
+                  );
+                (v6 2)
+            , foo =
+                (
+                  b@v4
+                ).foo
+            }
+        ]]
+    ]]
+  )
+---------------
+Snapshot.KnownConstructor07.test (Step 2)
+  (\f@v0 -> \y@v1 -> 
+    let z@v2 =
+      (f@v0 y@v1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        1;
+      (add z@v2 v3);
+    { bar =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          2;
+        (subtract z@v2 v4)
+    , foo =
+        v3
+    }
+  )
+---------------
+Snapshot.KnownConstructor07.test (Step 3; Final)
+  (\f@v0 -> \y@v1 -> 
+    let z@v2 =
+      (f@v0 y@v1);
+    { bar =
+        (subtract z@v2 2)
+    , foo =
+        (add z@v2 1)
+    }
+  )

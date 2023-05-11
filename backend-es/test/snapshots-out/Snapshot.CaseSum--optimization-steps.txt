@@ -1,0 +1,110 @@
+Snapshot.CaseSum.L (Step 0; Original)
+  let L =
+    (\ value0 ->
+      { tag =
+          "L"
+      , value0 =
+          value0
+      }
+    );
+---------------
+Snapshot.CaseSum.L (Step 1; Final)
+  let L =
+    (\ value0 ->
+      { tag =
+          "L"
+      , value0 =
+          value0
+      }
+    );
+
+===============
+
+Snapshot.CaseSum.R (Step 0; Original)
+  let R =
+    (\ value0 ->
+      { tag =
+          "R"
+      , value0 =
+          value0
+      }
+    );
+---------------
+Snapshot.CaseSum.R (Step 1; Final)
+  let R =
+    (\ value0 ->
+      { tag =
+          "R"
+      , value0 =
+          value0
+      }
+    );
+
+===============
+
+Snapshot.CaseSum.test1 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\ ->
+        "1"
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\ ->
+        "2"
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        "3"
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        "4"
+      );
+    if (isTag Snapshot.CaseSum.L v1) then
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (
+          v1
+        )#value0;
+      if (== v6 1) then
+        (v2)
+      else if (== v6 2) then
+        (v3)
+      else
+        (v4)
+    else if (isTag Snapshot.CaseSum.R v1) then
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (
+          v1
+        )#value0;
+      (v5)
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.CaseSum.test1 (Step 1; Final)
+  (\v@v0 -> 
+    if (isTag Snapshot.CaseSum.L v@v0) then
+      if (== (
+          v@v0
+        )#value0 1) then
+        "1"
+      else if (== (
+          v@v0
+        )#value0 2) then
+        "2"
+      else
+        "3"
+    else if (isTag Snapshot.CaseSum.R v@v0) then
+      "4"
+    else
+      <PatternMatchFailure>
+  )

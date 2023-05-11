@@ -1,0 +1,2169 @@
+Snapshot.TransformerMaybeT01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.TransformerMaybeT01.add (Step 1; Final)
+  Data.Semiring.intAdd
+===============
+Snapshot.TransformerMaybeT01.apply (Step 0; Original)
+  (Control.Apply.apply (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect))
+---------------
+Snapshot.TransformerMaybeT01.apply (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).apply;
+  v1
+---------------
+Snapshot.TransformerMaybeT01.apply (Step 2; Final)
+  (
+    (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+  ).apply
+===============
+Snapshot.TransformerMaybeT01.bind (Step 0; Original)
+  (Control.Bind.bind Snapshot.TransformerMaybeT01.bindMaybeT)
+---------------
+Snapshot.TransformerMaybeT01.bind (Step 1; Final)
+  (
+    Snapshot.TransformerMaybeT01.bindMaybeT
+  ).bind
+===============
+Snapshot.TransformerMaybeT01.bindMaybeT (Step 0; Original)
+  (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect)
+---------------
+Snapshot.TransformerMaybeT01.bindMaybeT (Step 1; Final)
+  (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect)
+===============
+Snapshot.TransformerMaybeT01.discard (Step 0; Original)
+  (Control.Bind.discard Control.Bind.discardUnit)
+---------------
+Snapshot.TransformerMaybeT01.discard (Step 1; Final)
+  (
+    Control.Bind.discardUnit
+  ).discard
+===============
+Snapshot.TransformerMaybeT01.liftEffect (Step 0; Original)
+  (Effect.Class.liftEffect Effect.Class.monadEffectEffect)
+---------------
+Snapshot.TransformerMaybeT01.liftEffect (Step 1; Final)
+  (
+    Effect.Class.monadEffectEffect
+  ).liftEffect
+===============
+Snapshot.TransformerMaybeT01.map (Step 0; Original)
+  (Data.Functor.map Effect.functorEffect)
+---------------
+Snapshot.TransformerMaybeT01.map (Step 1; Final)
+  (
+    Effect.functorEffect
+  ).map
+===============
+Snapshot.TransformerMaybeT01.map1 (Step 0; Original)
+  (Data.Functor.map (Control.Monad.Maybe.Trans.functorMaybeT Effect.functorEffect))
+---------------
+Snapshot.TransformerMaybeT01.map1 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    { map =
+        (\f@v0 -> \v@v1 -> 
+          {#- Rewrite - Inline -#}
+          let v2 =
+            ((
+              Data.Maybe.functorMaybe
+            ).map f@v0);
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\a@v3 -> 
+              (effectDefer letEffect a'@v4 =
+                a@v3;
+              (effectPure (v2 a'@v4)))
+            );
+          (v3 v@v1)
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).map;
+  v1
+---------------
+Snapshot.TransformerMaybeT01.map1 (Step 2; Final)
+  (\f@v0 -> \v@v1 -> 
+    (effectDefer letEffect a'@v2 =
+      v@v1;
+    (effectPure if (isTag Data.Maybe.Just a'@v2) then
+      (Data.Maybe.Just.Maybe (f@v0 (
+        a'@v2
+      )#value0))
+    else
+      Data.Maybe.Nothing))
+  )
+===============
+Snapshot.TransformerMaybeT01.map2 (Step 0; Original)
+  (Data.Functor.map Data.Maybe.functorMaybe)
+---------------
+Snapshot.TransformerMaybeT01.map2 (Step 1; Final)
+  (
+    Data.Maybe.functorMaybe
+  ).map
+===============
+Snapshot.TransformerMaybeT01.program1 (Step 0; Original)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let map3@v4 =
+      (Data.Functor.map Functor0@v3);
+    let liftEffect1@v5 =
+      (Effect.Class.liftEffect dictMonadEffect@v0);
+    let bind1@v6 =
+      (Control.Bind.bind bindMaybeT1@v2);
+    let map4@v7 =
+      (Data.Functor.map (Control.Monad.Maybe.Trans.functorMaybeT Functor0@v3));
+    let apply1@v8 =
+      (Control.Apply.apply (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1));
+    let pure1@v9 =
+      (Control.Applicative.pure (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1));
+    (((Snapshot.TransformerMaybeT01.discard bindMaybeT1@v2) ((map3@v4 Data.Maybe.Just) (liftEffect1@v5 (Effect.Console.log "foo")))) (\$__unused@v10 -> 
+      ((bind1@v6 (liftEffect1@v5 ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10)))) (\i1@v11 -> 
+        ((bind1@v6 ((map4@v7 (\v@v12 -> 
+          ((Snapshot.TransformerMaybeT01.add v@v12) 4)
+        )) ((map3@v4 (Snapshot.TransformerMaybeT01.map2 (\v@v12 -> 
+          ((Snapshot.TransformerMaybeT01.add v@v12) 1)
+        ))) (liftEffect1@v5 ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10)))))) (\i2@v12 -> 
+          ((bind1@v6 ((apply1@v8 ((map4@v7 Snapshot.TransformerMaybeT01.add) (liftEffect1@v5 ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10))))) (liftEffect1@v5 ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10))))) (\i3@v13 -> 
+            (pure1@v9 ((Snapshot.TransformerMaybeT01.add ((Snapshot.TransformerMaybeT01.add ((Snapshot.TransformerMaybeT01.add 1) i1@v11)) i2@v12)) i3@v13))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerMaybeT01.program1 (Step 1)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let map3@v4 =
+      (
+        Functor0@v3
+      ).map;
+    {#- Rewrite - Inline -#}
+    let liftEffect1@v5 =
+      (
+        dictMonadEffect@v0
+      ).liftEffect;
+    {#- Rewrite - Inline -#}
+    let bind1@v6 =
+      (
+        bindMaybeT1@v2
+      ).bind;
+    let map4@v7 =
+      {#- Rewrite - Inline -#}
+      let v7 =
+        { map =
+            (\f@v7 -> \v@v8 -> 
+              (((
+                Functor0@v3
+              ).map ((
+                Data.Maybe.functorMaybe
+              ).map f@v7)) v@v8)
+            )
+        };
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v7
+        ).map;
+      v8;
+    let apply1@v8 =
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1);
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (
+          v8
+        ).apply;
+      v9;
+    let pure1@v9 =
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1);
+      {#- Rewrite - Inline -#}
+      let v10 =
+        (
+          v9
+        ).pure;
+      v10;
+    (((
+      bindMaybeT1@v2
+    ).bind ((map3@v4 Data.Maybe.Just) (liftEffect1@v5 (Effect.Console.log "foo")))) (\$__unused@v10 -> 
+      ((bind1@v6 (liftEffect1@v5 let v11 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v12 =
+        v11;
+      (effectPure (Data.Maybe.Just.Maybe a'@v12))))) (\i1@v11 -> 
+        ((bind1@v6 ((map4@v7 (\v@v12 -> 
+          {#- Rewrite - Inline -#}
+          let v13 =
+            4;
+          (add v@v12 v13)
+        )) ((map3@v4 {#- Rewrite - Inline -#}
+        let v12 =
+          (\v@v12 -> 
+            {#- Rewrite - Inline -#}
+            let v13 =
+              1;
+            (add v@v12 v13)
+          );
+        {#- Rewrite - Inline -#}
+        let v13 =
+          (\v1@v13 -> 
+            if (isTag Data.Maybe.Just v1@v13) then
+              (Data.Maybe.Just.Maybe (v12 (
+                v1@v13
+              )#value0))
+            else
+              Data.Maybe.Nothing
+          );
+        v13) (liftEffect1@v5 let v12 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v13 =
+          v12;
+        (effectPure (Data.Maybe.Just.Maybe a'@v13))))))) (\i2@v12 -> 
+          ((bind1@v6 ((apply1@v8 ((map4@v7 Data.Semiring.intAdd) (liftEffect1@v5 let v13 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v14 =
+            v13;
+          (effectPure (Data.Maybe.Just.Maybe a'@v14)))))) (liftEffect1@v5 let v13 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v14 =
+            v13;
+          (effectPure (Data.Maybe.Just.Maybe a'@v14)))))) (\i3@v13 -> 
+            (pure1@v9 [[ LetAssoc
+              let v14 =
+                {#- Rewrite - Inline -#}
+                let v14 =
+                  1;
+                {#- Rewrite - Inline -#}
+                let v15 =
+                  (\v15 -> 
+                    (add v14 v15)
+                  );
+                (v15 i1@v11);
+              let v14 =
+                {#- Rewrite - Inline -#}
+                let v15 =
+                  (\v15 -> 
+                    (add v14 v15)
+                  );
+                (v15 i2@v12);
+              {#- Rewrite - Inline -#}
+              let v15 =
+                (\v15 -> 
+                  (add v14 v15)
+                );
+              (v15 i3@v13)
+            ]])
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerMaybeT01.program1 (Step 2)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let map4@v4 =
+      (\f@v4 -> \v@v5 -> 
+        (((
+          Functor0@v3
+        ).map ((
+          Data.Maybe.functorMaybe
+        ).map f@v4)) v@v5)
+      );
+    let apply1@v5 =
+      (
+        (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1)
+      ).apply;
+    let pure1@v6 =
+      (
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1)
+      ).pure;
+    (((
+      bindMaybeT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Maybe.Just) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v7 -> 
+      (((
+        bindMaybeT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v8 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v9 =
+        v8;
+      (effectPure (Data.Maybe.Just.Maybe a'@v9))))) (\i1@v8 -> 
+        (((
+          bindMaybeT1@v2
+        ).bind ((map4@v4 (\v@v9 -> 
+          (add v@v9 4)
+        )) (((
+          Functor0@v3
+        ).map (\v1@v9 -> 
+          if (isTag Data.Maybe.Just v1@v9) then
+            (Data.Maybe.Just.Maybe {#- Rewrite - Inline -#}
+            let v10 =
+              (
+                v1@v9
+              )#value0;
+            (add v10 1))
+          else
+            Data.Maybe.Nothing
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v9 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v10 =
+          v9;
+        (effectPure (Data.Maybe.Just.Maybe a'@v10))))))) (\i2@v9 -> 
+          (((
+            bindMaybeT1@v2
+          ).bind ((apply1@v5 ((map4@v4 Data.Semiring.intAdd) ((
+            dictMonadEffect@v0
+          ).liftEffect let v10 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v11 =
+            v10;
+          (effectPure (Data.Maybe.Just.Maybe a'@v11)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v10 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v11 =
+            v10;
+          (effectPure (Data.Maybe.Just.Maybe a'@v11)))))) (\i3@v10 -> 
+            (pure1@v6 {#- Rewrite - Inline -#}
+            let v11 =
+              (add 1 i1@v8);
+            {#- Rewrite - Inline -#}
+            let v12 =
+              (add v11 i2@v9);
+            (add v12 i3@v10))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerMaybeT01.program1 (Step 3)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1)
+      ).apply;
+    let pure1@v5 =
+      (
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1)
+      ).pure;
+    (((
+      bindMaybeT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Maybe.Just) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v6 -> 
+      (((
+        bindMaybeT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v8 =
+        v7;
+      (effectPure (Data.Maybe.Just.Maybe a'@v8))))) (\i1@v7 -> 
+        (((
+          bindMaybeT1@v2
+        ).bind {#- Rewrite - Inline -#}
+        let v8 =
+          (\v@v8 -> 
+            (add v@v8 4)
+          );
+        {#- Rewrite - Inline -#}
+        let v9 =
+          (((
+            Functor0@v3
+          ).map (\v1@v9 -> 
+            if (isTag Data.Maybe.Just v1@v9) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v9
+              )#value0 1))
+            else
+              Data.Maybe.Nothing
+          )) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))));
+        (((
+          Functor0@v3
+        ).map ((
+          Data.Maybe.functorMaybe
+        ).map v8)) v9)) (\i2@v8 -> 
+          (((
+            bindMaybeT1@v2
+          ).bind ((apply1@v4 {#- Rewrite - Inline -#}
+          let v9 =
+            ((
+              dictMonadEffect@v0
+            ).liftEffect let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure (Data.Maybe.Just.Maybe a'@v10))));
+          (((
+            Functor0@v3
+          ).map ((
+            Data.Maybe.functorMaybe
+          ).map Data.Semiring.intAdd)) v9)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) (\i3@v9 -> 
+            (pure1@v5 (add (add (add 1 i1@v7) i2@v8) i3@v9))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerMaybeT01.program1 (Step 4)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1)
+      ).apply;
+    let pure1@v5 =
+      (
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1)
+      ).pure;
+    (((
+      bindMaybeT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Maybe.Just) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v6 -> 
+      (((
+        bindMaybeT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v8 =
+        v7;
+      (effectPure (Data.Maybe.Just.Maybe a'@v8))))) (\i1@v7 -> 
+        (((
+          bindMaybeT1@v2
+        ).bind (((
+          Functor0@v3
+        ).map {#- Rewrite - Inline -#}
+        let v8 =
+          (\v@v8 -> 
+            (add v@v8 4)
+          );
+        {#- Rewrite - Inline -#}
+        let v9 =
+          (\v1@v9 -> 
+            if (isTag Data.Maybe.Just v1@v9) then
+              (Data.Maybe.Just.Maybe (v8 (
+                v1@v9
+              )#value0))
+            else
+              Data.Maybe.Nothing
+          );
+        v9) (((
+          Functor0@v3
+        ).map (\v1@v8 -> 
+          if (isTag Data.Maybe.Just v1@v8) then
+            (Data.Maybe.Just.Maybe (add (
+              v1@v8
+            )#value0 1))
+          else
+            Data.Maybe.Nothing
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Maybe.Just.Maybe a'@v9))))))) (\i2@v8 -> 
+          (((
+            bindMaybeT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Maybe.functorMaybe
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) (\i3@v9 -> 
+            (pure1@v5 (add (add (add 1 i1@v7) i2@v8) i3@v9))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerMaybeT01.program1 (Step 5)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1)
+      ).apply;
+    let pure1@v5 =
+      (
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1)
+      ).pure;
+    (((
+      bindMaybeT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Maybe.Just) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v6 -> 
+      (((
+        bindMaybeT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v8 =
+        v7;
+      (effectPure (Data.Maybe.Just.Maybe a'@v8))))) (\i1@v7 -> 
+        (((
+          bindMaybeT1@v2
+        ).bind (((
+          Functor0@v3
+        ).map (\v1@v8 -> 
+          if (isTag Data.Maybe.Just v1@v8) then
+            (Data.Maybe.Just.Maybe {#- Rewrite - Inline -#}
+            let v9 =
+              (
+                v1@v8
+              )#value0;
+            (add v9 4))
+          else
+            Data.Maybe.Nothing
+        )) (((
+          Functor0@v3
+        ).map (\v1@v8 -> 
+          if (isTag Data.Maybe.Just v1@v8) then
+            (Data.Maybe.Just.Maybe (add (
+              v1@v8
+            )#value0 1))
+          else
+            Data.Maybe.Nothing
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Maybe.Just.Maybe a'@v9))))))) (\i2@v8 -> 
+          (((
+            bindMaybeT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Maybe.functorMaybe
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) (\i3@v9 -> 
+            (pure1@v5 (add (add (add 1 i1@v7) i2@v8) i3@v9))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerMaybeT01.program1 (Step 6; Final)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindMaybeT1@v2 =
+      (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v1)
+      ).apply;
+    let pure1@v5 =
+      (
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v1)
+      ).pure;
+    (((
+      bindMaybeT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Maybe.Just) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v6 -> 
+      (((
+        bindMaybeT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v8 =
+        v7;
+      (effectPure (Data.Maybe.Just.Maybe a'@v8))))) (\i1@v7 -> 
+        (((
+          bindMaybeT1@v2
+        ).bind (((
+          Functor0@v3
+        ).map (\v1@v8 -> 
+          if (isTag Data.Maybe.Just v1@v8) then
+            (Data.Maybe.Just.Maybe (add (
+              v1@v8
+            )#value0 4))
+          else
+            Data.Maybe.Nothing
+        )) (((
+          Functor0@v3
+        ).map (\v1@v8 -> 
+          if (isTag Data.Maybe.Just v1@v8) then
+            (Data.Maybe.Just.Maybe (add (
+              v1@v8
+            )#value0 1))
+          else
+            Data.Maybe.Nothing
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Maybe.Just.Maybe a'@v9))))))) (\i2@v8 -> 
+          (((
+            bindMaybeT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Maybe.functorMaybe
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) (\i3@v9 -> 
+            (pure1@v5 (add (add (add 1 i1@v7) i2@v8) i3@v9))
+          ))
+        ))
+      ))
+    ))
+  )
+===============
+Snapshot.TransformerMaybeT01.pure (Step 0; Original)
+  (Control.Applicative.pure (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect))
+---------------
+Snapshot.TransformerMaybeT01.pure (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).pure;
+  v1
+---------------
+Snapshot.TransformerMaybeT01.pure (Step 2; Final)
+  (
+    (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+  ).pure
+===============
+Snapshot.TransformerMaybeT01.test1 (Step 0; Original)
+  (Control.Monad.Maybe.Trans.runMaybeT (((Snapshot.TransformerMaybeT01.discard Snapshot.TransformerMaybeT01.bindMaybeT) ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) (Snapshot.TransformerMaybeT01.liftEffect (Effect.Console.log "foo")))) (\$__unused@v0 -> 
+    ((Snapshot.TransformerMaybeT01.bind (Snapshot.TransformerMaybeT01.liftEffect ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10)))) (\i1@v1 -> 
+      ((Snapshot.TransformerMaybeT01.bind ((Snapshot.TransformerMaybeT01.map1 (\v@v2 -> 
+        ((Snapshot.TransformerMaybeT01.add v@v2) 4)
+      )) ((Snapshot.TransformerMaybeT01.map (Snapshot.TransformerMaybeT01.map2 (\v@v2 -> 
+        ((Snapshot.TransformerMaybeT01.add v@v2) 1)
+      ))) (Snapshot.TransformerMaybeT01.liftEffect ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10)))))) (\i2@v2 -> 
+        ((Snapshot.TransformerMaybeT01.bind ((Snapshot.TransformerMaybeT01.apply ((Snapshot.TransformerMaybeT01.map1 Snapshot.TransformerMaybeT01.add) (Snapshot.TransformerMaybeT01.liftEffect ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10))))) (Snapshot.TransformerMaybeT01.liftEffect ((Snapshot.TransformerMaybeT01.map Data.Maybe.Just) ((Effect.Random.randomInt 1) 10))))) (\i3@v3 -> 
+          (Snapshot.TransformerMaybeT01.pure ((Snapshot.TransformerMaybeT01.add ((Snapshot.TransformerMaybeT01.add ((Snapshot.TransformerMaybeT01.add 1) i1@v1)) i2@v2)) i3@v3))
+        ))
+      ))
+    ))
+  )))
+---------------
+Snapshot.TransformerMaybeT01.test1 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (((
+      Snapshot.TransformerMaybeT01.bindMaybeT
+    ).bind let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        (Effect.Console.log "foo");
+      v0;
+    (effectDefer letEffect a'@v1 =
+      v0;
+    (effectPure (Data.Maybe.Just.Maybe a'@v1)))) (\$__unused@v0 -> 
+      (((
+        Snapshot.TransformerMaybeT01.bindMaybeT
+      ).bind [[ LetAssoc
+        let v1 =
+          ((Effect.Random.randomInt 1) 10);
+        let v1 =
+          (effectDefer letEffect a'@v2 =
+            v1;
+          (effectPure (Data.Maybe.Just.Maybe a'@v2)));
+        v1
+      ]]) (\i1@v1 -> 
+        (((
+          Snapshot.TransformerMaybeT01.bindMaybeT
+        ).bind {#- Rewrite - Inline -#}
+        let v2 =
+          (\v@v2 -> 
+            {#- Rewrite - Inline -#}
+            let v3 =
+              4;
+            (add v@v2 v3)
+          );
+        [[ LetAssoc
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\v@v3 -> 
+                {#- Rewrite - Inline -#}
+                let v4 =
+                  1;
+                (add v@v3 v4)
+              );
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (\v1@v4 -> 
+                if (isTag Data.Maybe.Just v1@v4) then
+                  (Data.Maybe.Just.Maybe (v3 (
+                    v1@v4
+                  )#value0))
+                else
+                  Data.Maybe.Nothing
+              );
+            v4;
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (\a@v4 -> 
+                (effectDefer letEffect a'@v5 =
+                  a@v4;
+                (effectPure (v3 a'@v5)))
+              );
+            (v4 [[ LetAssoc
+              let v5 =
+                ((Effect.Random.randomInt 1) 10);
+              let v5 =
+                (effectDefer letEffect a'@v6 =
+                  v5;
+                (effectPure (Data.Maybe.Just.Maybe a'@v6)));
+              v5
+            ]]);
+          let v3 =
+            (effectDefer letEffect a'@v4 =
+              v3;
+            (effectPure if (isTag Data.Maybe.Just a'@v4) then
+              (Data.Maybe.Just.Maybe (v2 (
+                a'@v4
+              )#value0))
+            else
+              Data.Maybe.Nothing));
+          v3
+        ]]) (\i2@v2 -> 
+          (((
+            Snapshot.TransformerMaybeT01.bindMaybeT
+          ).bind ((Snapshot.TransformerMaybeT01.apply [[ LetAssoc
+            let v3 =
+              ((Effect.Random.randomInt 1) 10);
+            let v3 =
+              (effectDefer letEffect a'@v4 =
+                v3;
+              (effectPure (Data.Maybe.Just.Maybe a'@v4)));
+            let v3 =
+              v3;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (effectDefer letEffect a'@v4 =
+                v3;
+              (effectPure if (isTag Data.Maybe.Just a'@v4) then
+                (Data.Maybe.Just.Maybe let v5 =
+                  (
+                    a'@v4
+                  )#value0;
+                {#- Rewrite - Inline -#}
+                let v6 =
+                  (\v6 -> 
+                    (add v5 v6)
+                  );
+                v6)
+              else
+                Data.Maybe.Nothing));
+            v4
+          ]]) [[ LetAssoc
+            let v3 =
+              ((Effect.Random.randomInt 1) 10);
+            let v3 =
+              (effectDefer letEffect a'@v4 =
+                v3;
+              (effectPure (Data.Maybe.Just.Maybe a'@v4)));
+            v3
+          ]])) (\i3@v3 -> 
+            (Snapshot.TransformerMaybeT01.pure [[ LetAssoc
+              let v4 =
+                {#- Rewrite - Inline -#}
+                let v4 =
+                  1;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  (\v5 -> 
+                    (add v4 v5)
+                  );
+                (v5 i1@v1);
+              let v4 =
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  (\v5 -> 
+                    (add v4 v5)
+                  );
+                (v5 i2@v2);
+              {#- Rewrite - Inline -#}
+              let v5 =
+                (\v5 -> 
+                  (add v4 v5)
+                );
+              (v5 i3@v3)
+            ]])
+          ))
+        ))
+      ))
+    ));
+  v0
+---------------
+Snapshot.TransformerMaybeT01.test1 (Step 2)
+  (((
+    Snapshot.TransformerMaybeT01.bindMaybeT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Maybe.Just.Maybe a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerMaybeT01.bindMaybeT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (effectDefer letEffect a'@v2 =
+        v1;
+      (effectPure (Data.Maybe.Just.Maybe a'@v2)));
+    v2) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerMaybeT01.bindMaybeT
+      ).bind {#- Rewrite - Inline -#}
+      let v2 =
+        (\v1@v2 -> 
+          if (isTag Data.Maybe.Just v1@v2) then
+            (Data.Maybe.Just.Maybe {#- Rewrite - Inline -#}
+            let v3 =
+              (
+                v1@v2
+              )#value0;
+            (add v3 1))
+          else
+            Data.Maybe.Nothing
+        );
+      [[ LetAssoc
+        let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (effectDefer letEffect a'@v4 =
+              v3;
+            (effectPure (Data.Maybe.Just.Maybe a'@v4)));
+          v4;
+        let v3 =
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (v2 a'@v4)));
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure if (isTag Data.Maybe.Just a'@v4) then
+            (Data.Maybe.Just.Maybe {#- Rewrite - Inline -#}
+            let v5 =
+              (
+                a'@v4
+              )#value0;
+            (add v5 4))
+          else
+            Data.Maybe.Nothing));
+        v4
+      ]]) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerMaybeT01.bindMaybeT
+        ).bind ((Snapshot.TransformerMaybeT01.apply let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (Data.Maybe.Just.Maybe a'@v4)));
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure if (isTag Data.Maybe.Just a'@v5) then
+          (Data.Maybe.Just.Maybe let v6 =
+            (
+              a'@v5
+            )#value0;
+          (\v7 -> 
+            (add v6 v7)
+          ))
+        else
+          Data.Maybe.Nothing))) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (Data.Maybe.Just.Maybe a'@v4)));
+        v4)) (\i3@v3 -> 
+          (Snapshot.TransformerMaybeT01.pure {#- Rewrite - Inline -#}
+          let v4 =
+            (add 1 i1@v1);
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (add v4 i2@v2);
+          (add v5 i3@v3))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test1 (Step 3)
+  (((
+    Snapshot.TransformerMaybeT01.bindMaybeT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Maybe.Just.Maybe a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerMaybeT01.bindMaybeT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Maybe.Just.Maybe a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerMaybeT01.bindMaybeT
+      ).bind let v2 =
+        ((Effect.Random.randomInt 1) 10);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (effectDefer letEffect a'@v3 =
+          v2;
+        (effectPure (Data.Maybe.Just.Maybe a'@v3)));
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure if (isTag Data.Maybe.Just a'@v4) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v4
+          )#value0 1))
+        else
+          Data.Maybe.Nothing));
+      (effectDefer letEffect a'@v5 =
+        v4;
+      (effectPure if (isTag Data.Maybe.Just a'@v5) then
+        (Data.Maybe.Just.Maybe (add (
+          a'@v5
+        )#value0 4))
+      else
+        Data.Maybe.Nothing))) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerMaybeT01.bindMaybeT
+        ).bind ((Snapshot.TransformerMaybeT01.apply let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer [[ EffectBindAssoc
+          letEffect a'@v4 =
+            v3;
+          letEffect a'@v4 =
+            (effectPure (Data.Maybe.Just.Maybe a'@v4));
+          (effectPure if (isTag Data.Maybe.Just a'@v4) then
+            (Data.Maybe.Just.Maybe let v5 =
+              (
+                a'@v4
+              )#value0;
+            (\v6 -> 
+              (add v5 v6)
+            ))
+          else
+            Data.Maybe.Nothing)
+        ]])) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Maybe.Just.Maybe a'@v4))))) (\i3@v3 -> 
+          (Snapshot.TransformerMaybeT01.pure (add (add (add 1 i1@v1) i2@v2) i3@v3))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test1 (Step 4)
+  (((
+    Snapshot.TransformerMaybeT01.bindMaybeT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Maybe.Just.Maybe a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerMaybeT01.bindMaybeT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Maybe.Just.Maybe a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerMaybeT01.bindMaybeT
+      ).bind let v2 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer [[ EffectBindAssoc
+        letEffect a'@v3 =
+          v2;
+        letEffect a'@v3 =
+          (effectPure (Data.Maybe.Just.Maybe a'@v3));
+        letEffect a'@v3 =
+          (effectPure if (isTag Data.Maybe.Just a'@v3) then
+            (Data.Maybe.Just.Maybe (add (
+              a'@v3
+            )#value0 1))
+          else
+            Data.Maybe.Nothing);
+        (effectPure if (isTag Data.Maybe.Just a'@v3) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v3
+          )#value0 4))
+        else
+          Data.Maybe.Nothing)
+      ]])) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerMaybeT01.bindMaybeT
+        ).bind ((Snapshot.TransformerMaybeT01.apply let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        {#- Rewrite - Inline -#}
+        let a'@v5 =
+          (Data.Maybe.Just.Maybe a'@v4);
+        (effectPure if (isTag Data.Maybe.Just a'@v5) then
+          (Data.Maybe.Just.Maybe let v6 =
+            (
+              a'@v5
+            )#value0;
+          (\v7 -> 
+            (add v6 v7)
+          ))
+        else
+          Data.Maybe.Nothing))) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Maybe.Just.Maybe a'@v4))))) (\i3@v3 -> 
+          (Snapshot.TransformerMaybeT01.pure (add (add (add 1 i1@v1) i2@v2) i3@v3))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test1 (Step 5)
+  (((
+    Snapshot.TransformerMaybeT01.bindMaybeT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Maybe.Just.Maybe a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerMaybeT01.bindMaybeT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Maybe.Just.Maybe a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerMaybeT01.bindMaybeT
+      ).bind let v2 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v3 =
+        v2;
+      {#- Rewrite - Inline -#}
+      let a'@v4 =
+        (Data.Maybe.Just.Maybe a'@v3);
+      (effectDefer [[ DistBranchesLet
+        let a'@v5 =
+          if (isTag Data.Maybe.Just a'@v4) then
+            (Data.Maybe.Just.Maybe (add (
+              a'@v4
+            )#value0 1))
+          else
+            Data.Maybe.Nothing;
+        (effectPure if (isTag Data.Maybe.Just a'@v5) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v5
+          )#value0 4))
+        else
+          Data.Maybe.Nothing)
+      ]]))) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerMaybeT01.bindMaybeT
+        ).bind ((Snapshot.TransformerMaybeT01.apply let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Maybe.Just.Maybe (\v5 -> 
+          (add a'@v4 v5)
+        ))))) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Maybe.Just.Maybe a'@v4))))) (\i3@v3 -> 
+          (Snapshot.TransformerMaybeT01.pure (add (add (add 1 i1@v1) i2@v2) i3@v3))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test1 (Step 6; Final)
+  (((
+    Snapshot.TransformerMaybeT01.bindMaybeT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Maybe.Just.Maybe a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerMaybeT01.bindMaybeT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Maybe.Just.Maybe a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerMaybeT01.bindMaybeT
+      ).bind let v2 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v3 =
+        v2;
+      (effectPure (Data.Maybe.Just.Maybe (add a'@v3 5))))) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerMaybeT01.bindMaybeT
+        ).bind ((Snapshot.TransformerMaybeT01.apply let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Maybe.Just.Maybe (\v5 -> 
+          (add a'@v4 v5)
+        ))))) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Maybe.Just.Maybe a'@v4))))) (\i3@v3 -> 
+          (Snapshot.TransformerMaybeT01.pure (add (add (add 1 i1@v1) i2@v2) i3@v3))
+        ))
+      ))
+    ))
+  ))
+===============
+Snapshot.TransformerMaybeT01.test2 (Step 0; Original)
+  (Control.Monad.Maybe.Trans.runMaybeT (Snapshot.TransformerMaybeT01.program1 Effect.Class.monadEffectEffect))
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let Monad0@v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        <PrimUndefined>;
+      Effect.monadEffect;
+    [[ LetAssoc
+      let bindMaybeT1@v1 =
+        (Control.Monad.Maybe.Trans.bindMaybeT Monad0@v0);
+      let v1 =
+        let Functor0@v2 =
+          ((
+            ((
+              ((
+                Monad0@v0
+              ).Bind1 <PrimUndefined>)
+            ).Apply0 <PrimUndefined>)
+          ).Functor0 <PrimUndefined>);
+        let apply1@v3 =
+          (
+            (Control.Monad.Maybe.Trans.applyMaybeT Monad0@v0)
+          ).apply;
+        let pure1@v4 =
+          (
+            (Control.Monad.Maybe.Trans.applicativeMaybeT Monad0@v0)
+          ).pure;
+        (((
+          bindMaybeT1@v1
+        ).bind (((
+          Functor0@v2
+        ).map Data.Maybe.Just) {#- Rewrite - Inline -#}
+        let v5 =
+          (Effect.Console.log "foo");
+        v5)) (\$__unused@v5 -> 
+          (((
+            bindMaybeT1@v1
+          ).bind [[ LetAssoc
+            let v6 =
+              ((Effect.Random.randomInt 1) 10);
+            let v6 =
+              (effectDefer letEffect a'@v7 =
+                v6;
+              (effectPure (Data.Maybe.Just.Maybe a'@v7)));
+            v6
+          ]]) (\i1@v6 -> 
+            (((
+              bindMaybeT1@v1
+            ).bind (((
+              Functor0@v2
+            ).map (\v1@v7 -> 
+              if (isTag Data.Maybe.Just v1@v7) then
+                (Data.Maybe.Just.Maybe (add (
+                  v1@v7
+                )#value0 4))
+              else
+                Data.Maybe.Nothing
+            )) (((
+              Functor0@v2
+            ).map (\v1@v7 -> 
+              if (isTag Data.Maybe.Just v1@v7) then
+                (Data.Maybe.Just.Maybe (add (
+                  v1@v7
+                )#value0 1))
+              else
+                Data.Maybe.Nothing
+            )) [[ LetAssoc
+              let v7 =
+                ((Effect.Random.randomInt 1) 10);
+              let v7 =
+                (effectDefer letEffect a'@v8 =
+                  v7;
+                (effectPure (Data.Maybe.Just.Maybe a'@v8)));
+              v7
+            ]]))) (\i2@v7 -> 
+              (((
+                bindMaybeT1@v1
+              ).bind ((apply1@v3 (((
+                Functor0@v2
+              ).map ((
+                Data.Maybe.functorMaybe
+              ).map Data.Semiring.intAdd)) [[ LetAssoc
+                let v8 =
+                  ((Effect.Random.randomInt 1) 10);
+                let v8 =
+                  (effectDefer letEffect a'@v9 =
+                    v8;
+                  (effectPure (Data.Maybe.Just.Maybe a'@v9)));
+                v8
+              ]])) [[ LetAssoc
+                let v8 =
+                  ((Effect.Random.randomInt 1) 10);
+                let v8 =
+                  (effectDefer letEffect a'@v9 =
+                    v8;
+                  (effectPure (Data.Maybe.Just.Maybe a'@v9)));
+                v8
+              ]])) (\i3@v8 -> 
+                (pure1@v4 (add (add (add 1 i1@v6) i2@v7) i3@v8))
+              ))
+            ))
+          ))
+        ));
+      let v1 =
+        v1;
+      v1
+    ]];
+  v0
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 2)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  [[ LetAssoc
+    let Functor0@v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        <PrimUndefined>;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              Effect.bindEffect
+            ).Apply0;
+          (v2 <PrimUndefined>);
+        (
+          v2
+        ).Functor0;
+      (v2 <PrimUndefined>);
+    let v1 =
+      let apply1@v2 =
+        (
+          (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+        ).apply;
+      let pure1@v3 =
+        (
+          (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+        ).pure;
+      (((
+        bindMaybeT1@v0
+      ).bind (((
+        Functor0@v1
+      ).map Data.Maybe.Just) (Effect.Console.log "foo"))) (\$__unused@v4 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind let v5 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v6 =
+          (effectDefer letEffect a'@v6 =
+            v5;
+          (effectPure (Data.Maybe.Just.Maybe a'@v6)));
+        v6) (\i1@v5 -> 
+          (((
+            bindMaybeT1@v0
+          ).bind (((
+            Functor0@v1
+          ).map (\v1@v6 -> 
+            if (isTag Data.Maybe.Just v1@v6) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v6
+              )#value0 4))
+            else
+              Data.Maybe.Nothing
+          )) (((
+            Functor0@v1
+          ).map (\v1@v6 -> 
+            if (isTag Data.Maybe.Just v1@v6) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v6
+              )#value0 1))
+            else
+              Data.Maybe.Nothing
+          )) let v6 =
+            ((Effect.Random.randomInt 1) 10);
+          {#- Rewrite - Inline -#}
+          let v7 =
+            (effectDefer letEffect a'@v7 =
+              v6;
+            (effectPure (Data.Maybe.Just.Maybe a'@v7)));
+          v7))) (\i2@v6 -> 
+            (((
+              bindMaybeT1@v0
+            ).bind ((apply1@v2 (((
+              Functor0@v1
+            ).map ((
+              Data.Maybe.functorMaybe
+            ).map Data.Semiring.intAdd)) let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            {#- Rewrite - Inline -#}
+            let v8 =
+              (effectDefer letEffect a'@v8 =
+                v7;
+              (effectPure (Data.Maybe.Just.Maybe a'@v8)));
+            v8)) let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            {#- Rewrite - Inline -#}
+            let v8 =
+              (effectDefer letEffect a'@v8 =
+                v7;
+              (effectPure (Data.Maybe.Just.Maybe a'@v8)));
+            v8)) (\i3@v7 -> 
+              (pure1@v3 (add (add (add 1 i1@v5) i2@v6) i3@v7))
+            ))
+          ))
+        ))
+      ));
+    v1
+  ]]
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 3)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let Functor0@v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      <PrimUndefined>;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (
+        Effect.applyEffect
+      ).Functor0;
+    (v2 <PrimUndefined>);
+  [[ LetAssoc
+    let apply1@v2 =
+      (
+        (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+      ).apply;
+    let v2 =
+      let pure1@v3 =
+        (
+          (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+        ).pure;
+      (((
+        bindMaybeT1@v0
+      ).bind (((
+        Functor0@v1
+      ).map Data.Maybe.Just) (Effect.Console.log "foo"))) (\$__unused@v4 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind let v5 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v6 =
+          v5;
+        (effectPure (Data.Maybe.Just.Maybe a'@v6)))) (\i1@v5 -> 
+          (((
+            bindMaybeT1@v0
+          ).bind (((
+            Functor0@v1
+          ).map (\v1@v6 -> 
+            if (isTag Data.Maybe.Just v1@v6) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v6
+              )#value0 4))
+            else
+              Data.Maybe.Nothing
+          )) (((
+            Functor0@v1
+          ).map (\v1@v6 -> 
+            if (isTag Data.Maybe.Just v1@v6) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v6
+              )#value0 1))
+            else
+              Data.Maybe.Nothing
+          )) let v6 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v7 =
+            v6;
+          (effectPure (Data.Maybe.Just.Maybe a'@v7)))))) (\i2@v6 -> 
+            (((
+              bindMaybeT1@v0
+            ).bind ((apply1@v2 (((
+              Functor0@v1
+            ).map ((
+              Data.Maybe.functorMaybe
+            ).map Data.Semiring.intAdd)) let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v8 =
+              v7;
+            (effectPure (Data.Maybe.Just.Maybe a'@v8))))) let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v8 =
+              v7;
+            (effectPure (Data.Maybe.Just.Maybe a'@v8))))) (\i3@v7 -> 
+              (pure1@v3 (add (add (add 1 i1@v5) i2@v6) i3@v7))
+            ))
+          ))
+        ))
+      ));
+    v2
+  ]]
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 4)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let Functor0@v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      <PrimUndefined>;
+    Effect.functorEffect;
+  let apply1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  [[ LetAssoc
+    let pure1@v3 =
+      (
+        (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+      ).pure;
+    let v3 =
+      (((
+        bindMaybeT1@v0
+      ).bind (((
+        Functor0@v1
+      ).map Data.Maybe.Just) (Effect.Console.log "foo"))) (\$__unused@v4 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind let v5 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v6 =
+          v5;
+        (effectPure (Data.Maybe.Just.Maybe a'@v6)))) (\i1@v5 -> 
+          (((
+            bindMaybeT1@v0
+          ).bind (((
+            Functor0@v1
+          ).map (\v1@v6 -> 
+            if (isTag Data.Maybe.Just v1@v6) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v6
+              )#value0 4))
+            else
+              Data.Maybe.Nothing
+          )) (((
+            Functor0@v1
+          ).map (\v1@v6 -> 
+            if (isTag Data.Maybe.Just v1@v6) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v6
+              )#value0 1))
+            else
+              Data.Maybe.Nothing
+          )) let v6 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v7 =
+            v6;
+          (effectPure (Data.Maybe.Just.Maybe a'@v7)))))) (\i2@v6 -> 
+            (((
+              bindMaybeT1@v0
+            ).bind ((apply1@v2 (((
+              Functor0@v1
+            ).map ((
+              Data.Maybe.functorMaybe
+            ).map Data.Semiring.intAdd)) let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v8 =
+              v7;
+            (effectPure (Data.Maybe.Just.Maybe a'@v8))))) let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v8 =
+              v7;
+            (effectPure (Data.Maybe.Just.Maybe a'@v8))))) (\i3@v7 -> 
+              (pure1@v3 (add (add (add 1 i1@v5) i2@v6) i3@v7))
+            ))
+          ))
+        ))
+      ));
+    v3
+  ]]
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 5)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  let pure1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+    ).pure;
+  {#- Rewrite - Inline -#}
+  let v3 =
+    (((
+      bindMaybeT1@v0
+    ).bind let v3 =
+      (Effect.Console.log "foo");
+    (effectDefer letEffect a'@v4 =
+      v3;
+    (effectPure (Data.Maybe.Just.Maybe a'@v4)))) (\$__unused@v3 -> 
+      (((
+        bindMaybeT1@v0
+      ).bind let v4 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v5 =
+        v4;
+      (effectPure (Data.Maybe.Just.Maybe a'@v5)))) (\i1@v4 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind {#- Rewrite - Inline -#}
+        let v5 =
+          (\v1@v5 -> 
+            if (isTag Data.Maybe.Just v1@v5) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v5
+              )#value0 4))
+            else
+              Data.Maybe.Nothing
+          );
+        {#- Rewrite - Inline -#}
+        let v6 =
+          (\a@v6 -> 
+            (effectDefer letEffect a'@v7 =
+              a@v6;
+            (effectPure (v5 a'@v7)))
+          );
+        (v6 {#- Rewrite - Inline -#}
+        let v7 =
+          (\v1@v7 -> 
+            if (isTag Data.Maybe.Just v1@v7) then
+              (Data.Maybe.Just.Maybe (add (
+                v1@v7
+              )#value0 1))
+            else
+              Data.Maybe.Nothing
+          );
+        {#- Rewrite - Inline -#}
+        let v8 =
+          (\a@v8 -> 
+            (effectDefer letEffect a'@v9 =
+              a@v8;
+            (effectPure (v7 a'@v9)))
+          );
+        (v8 let v9 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v10 =
+          v9;
+        (effectPure (Data.Maybe.Just.Maybe a'@v10)))))) (\i2@v5 -> 
+          (((
+            bindMaybeT1@v0
+          ).bind ((apply1@v1 {#- Rewrite - Inline -#}
+          let v6 =
+            ((
+              Data.Maybe.functorMaybe
+            ).map Data.Semiring.intAdd);
+          {#- Rewrite - Inline -#}
+          let v7 =
+            (\a@v7 -> 
+              (effectDefer letEffect a'@v8 =
+                a@v7;
+              (effectPure (v6 a'@v8)))
+            );
+          (v7 let v8 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v9 =
+            v8;
+          (effectPure (Data.Maybe.Just.Maybe a'@v9))))) let v6 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v7 =
+            v6;
+          (effectPure (Data.Maybe.Just.Maybe a'@v7))))) (\i3@v6 -> 
+            (pure1@v2 (add (add (add 1 i1@v4) i2@v5) i3@v6))
+          ))
+        ))
+      ))
+    ));
+  v3
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 6)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  let pure1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+    ).pure;
+  (((
+    bindMaybeT1@v0
+  ).bind let v3 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v4 =
+    v3;
+  (effectPure (Data.Maybe.Just.Maybe a'@v4)))) (\$__unused@v3 -> 
+    (((
+      bindMaybeT1@v0
+    ).bind let v4 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v5 =
+      v4;
+    (effectPure (Data.Maybe.Just.Maybe a'@v5)))) (\i1@v4 -> 
+      (((
+        bindMaybeT1@v0
+      ).bind [[ LetAssoc
+        let v5 =
+          ((Effect.Random.randomInt 1) 10);
+        let v5 =
+          (effectDefer letEffect a'@v6 =
+            v5;
+          (effectPure (Data.Maybe.Just.Maybe a'@v6)));
+        let v5 =
+          (effectDefer letEffect a'@v6 =
+            v5;
+          (effectPure if (isTag Data.Maybe.Just a'@v6) then
+            (Data.Maybe.Just.Maybe (add (
+              a'@v6
+            )#value0 1))
+          else
+            Data.Maybe.Nothing));
+        (effectDefer letEffect a'@v6 =
+          v5;
+        (effectPure if (isTag Data.Maybe.Just a'@v6) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v6
+          )#value0 4))
+        else
+          Data.Maybe.Nothing))
+      ]]) (\i2@v5 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind ((apply1@v1 [[ LetAssoc
+          let v6 =
+            ((Effect.Random.randomInt 1) 10);
+          let v6 =
+            (effectDefer letEffect a'@v7 =
+              v6;
+            (effectPure (Data.Maybe.Just.Maybe a'@v7)));
+          (effectDefer letEffect a'@v7 =
+            v6;
+          (effectPure if (isTag Data.Maybe.Just a'@v7) then
+            (Data.Maybe.Just.Maybe let v8 =
+              (
+                a'@v7
+              )#value0;
+            {#- Rewrite - Inline -#}
+            let v9 =
+              (\v9 -> 
+                (add v8 v9)
+              );
+            v9)
+          else
+            Data.Maybe.Nothing))
+        ]]) let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Maybe.Just.Maybe a'@v7))))) (\i3@v6 -> 
+          (pure1@v2 (add (add (add 1 i1@v4) i2@v5) i3@v6))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 7)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  let pure1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+    ).pure;
+  (((
+    bindMaybeT1@v0
+  ).bind let v3 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v4 =
+    v3;
+  (effectPure (Data.Maybe.Just.Maybe a'@v4)))) (\$__unused@v3 -> 
+    (((
+      bindMaybeT1@v0
+    ).bind let v4 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v5 =
+      v4;
+    (effectPure (Data.Maybe.Just.Maybe a'@v5)))) (\i1@v4 -> 
+      (((
+        bindMaybeT1@v0
+      ).bind let v5 =
+        ((Effect.Random.randomInt 1) 10);
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (effectDefer letEffect a'@v6 =
+          v5;
+        (effectPure (Data.Maybe.Just.Maybe a'@v6)));
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure if (isTag Data.Maybe.Just a'@v7) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v7
+          )#value0 1))
+        else
+          Data.Maybe.Nothing));
+      (effectDefer letEffect a'@v8 =
+        v7;
+      (effectPure if (isTag Data.Maybe.Just a'@v8) then
+        (Data.Maybe.Just.Maybe (add (
+          a'@v8
+        )#value0 4))
+      else
+        Data.Maybe.Nothing))) (\i2@v5 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind ((apply1@v1 let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v7 =
+          (effectDefer letEffect a'@v7 =
+            v6;
+          (effectPure (Data.Maybe.Just.Maybe a'@v7)));
+        (effectDefer letEffect a'@v8 =
+          v7;
+        (effectPure if (isTag Data.Maybe.Just a'@v8) then
+          (Data.Maybe.Just.Maybe let v9 =
+            (
+              a'@v8
+            )#value0;
+          (\v10 -> 
+            (add v9 v10)
+          ))
+        else
+          Data.Maybe.Nothing))) let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Maybe.Just.Maybe a'@v7))))) (\i3@v6 -> 
+          (pure1@v2 (add (add (add 1 i1@v4) i2@v5) i3@v6))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 8)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  let pure1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+    ).pure;
+  (((
+    bindMaybeT1@v0
+  ).bind let v3 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v4 =
+    v3;
+  (effectPure (Data.Maybe.Just.Maybe a'@v4)))) (\$__unused@v3 -> 
+    (((
+      bindMaybeT1@v0
+    ).bind let v4 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v5 =
+      v4;
+    (effectPure (Data.Maybe.Just.Maybe a'@v5)))) (\i1@v4 -> 
+      (((
+        bindMaybeT1@v0
+      ).bind let v5 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer [[ EffectBindAssoc
+        letEffect a'@v6 =
+          v5;
+        letEffect a'@v6 =
+          (effectPure (Data.Maybe.Just.Maybe a'@v6));
+        letEffect a'@v6 =
+          (effectPure if (isTag Data.Maybe.Just a'@v6) then
+            (Data.Maybe.Just.Maybe (add (
+              a'@v6
+            )#value0 1))
+          else
+            Data.Maybe.Nothing);
+        (effectPure if (isTag Data.Maybe.Just a'@v6) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v6
+          )#value0 4))
+        else
+          Data.Maybe.Nothing)
+      ]])) (\i2@v5 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind ((apply1@v1 let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer [[ EffectBindAssoc
+          letEffect a'@v7 =
+            v6;
+          letEffect a'@v7 =
+            (effectPure (Data.Maybe.Just.Maybe a'@v7));
+          (effectPure if (isTag Data.Maybe.Just a'@v7) then
+            (Data.Maybe.Just.Maybe let v8 =
+              (
+                a'@v7
+              )#value0;
+            (\v9 -> 
+              (add v8 v9)
+            ))
+          else
+            Data.Maybe.Nothing)
+        ]])) let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Maybe.Just.Maybe a'@v7))))) (\i3@v6 -> 
+          (pure1@v2 (add (add (add 1 i1@v4) i2@v5) i3@v6))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 9)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  let pure1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+    ).pure;
+  (((
+    bindMaybeT1@v0
+  ).bind let v3 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v4 =
+    v3;
+  (effectPure (Data.Maybe.Just.Maybe a'@v4)))) (\$__unused@v3 -> 
+    (((
+      bindMaybeT1@v0
+    ).bind let v4 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v5 =
+      v4;
+    (effectPure (Data.Maybe.Just.Maybe a'@v5)))) (\i1@v4 -> 
+      (((
+        bindMaybeT1@v0
+      ).bind let v5 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v6 =
+        v5;
+      {#- Rewrite - Inline -#}
+      let a'@v7 =
+        (Data.Maybe.Just.Maybe a'@v6);
+      (effectDefer [[ DistBranchesLet
+        let a'@v8 =
+          if (isTag Data.Maybe.Just a'@v7) then
+            (Data.Maybe.Just.Maybe (add (
+              a'@v7
+            )#value0 1))
+          else
+            Data.Maybe.Nothing;
+        (effectPure if (isTag Data.Maybe.Just a'@v8) then
+          (Data.Maybe.Just.Maybe (add (
+            a'@v8
+          )#value0 4))
+        else
+          Data.Maybe.Nothing)
+      ]]))) (\i2@v5 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind ((apply1@v1 let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        {#- Rewrite - Inline -#}
+        let a'@v8 =
+          (Data.Maybe.Just.Maybe a'@v7);
+        (effectPure if (isTag Data.Maybe.Just a'@v8) then
+          (Data.Maybe.Just.Maybe let v9 =
+            (
+              a'@v8
+            )#value0;
+          (\v10 -> 
+            (add v9 v10)
+          ))
+        else
+          Data.Maybe.Nothing))) let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Maybe.Just.Maybe a'@v7))))) (\i3@v6 -> 
+          (pure1@v2 (add (add (add 1 i1@v4) i2@v5) i3@v6))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerMaybeT01.test2 (Step 10; Final)
+  let bindMaybeT1@v0 =
+    (Control.Monad.Maybe.Trans.bindMaybeT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Maybe.Trans.applyMaybeT Effect.monadEffect)
+    ).apply;
+  let pure1@v2 =
+    (
+      (Control.Monad.Maybe.Trans.applicativeMaybeT Effect.monadEffect)
+    ).pure;
+  (((
+    bindMaybeT1@v0
+  ).bind let v3 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v4 =
+    v3;
+  (effectPure (Data.Maybe.Just.Maybe a'@v4)))) (\$__unused@v3 -> 
+    (((
+      bindMaybeT1@v0
+    ).bind let v4 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v5 =
+      v4;
+    (effectPure (Data.Maybe.Just.Maybe a'@v5)))) (\i1@v4 -> 
+      (((
+        bindMaybeT1@v0
+      ).bind let v5 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v6 =
+        v5;
+      (effectPure (Data.Maybe.Just.Maybe (add a'@v6 5))))) (\i2@v5 -> 
+        (((
+          bindMaybeT1@v0
+        ).bind ((apply1@v1 let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Maybe.Just.Maybe (\v8 -> 
+          (add a'@v7 v8)
+        ))))) let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Maybe.Just.Maybe a'@v7))))) (\i3@v6 -> 
+          (pure1@v2 (add (add (add 1 i1@v4) i2@v5) i3@v6))
+        ))
+      ))
+    ))
+  ))

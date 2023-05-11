@@ -1,0 +1,286 @@
+Snapshot.PrimOpNumber01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringNumber)
+---------------
+Snapshot.PrimOpNumber01.add (Step 1; Final)
+  Data.Semiring.numAdd
+
+===============
+
+Snapshot.PrimOpNumber01.div (Step 0; Original)
+  (Data.EuclideanRing.div Data.EuclideanRing.euclideanRingNumber)
+---------------
+Snapshot.PrimOpNumber01.div (Step 1; Final)
+  Data.EuclideanRing.numDiv
+
+===============
+
+Snapshot.PrimOpNumber01.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqNumber)
+---------------
+Snapshot.PrimOpNumber01.eq (Step 1; Final)
+  Data.Eq.eqNumberImpl
+
+===============
+
+Snapshot.PrimOpNumber01.greaterThan (Step 0; Original)
+  (Data.Ord.greaterThan Data.Ord.ordNumber)
+---------------
+Snapshot.PrimOpNumber01.greaterThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (> a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.greaterThanOrEq (Step 0; Original)
+  (Data.Ord.greaterThanOrEq Data.Ord.ordNumber)
+---------------
+Snapshot.PrimOpNumber01.greaterThanOrEq (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (>= a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordNumber)
+---------------
+Snapshot.PrimOpNumber01.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.lessThanOrEq (Step 0; Original)
+  (Data.Ord.lessThanOrEq Data.Ord.ordNumber)
+---------------
+Snapshot.PrimOpNumber01.lessThanOrEq (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (<= a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.mul (Step 0; Original)
+  (Data.Semiring.mul Data.Semiring.semiringNumber)
+---------------
+Snapshot.PrimOpNumber01.mul (Step 1; Final)
+  Data.Semiring.numMul
+
+===============
+
+Snapshot.PrimOpNumber01.negate (Step 0; Original)
+  (Data.Ring.negate Data.Ring.ringNumber)
+---------------
+Snapshot.PrimOpNumber01.negate (Step 1)
+  {#- Rewrite - Inline -#}
+  let zero@v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    0.0;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\a@v1 -> 
+        (subtract zero@v0 a@v1)
+      );
+    v1;
+  v1
+---------------
+Snapshot.PrimOpNumber01.negate (Step 2; Final)
+  (\a@v0 -> 
+    (numNegate a@v0)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.notEq (Step 0; Original)
+  (Data.Eq.notEq Data.Eq.eqNumber)
+---------------
+Snapshot.PrimOpNumber01.notEq (Step 1; Final)
+  (\x@v0 -> \y@v1 -> 
+    (/= x@v0 y@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringNumber)
+---------------
+Snapshot.PrimOpNumber01.sub (Step 1; Final)
+  Data.Ring.numSub
+
+===============
+
+Snapshot.PrimOpNumber01.test1 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.add a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test1 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (add a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test10 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.div a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test10 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (divide a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test11 (Step 0; Original)
+  (\a@v0 -> 
+    (Snapshot.PrimOpNumber01.negate a@v0)
+  )
+---------------
+Snapshot.PrimOpNumber01.test11 (Step 1; Final)
+  (\a@v0 -> 
+    (numNegate a@v0)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test12 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> \c@v2 -> 
+    ((Snapshot.PrimOpNumber01.sub a@v0) ((Snapshot.PrimOpNumber01.sub b@v1) c@v2))
+  )
+---------------
+Snapshot.PrimOpNumber01.test12 (Step 1)
+  (\a@v0 -> \b@v1 -> \c@v2 -> 
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (subtract b@v1 c@v2);
+    (subtract a@v0 v3)
+  )
+---------------
+Snapshot.PrimOpNumber01.test12 (Step 2; Final)
+  (\a@v0 -> \b@v1 -> \c@v2 -> 
+    (subtract a@v0 (subtract b@v1 c@v2))
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test13 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> \c@v2 -> 
+    ((Snapshot.PrimOpNumber01.div a@v0) ((Snapshot.PrimOpNumber01.div b@v1) c@v2))
+  )
+---------------
+Snapshot.PrimOpNumber01.test13 (Step 1)
+  (\a@v0 -> \b@v1 -> \c@v2 -> 
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (divide b@v1 c@v2);
+    (divide a@v0 v3)
+  )
+---------------
+Snapshot.PrimOpNumber01.test13 (Step 2; Final)
+  (\a@v0 -> \b@v1 -> \c@v2 -> 
+    (divide a@v0 (divide b@v1 c@v2))
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test2 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.sub a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test2 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (subtract a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test3 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.eq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test3 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (== a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test4 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.notEq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test4 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (/= a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test5 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.lessThan a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test5 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (< a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test6 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.greaterThan a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test6 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (> a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test7 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.lessThanOrEq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test7 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (<= a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test8 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.greaterThanOrEq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test8 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (>= a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpNumber01.test9 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpNumber01.mul a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpNumber01.test9 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (multiply a@v0 b@v1)
+  )

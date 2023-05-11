@@ -1,0 +1,758 @@
+Snapshot.CaseRecord.greaterThan (Step 0; Original)
+  (Data.Ord.greaterThan Data.Ord.ordInt)
+---------------
+Snapshot.CaseRecord.greaterThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (> a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.CaseRecord.test1 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\ ->
+        "0"
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\ ->
+        "1"
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        "2"
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        "3"
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        "catch"
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (
+        v1
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (
+        v1
+      ).b;
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (
+        v1
+      ).c;
+    if (== v7 1) then
+      (v2)
+    else if (== v8 1) then
+      (v3)
+    else if (== v9 1) then
+      (v4)
+    else if (== v7 2) then
+      if (== v8 2) then
+        (v5)
+      else
+        (v6)
+    else
+      (v6)
+  )
+---------------
+Snapshot.CaseRecord.test1 (Step 1; Final)
+  (\v@v0 -> 
+    if (== (
+        v@v0
+      ).a 1) then
+      "0"
+    else if (== (
+        v@v0
+      ).b 1) then
+      "1"
+    else if (== (
+        v@v0
+      ).c 1) then
+      "2"
+    else if (== (
+        v@v0
+      ).a 2) then
+      if (== (
+          v@v0
+        ).b 2) then
+        "3"
+      else
+        "catch"
+    else
+      "catch"
+  )
+
+===============
+
+Snapshot.CaseRecord.test2 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        4
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (
+        v1
+      ).d;
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (
+        v6
+      ).b;
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (
+        v6
+      ).c;
+    {#- Rewrite - Inline -#}
+    let v10 =
+      (
+        v7
+      ).e;
+    {#- Rewrite - Inline -#}
+    let v11 =
+      (
+        v7
+      ).f;
+    if (== v9 2) then
+      if (== v10 1) then
+        if (== v11 2) then
+          if (== v8 1) then
+            (v2)
+          else
+            (v3)
+        else if (== v8 1) then
+          (v4)
+        else
+          (v5)
+      else if (== v8 1) then
+        (v4)
+      else
+        (v5)
+    else
+      (v5)
+  )
+---------------
+Snapshot.CaseRecord.test2 (Step 1; Final)
+  (\v@v0 -> 
+    if (== (
+        (
+          v@v0
+        ).a
+      ).c 2) then
+      if (== (
+          (
+            v@v0
+          ).d
+        ).e 1) then
+        if (== (
+            (
+              v@v0
+            ).d
+          ).f 2) then
+          if (== (
+              (
+                v@v0
+              ).a
+            ).b 1) then
+            1
+          else
+            2
+        else if (== (
+            (
+              v@v0
+            ).a
+          ).b 1) then
+          3
+        else
+          4
+      else if (== (
+          (
+            v@v0
+          ).a
+        ).b 1) then
+        3
+      else
+        4
+    else
+      4
+  )
+
+===============
+
+Snapshot.CaseRecord.test3 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\a@v2 ->
+        a@v2
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\b@v3 ->
+        b@v3
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (
+        v1
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      ).b;
+    {#- Rewrite - Inline -#}
+    let a@v7 =
+      v5;
+    if ((Snapshot.CaseRecord.greaterThan a@v7) 0) then
+      (v2 a@v7)
+    else
+      {#- Rewrite - Inline -#}
+      let b@v8 =
+        v6;
+      if ((Snapshot.CaseRecord.greaterThan b@v8) 1) then
+        (v3 b@v8)
+      else
+        (v4)
+  )
+---------------
+Snapshot.CaseRecord.test3 (Step 1)
+  (\v@v0 -> 
+    if let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      v1
+    else if let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      v1
+    else
+      3
+  )
+---------------
+Snapshot.CaseRecord.test3 (Step 2)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (> v1 v2) then
+      (
+        v@v0
+      ).a
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        1;
+      (> v1 v2) then
+      (
+        v@v0
+      ).b
+    else
+      3
+  )
+---------------
+Snapshot.CaseRecord.test3 (Step 3; Final)
+  (\v@v0 -> 
+    if (> (
+        v@v0
+      ).a 0) then
+      (
+        v@v0
+      ).a
+    else if (> (
+        v@v0
+      ).b 1) then
+      (
+        v@v0
+      ).b
+    else
+      3
+  )
+
+===============
+
+Snapshot.CaseRecord.test4 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\a@v2 ->
+        a@v2
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\b@v3 ->
+        b@v3
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (
+        v1
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      ).b;
+    {#- Rewrite - Inline -#}
+    let a@v7 =
+      v5;
+    if ((Snapshot.CaseRecord.greaterThan a@v7) 0) then
+      (v2 a@v7)
+    else
+      {#- Rewrite - Inline -#}
+      let b@v8 =
+        v6;
+      if ((Snapshot.CaseRecord.greaterThan b@v8) 1) then
+        (v3 b@v8)
+      else
+        (v4)
+  )
+---------------
+Snapshot.CaseRecord.test4 (Step 1)
+  (\v@v0 -> 
+    if let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      v1
+    else if let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      v1
+    else
+      3
+  )
+---------------
+Snapshot.CaseRecord.test4 (Step 2)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (> v1 v2) then
+      (
+        v@v0
+      ).a
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        1;
+      (> v1 v2) then
+      (
+        v@v0
+      ).b
+    else
+      3
+  )
+---------------
+Snapshot.CaseRecord.test4 (Step 3; Final)
+  (\v@v0 -> 
+    if (> (
+        v@v0
+      ).a 0) then
+      (
+        v@v0
+      ).a
+    else if (> (
+        v@v0
+      ).b 1) then
+      (
+        v@v0
+      ).b
+    else
+      3
+  )
+
+===============
+
+Snapshot.CaseRecord.test5 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\a@v2 ->
+        a@v2
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\b@v3 ->
+        b@v3
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        0
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (
+        v1
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      ).b;
+    {#- Rewrite - Inline -#}
+    let a@v7 =
+      v5;
+    if ((Snapshot.CaseRecord.greaterThan a@v7) 0) then
+      (v2 a@v7)
+    else
+      {#- Rewrite - Inline -#}
+      let b@v8 =
+        v6;
+      if ((Snapshot.CaseRecord.greaterThan b@v8) 0) then
+        (v3 b@v8)
+      else
+        (v4)
+  )
+---------------
+Snapshot.CaseRecord.test5 (Step 1)
+  (\v@v0 -> 
+    if let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      v1
+    else if let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      v1
+    else
+      0
+  )
+---------------
+Snapshot.CaseRecord.test5 (Step 2)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (> v1 v2) then
+      (
+        v@v0
+      ).a
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (> v1 v2) then
+      (
+        v@v0
+      ).b
+    else
+      0
+  )
+---------------
+Snapshot.CaseRecord.test5 (Step 3; Final)
+  (\v@v0 -> 
+    if (> (
+        v@v0
+      ).a 0) then
+      (
+        v@v0
+      ).a
+    else if (> (
+        v@v0
+      ).b 0) then
+      (
+        v@v0
+      ).b
+    else
+      0
+  )
+
+===============
+
+Snapshot.CaseRecord.test6 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\a@v2 b@v3 ->
+        a@v2
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\a@v3 b@v4 ->
+        b@v4
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        0
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (
+        v1
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      ).b;
+    {#- Rewrite - Inline -#}
+    let a@v7 =
+      v5;
+    {#- Rewrite - Inline -#}
+    let b@v8 =
+      v6;
+    if ((Snapshot.CaseRecord.greaterThan a@v7) 0) then
+      (v2 a@v7 b@v8)
+    else if ((Snapshot.CaseRecord.greaterThan b@v8) 0) then
+      (v3 a@v7 b@v8)
+    else
+      (v4)
+  )
+---------------
+Snapshot.CaseRecord.test6 (Step 1)
+  (\v@v0 -> 
+    if let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        ).b;
+      v1
+    else if let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\a2@v2 -> 
+          (> v1 a2@v2)
+        );
+      (v2 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        ).b;
+      v2
+    else
+      0
+  )
+---------------
+Snapshot.CaseRecord.test6 (Step 2)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).a;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (> v1 v2) then
+      (
+        v@v0
+      ).a
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        ).b;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (> v1 v2) then
+      (
+        v@v0
+      ).b
+    else
+      0
+  )
+---------------
+Snapshot.CaseRecord.test6 (Step 3; Final)
+  (\v@v0 -> 
+    if (> (
+        v@v0
+      ).a 0) then
+      (
+        v@v0
+      ).a
+    else if (> (
+        v@v0
+      ).b 0) then
+      (
+        v@v0
+      ).b
+    else
+      0
+  )

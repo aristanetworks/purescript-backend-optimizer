@@ -1,0 +1,938 @@
+Snapshot.PrimOpInt02.intValues (Step 0; Original)
+  (\op@v0 -> 
+    [
+      ((op@v0 1) 1),
+      ((op@v0 1) 2),
+      ((op@v0 2) 1),
+      ((op@v0 1) (Snapshot.PrimOpInt02.negate 2)),
+      ((op@v0 (Snapshot.PrimOpInt02.negate 1)) 2),
+      ((op@v0 (Snapshot.PrimOpInt02.negate 1)) (Snapshot.PrimOpInt02.negate 1)),
+    ]
+  )
+---------------
+Snapshot.PrimOpInt02.intValues (Step 1)
+  (\op@v0 -> 
+    [
+      ((op@v0 1) 1),
+      ((op@v0 1) 2),
+      ((op@v0 2) 1),
+      ((op@v0 1) {#- Rewrite - Inline -#}
+      let v1 =
+        2;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (intnegate v1);
+      v2),
+      ((op@v0 {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (intnegate v1);
+      v2) 2),
+      ((op@v0 {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (intnegate v1);
+      v2) {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (intnegate v1);
+      v2),
+    ]
+  )
+---------------
+Snapshot.PrimOpInt02.intValues (Step 2; Final)
+  (\op@v0 -> 
+    [
+      ((op@v0 1) 1),
+      ((op@v0 1) 2),
+      ((op@v0 2) 1),
+      ((op@v0 1) -2),
+      ((op@v0 -1) 2),
+      ((op@v0 -1) -1),
+    ]
+  )
+
+===============
+
+Snapshot.PrimOpInt02.negate (Step 0; Original)
+  (Data.Ring.negate Data.Ring.ringInt)
+---------------
+Snapshot.PrimOpInt02.negate (Step 1)
+  {#- Rewrite - Inline -#}
+  let zero@v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    0;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\a@v1 -> 
+        (subtract zero@v0 a@v1)
+      );
+    v1;
+  v1
+---------------
+Snapshot.PrimOpInt02.negate (Step 2; Final)
+  (\a@v0 -> 
+    (intnegate a@v0)
+  )
+
+===============
+
+Snapshot.PrimOpInt02.test1 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Semiring.add Data.Semiring.semiringInt))
+---------------
+Snapshot.PrimOpInt02.test1 (Step 1)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add v0 v1)
+      );
+    (v1 -2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add v0 v1)
+      );
+    (v1 -1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test1 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (add 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (add 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (add 2 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -2;
+    (add 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (add -1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    (add -1 v0),
+  ]
+---------------
+Snapshot.PrimOpInt02.test1 (Step 3; Final)
+  [
+    2,
+    3,
+    3,
+    -1,
+    1,
+    -2,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test10 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.EuclideanRing.div Data.EuclideanRing.euclideanRingInt))
+---------------
+Snapshot.PrimOpInt02.test10 (Step 1; Final)
+  [
+    ((Data.EuclideanRing.intDiv 1) 1),
+    ((Data.EuclideanRing.intDiv 1) 2),
+    ((Data.EuclideanRing.intDiv 2) 1),
+    ((Data.EuclideanRing.intDiv 1) -2),
+    ((Data.EuclideanRing.intDiv -1) 2),
+    ((Data.EuclideanRing.intDiv -1) -1),
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test11 (Step 0; Original)
+  [
+    (Snapshot.PrimOpInt02.negate 1),
+    (Snapshot.PrimOpInt02.negate (Snapshot.PrimOpInt02.negate 1)),
+  ]
+---------------
+Snapshot.PrimOpInt02.test11 (Step 1)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (intnegate v0);
+    v1,
+    {#- Rewrite - Inline -#}
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (intnegate v0);
+      v1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (intnegate v0);
+    v1,
+  ]
+---------------
+Snapshot.PrimOpInt02.test11 (Step 2; Final)
+  [
+    -1,
+    1,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test2 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Ring.sub Data.Ring.ringInt))
+---------------
+Snapshot.PrimOpInt02.test2 (Step 1)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (subtract v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (subtract v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (subtract v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (subtract v0 v1)
+      );
+    (v1 -2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (subtract v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (subtract v0 v1)
+      );
+    (v1 -1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test2 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (subtract 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (subtract 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (subtract 2 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -2;
+    (subtract 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (subtract -1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    (subtract -1 v0),
+  ]
+---------------
+Snapshot.PrimOpInt02.test2 (Step 3; Final)
+  [
+    0,
+    -1,
+    1,
+    3,
+    -3,
+    0,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test3 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Eq.eq Data.Eq.eqInt))
+---------------
+Snapshot.PrimOpInt02.test3 (Step 1)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (== v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (== v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (== v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (== v0 v1)
+      );
+    (v1 -2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (== v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (== v0 v1)
+      );
+    (v1 -1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test3 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (== 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (== 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (== 2 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -2;
+    (== 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (== -1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    (== -1 v0),
+  ]
+---------------
+Snapshot.PrimOpInt02.test3 (Step 3; Final)
+  [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test4 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Eq.notEq Data.Eq.eqInt))
+---------------
+Snapshot.PrimOpInt02.test4 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\x@v0 -> \y@v1 -> 
+      (/= x@v0 y@v1)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    [
+      ((v0 1) 1),
+      ((v0 1) 2),
+      ((v0 2) 1),
+      ((v0 1) -2),
+      ((v0 -1) 2),
+      ((v0 -1) -1),
+    ];
+  v1
+---------------
+Snapshot.PrimOpInt02.test4 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (/= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (/= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (/= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -2;
+    (/= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (/= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -1;
+    (/= v0 v1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test4 (Step 3; Final)
+  [
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test5 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Ord.lessThan Data.Ord.ordInt))
+---------------
+Snapshot.PrimOpInt02.test5 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\a1@v0 -> \a2@v1 -> 
+      (< a1@v0 a2@v1)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    [
+      ((v0 1) 1),
+      ((v0 1) 2),
+      ((v0 2) 1),
+      ((v0 1) -2),
+      ((v0 -1) 2),
+      ((v0 -1) -1),
+    ];
+  v1
+---------------
+Snapshot.PrimOpInt02.test5 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (< v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (< v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (< v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -2;
+    (< v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (< v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -1;
+    (< v0 v1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test5 (Step 3; Final)
+  [
+    false,
+    true,
+    false,
+    false,
+    true,
+    false,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test6 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Ord.greaterThan Data.Ord.ordInt))
+---------------
+Snapshot.PrimOpInt02.test6 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\a1@v0 -> \a2@v1 -> 
+      (> a1@v0 a2@v1)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    [
+      ((v0 1) 1),
+      ((v0 1) 2),
+      ((v0 2) 1),
+      ((v0 1) -2),
+      ((v0 -1) 2),
+      ((v0 -1) -1),
+    ];
+  v1
+---------------
+Snapshot.PrimOpInt02.test6 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (> v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (> v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (> v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -2;
+    (> v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (> v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -1;
+    (> v0 v1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test6 (Step 3; Final)
+  [
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test7 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Ord.lessThanOrEq Data.Ord.ordInt))
+---------------
+Snapshot.PrimOpInt02.test7 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\a1@v0 -> \a2@v1 -> 
+      (<= a1@v0 a2@v1)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    [
+      ((v0 1) 1),
+      ((v0 1) 2),
+      ((v0 2) 1),
+      ((v0 1) -2),
+      ((v0 -1) 2),
+      ((v0 -1) -1),
+    ];
+  v1
+---------------
+Snapshot.PrimOpInt02.test7 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (<= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (<= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (<= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -2;
+    (<= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (<= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -1;
+    (<= v0 v1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test7 (Step 3; Final)
+  [
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test8 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Ord.greaterThanOrEq Data.Ord.ordInt))
+---------------
+Snapshot.PrimOpInt02.test8 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\a1@v0 -> \a2@v1 -> 
+      (>= a1@v0 a2@v1)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    [
+      ((v0 1) 1),
+      ((v0 1) 2),
+      ((v0 2) 1),
+      ((v0 1) -2),
+      ((v0 -1) 2),
+      ((v0 -1) -1),
+    ];
+  v1
+---------------
+Snapshot.PrimOpInt02.test8 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (>= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (>= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    (>= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -2;
+    (>= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      2;
+    (>= v0 v1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      -1;
+    (>= v0 v1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test8 (Step 3; Final)
+  [
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+  ]
+
+===============
+
+Snapshot.PrimOpInt02.test9 (Step 0; Original)
+  (Snapshot.PrimOpInt02.intValues (Data.Semiring.mul Data.Semiring.semiringInt))
+---------------
+Snapshot.PrimOpInt02.test9 (Step 1)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (multiply v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (multiply v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (multiply v0 v1)
+      );
+    (v1 1),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (multiply v0 v1)
+      );
+    (v1 -2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (multiply v0 v1)
+      );
+    (v1 2),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (multiply v0 v1)
+      );
+    (v1 -1),
+  ]
+---------------
+Snapshot.PrimOpInt02.test9 (Step 2)
+  [
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (multiply 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (multiply 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      1;
+    (multiply 2 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -2;
+    (multiply 1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      2;
+    (multiply -1 v0),
+    {#- Rewrite - Inline -#}
+    let v0 =
+      -1;
+    (multiply -1 v0),
+  ]
+---------------
+Snapshot.PrimOpInt02.test9 (Step 3; Final)
+  [
+    1,
+    2,
+    2,
+    -2,
+    -2,
+    1,
+  ]

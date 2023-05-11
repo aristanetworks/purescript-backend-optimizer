@@ -1,0 +1,340 @@
+Snapshot.ShowLiterals.test1 (Step 0; Original)
+  ((Data.Show.show Data.Show.showInt) 42)
+---------------
+Snapshot.ShowLiterals.test1 (Step 1; Final)
+  "42"
+
+===============
+
+Snapshot.ShowLiterals.test2 (Step 0; Original)
+  ((Data.Show.show Data.Show.showNumber) 42.0)
+---------------
+Snapshot.ShowLiterals.test2 (Step 1; Final)
+  "42.0"
+
+===============
+
+Snapshot.ShowLiterals.test3 (Step 0; Original)
+  ((Data.Show.show Data.Show.showBoolean) true)
+---------------
+Snapshot.ShowLiterals.test3 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    true;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    if v0 then
+      "true"
+    else
+      "false";
+  v1
+---------------
+Snapshot.ShowLiterals.test3 (Step 2; Final)
+  "true"
+
+===============
+
+Snapshot.ShowLiterals.test4 (Step 0; Original)
+  ((Data.Show.show Data.Show.showString) "wat")
+---------------
+Snapshot.ShowLiterals.test4 (Step 1; Final)
+  ""wat""
+
+===============
+
+Snapshot.ShowLiterals.test5 (Step 0; Original)
+  ((Data.Show.show Data.Show.showChar) ''w'')
+---------------
+Snapshot.ShowLiterals.test5 (Step 1; Final)
+  "'w'"
+
+===============
+
+Snapshot.ShowLiterals.test6 (Step 0; Original)
+  ((Data.Show.show (((Data.Show.showRecord <PrimUndefined>) <PrimUndefined>) (((Data.Show.showRecordFieldsCons { reflectSymbol =
+      (\$__unused@v0 -> 
+        "bar"
+      )
+  }) ((Data.Show.showRecordFieldsConsNil { reflectSymbol =
+      (\$__unused@v0 -> 
+        "foo"
+      )
+  }) Data.Show.showString)) Data.Show.showBoolean))) { foo =
+      "1"
+  , bar =
+      true
+  })
+---------------
+Snapshot.ShowLiterals.test6 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        <PrimUndefined>;
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          { reflectSymbol =
+              (\$__unused@v2 -> 
+                "bar"
+              )
+          };
+        [[ LetAssoc
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              { reflectSymbol =
+                  (\$__unused@v3 -> 
+                    "foo"
+                  )
+              };
+            {#- Rewrite - Inline -#}
+            let v4 =
+              { showRecordFields =
+                  (\v@v4 -> \record@v5 -> 
+                    let key@v6 =
+                      ((
+                        v3
+                      ).reflectSymbol Type.Proxy.Proxy);
+                    (stringAppend " " (stringAppend key@v6 (stringAppend ": " (stringAppend (Data.Show.showStringImpl ((Record.Unsafe.unsafeGet key@v6) record@v5)) " "))))
+                  )
+              };
+            v4;
+          let v3 =
+            { showRecordFields =
+                (\v@v4 -> \record@v5 -> 
+                  let key@v6 =
+                    ((
+                      v2
+                    ).reflectSymbol Type.Proxy.Proxy);
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    ((Record.Unsafe.unsafeGet key@v6) record@v5);
+                  {#- Rewrite - Inline -#}
+                  let v8 =
+                    {#- Rewrite - Inline -#}
+                    let v8 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        {#- Rewrite - Inline -#}
+                        let v8 =
+                          {#- Rewrite - Inline -#}
+                          let v8 =
+                            if v7 then
+                              "true"
+                            else
+                              "false";
+                          v8;
+                        (stringAppend v8 (stringAppend "," (((
+                          v3
+                        ).showRecordFields Type.Proxy.Proxy) record@v5)));
+                      (stringAppend ": " v8);
+                    (stringAppend key@v6 v8);
+                  (stringAppend " " v8)
+                )
+            };
+          v3
+        ]];
+      { show =
+          (\record@v3 -> 
+            (stringAppend "{" (stringAppend (((
+              v2
+            ).showRecordFields Type.Proxy.Proxy) record@v3) "}"))
+          )
+      };
+    v1;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).show;
+  (v1 { foo =
+      "1"
+  , bar =
+      true
+  })
+---------------
+Snapshot.ShowLiterals.test6 (Step 2)
+  let v0 =
+    [[ UnpackOp
+      For identifier v0
+        Unpack record
+        labels = ["showRecordFields"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v1 =
+          { showRecordFields =
+              (\v@v1 -> \record@v2 -> 
+                {#- Rewrite - Inline -#}
+                let key@v3 =
+                  {#- Rewrite - Inline -#}
+                  let v3 =
+                    Type.Proxy.Proxy;
+                  "bar";
+                (stringAppend " " (stringAppend key@v3 (stringAppend ": " (stringAppend if ((Record.Unsafe.unsafeGet key@v3) record@v2) then
+                  "true"
+                else
+                  "false" (stringAppend "," (((
+                  v0
+                ).showRecordFields Type.Proxy.Proxy) record@v2))))))
+              )
+          };
+        v1
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      { show =
+          (\record@v1 -> 
+            (stringAppend "{" (stringAppend (((
+              v0
+            ).showRecordFields Type.Proxy.Proxy) record@v1) "}"))
+          )
+      };
+    (
+      v1
+    ).show;
+  (v1 { foo =
+      "1"
+  , bar =
+      true
+  })
+---------------
+Snapshot.ShowLiterals.test6 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      (\v@v0 -> \record@v1 -> 
+        (stringAppend " foo: " (stringAppend (Data.Show.showStringImpl (
+          record@v1
+        ).foo) " "))
+      );
+    { showRecordFields =
+        (\v@v1 -> \record@v2 -> 
+          (stringAppend " bar: " (stringAppend if (
+              record@v2
+            ).bar then
+            "true"
+          else
+            "false" (stringAppend "," ((v0 Type.Proxy.Proxy) record@v2))))
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let v1 =
+    { foo =
+        "1"
+    , bar =
+        true
+    };
+  (stringAppend "{" (stringAppend (((
+    v0
+  ).showRecordFields Type.Proxy.Proxy) v1) "}"))
+---------------
+Snapshot.ShowLiterals.test6 (Step 4)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    Type.Proxy.Proxy;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      [[ UnpackOp
+        For identifier v1
+          Unpack record
+          labels = ["foo","bar"]
+        inside
+          {#- Rewrite - Inline -#}
+          let v2 =
+            Type.Proxy.Proxy;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              {#- Rewrite - Inline -#}
+              let v3 =
+                {#- Rewrite - Inline -#}
+                let v3 =
+                  (stringAppend " foo: " (stringAppend (Data.Show.showStringImpl (
+                    v1
+                  ).foo) " "));
+                (stringAppend "," v3);
+              [[ DistBranchesOp
+                DistPrimOp2L
+                stringAppend
+                v3
+                if (
+                    v1
+                  ).bar then
+                  "true"
+                else
+                  "false"
+              ]];
+            (stringAppend " bar: " v3);
+          v3
+      ]];
+    (stringAppend v1 "}");
+  (stringAppend "{" v1)
+---------------
+Snapshot.ShowLiterals.test6 (Step 5)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    "1";
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        true;
+      [[ DistBranchesOp
+        DistPrimOp2R
+        " bar: "
+        stringAppend
+        if v1 then
+          (stringAppend "true, foo: " (stringAppend (Data.Show.showStringImpl v0) " "))
+        else
+          (stringAppend "false, foo: " (stringAppend (Data.Show.showStringImpl v0) " "))
+      ]];
+    (stringAppend v1 "}");
+  (stringAppend "{" v1)
+---------------
+Snapshot.ShowLiterals.test6 (Step 6; Final)
+  "{ bar: true, foo: "1" }"
+
+===============
+
+Snapshot.ShowLiterals.test7 (Step 0; Original)
+  ((Data.Show.show (Data.Show.showArray Data.Show.showInt)) [
+    1,
+    2,
+    3,
+    4,
+  ])
+---------------
+Snapshot.ShowLiterals.test7 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    { show =
+        (Data.Show.showArrayImpl Data.Show.showIntImpl)
+    };
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).show;
+  (v1 [
+    1,
+    2,
+    3,
+    4,
+  ])
+---------------
+Snapshot.ShowLiterals.test7 (Step 2; Final)
+  "[1,2,3,4]"

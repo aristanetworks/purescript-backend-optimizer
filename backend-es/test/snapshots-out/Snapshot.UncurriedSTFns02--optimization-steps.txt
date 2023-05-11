@@ -1,0 +1,81 @@
+Snapshot.UncurriedSTFns02.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.UncurriedSTFns02.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.UncurriedSTFns02.logShow (Step 0; Original)
+  ((Effect.Class.Console.logShow Effect.Class.monadEffectEffect) Data.Show.showInt)
+---------------
+Snapshot.UncurriedSTFns02.logShow (Step 1; Final)
+  ((Effect.Class.Console.logShow Effect.Class.monadEffectEffect) Data.Show.showInt)
+
+===============
+
+Snapshot.UncurriedSTFns02.pure (Step 0; Original)
+  (Control.Applicative.pure Control.Monad.ST.Internal.applicativeST)
+---------------
+Snapshot.UncurriedSTFns02.pure (Step 1; Final)
+  Control.Monad.ST.Internal.pure_
+
+===============
+
+Snapshot.UncurriedSTFns02.test1 (Step 0; Original)
+  ((Control.Monad.ST.Uncurried.runSTFn1 (Control.Monad.ST.Uncurried.mkSTFn1 (\m@v0 -> 
+    (Snapshot.UncurriedSTFns02.pure m@v0)
+  ))) 12)
+---------------
+Snapshot.UncurriedSTFns02.test1 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    12;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (effectPure v0);
+  v1
+---------------
+Snapshot.UncurriedSTFns02.test1 (Step 2; Final)
+  (effectPure 12)
+
+===============
+
+Snapshot.UncurriedSTFns02.test2 (Step 0; Original)
+  (\random@v0 -> 
+    let f@v1 =
+      (Control.Monad.ST.Uncurried.mkSTFn1 (\n@v1 -> 
+        (Snapshot.UncurriedSTFns02.pure n@v1)
+      ));
+    ((Snapshot.UncurriedSTFns02.bind random@v0) (\n@v2 -> 
+      (Snapshot.UncurriedSTFns02.logShow (Control.Monad.ST.Internal.run ((Control.Monad.ST.Uncurried.runSTFn1 f@v1) n@v2)))
+    ))
+  )
+---------------
+Snapshot.UncurriedSTFns02.test2 (Step 1)
+  (\random@v0 -> 
+    {#- Rewrite - Inline -#}
+    let f@v1 =
+      (#\n@v1 ->
+        (effectPure n@v1)
+      #);
+    letEffect n@v2 =
+      random@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (Control.Monad.ST.Internal.run (#f@v1 n@v2#));
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (Effect.Console.log (Data.Show.showIntImpl v3));
+      v4;
+    v4
+  )
+---------------
+Snapshot.UncurriedSTFns02.test2 (Step 2; Final)
+  (\random@v0 -> 
+    letEffect n@v1 =
+      random@v0;
+    (Effect.Console.log (Data.Show.showIntImpl n@v1))
+  )

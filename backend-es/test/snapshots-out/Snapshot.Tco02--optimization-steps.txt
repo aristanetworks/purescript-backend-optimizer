@@ -1,0 +1,123 @@
+Snapshot.Tco02.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqInt)
+---------------
+Snapshot.Tco02.eq (Step 1; Final)
+  Data.Eq.eqIntImpl
+
+===============
+
+Snapshot.Tco02.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringInt)
+---------------
+Snapshot.Tco02.sub (Step 1; Final)
+  Data.Ring.intSub
+
+===============
+
+Snapshot.Tco02.test (Step 0; Original)
+  (\n@v0 -> 
+    {#- Rewrite - Uncurry -#}
+    let k@v1 =
+      \wat@v1->
+        {#- Rewrite - Inline -#}
+        let j@v2 =
+          (\i@v2 -> \v@v3 -> 
+            (Snapshot.Tco02.test i@v2)
+          );
+        {#- Rewrite - Inline -#}
+        let v3 =
+          wat@v1;
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\ ->
+            ((j@v2 ((Snapshot.Tco02.sub n@v0) 1)) Data.Unit.unit)
+          );
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\ ->
+            n@v0
+          );
+        if (== v3 true) then
+          (v4)
+        else
+          (v5);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      ((Snapshot.Tco02.eq n@v0) 0);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\ ->
+        (k@v1 false)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        (k@v1 true)
+      );
+    if (== v2 true) then
+      (v3)
+    else
+      (v4)
+  )
+---------------
+Snapshot.Tco02.test (Step 1)
+  (\n@v0 -> 
+    {#- Rewrite - Inline -#}
+    let k@v1 =
+      (\wat@v1 ->
+        if wat@v1 then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              1;
+            (subtract n@v0 v2);
+          {#- Rewrite - Inline -#}
+          let v3 =
+            <PrimUndefined>;
+          (Snapshot.Tco02.test v2)
+        else
+          n@v0
+      );
+    if {#- Rewrite - Inline -#}
+      let v2 =
+        0;
+      (== n@v0 v2) then
+      {#- Rewrite - Inline -#}
+      let v2 =
+        false;
+      (k@v1 v2)
+    else
+      {#- Rewrite - Inline -#}
+      let v2 =
+        true;
+      (k@v1 v2)
+  )
+---------------
+Snapshot.Tco02.test (Step 2)
+  (\n@v0 -> 
+    if (== n@v0 0) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        false;
+      if v1 then
+        (Snapshot.Tco02.test (subtract n@v0 1))
+      else
+        n@v0
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        true;
+      if v1 then
+        (Snapshot.Tco02.test (subtract n@v0 1))
+      else
+        n@v0
+  )
+---------------
+Snapshot.Tco02.test (Step 3; Final)
+  (\n@v0 -> 
+    if (== n@v0 0) then
+      n@v0
+    else
+      (Snapshot.Tco02.test (subtract n@v0 1))
+  )

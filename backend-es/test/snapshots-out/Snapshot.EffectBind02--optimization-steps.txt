@@ -1,0 +1,119 @@
+Snapshot.EffectBind02.MyEffect (Step 0; Original)
+  (\x@v0 -> 
+    x@v0
+  )
+---------------
+Snapshot.EffectBind02.MyEffect (Step 1; Final)
+  (\x@v0 -> 
+    x@v0
+  )
+
+===============
+
+Snapshot.EffectBind02.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.EffectBind02.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.EffectBind02.applicativeMyEffect (Step 0; Original)
+  Effect.applicativeEffect
+---------------
+Snapshot.EffectBind02.applicativeMyEffect (Step 1; Final)
+  Effect.applicativeEffect
+
+===============
+
+Snapshot.EffectBind02.applyMyEffect (Step 0; Original)
+  Effect.applyEffect
+---------------
+Snapshot.EffectBind02.applyMyEffect (Step 1; Final)
+  Effect.applyEffect
+
+===============
+
+Snapshot.EffectBind02.bind (Step 0; Original)
+  (Control.Bind.bind Snapshot.EffectBind02.bindMyEffect)
+---------------
+Snapshot.EffectBind02.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectBind02.bindMyEffect (Step 0; Original)
+  Effect.bindEffect
+---------------
+Snapshot.EffectBind02.bindMyEffect (Step 1; Final)
+  Effect.bindEffect
+
+===============
+
+Snapshot.EffectBind02.functorMyEffect (Step 0; Original)
+  Effect.functorEffect
+---------------
+Snapshot.EffectBind02.functorMyEffect (Step 1; Final)
+  Effect.functorEffect
+
+===============
+
+Snapshot.EffectBind02.monadMyEffect (Step 0; Original)
+  Effect.monadEffect
+---------------
+Snapshot.EffectBind02.monadMyEffect (Step 1; Final)
+  Effect.monadEffect
+
+===============
+
+Snapshot.EffectBind02.pure (Step 0; Original)
+  (Control.Applicative.pure Snapshot.EffectBind02.applicativeMyEffect)
+---------------
+Snapshot.EffectBind02.pure (Step 1; Final)
+  Effect.pureE
+
+===============
+
+Snapshot.EffectBind02.test (Step 0; Original)
+  (\random@v0 -> 
+    ((Snapshot.EffectBind02.bind random@v0) (\a@v1 -> 
+      ((Snapshot.EffectBind02.bind random@v0) (\b@v2 -> 
+        (Snapshot.EffectBind02.pure ((Snapshot.EffectBind02.add a@v1) b@v2))
+      ))
+    ))
+  )
+---------------
+Snapshot.EffectBind02.test (Step 1)
+  (\random@v0 -> 
+    letEffect a@v1 =
+      random@v0;
+    letEffect b@v2 =
+      random@v0;
+    let v3 =
+      (add a@v1 b@v2);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (effectPure v3);
+    v4
+  )
+---------------
+Snapshot.EffectBind02.test (Step 2)
+  (\random@v0 -> 
+    letEffect a@v1 =
+      random@v0;
+    letEffect b@v2 =
+      random@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (add a@v1 b@v2);
+    (effectPure v3)
+  )
+---------------
+Snapshot.EffectBind02.test (Step 3; Final)
+  (\random@v0 -> 
+    letEffect a@v1 =
+      random@v0;
+    letEffect b@v2 =
+      random@v0;
+    (effectPure (add a@v1 b@v2))
+  )

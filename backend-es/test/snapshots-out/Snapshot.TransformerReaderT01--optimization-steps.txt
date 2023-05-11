@@ -1,0 +1,4428 @@
+Snapshot.TransformerReaderT01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.TransformerReaderT01.add (Step 1; Final)
+  Data.Semiring.intAdd
+===============
+Snapshot.TransformerReaderT01.apply (Step 0; Original)
+  (Control.Apply.apply (Control.Monad.Reader.Trans.applyReaderT Effect.applyEffect))
+---------------
+Snapshot.TransformerReaderT01.apply (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        <PrimUndefined>;
+      Effect.functorEffect;
+    [[ LetAssoc
+      let functorReaderT1@v1 =
+        { map =
+            (\x@v1 -> 
+              let v2 =
+                ((
+                  v0
+                ).map x@v1);
+              (\v@v3 -> \x@v4 -> 
+                (v2 (v@v3 x@v4))
+              )
+            )
+        };
+      let v1 =
+        { apply =
+            (\v@v2 -> \v1@v3 -> \r@v4 -> 
+              let v5 =
+                (v@v2 r@v4);
+              [[ LetAssoc
+                let v6 =
+                  (v1@v3 r@v4);
+                let v6 =
+                  letEffect f'@v7 =
+                    v5;
+                  letEffect a'@v8 =
+                    v6;
+                  let v9 =
+                    (f'@v7 a'@v8);
+                  {#- Rewrite - Inline -#}
+                  let v10 =
+                    (effectPure v9);
+                  v10;
+                v6
+              ]]
+            )
+        , Functor0 =
+            (\$__unused@v2 -> 
+              functorReaderT1@v1
+            )
+        };
+      let v1 =
+        v1;
+      v1
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).apply;
+  v1
+---------------
+Snapshot.TransformerReaderT01.apply (Step 2)
+  let functorReaderT1@v0 =
+    { map =
+        (\x@v0 -> 
+          {#- Rewrite - Inline -#}
+          let v1 =
+            (\a@v1 -> 
+              (effectDefer letEffect a'@v2 =
+                a@v1;
+              (effectPure (x@v0 a'@v2)))
+            );
+          (\v@v2 -> \x@v3 -> 
+            (v1 (v@v2 x@v3))
+          )
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      { apply =
+          (\v@v1 -> \v1@v2 -> \r@v3 -> 
+            let v4 =
+              (v@v1 r@v3);
+            let v5 =
+              (v1@v2 r@v3);
+            {#- Rewrite - Inline -#}
+            let v6 =
+              letEffect f'@v6 =
+                v4;
+              letEffect a'@v7 =
+                v5;
+              {#- Rewrite - Inline -#}
+              let v8 =
+                (f'@v6 a'@v7);
+              (effectPure v8);
+            v6
+          )
+      , Functor0 =
+          (\$__unused@v1 -> 
+            functorReaderT1@v0
+          )
+      };
+    v1;
+  (
+    v1
+  ).apply
+---------------
+Snapshot.TransformerReaderT01.apply (Step 3)
+  {#- Rewrite - Inline -#}
+  let functorReaderT1@v0 =
+    { map =
+        (\x@v0 -> \v@v1 -> \x@v2 -> 
+          let v3 =
+            (v@v1 x@v2);
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (x@v0 a'@v4)))
+        )
+    };
+  (\v@v1 -> \v1@v2 -> \r@v3 -> 
+    let v4 =
+      (v@v1 r@v3);
+    let v5 =
+      (v1@v2 r@v3);
+    letEffect f'@v6 =
+      v4;
+    letEffect a'@v7 =
+      v5;
+    (effectPure (f'@v6 a'@v7))
+  )
+---------------
+Snapshot.TransformerReaderT01.apply (Step 4; Final)
+  (\v@v0 -> \v1@v1 -> \r@v2 -> 
+    let v3 =
+      (v@v0 r@v2);
+    let v4 =
+      (v1@v1 r@v2);
+    letEffect f'@v5 =
+      v3;
+    letEffect a'@v6 =
+      v4;
+    (effectPure (f'@v5 a'@v6))
+  )
+===============
+Snapshot.TransformerReaderT01.ask (Step 0; Original)
+  (Control.Monad.Reader.Class.ask Snapshot.TransformerReaderT01.monadAskReaderT)
+---------------
+Snapshot.TransformerReaderT01.ask (Step 1; Final)
+  (
+    Snapshot.TransformerReaderT01.monadAskReaderT
+  ).ask
+===============
+Snapshot.TransformerReaderT01.bind (Step 0; Original)
+  (Control.Bind.bind Snapshot.TransformerReaderT01.bindReaderT)
+---------------
+Snapshot.TransformerReaderT01.bind (Step 1; Final)
+  (
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind
+===============
+Snapshot.TransformerReaderT01.bindReaderT (Step 0; Original)
+  (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect)
+---------------
+Snapshot.TransformerReaderT01.bindReaderT (Step 1; Final)
+  (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect)
+===============
+Snapshot.TransformerReaderT01.discard (Step 0; Original)
+  (Control.Bind.discard Control.Bind.discardUnit)
+---------------
+Snapshot.TransformerReaderT01.discard (Step 1; Final)
+  (
+    Control.Bind.discardUnit
+  ).discard
+===============
+Snapshot.TransformerReaderT01.liftEffect (Step 0; Original)
+  (Effect.Class.liftEffect Snapshot.TransformerReaderT01.monadEffectReader)
+---------------
+Snapshot.TransformerReaderT01.liftEffect (Step 1; Final)
+  (
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect
+===============
+Snapshot.TransformerReaderT01.map (Step 0; Original)
+  (Data.Functor.map (Control.Monad.Reader.Trans.functorReaderT Effect.functorEffect))
+---------------
+Snapshot.TransformerReaderT01.map (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    { map =
+        (\x@v0 -> 
+          {#- Rewrite - Inline -#}
+          let v1 =
+            (\a@v1 -> 
+              (effectDefer letEffect a'@v2 =
+                a@v1;
+              (effectPure (x@v0 a'@v2)))
+            );
+          (\v@v2 -> \x@v3 -> 
+            (v1 (v@v2 x@v3))
+          )
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).map;
+  v1
+---------------
+Snapshot.TransformerReaderT01.map (Step 2; Final)
+  (\x@v0 -> \v@v1 -> \x@v2 -> 
+    let v3 =
+      (v@v1 x@v2);
+    (effectDefer letEffect a'@v4 =
+      v3;
+    (effectPure (x@v0 a'@v4)))
+  )
+===============
+Snapshot.TransformerReaderT01.monadAskReaderT (Step 0; Original)
+  (Control.Monad.Reader.Trans.monadAskReaderT Effect.monadEffect)
+---------------
+Snapshot.TransformerReaderT01.monadAskReaderT (Step 1)
+  let monadReaderT1@v0 =
+    (Control.Monad.Reader.Trans.monadReaderT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      { ask =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          Effect.pureE
+      , Monad0 =
+          (\$__unused@v1 -> 
+            monadReaderT1@v0
+          )
+      };
+    v1;
+  v1
+---------------
+Snapshot.TransformerReaderT01.monadAskReaderT (Step 2; Final)
+  let monadReaderT1@v0 =
+    (Control.Monad.Reader.Trans.monadReaderT Effect.monadEffect);
+  { ask =
+      Effect.pureE
+  , Monad0 =
+      (\$__unused@v1 -> 
+        monadReaderT1@v0
+      )
+  }
+===============
+Snapshot.TransformerReaderT01.monadEffectReader (Step 0; Original)
+  (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+---------------
+Snapshot.TransformerReaderT01.monadEffectReader (Step 1; Final)
+  (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+===============
+Snapshot.TransformerReaderT01.program1 (Step 0; Original)
+  (\dictMonadAsk@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadAsk@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let discard1@v3 =
+      (Snapshot.TransformerReaderT01.discard Bind1@v2);
+    let bind1@v4 =
+      (Control.Bind.bind Bind1@v2);
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let map1@v6 =
+      (Data.Functor.map ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>));
+    let apply1@v7 =
+      (Control.Apply.apply Apply0@v5);
+    let ask1@v8 =
+      (Control.Monad.Reader.Class.ask dictMonadAsk@v0);
+    let pure1@v9 =
+      (Control.Applicative.pure ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>));
+    (\dictMonadEffect@v10 -> 
+      let liftEffect1@v11 =
+        (Effect.Class.liftEffect dictMonadEffect@v10);
+      ((discard1@v3 (liftEffect1@v11 (Effect.Console.log "foo"))) (\$__unused@v12 -> 
+        ((bind1@v4 (liftEffect1@v11 ((Effect.Random.randomInt 1) 10))) (\i1@v13 -> 
+          ((bind1@v4 ((map1@v6 (\v@v14 -> 
+            ((Snapshot.TransformerReaderT01.add v@v14) 1)
+          )) (liftEffect1@v11 ((Effect.Random.randomInt 1) 10)))) (\i2@v14 -> 
+            ((bind1@v4 ((apply1@v7 ((map1@v6 Snapshot.TransformerReaderT01.add) (liftEffect1@v11 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v11 ((Effect.Random.randomInt 1) 10)))) (\i3@v15 -> 
+              ((bind1@v4 ask1@v8) (\five@v16 -> 
+                ((bind1@v4 (liftEffect1@v11 ((Effect.Random.randomInt five@v16) 20))) (\i4@v17 -> 
+                  ((bind1@v4 ask1@v8) (\five2@v18 -> 
+                    (pure1@v9 ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add 4) i1@v13)) i2@v14)) i3@v15)) five@v16)) i4@v17)) five2@v18))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+---------------
+Snapshot.TransformerReaderT01.program1 (Step 1)
+  (\dictMonadAsk@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadAsk@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let discard1@v3 =
+      (
+        Bind1@v2
+      ).bind;
+    {#- Rewrite - Inline -#}
+    let bind1@v4 =
+      (
+        Bind1@v2
+      ).bind;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let map1@v6 =
+      {#- Rewrite - Inline -#}
+      let v6 =
+        ((
+          Apply0@v5
+        ).Functor0 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (
+          v6
+        ).map;
+      v7;
+    {#- Rewrite - Inline -#}
+    let apply1@v7 =
+      (
+        Apply0@v5
+      ).apply;
+    let ask1@v8 =
+      (
+        dictMonadAsk@v0
+      ).ask;
+    let pure1@v9 =
+      {#- Rewrite - Inline -#}
+      let v9 =
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let v10 =
+        (
+          v9
+        ).pure;
+      v10;
+    (\dictMonadEffect@v10 -> 
+      {#- Rewrite - Inline -#}
+      let liftEffect1@v11 =
+        (
+          dictMonadEffect@v10
+        ).liftEffect;
+      ((discard1@v3 (liftEffect1@v11 (Effect.Console.log "foo"))) (\$__unused@v12 -> 
+        ((bind1@v4 (liftEffect1@v11 ((Effect.Random.randomInt 1) 10))) (\i1@v13 -> 
+          ((bind1@v4 ((map1@v6 (\v@v14 -> 
+            {#- Rewrite - Inline -#}
+            let v15 =
+              1;
+            (add v@v14 v15)
+          )) (liftEffect1@v11 ((Effect.Random.randomInt 1) 10)))) (\i2@v14 -> 
+            ((bind1@v4 ((apply1@v7 ((map1@v6 Data.Semiring.intAdd) (liftEffect1@v11 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v11 ((Effect.Random.randomInt 1) 10)))) (\i3@v15 -> 
+              ((bind1@v4 ask1@v8) (\five@v16 -> 
+                ((bind1@v4 (liftEffect1@v11 ((Effect.Random.randomInt five@v16) 20))) (\i4@v17 -> 
+                  ((bind1@v4 ask1@v8) (\five2@v18 -> 
+                    (pure1@v9 [[ LetAssoc
+                      let v19 =
+                        {#- Rewrite - Inline -#}
+                        let v19 =
+                          4;
+                        {#- Rewrite - Inline -#}
+                        let v20 =
+                          (\v20 -> 
+                            (add v19 v20)
+                          );
+                        (v20 i1@v13);
+                      let v19 =
+                        {#- Rewrite - Inline -#}
+                        let v20 =
+                          (\v20 -> 
+                            (add v19 v20)
+                          );
+                        (v20 i2@v14);
+                      let v19 =
+                        {#- Rewrite - Inline -#}
+                        let v20 =
+                          (\v20 -> 
+                            (add v19 v20)
+                          );
+                        (v20 i3@v15);
+                      let v19 =
+                        {#- Rewrite - Inline -#}
+                        let v20 =
+                          (\v20 -> 
+                            (add v19 v20)
+                          );
+                        (v20 five@v16);
+                      let v19 =
+                        {#- Rewrite - Inline -#}
+                        let v20 =
+                          (\v20 -> 
+                            (add v19 v20)
+                          );
+                        (v20 i4@v17);
+                      {#- Rewrite - Inline -#}
+                      let v20 =
+                        (\v20 -> 
+                          (add v19 v20)
+                        );
+                      (v20 five2@v18)
+                    ]])
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+---------------
+Snapshot.TransformerReaderT01.program1 (Step 2)
+  (\dictMonadAsk@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadAsk@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let Apply0@v3 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let map1@v4 =
+      (
+        ((
+          Apply0@v3
+        ).Functor0 <PrimUndefined>)
+      ).map;
+    let ask1@v5 =
+      (
+        dictMonadAsk@v0
+      ).ask;
+    let pure1@v6 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    (\dictMonadEffect@v7 -> 
+      (((
+        Bind1@v2
+      ).bind ((
+        dictMonadEffect@v7
+      ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v8 -> 
+        (((
+          Bind1@v2
+        ).bind ((
+          dictMonadEffect@v7
+        ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v9 -> 
+          (((
+            Bind1@v2
+          ).bind ((map1@v4 (\v@v10 -> 
+            (add v@v10 1)
+          )) ((
+            dictMonadEffect@v7
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v10 -> 
+            (((
+              Bind1@v2
+            ).bind (((
+              Apply0@v3
+            ).apply ((map1@v4 Data.Semiring.intAdd) ((
+              dictMonadEffect@v7
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+              dictMonadEffect@v7
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v11 -> 
+              (((
+                Bind1@v2
+              ).bind ask1@v5) (\five@v12 -> 
+                (((
+                  Bind1@v2
+                ).bind ((
+                  dictMonadEffect@v7
+                ).liftEffect ((Effect.Random.randomInt five@v12) 20))) (\i4@v13 -> 
+                  (((
+                    Bind1@v2
+                  ).bind ask1@v5) (\five2@v14 -> 
+                    (pure1@v6 {#- Rewrite - Inline -#}
+                    let v15 =
+                      (add 4 i1@v9);
+                    {#- Rewrite - Inline -#}
+                    let v16 =
+                      (add v15 i2@v10);
+                    {#- Rewrite - Inline -#}
+                    let v17 =
+                      (add v16 i3@v11);
+                    {#- Rewrite - Inline -#}
+                    let v18 =
+                      (add v17 five@v12);
+                    {#- Rewrite - Inline -#}
+                    let v19 =
+                      (add v18 i4@v13);
+                    (add v19 five2@v14))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+---------------
+Snapshot.TransformerReaderT01.program1 (Step 3; Final)
+  (\dictMonadAsk@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadAsk@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let Apply0@v3 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let map1@v4 =
+      (
+        ((
+          Apply0@v3
+        ).Functor0 <PrimUndefined>)
+      ).map;
+    let ask1@v5 =
+      (
+        dictMonadAsk@v0
+      ).ask;
+    let pure1@v6 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    (\dictMonadEffect@v7 -> 
+      (((
+        Bind1@v2
+      ).bind ((
+        dictMonadEffect@v7
+      ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v8 -> 
+        (((
+          Bind1@v2
+        ).bind ((
+          dictMonadEffect@v7
+        ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v9 -> 
+          (((
+            Bind1@v2
+          ).bind ((map1@v4 (\v@v10 -> 
+            (add v@v10 1)
+          )) ((
+            dictMonadEffect@v7
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v10 -> 
+            (((
+              Bind1@v2
+            ).bind (((
+              Apply0@v3
+            ).apply ((map1@v4 Data.Semiring.intAdd) ((
+              dictMonadEffect@v7
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+              dictMonadEffect@v7
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v11 -> 
+              (((
+                Bind1@v2
+              ).bind ask1@v5) (\five@v12 -> 
+                (((
+                  Bind1@v2
+                ).bind ((
+                  dictMonadEffect@v7
+                ).liftEffect ((Effect.Random.randomInt five@v12) 20))) (\i4@v13 -> 
+                  (((
+                    Bind1@v2
+                  ).bind ask1@v5) (\five2@v14 -> 
+                    (pure1@v6 (add (add (add (add (add (add 4 i1@v9) i2@v10) i3@v11) five@v12) i4@v13) five2@v14))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+===============
+Snapshot.TransformerReaderT01.program2 (Step 0; Original)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (Effect.Class.liftEffect (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0));
+    let bind1@v5 =
+      (Control.Bind.bind bindReaderT1@v3);
+    let Apply0@v6 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let map1@v7 =
+      (Data.Functor.map (Control.Monad.Reader.Trans.functorReaderT ((
+        Apply0@v6
+      ).Functor0 <PrimUndefined>)));
+    let apply1@v8 =
+      (Control.Apply.apply (Control.Monad.Reader.Trans.applyReaderT Apply0@v6));
+    let ask1@v9 =
+      (Control.Monad.Reader.Class.ask (Control.Monad.Reader.Trans.monadAskReaderT Monad0@v1));
+    let pure1@v10 =
+      (Control.Applicative.pure (Control.Monad.Reader.Trans.applicativeReaderT ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>)));
+    (Control.Monad.Reader.Trans.runReaderT (((Snapshot.TransformerReaderT01.discard bindReaderT1@v3) (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v11 -> 
+      ((bind1@v5 (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v12 -> 
+        ((bind1@v5 ((map1@v7 (\v@v13 -> 
+          ((Snapshot.TransformerReaderT01.add v@v13) 1)
+        )) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i2@v13 -> 
+          ((bind1@v5 ((apply1@v8 ((map1@v7 Snapshot.TransformerReaderT01.add) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i3@v14 -> 
+            ((bind1@v5 ask1@v9) (\five@v15 -> 
+              ((bind1@v5 (liftEffect1@v4 ((Effect.Random.randomInt five@v15) 20))) (\i4@v16 -> 
+                ((bind1@v5 ask1@v9) (\five2@v17 -> 
+                  (pure1@v10 ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add 4) i1@v12)) i2@v13)) i3@v14)) five@v15)) i4@v16)) five2@v17))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )))
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 1)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0);
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (
+          v4
+        ).liftEffect;
+      v5;
+    {#- Rewrite - Inline -#}
+    let bind1@v5 =
+      (
+        bindReaderT1@v3
+      ).bind;
+    let Apply0@v6 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    [[ LetAssoc
+      let v7 =
+        ((
+          Apply0@v6
+        ).Functor0 <PrimUndefined>);
+      let v7 =
+        {#- Rewrite - Inline -#}
+        let v8 =
+          { map =
+              (\x@v8 -> 
+                let v9 =
+                  ((
+                    v7
+                  ).map x@v8);
+                (\v@v10 -> \x@v11 -> 
+                  (v9 (v@v10 x@v11))
+                )
+              )
+          };
+        v8;
+      let map1@v7 =
+        {#- Rewrite - Inline -#}
+        let v8 =
+          (
+            v7
+          ).map;
+        v8;
+      [[ LetAssoc
+        let v8 =
+          ((
+            Apply0@v6
+          ).Functor0 <PrimUndefined>);
+        let v8 =
+          [[ LetAssoc
+            let functorReaderT1@v9 =
+              { map =
+                  (\x@v9 -> 
+                    let v10 =
+                      ((
+                        v8
+                      ).map x@v9);
+                    (\v@v11 -> \x@v12 -> 
+                      (v10 (v@v11 x@v12))
+                    )
+                  )
+              };
+            let v9 =
+              { apply =
+                  (\v@v10 -> \v1@v11 -> \r@v12 -> 
+                    (((
+                      Apply0@v6
+                    ).apply (v@v10 r@v12)) (v1@v11 r@v12))
+                  )
+              , Functor0 =
+                  (\$__unused@v10 -> 
+                    functorReaderT1@v9
+                  )
+              };
+            let v9 =
+              v9;
+            v9
+          ]];
+        let apply1@v8 =
+          {#- Rewrite - Inline -#}
+          let v9 =
+            (
+              v8
+            ).apply;
+          v9;
+        [[ LetAssoc
+          let monadReaderT1@v9 =
+            (Control.Monad.Reader.Trans.monadReaderT Monad0@v1);
+          let v9 =
+            {#- Rewrite - Inline -#}
+            let v10 =
+              {#- Rewrite - Inline -#}
+              let v10 =
+                { ask =
+                    (
+                      ((
+                        Monad0@v1
+                      ).Applicative0 <PrimUndefined>)
+                    ).pure
+                , Monad0 =
+                    (\$__unused@v10 -> 
+                      monadReaderT1@v9
+                    )
+                };
+              v10;
+            v10;
+          let ask1@v9 =
+            {#- Rewrite - Inline -#}
+            let v10 =
+              (
+                v9
+              ).ask;
+            v10;
+          [[ LetAssoc
+            let v10 =
+              ((
+                Monad0@v1
+              ).Applicative0 <PrimUndefined>);
+            let v10 =
+              [[ LetAssoc
+                let v11 =
+                  ((
+                    v10
+                  ).Apply0 <PrimUndefined>);
+                let v11 =
+                  [[ LetAssoc
+                    let v12 =
+                      ((
+                        v11
+                      ).Functor0 <PrimUndefined>);
+                    let v12 =
+                      let functorReaderT1@v13 =
+                        { map =
+                            (\x@v13 -> 
+                              let v14 =
+                                ((
+                                  v12
+                                ).map x@v13);
+                              (\v@v15 -> \x@v16 -> 
+                                (v14 (v@v15 x@v16))
+                              )
+                            )
+                        };
+                      let applyReaderT1@v14 =
+                        { apply =
+                            (\v@v14 -> \v1@v15 -> \r@v16 -> 
+                              (((
+                                v11
+                              ).apply (v@v14 r@v16)) (v1@v15 r@v16))
+                            )
+                        , Functor0 =
+                            (\$__unused@v14 -> 
+                              functorReaderT1@v13
+                            )
+                        };
+                      { pure =
+                          (\x@v15 -> 
+                            let v16 =
+                              ((
+                                v10
+                              ).pure x@v15);
+                            (\v@v17 -> 
+                              v16
+                            )
+                          )
+                      , Apply0 =
+                          (\$__unused@v15 -> 
+                            applyReaderT1@v14
+                          )
+                      };
+                    v12
+                  ]];
+                v11
+              ]];
+            let pure1@v10 =
+              {#- Rewrite - Inline -#}
+              let v11 =
+                (
+                  v10
+                ).pure;
+              v11;
+            {#- Rewrite - Inline -#}
+            let v11 =
+              (((
+                bindReaderT1@v3
+              ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v11 -> 
+                ((bind1@v5 (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v12 -> 
+                  ((bind1@v5 ((map1@v7 (\v@v13 -> 
+                    {#- Rewrite - Inline -#}
+                    let v14 =
+                      1;
+                    (add v@v13 v14)
+                  )) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i2@v13 -> 
+                    ((bind1@v5 ((apply1@v8 ((map1@v7 Data.Semiring.intAdd) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i3@v14 -> 
+                      ((bind1@v5 ask1@v9) (\five@v15 -> 
+                        ((bind1@v5 (liftEffect1@v4 ((Effect.Random.randomInt five@v15) 20))) (\i4@v16 -> 
+                          ((bind1@v5 ask1@v9) (\five2@v17 -> 
+                            (pure1@v10 [[ LetAssoc
+                              let v18 =
+                                {#- Rewrite - Inline -#}
+                                let v18 =
+                                  4;
+                                {#- Rewrite - Inline -#}
+                                let v19 =
+                                  (\v19 -> 
+                                    (add v18 v19)
+                                  );
+                                (v19 i1@v12);
+                              let v18 =
+                                {#- Rewrite - Inline -#}
+                                let v19 =
+                                  (\v19 -> 
+                                    (add v18 v19)
+                                  );
+                                (v19 i2@v13);
+                              let v18 =
+                                {#- Rewrite - Inline -#}
+                                let v19 =
+                                  (\v19 -> 
+                                    (add v18 v19)
+                                  );
+                                (v19 i3@v14);
+                              let v18 =
+                                {#- Rewrite - Inline -#}
+                                let v19 =
+                                  (\v19 -> 
+                                    (add v18 v19)
+                                  );
+                                (v19 five@v15);
+                              let v18 =
+                                {#- Rewrite - Inline -#}
+                                let v19 =
+                                  (\v19 -> 
+                                    (add v18 v19)
+                                  );
+                                (v19 i4@v16);
+                              {#- Rewrite - Inline -#}
+                              let v19 =
+                                (\v19 -> 
+                                  (add v18 v19)
+                                );
+                              (v19 five2@v17)
+                            ]])
+                          ))
+                        ))
+                      ))
+                    ))
+                  ))
+                ))
+              ));
+            v11
+          ]]
+        ]]
+      ]]
+    ]]
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 2)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    [[ UnpackOp
+      For identifier v7
+        Unpack record
+        labels = ["map"]
+      inside
+        {#- Rewrite - Inline -#}
+        let map1@v8 =
+          (
+            v7
+          ).map;
+        let v9 =
+          ((
+            Apply0@v5
+          ).Functor0 <PrimUndefined>);
+        [[ LetAssoc
+          let functorReaderT1@v10 =
+            { map =
+                (\x@v10 -> 
+                  let v11 =
+                    ((
+                      v9
+                    ).map x@v10);
+                  (\v@v12 -> \x@v13 -> 
+                    (v11 (v@v12 x@v13))
+                  )
+                )
+            };
+          let v10 =
+            {#- Rewrite - Inline -#}
+            let v11 =
+              { apply =
+                  (\v@v11 -> \v1@v12 -> \r@v13 -> 
+                    (((
+                      Apply0@v5
+                    ).apply (v@v11 r@v13)) (v1@v12 r@v13))
+                  )
+              , Functor0 =
+                  (\$__unused@v11 -> 
+                    functorReaderT1@v10
+                  )
+              };
+            v11;
+          {#- Rewrite - Inline -#}
+          let apply1@v11 =
+            (
+              v10
+            ).apply;
+          let monadReaderT1@v12 =
+            (Control.Monad.Reader.Trans.monadReaderT Monad0@v1);
+          {#- Rewrite - Inline -#}
+          let v13 =
+            { ask =
+                (
+                  ((
+                    Monad0@v1
+                  ).Applicative0 <PrimUndefined>)
+                ).pure
+            , Monad0 =
+                (\$__unused@v13 -> 
+                  monadReaderT1@v12
+                )
+            };
+          let ask1@v14 =
+            (
+              v13
+            ).ask;
+          let v15 =
+            ((
+              Monad0@v1
+            ).Applicative0 <PrimUndefined>);
+          [[ LetAssoc
+            let v16 =
+              ((
+                v15
+              ).Apply0 <PrimUndefined>);
+            let v16 =
+              [[ LetAssoc
+                let v17 =
+                  ((
+                    v16
+                  ).Functor0 <PrimUndefined>);
+                let v17 =
+                  [[ LetAssoc
+                    let functorReaderT1@v18 =
+                      { map =
+                          (\x@v18 -> 
+                            let v19 =
+                              ((
+                                v17
+                              ).map x@v18);
+                            (\v@v20 -> \x@v21 -> 
+                              (v19 (v@v20 x@v21))
+                            )
+                          )
+                      };
+                    let v18 =
+                      let applyReaderT1@v19 =
+                        { apply =
+                            (\v@v19 -> \v1@v20 -> \r@v21 -> 
+                              (((
+                                v16
+                              ).apply (v@v19 r@v21)) (v1@v20 r@v21))
+                            )
+                        , Functor0 =
+                            (\$__unused@v19 -> 
+                              functorReaderT1@v18
+                            )
+                        };
+                      { pure =
+                          (\x@v20 -> 
+                            let v21 =
+                              ((
+                                v15
+                              ).pure x@v20);
+                            (\v@v22 -> 
+                              v21
+                            )
+                          )
+                      , Apply0 =
+                          (\$__unused@v20 -> 
+                            applyReaderT1@v19
+                          )
+                      };
+                    v18
+                  ]];
+                v17
+              ]];
+            {#- Rewrite - Inline -#}
+            let pure1@v17 =
+              (
+                v16
+              ).pure;
+            (((
+              bindReaderT1@v3
+            ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v18 -> 
+              (((
+                bindReaderT1@v3
+              ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v19 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind ((map1@v8 (\v@v20 -> 
+                  (add v@v20 1)
+                )) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i2@v20 -> 
+                  (((
+                    bindReaderT1@v3
+                  ).bind ((apply1@v11 ((map1@v8 Data.Semiring.intAdd) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i3@v21 -> 
+                    (((
+                      bindReaderT1@v3
+                    ).bind ask1@v14) (\five@v22 -> 
+                      (((
+                        bindReaderT1@v3
+                      ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v22) 20))) (\i4@v23 -> 
+                        (((
+                          bindReaderT1@v3
+                        ).bind ask1@v14) (\five2@v24 -> 
+                          (pure1@v17 {#- Rewrite - Inline -#}
+                          let v25 =
+                            (add 4 i1@v19);
+                          {#- Rewrite - Inline -#}
+                          let v26 =
+                            (add v25 i2@v20);
+                          {#- Rewrite - Inline -#}
+                          let v27 =
+                            (add v26 i3@v21);
+                          {#- Rewrite - Inline -#}
+                          let v28 =
+                            (add v27 five@v22);
+                          {#- Rewrite - Inline -#}
+                          let v29 =
+                            (add v28 i4@v23);
+                          (add v29 five2@v24))
+                        ))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          ]]
+        ]]
+    ]]
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 3)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\x@v7 -> 
+        let v8 =
+          ((
+            v6
+          ).map x@v7);
+        (\v@v9 -> \x@v10 -> 
+          (v8 (v@v9 x@v10))
+        )
+      );
+    let v8 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    let functorReaderT1@v9 =
+      { map =
+          (\x@v9 -> 
+            let v10 =
+              ((
+                v8
+              ).map x@v9);
+            (\v@v11 -> \x@v12 -> 
+              (v10 (v@v11 x@v12))
+            )
+          )
+      };
+    [[ UnpackOp
+      For identifier v10
+        Unpack record
+        labels = ["apply","Functor0"]
+      inside
+        {#- Rewrite - Inline -#}
+        let monadReaderT1@v11 =
+          (Control.Monad.Reader.Trans.monadReaderT Monad0@v1);
+        let ask1@v12 =
+          (
+            ((
+              Monad0@v1
+            ).Applicative0 <PrimUndefined>)
+          ).pure;
+        let v13 =
+          ((
+            Monad0@v1
+          ).Applicative0 <PrimUndefined>);
+        let v14 =
+          ((
+            v13
+          ).Apply0 <PrimUndefined>);
+        [[ LetAssoc
+          let v15 =
+            ((
+              v14
+            ).Functor0 <PrimUndefined>);
+          let v15 =
+            [[ LetAssoc
+              let functorReaderT1@v16 =
+                { map =
+                    (\x@v16 -> 
+                      let v17 =
+                        ((
+                          v15
+                        ).map x@v16);
+                      (\v@v18 -> \x@v19 -> 
+                        (v17 (v@v18 x@v19))
+                      )
+                    )
+                };
+              let v16 =
+                [[ LetAssoc
+                  let applyReaderT1@v17 =
+                    { apply =
+                        (\v@v17 -> \v1@v18 -> \r@v19 -> 
+                          (((
+                            v14
+                          ).apply (v@v17 r@v19)) (v1@v18 r@v19))
+                        )
+                    , Functor0 =
+                        (\$__unused@v17 -> 
+                          functorReaderT1@v16
+                        )
+                    };
+                  let v17 =
+                    { pure =
+                        (\x@v18 -> 
+                          let v19 =
+                            ((
+                              v13
+                            ).pure x@v18);
+                          (\v@v20 -> 
+                            v19
+                          )
+                        )
+                    , Apply0 =
+                        (\$__unused@v18 -> 
+                          applyReaderT1@v17
+                        )
+                    };
+                  v17
+                ]];
+              v16
+            ]];
+          (((
+            bindReaderT1@v3
+          ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v16 -> 
+            (((
+              bindReaderT1@v3
+            ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v17 -> 
+              (((
+                bindReaderT1@v3
+              ).bind ((v7 (\v@v18 -> 
+                (add v@v18 1)
+              )) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i2@v18 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind (((
+                  v10
+                ).apply ((v7 Data.Semiring.intAdd) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i3@v19 -> 
+                  (((
+                    bindReaderT1@v3
+                  ).bind ask1@v12) (\five@v20 -> 
+                    (((
+                      bindReaderT1@v3
+                    ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v20) 20))) (\i4@v21 -> 
+                      (((
+                        bindReaderT1@v3
+                      ).bind ask1@v12) (\five2@v22 -> 
+                        ((
+                          v15
+                        ).pure (add (add (add (add (add (add 4 i1@v17) i2@v18) i3@v19) five@v20) i4@v21) five2@v22))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ]]
+    ]]
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 4)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v7 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let functorReaderT1@v8 =
+      { map =
+          (\x@v8 -> 
+            let v9 =
+              ((
+                v7
+              ).map x@v8);
+            (\v@v10 -> \x@v11 -> 
+              (v9 (v@v10 x@v11))
+            )
+          )
+      };
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (\v@v9 -> \v1@v10 -> \r@v11 -> 
+        (((
+          Apply0@v5
+        ).apply (v@v9 r@v11)) (v1@v10 r@v11))
+      );
+    {#- Rewrite - Inline -#}
+    let v10 =
+      (\$__unused@v10 -> 
+        functorReaderT1@v8
+      );
+    let ask1@v11 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v12 =
+      ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>);
+    let v13 =
+      ((
+        v12
+      ).Apply0 <PrimUndefined>);
+    let v14 =
+      ((
+        v13
+      ).Functor0 <PrimUndefined>);
+    [[ LetAssoc
+      let functorReaderT1@v15 =
+        { map =
+            (\x@v15 -> 
+              let v16 =
+                ((
+                  v14
+                ).map x@v15);
+              (\v@v17 -> \x@v18 -> 
+                (v16 (v@v17 x@v18))
+              )
+            )
+        };
+      let v15 =
+        [[ LetAssoc
+          let applyReaderT1@v16 =
+            { apply =
+                (\v@v16 -> \v1@v17 -> \r@v18 -> 
+                  (((
+                    v13
+                  ).apply (v@v16 r@v18)) (v1@v17 r@v18))
+                )
+            , Functor0 =
+                (\$__unused@v16 -> 
+                  functorReaderT1@v15
+                )
+            };
+          let v16 =
+            {#- Rewrite - Inline -#}
+            let v17 =
+              { pure =
+                  (\x@v17 -> 
+                    let v18 =
+                      ((
+                        v12
+                      ).pure x@v17);
+                    (\v@v19 -> 
+                      v18
+                    )
+                  )
+              , Apply0 =
+                  (\$__unused@v17 -> 
+                    applyReaderT1@v16
+                  )
+              };
+            v17;
+          v16
+        ]];
+      (((
+        bindReaderT1@v3
+      ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v16 -> 
+        (((
+          bindReaderT1@v3
+        ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v17 -> 
+          (((
+            bindReaderT1@v3
+          ).bind {#- Rewrite - Inline -#}
+          let v18 =
+            (\v@v18 -> 
+              (add v@v18 1)
+            );
+          let v19 =
+            ((
+              v6
+            ).map v18);
+          {#- Rewrite - Inline -#}
+          let v20 =
+            (\v@v20 -> \x@v21 -> 
+              (v19 (v@v20 x@v21))
+            );
+          (v20 (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i2@v18 -> 
+            (((
+              bindReaderT1@v3
+            ).bind ((v9 let v19 =
+              ((
+                v6
+              ).map Data.Semiring.intAdd);
+            {#- Rewrite - Inline -#}
+            let v20 =
+              (\v@v20 -> \x@v21 -> 
+                (v19 (v@v20 x@v21))
+              );
+            (v20 (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v4 ((Effect.Random.randomInt 1) 10)))) (\i3@v19 -> 
+              (((
+                bindReaderT1@v3
+              ).bind ask1@v11) (\five@v20 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v20) 20))) (\i4@v21 -> 
+                  (((
+                    bindReaderT1@v3
+                  ).bind ask1@v11) (\five2@v22 -> 
+                    ((
+                      v15
+                    ).pure (add (add (add (add (add (add 4 i1@v17) i2@v18) i3@v19) five@v20) i4@v21) five2@v22))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ]]
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 5)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    let ask1@v7 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v8 =
+      ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>);
+    let v9 =
+      ((
+        v8
+      ).Apply0 <PrimUndefined>);
+    let v10 =
+      ((
+        v9
+      ).Functor0 <PrimUndefined>);
+    let functorReaderT1@v11 =
+      { map =
+          (\x@v11 -> 
+            let v12 =
+              ((
+                v10
+              ).map x@v11);
+            (\v@v13 -> \x@v14 -> 
+              (v12 (v@v13 x@v14))
+            )
+          )
+      };
+    [[ LetAssoc
+      let applyReaderT1@v12 =
+        { apply =
+            (\v@v12 -> \v1@v13 -> \r@v14 -> 
+              (((
+                v9
+              ).apply (v@v12 r@v14)) (v1@v13 r@v14))
+            )
+        , Functor0 =
+            (\$__unused@v12 -> 
+              functorReaderT1@v11
+            )
+        };
+      let v12 =
+        {#- Rewrite - Inline -#}
+        let v13 =
+          { pure =
+              (\x@v13 -> 
+                let v14 =
+                  ((
+                    v8
+                  ).pure x@v13);
+                (\v@v15 -> 
+                  v14
+                )
+              )
+          , Apply0 =
+              (\$__unused@v13 -> 
+                applyReaderT1@v12
+              )
+          };
+        v13;
+      (((
+        bindReaderT1@v3
+      ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v13 -> 
+        (((
+          bindReaderT1@v3
+        ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v14 -> 
+          (((
+            bindReaderT1@v3
+          ).bind let v15 =
+            ((
+              v6
+            ).map (\v@v15 -> 
+              (add v@v15 1)
+            ));
+          let v16 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          (\x@v17 -> 
+            (v15 (v16 x@v17))
+          )) (\i2@v15 -> 
+            (((
+              bindReaderT1@v3
+            ).bind [[ LetAssoc
+              let v16 =
+                ((
+                  v6
+                ).map Data.Semiring.intAdd);
+              let v16 =
+                let v17 =
+                  (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+                (\x@v18 -> 
+                  (v16 (v17 x@v18))
+                );
+              let v17 =
+                (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+              (\r@v18 -> 
+                (((
+                  Apply0@v5
+                ).apply (v16 r@v18)) (v17 r@v18))
+              )
+            ]]) (\i3@v16 -> 
+              (((
+                bindReaderT1@v3
+              ).bind ask1@v7) (\five@v17 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v17) 20))) (\i4@v18 -> 
+                  (((
+                    bindReaderT1@v3
+                  ).bind ask1@v7) (\five2@v19 -> 
+                    ((
+                      v12
+                    ).pure (add (add (add (add (add (add 4 i1@v14) i2@v15) i3@v16) five@v17) i4@v18) five2@v19))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ]]
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 6)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    let ask1@v7 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v8 =
+      ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>);
+    let v9 =
+      ((
+        v8
+      ).Apply0 <PrimUndefined>);
+    let v10 =
+      ((
+        v9
+      ).Functor0 <PrimUndefined>);
+    let functorReaderT1@v11 =
+      { map =
+          (\x@v11 -> 
+            let v12 =
+              ((
+                v10
+              ).map x@v11);
+            (\v@v13 -> \x@v14 -> 
+              (v12 (v@v13 x@v14))
+            )
+          )
+      };
+    let applyReaderT1@v12 =
+      { apply =
+          (\v@v12 -> \v1@v13 -> \r@v14 -> 
+            (((
+              v9
+            ).apply (v@v12 r@v14)) (v1@v13 r@v14))
+          )
+      , Functor0 =
+          (\$__unused@v12 -> 
+            functorReaderT1@v11
+          )
+      };
+    [[ UnpackOp
+      For identifier v13
+        Unpack record
+        labels = ["pure","Apply0"]
+      inside
+        (((
+          bindReaderT1@v3
+        ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v14 -> 
+          (((
+            bindReaderT1@v3
+          ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v15 -> 
+            (((
+              bindReaderT1@v3
+            ).bind let v16 =
+              ((
+                v6
+              ).map (\v@v16 -> 
+                (add v@v16 1)
+              ));
+            let v17 =
+              (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+            (\x@v18 -> 
+              (v16 (v17 x@v18))
+            )) (\i2@v16 -> 
+              (((
+                bindReaderT1@v3
+              ).bind let v17 =
+                ((
+                  v6
+                ).map Data.Semiring.intAdd);
+              [[ LetAssoc
+                let v18 =
+                  (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+                let v18 =
+                  (\x@v19 -> 
+                    (v17 (v18 x@v19))
+                  );
+                let v19 =
+                  (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+                (\r@v20 -> 
+                  (((
+                    Apply0@v5
+                  ).apply (v18 r@v20)) (v19 r@v20))
+                )
+              ]]) (\i3@v17 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind ask1@v7) (\five@v18 -> 
+                  (((
+                    bindReaderT1@v3
+                  ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v18) 20))) (\i4@v19 -> 
+                    (((
+                      bindReaderT1@v3
+                    ).bind ask1@v7) (\five2@v20 -> 
+                      ((
+                        v13
+                      ).pure (add (add (add (add (add (add 4 i1@v15) i2@v16) i3@v17) five@v18) i4@v19) five2@v20))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+    ]]
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 7)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    let ask1@v7 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v8 =
+      ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v9 =
+      ((
+        v8
+      ).Apply0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v10 =
+      ((
+        v9
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let functorReaderT1@v11 =
+      { map =
+          (\x@v11 -> 
+            let v12 =
+              ((
+                v10
+              ).map x@v11);
+            (\v@v13 -> \x@v14 -> 
+              (v12 (v@v13 x@v14))
+            )
+          )
+      };
+    {#- Rewrite - Inline -#}
+    let applyReaderT1@v12 =
+      { apply =
+          (\v@v12 -> \v1@v13 -> \r@v14 -> 
+            (((
+              v9
+            ).apply (v@v12 r@v14)) (v1@v13 r@v14))
+          )
+      , Functor0 =
+          (\$__unused@v12 -> 
+            functorReaderT1@v11
+          )
+      };
+    {#- Rewrite - Inline -#}
+    let v13 =
+      (\x@v13 -> 
+        let v14 =
+          ((
+            v8
+          ).pure x@v13);
+        (\v@v15 -> 
+          v14
+        )
+      );
+    {#- Rewrite - Inline -#}
+    let v14 =
+      (\$__unused@v14 -> 
+        applyReaderT1@v12
+      );
+    (((
+      bindReaderT1@v3
+    ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v15 -> 
+      (((
+        bindReaderT1@v3
+      ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v16 -> 
+        (((
+          bindReaderT1@v3
+        ).bind let v17 =
+          ((
+            v6
+          ).map (\v@v17 -> 
+            (add v@v17 1)
+          ));
+        let v18 =
+          (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+        (\x@v19 -> 
+          (v17 (v18 x@v19))
+        )) (\i2@v17 -> 
+          (((
+            bindReaderT1@v3
+          ).bind let v18 =
+            ((
+              v6
+            ).map Data.Semiring.intAdd);
+          let v19 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          {#- Rewrite - Inline -#}
+          let v20 =
+            (\x@v20 -> 
+              (v18 (v19 x@v20))
+            );
+          let v21 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          (\r@v22 -> 
+            (((
+              Apply0@v5
+            ).apply (v20 r@v22)) (v21 r@v22))
+          )) (\i3@v18 -> 
+            (((
+              bindReaderT1@v3
+            ).bind ask1@v7) (\five@v19 -> 
+              (((
+                bindReaderT1@v3
+              ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v19) 20))) (\i4@v20 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind ask1@v7) (\five2@v21 -> 
+                  (v13 (add (add (add (add (add (add 4 i1@v16) i2@v17) i3@v18) five@v19) i4@v20) five2@v21))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 8)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    let ask1@v7 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v8 =
+      ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>);
+    (((
+      bindReaderT1@v3
+    ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v9 -> 
+      (((
+        bindReaderT1@v3
+      ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v10 -> 
+        (((
+          bindReaderT1@v3
+        ).bind let v11 =
+          ((
+            v6
+          ).map (\v@v11 -> 
+            (add v@v11 1)
+          ));
+        let v12 =
+          (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+        (\x@v13 -> 
+          (v11 (v12 x@v13))
+        )) (\i2@v11 -> 
+          (((
+            bindReaderT1@v3
+          ).bind let v12 =
+            ((
+              v6
+            ).map Data.Semiring.intAdd);
+          let v13 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          let v14 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          (\r@v15 -> 
+            (((
+              Apply0@v5
+            ).apply (v12 (v13 r@v15))) (v14 r@v15))
+          )) (\i3@v12 -> 
+            (((
+              bindReaderT1@v3
+            ).bind ask1@v7) (\five@v13 -> 
+              (((
+                bindReaderT1@v3
+              ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v13) 20))) (\i4@v14 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind ask1@v7) (\five2@v15 -> 
+                  {#- Rewrite - Inline -#}
+                  let v16 =
+                    (add (add (add (add (add (add 4 i1@v10) i2@v11) i3@v12) five@v13) i4@v14) five2@v15);
+                  let v17 =
+                    ((
+                      v8
+                    ).pure v16);
+                  {#- Rewrite - Inline -#}
+                  let v18 =
+                    (\v@v18 -> 
+                      v17
+                    );
+                  v18
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerReaderT01.program2 (Step 9; Final)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let Bind1@v2 =
+      ((
+        Monad0@v1
+      ).Bind1 <PrimUndefined>);
+    let bindReaderT1@v3 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v2);
+    let liftEffect1@v4 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader dictMonadEffect@v0)
+      ).liftEffect;
+    let Apply0@v5 =
+      ((
+        Bind1@v2
+      ).Apply0 <PrimUndefined>);
+    let v6 =
+      ((
+        Apply0@v5
+      ).Functor0 <PrimUndefined>);
+    let ask1@v7 =
+      (
+        ((
+          Monad0@v1
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v8 =
+      ((
+        Monad0@v1
+      ).Applicative0 <PrimUndefined>);
+    (((
+      bindReaderT1@v3
+    ).bind (liftEffect1@v4 (Effect.Console.log "foo"))) (\$__unused@v9 -> 
+      (((
+        bindReaderT1@v3
+      ).bind (liftEffect1@v4 ((Effect.Random.randomInt 1) 10))) (\i1@v10 -> 
+        (((
+          bindReaderT1@v3
+        ).bind let v11 =
+          ((
+            v6
+          ).map (\v@v11 -> 
+            (add v@v11 1)
+          ));
+        let v12 =
+          (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+        (\x@v13 -> 
+          (v11 (v12 x@v13))
+        )) (\i2@v11 -> 
+          (((
+            bindReaderT1@v3
+          ).bind let v12 =
+            ((
+              v6
+            ).map Data.Semiring.intAdd);
+          let v13 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          let v14 =
+            (liftEffect1@v4 ((Effect.Random.randomInt 1) 10));
+          (\r@v15 -> 
+            (((
+              Apply0@v5
+            ).apply (v12 (v13 r@v15))) (v14 r@v15))
+          )) (\i3@v12 -> 
+            (((
+              bindReaderT1@v3
+            ).bind ask1@v7) (\five@v13 -> 
+              (((
+                bindReaderT1@v3
+              ).bind (liftEffect1@v4 ((Effect.Random.randomInt five@v13) 20))) (\i4@v14 -> 
+                (((
+                  bindReaderT1@v3
+                ).bind ask1@v7) (\five2@v15 -> 
+                  let v16 =
+                    ((
+                      v8
+                    ).pure (add (add (add (add (add (add 4 i1@v10) i2@v11) i3@v12) five@v13) i4@v14) five2@v15));
+                  (\v@v17 -> 
+                    v16
+                  )
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+===============
+Snapshot.TransformerReaderT01.pure (Step 0; Original)
+  (Control.Applicative.pure (Control.Monad.Reader.Trans.applicativeReaderT Effect.applicativeEffect))
+---------------
+Snapshot.TransformerReaderT01.pure (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        <PrimUndefined>;
+      Effect.applyEffect;
+    [[ LetAssoc
+      let v1 =
+        ((
+          v0
+        ).Functor0 <PrimUndefined>);
+      let v1 =
+        let functorReaderT1@v2 =
+          { map =
+              (\x@v2 -> 
+                let v3 =
+                  ((
+                    v1
+                  ).map x@v2);
+                (\v@v4 -> \x@v5 -> 
+                  (v3 (v@v4 x@v5))
+                )
+              )
+          };
+        let applyReaderT1@v3 =
+          { apply =
+              (\v@v3 -> \v1@v4 -> \r@v5 -> 
+                (((
+                  v0
+                ).apply (v@v3 r@v5)) (v1@v4 r@v5))
+              )
+          , Functor0 =
+              (\$__unused@v3 -> 
+                functorReaderT1@v2
+              )
+          };
+        { pure =
+            (\x@v4 -> 
+              {#- Rewrite - Inline -#}
+              let v5 =
+                (effectPure x@v4);
+              (\v@v6 -> 
+                v5
+              )
+            )
+        , Apply0 =
+            (\$__unused@v4 -> 
+              applyReaderT1@v3
+            )
+        };
+      let v1 =
+        v1;
+      v1
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).pure;
+  v1
+---------------
+Snapshot.TransformerReaderT01.pure (Step 2)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    Effect.functorEffect;
+  [[ LetAssoc
+    let functorReaderT1@v1 =
+      { map =
+          (\x@v1 -> 
+            let v2 =
+              ((
+                v0
+              ).map x@v1);
+            (\v@v3 -> \x@v4 -> 
+              (v2 (v@v3 x@v4))
+            )
+          )
+      };
+    let v1 =
+      let applyReaderT1@v2 =
+        { apply =
+            (\v@v2 -> \v1@v3 -> \r@v4 -> 
+              let v5 =
+                (v@v2 r@v4);
+              [[ LetAssoc
+                let v6 =
+                  (v1@v3 r@v4);
+                let v6 =
+                  letEffect f'@v7 =
+                    v5;
+                  letEffect a'@v8 =
+                    v6;
+                  let v9 =
+                    (f'@v7 a'@v8);
+                  {#- Rewrite - Inline -#}
+                  let v10 =
+                    (effectPure v9);
+                  v10;
+                v6
+              ]]
+            )
+        , Functor0 =
+            (\$__unused@v2 -> 
+              functorReaderT1@v1
+            )
+        };
+      { pure =
+          (\x@v3 -> \v@v4 -> 
+            (effectPure x@v3)
+          )
+      , Apply0 =
+          (\$__unused@v3 -> 
+            applyReaderT1@v2
+          )
+      };
+    let v1 =
+      v1;
+    (
+      v1
+    ).pure
+  ]]
+---------------
+Snapshot.TransformerReaderT01.pure (Step 3)
+  let functorReaderT1@v0 =
+    { map =
+        (\x@v0 -> 
+          {#- Rewrite - Inline -#}
+          let v1 =
+            (\a@v1 -> 
+              (effectDefer letEffect a'@v2 =
+                a@v1;
+              (effectPure (x@v0 a'@v2)))
+            );
+          (\v@v2 -> \x@v3 -> 
+            (v1 (v@v2 x@v3))
+          )
+        )
+    };
+  [[ LetAssoc
+    let applyReaderT1@v1 =
+      { apply =
+          (\v@v1 -> \v1@v2 -> \r@v3 -> 
+            let v4 =
+              (v@v1 r@v3);
+            let v5 =
+              (v1@v2 r@v3);
+            {#- Rewrite - Inline -#}
+            let v6 =
+              letEffect f'@v6 =
+                v4;
+              letEffect a'@v7 =
+                v5;
+              {#- Rewrite - Inline -#}
+              let v8 =
+                (f'@v6 a'@v7);
+              (effectPure v8);
+            v6
+          )
+      , Functor0 =
+          (\$__unused@v1 -> 
+            functorReaderT1@v0
+          )
+      };
+    let v1 =
+      { pure =
+          (\x@v2 -> \v@v3 -> 
+            (effectPure x@v2)
+          )
+      , Apply0 =
+          (\$__unused@v2 -> 
+            applyReaderT1@v1
+          )
+      };
+    (
+      v1
+    ).pure
+  ]]
+---------------
+Snapshot.TransformerReaderT01.pure (Step 4)
+  let functorReaderT1@v0 =
+    { map =
+        (\x@v0 -> \v@v1 -> \x@v2 -> 
+          let v3 =
+            (v@v1 x@v2);
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (x@v0 a'@v4)))
+        )
+    };
+  let applyReaderT1@v1 =
+    { apply =
+        (\v@v1 -> \v1@v2 -> \r@v3 -> 
+          let v4 =
+            (v@v1 r@v3);
+          let v5 =
+            (v1@v2 r@v3);
+          letEffect f'@v6 =
+            v4;
+          letEffect a'@v7 =
+            v5;
+          (effectPure (f'@v6 a'@v7))
+        )
+    , Functor0 =
+        (\$__unused@v1 -> 
+          functorReaderT1@v0
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let v2 =
+    { pure =
+        (\x@v2 -> \v@v3 -> 
+          (effectPure x@v2)
+        )
+    , Apply0 =
+        (\$__unused@v2 -> 
+          applyReaderT1@v1
+        )
+    };
+  (
+    v2
+  ).pure
+---------------
+Snapshot.TransformerReaderT01.pure (Step 5)
+  {#- Rewrite - Inline -#}
+  let functorReaderT1@v0 =
+    { map =
+        (\x@v0 -> \v@v1 -> \x@v2 -> 
+          let v3 =
+            (v@v1 x@v2);
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (x@v0 a'@v4)))
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let applyReaderT1@v1 =
+    { apply =
+        (\v@v1 -> \v1@v2 -> \r@v3 -> 
+          let v4 =
+            (v@v1 r@v3);
+          let v5 =
+            (v1@v2 r@v3);
+          letEffect f'@v6 =
+            v4;
+          letEffect a'@v7 =
+            v5;
+          (effectPure (f'@v6 a'@v7))
+        )
+    , Functor0 =
+        (\$__unused@v1 -> 
+          functorReaderT1@v0
+        )
+    };
+  (\x@v2 -> \v@v3 -> 
+    (effectPure x@v2)
+  )
+---------------
+Snapshot.TransformerReaderT01.pure (Step 6; Final)
+  (\x@v0 -> \v@v1 -> 
+    (effectPure x@v0)
+  )
+===============
+Snapshot.TransformerReaderT01.test1 (Step 0; Original)
+  ((Control.Monad.Reader.Trans.runReaderT (((Snapshot.TransformerReaderT01.discard Snapshot.TransformerReaderT01.bindReaderT) (Snapshot.TransformerReaderT01.liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    ((Snapshot.TransformerReaderT01.bind (Snapshot.TransformerReaderT01.liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      ((Snapshot.TransformerReaderT01.bind ((Snapshot.TransformerReaderT01.map (\v@v2 -> 
+        ((Snapshot.TransformerReaderT01.add v@v2) 1)
+      )) (Snapshot.TransformerReaderT01.liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v2 -> 
+        ((Snapshot.TransformerReaderT01.bind ((Snapshot.TransformerReaderT01.apply ((Snapshot.TransformerReaderT01.map Snapshot.TransformerReaderT01.add) (Snapshot.TransformerReaderT01.liftEffect ((Effect.Random.randomInt 1) 10)))) (Snapshot.TransformerReaderT01.liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v3 -> 
+          ((Snapshot.TransformerReaderT01.bind Snapshot.TransformerReaderT01.ask) (\five@v4 -> 
+            ((Snapshot.TransformerReaderT01.bind (Snapshot.TransformerReaderT01.liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              ((Snapshot.TransformerReaderT01.bind Snapshot.TransformerReaderT01.ask) (\five2@v6 -> 
+                (Snapshot.TransformerReaderT01.pure ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add ((Snapshot.TransformerReaderT01.add 4) i1@v1)) i2@v2)) i3@v3)) five@v4)) i4@v5)) five2@v6))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))) 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind ((
+        Snapshot.TransformerReaderT01.monadEffectReader
+      ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind {#- Rewrite - Inline -#}
+        let v2 =
+          (\v@v2 -> 
+            {#- Rewrite - Inline -#}
+            let v3 =
+              1;
+            (add v@v2 v3)
+          );
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\v@v3 -> \x@v4 -> 
+            let v5 =
+              (v@v3 x@v4);
+            (effectDefer letEffect a'@v6 =
+              v5;
+            (effectPure (v2 a'@v6)))
+          );
+        (v3 ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v2 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind [[ LetAssoc
+            let v3 =
+              ((
+                Snapshot.TransformerReaderT01.monadEffectReader
+              ).liftEffect ((Effect.Random.randomInt 1) 10));
+            let v3 =
+              (\x@v4 -> 
+                let v5 =
+                  (v3 x@v4);
+                (effectDefer letEffect a'@v6 =
+                  v5;
+                (effectPure (\v7 -> 
+                  (add a'@v6 v7)
+                )))
+              );
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (\v1@v4 -> \r@v5 -> 
+                let v6 =
+                  (v3 r@v5);
+                let v7 =
+                  (v1@v4 r@v5);
+                letEffect f'@v8 =
+                  v6;
+                letEffect a'@v9 =
+                  v7;
+                (effectPure (f'@v8 a'@v9))
+              );
+            (v4 ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))
+          ]]) (\i3@v3 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind (
+              Snapshot.TransformerReaderT01.monadAskReaderT
+            ).ask) (\five@v4 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind ((
+                Snapshot.TransformerReaderT01.monadEffectReader
+              ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+                (((
+                  Snapshot.TransformerReaderT01.bindReaderT
+                ).bind (
+                  Snapshot.TransformerReaderT01.monadAskReaderT
+                ).ask) (\five2@v6 -> 
+                  [[ LetAssoc
+                    let v7 =
+                      {#- Rewrite - Inline -#}
+                      let v7 =
+                        4;
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        (\v8 -> 
+                          (add v7 v8)
+                        );
+                      (v8 i1@v1);
+                    let v7 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        (\v8 -> 
+                          (add v7 v8)
+                        );
+                      (v8 i2@v2);
+                    let v7 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        (\v8 -> 
+                          (add v7 v8)
+                        );
+                      (v8 i3@v3);
+                    let v7 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        (\v8 -> 
+                          (add v7 v8)
+                        );
+                      (v8 five@v4);
+                    let v7 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        (\v8 -> 
+                          (add v7 v8)
+                        );
+                      (v8 i4@v5);
+                    let v7 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        (\v8 -> 
+                          (add v7 v8)
+                        );
+                      (v8 five2@v6);
+                    {#- Rewrite - Inline -#}
+                    let v8 =
+                      (\v@v8 -> 
+                        (effectPure v7)
+                      );
+                    v8
+                  ]]
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ));
+  (v0 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 2)
+  ((((
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind let v2 =
+        ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10));
+      (\x@v3 -> 
+        let v4 =
+          (v2 x@v3);
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure (add a'@v5 1)))
+      )) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind let v3 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\x@v4 -> 
+            let v5 =
+              (v3 x@v4);
+            (effectDefer letEffect a'@v6 =
+              v5;
+            (effectPure (\v7 -> 
+              (add a'@v6 v7)
+            )))
+          );
+        let v5 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        (\r@v6 -> 
+          let v7 =
+            (v4 r@v6);
+          let v8 =
+            (v5 r@v6);
+          letEffect f'@v9 =
+            v7;
+          letEffect a'@v10 =
+            v8;
+          (effectPure (f'@v9 a'@v10))
+        )) (\i3@v3 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v4 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v6 -> 
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (add 4 i1@v1);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (add v7 i2@v2);
+                {#- Rewrite - Inline -#}
+                let v9 =
+                  (add v8 i3@v3);
+                {#- Rewrite - Inline -#}
+                let v10 =
+                  (add v9 five@v4);
+                {#- Rewrite - Inline -#}
+                let v11 =
+                  (add v10 i4@v5);
+                let v12 =
+                  (add v11 five2@v6);
+                (\v@v13 -> 
+                  (effectPure v12)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 3)
+  ((((
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind let v2 =
+        ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10));
+      (\x@v3 -> 
+        let v4 =
+          (v2 x@v3);
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure (add a'@v5 1)))
+      )) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind let v3 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        let v4 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        (\r@v5 -> 
+          [[ LetAssoc
+            let v6 =
+              (v3 r@v5);
+            let v6 =
+              {#- Rewrite - Inline -#}
+              let v7 =
+                (effectDefer letEffect a'@v7 =
+                  v6;
+                (effectPure (\v8 -> 
+                  (add a'@v7 v8)
+                )));
+              v7;
+            let v7 =
+              (v4 r@v5);
+            letEffect f'@v8 =
+              v6;
+            letEffect a'@v9 =
+              v7;
+            (effectPure (f'@v8 a'@v9))
+          ]]
+        )) (\i3@v3 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v4 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v6 -> 
+                let v7 =
+                  (add (add (add (add (add (add 4 i1@v1) i2@v2) i3@v3) five@v4) i4@v5) five2@v6);
+                (\v@v8 -> 
+                  (effectPure v7)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 4)
+  ((((
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind let v2 =
+        ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10));
+      (\x@v3 -> 
+        let v4 =
+          (v2 x@v3);
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure (add a'@v5 1)))
+      )) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind let v3 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        let v4 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        (\r@v5 -> 
+          let v6 =
+            (v3 r@v5);
+          {#- Rewrite - Inline -#}
+          let v7 =
+            (effectDefer letEffect a'@v7 =
+              v6;
+            (effectPure (\v8 -> 
+              (add a'@v7 v8)
+            )));
+          let v8 =
+            (v4 r@v5);
+          letEffect f'@v9 =
+            v7;
+          letEffect a'@v10 =
+            v8;
+          (effectPure (f'@v9 a'@v10))
+        )) (\i3@v3 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v4 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v6 -> 
+                let v7 =
+                  (add (add (add (add (add (add 4 i1@v1) i2@v2) i3@v3) five@v4) i4@v5) five2@v6);
+                (\v@v8 -> 
+                  (effectPure v7)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 5)
+  ((((
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind let v2 =
+        ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10));
+      (\x@v3 -> 
+        let v4 =
+          (v2 x@v3);
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure (add a'@v5 1)))
+      )) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind let v3 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        let v4 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        (\r@v5 -> 
+          let v6 =
+            (v3 r@v5);
+          let v7 =
+            (v4 r@v5);
+          [[ EffectBindAssoc
+            letEffect a'@v8 =
+              v6;
+            letEffect f'@v8 =
+              (effectPure (\v9 -> 
+                (add a'@v8 v9)
+              ));
+            letEffect a'@v9 =
+              v7;
+            (effectPure (f'@v8 a'@v9))
+          ]]
+        )) (\i3@v3 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v4 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v6 -> 
+                let v7 =
+                  (add (add (add (add (add (add 4 i1@v1) i2@v2) i3@v3) five@v4) i4@v5) five2@v6);
+                (\v@v8 -> 
+                  (effectPure v7)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 6)
+  ((((
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind let v2 =
+        ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10));
+      (\x@v3 -> 
+        let v4 =
+          (v2 x@v3);
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure (add a'@v5 1)))
+      )) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind let v3 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        let v4 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        (\r@v5 -> 
+          let v6 =
+            (v3 r@v5);
+          let v7 =
+            (v4 r@v5);
+          letEffect a'@v8 =
+            v6;
+          {#- Rewrite - Inline -#}
+          let f'@v9 =
+            (\v9 -> 
+              (add a'@v8 v9)
+            );
+          letEffect a'@v10 =
+            v7;
+          (effectPure (f'@v9 a'@v10))
+        )) (\i3@v3 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v4 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v6 -> 
+                let v7 =
+                  (add (add (add (add (add (add 4 i1@v1) i2@v2) i3@v3) five@v4) i4@v5) five2@v6);
+                (\v@v8 -> 
+                  (effectPure v7)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test1 (Step 7; Final)
+  ((((
+    Snapshot.TransformerReaderT01.bindReaderT
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerReaderT01.bindReaderT
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerReaderT01.bindReaderT
+      ).bind let v2 =
+        ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10));
+      (\x@v3 -> 
+        let v4 =
+          (v2 x@v3);
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure (add a'@v5 1)))
+      )) (\i2@v2 -> 
+        (((
+          Snapshot.TransformerReaderT01.bindReaderT
+        ).bind let v3 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        let v4 =
+          ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10));
+        (\r@v5 -> 
+          let v6 =
+            (v3 r@v5);
+          let v7 =
+            (v4 r@v5);
+          letEffect a'@v8 =
+            v6;
+          letEffect a'@v9 =
+            v7;
+          (effectPure (add a'@v8 a'@v9))
+        )) (\i3@v3 -> 
+          (((
+            Snapshot.TransformerReaderT01.bindReaderT
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v4 -> 
+            (((
+              Snapshot.TransformerReaderT01.bindReaderT
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v4) 20))) (\i4@v5 -> 
+              (((
+                Snapshot.TransformerReaderT01.bindReaderT
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v6 -> 
+                let v7 =
+                  (add (add (add (add (add (add 4 i1@v1) i2@v2) i3@v3) five@v4) i4@v5) five2@v6);
+                (\v@v8 -> 
+                  (effectPure v7)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+===============
+Snapshot.TransformerReaderT01.test2 (Step 0; Original)
+  ((Control.Monad.Reader.Trans.runReaderT ((Snapshot.TransformerReaderT01.program1 Snapshot.TransformerReaderT01.monadAskReaderT) Snapshot.TransformerReaderT01.monadEffectReader)) 5)
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 1)
+  [[ LetAssoc
+    let Monad0@v0 =
+      ((
+        Snapshot.TransformerReaderT01.monadAskReaderT
+      ).Monad0 <PrimUndefined>);
+    let v0 =
+      [[ LetAssoc
+        let Bind1@v1 =
+          ((
+            Monad0@v0
+          ).Bind1 <PrimUndefined>);
+        let v1 =
+          let Apply0@v2 =
+            ((
+              Bind1@v1
+            ).Apply0 <PrimUndefined>);
+          let map1@v3 =
+            (
+              ((
+                Apply0@v2
+              ).Functor0 <PrimUndefined>)
+            ).map;
+          {#- Rewrite - Inline -#}
+          let ask1@v4 =
+            (
+              Snapshot.TransformerReaderT01.monadAskReaderT
+            ).ask;
+          let pure1@v5 =
+            (
+              ((
+                Monad0@v0
+              ).Applicative0 <PrimUndefined>)
+            ).pure;
+          (\dictMonadEffect@v6 -> 
+            (((
+              Bind1@v1
+            ).bind ((
+              dictMonadEffect@v6
+            ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+              (((
+                Bind1@v1
+              ).bind ((
+                dictMonadEffect@v6
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+                (((
+                  Bind1@v1
+                ).bind ((map1@v3 (\v@v9 -> 
+                  (add v@v9 1)
+                )) ((
+                  dictMonadEffect@v6
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+                  (((
+                    Bind1@v1
+                  ).bind (((
+                    Apply0@v2
+                  ).apply ((map1@v3 Data.Semiring.intAdd) ((
+                    dictMonadEffect@v6
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                    dictMonadEffect@v6
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                    (((
+                      Bind1@v1
+                    ).bind ask1@v4) (\five@v11 -> 
+                      (((
+                        Bind1@v1
+                      ).bind ((
+                        dictMonadEffect@v6
+                      ).liftEffect ((Effect.Random.randomInt five@v11) 20))) (\i4@v12 -> 
+                        (((
+                          Bind1@v1
+                        ).bind ask1@v4) (\five2@v13 -> 
+                          (pure1@v5 (add (add (add (add (add (add 4 i1@v8) i2@v9) i3@v10) five@v11) i4@v12) five2@v13))
+                        ))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          );
+        let v1 =
+          v1;
+        (v1 Snapshot.TransformerReaderT01.monadEffectReader)
+      ]];
+    (v0 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 2)
+  let Monad0@v0 =
+    ((
+      Snapshot.TransformerReaderT01.monadAskReaderT
+    ).Monad0 <PrimUndefined>);
+  [[ LetAssoc
+    let Bind1@v1 =
+      ((
+        Monad0@v0
+      ).Bind1 <PrimUndefined>);
+    let v1 =
+      [[ LetAssoc
+        let Apply0@v2 =
+          ((
+            Bind1@v1
+          ).Apply0 <PrimUndefined>);
+        let v2 =
+          let map1@v3 =
+            (
+              ((
+                Apply0@v2
+              ).Functor0 <PrimUndefined>)
+            ).map;
+          let pure1@v4 =
+            (
+              ((
+                Monad0@v0
+              ).Applicative0 <PrimUndefined>)
+            ).pure;
+          (\dictMonadEffect@v5 -> 
+            (((
+              Bind1@v1
+            ).bind ((
+              dictMonadEffect@v5
+            ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+              (((
+                Bind1@v1
+              ).bind ((
+                dictMonadEffect@v5
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v7 -> 
+                (((
+                  Bind1@v1
+                ).bind ((map1@v3 (\v@v8 -> 
+                  (add v@v8 1)
+                )) ((
+                  dictMonadEffect@v5
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v8 -> 
+                  (((
+                    Bind1@v1
+                  ).bind (((
+                    Apply0@v2
+                  ).apply ((map1@v3 Data.Semiring.intAdd) ((
+                    dictMonadEffect@v5
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                    dictMonadEffect@v5
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v9 -> 
+                    (((
+                      Bind1@v1
+                    ).bind (
+                      Snapshot.TransformerReaderT01.monadAskReaderT
+                    ).ask) (\five@v10 -> 
+                      (((
+                        Bind1@v1
+                      ).bind ((
+                        dictMonadEffect@v5
+                      ).liftEffect ((Effect.Random.randomInt five@v10) 20))) (\i4@v11 -> 
+                        (((
+                          Bind1@v1
+                        ).bind (
+                          Snapshot.TransformerReaderT01.monadAskReaderT
+                        ).ask) (\five2@v12 -> 
+                          (pure1@v4 (add (add (add (add (add (add 4 i1@v7) i2@v8) i3@v9) five@v10) i4@v11) five2@v12))
+                        ))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          );
+        (v2 Snapshot.TransformerReaderT01.monadEffectReader)
+      ]];
+    (v1 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 3)
+  let Monad0@v0 =
+    ((
+      Snapshot.TransformerReaderT01.monadAskReaderT
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v1 =
+    ((
+      Monad0@v0
+    ).Bind1 <PrimUndefined>);
+  [[ LetAssoc
+    let Apply0@v2 =
+      ((
+        Bind1@v1
+      ).Apply0 <PrimUndefined>);
+    let v2 =
+      [[ LetAssoc
+        let map1@v3 =
+          (
+            ((
+              Apply0@v2
+            ).Functor0 <PrimUndefined>)
+          ).map;
+        let v3 =
+          let pure1@v4 =
+            (
+              ((
+                Monad0@v0
+              ).Applicative0 <PrimUndefined>)
+            ).pure;
+          (\dictMonadEffect@v5 -> 
+            (((
+              Bind1@v1
+            ).bind ((
+              dictMonadEffect@v5
+            ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+              (((
+                Bind1@v1
+              ).bind ((
+                dictMonadEffect@v5
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v7 -> 
+                (((
+                  Bind1@v1
+                ).bind ((map1@v3 (\v@v8 -> 
+                  (add v@v8 1)
+                )) ((
+                  dictMonadEffect@v5
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v8 -> 
+                  (((
+                    Bind1@v1
+                  ).bind (((
+                    Apply0@v2
+                  ).apply ((map1@v3 Data.Semiring.intAdd) ((
+                    dictMonadEffect@v5
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                    dictMonadEffect@v5
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v9 -> 
+                    (((
+                      Bind1@v1
+                    ).bind (
+                      Snapshot.TransformerReaderT01.monadAskReaderT
+                    ).ask) (\five@v10 -> 
+                      (((
+                        Bind1@v1
+                      ).bind ((
+                        dictMonadEffect@v5
+                      ).liftEffect ((Effect.Random.randomInt five@v10) 20))) (\i4@v11 -> 
+                        (((
+                          Bind1@v1
+                        ).bind (
+                          Snapshot.TransformerReaderT01.monadAskReaderT
+                        ).ask) (\five2@v12 -> 
+                          (pure1@v4 (add (add (add (add (add (add 4 i1@v7) i2@v8) i3@v9) five@v10) i4@v11) five2@v12))
+                        ))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          );
+        (v3 Snapshot.TransformerReaderT01.monadEffectReader)
+      ]];
+    (v2 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 4)
+  let Monad0@v0 =
+    ((
+      Snapshot.TransformerReaderT01.monadAskReaderT
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v1 =
+    ((
+      Monad0@v0
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v2 =
+    ((
+      Bind1@v1
+    ).Apply0 <PrimUndefined>);
+  [[ LetAssoc
+    let map1@v3 =
+      (
+        ((
+          Apply0@v2
+        ).Functor0 <PrimUndefined>)
+      ).map;
+    let v3 =
+      [[ LetAssoc
+        let pure1@v4 =
+          (
+            ((
+              Monad0@v0
+            ).Applicative0 <PrimUndefined>)
+          ).pure;
+        let v4 =
+          (\dictMonadEffect@v5 -> 
+            (((
+              Bind1@v1
+            ).bind ((
+              dictMonadEffect@v5
+            ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+              (((
+                Bind1@v1
+              ).bind ((
+                dictMonadEffect@v5
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v7 -> 
+                (((
+                  Bind1@v1
+                ).bind ((map1@v3 (\v@v8 -> 
+                  (add v@v8 1)
+                )) ((
+                  dictMonadEffect@v5
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v8 -> 
+                  (((
+                    Bind1@v1
+                  ).bind (((
+                    Apply0@v2
+                  ).apply ((map1@v3 Data.Semiring.intAdd) ((
+                    dictMonadEffect@v5
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                    dictMonadEffect@v5
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v9 -> 
+                    (((
+                      Bind1@v1
+                    ).bind (
+                      Snapshot.TransformerReaderT01.monadAskReaderT
+                    ).ask) (\five@v10 -> 
+                      (((
+                        Bind1@v1
+                      ).bind ((
+                        dictMonadEffect@v5
+                      ).liftEffect ((Effect.Random.randomInt five@v10) 20))) (\i4@v11 -> 
+                        (((
+                          Bind1@v1
+                        ).bind (
+                          Snapshot.TransformerReaderT01.monadAskReaderT
+                        ).ask) (\five2@v12 -> 
+                          (pure1@v4 (add (add (add (add (add (add 4 i1@v7) i2@v8) i3@v9) five@v10) i4@v11) five2@v12))
+                        ))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          );
+        (v4 Snapshot.TransformerReaderT01.monadEffectReader)
+      ]];
+    (v3 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 5)
+  let Monad0@v0 =
+    ((
+      Snapshot.TransformerReaderT01.monadAskReaderT
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v1 =
+    ((
+      Monad0@v0
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v2 =
+    ((
+      Bind1@v1
+    ).Apply0 <PrimUndefined>);
+  let map1@v3 =
+    (
+      ((
+        Apply0@v2
+      ).Functor0 <PrimUndefined>)
+    ).map;
+  [[ LetAssoc
+    let pure1@v4 =
+      (
+        ((
+          Monad0@v0
+        ).Applicative0 <PrimUndefined>)
+      ).pure;
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\dictMonadEffect@v5 -> 
+          (((
+            Bind1@v1
+          ).bind ((
+            dictMonadEffect@v5
+          ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+            (((
+              Bind1@v1
+            ).bind ((
+              dictMonadEffect@v5
+            ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v7 -> 
+              (((
+                Bind1@v1
+              ).bind ((map1@v3 (\v@v8 -> 
+                (add v@v8 1)
+              )) ((
+                dictMonadEffect@v5
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v8 -> 
+                (((
+                  Bind1@v1
+                ).bind (((
+                  Apply0@v2
+                ).apply ((map1@v3 Data.Semiring.intAdd) ((
+                  dictMonadEffect@v5
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                  dictMonadEffect@v5
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v9 -> 
+                  (((
+                    Bind1@v1
+                  ).bind (
+                    Snapshot.TransformerReaderT01.monadAskReaderT
+                  ).ask) (\five@v10 -> 
+                    (((
+                      Bind1@v1
+                    ).bind ((
+                      dictMonadEffect@v5
+                    ).liftEffect ((Effect.Random.randomInt five@v10) 20))) (\i4@v11 -> 
+                      (((
+                        Bind1@v1
+                      ).bind (
+                        Snapshot.TransformerReaderT01.monadAskReaderT
+                      ).ask) (\five2@v12 -> 
+                        (pure1@v4 (add (add (add (add (add (add 4 i1@v7) i2@v8) i3@v9) five@v10) i4@v11) five2@v12))
+                      ))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        );
+      (v5 Snapshot.TransformerReaderT01.monadEffectReader);
+    (v4 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 6)
+  let Monad0@v0 =
+    ((
+      Snapshot.TransformerReaderT01.monadAskReaderT
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v1 =
+    ((
+      Monad0@v0
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v2 =
+    ((
+      Bind1@v1
+    ).Apply0 <PrimUndefined>);
+  let map1@v3 =
+    (
+      ((
+        Apply0@v2
+      ).Functor0 <PrimUndefined>)
+    ).map;
+  let pure1@v4 =
+    (
+      ((
+        Monad0@v0
+      ).Applicative0 <PrimUndefined>)
+    ).pure;
+  {#- Rewrite - Inline -#}
+  let v5 =
+    (((
+      Bind1@v1
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v5 -> 
+      (((
+        Bind1@v1
+      ).bind ((
+        Snapshot.TransformerReaderT01.monadEffectReader
+      ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v6 -> 
+        (((
+          Bind1@v1
+        ).bind ((map1@v3 (\v@v7 -> 
+          (add v@v7 1)
+        )) ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v7 -> 
+          (((
+            Bind1@v1
+          ).bind (((
+            Apply0@v2
+          ).apply ((map1@v3 Data.Semiring.intAdd) ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+            Snapshot.TransformerReaderT01.monadEffectReader
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v8 -> 
+            (((
+              Bind1@v1
+            ).bind (
+              Snapshot.TransformerReaderT01.monadAskReaderT
+            ).ask) (\five@v9 -> 
+              (((
+                Bind1@v1
+              ).bind ((
+                Snapshot.TransformerReaderT01.monadEffectReader
+              ).liftEffect ((Effect.Random.randomInt five@v9) 20))) (\i4@v10 -> 
+                (((
+                  Bind1@v1
+                ).bind (
+                  Snapshot.TransformerReaderT01.monadAskReaderT
+                ).ask) (\five2@v11 -> 
+                  (pure1@v4 (add (add (add (add (add (add 4 i1@v6) i2@v7) i3@v8) five@v9) i4@v10) five2@v11))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ));
+  (v5 5)
+---------------
+Snapshot.TransformerReaderT01.test2 (Step 7; Final)
+  let Monad0@v0 =
+    ((
+      Snapshot.TransformerReaderT01.monadAskReaderT
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v1 =
+    ((
+      Monad0@v0
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v2 =
+    ((
+      Bind1@v1
+    ).Apply0 <PrimUndefined>);
+  let map1@v3 =
+    (
+      ((
+        Apply0@v2
+      ).Functor0 <PrimUndefined>)
+    ).map;
+  let pure1@v4 =
+    (
+      ((
+        Monad0@v0
+      ).Applicative0 <PrimUndefined>)
+    ).pure;
+  ((((
+    Bind1@v1
+  ).bind ((
+    Snapshot.TransformerReaderT01.monadEffectReader
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v5 -> 
+    (((
+      Bind1@v1
+    ).bind ((
+      Snapshot.TransformerReaderT01.monadEffectReader
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v6 -> 
+      (((
+        Bind1@v1
+      ).bind ((map1@v3 (\v@v7 -> 
+        (add v@v7 1)
+      )) ((
+        Snapshot.TransformerReaderT01.monadEffectReader
+      ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v7 -> 
+        (((
+          Bind1@v1
+        ).bind (((
+          Apply0@v2
+        ).apply ((map1@v3 Data.Semiring.intAdd) ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+          Snapshot.TransformerReaderT01.monadEffectReader
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v8 -> 
+          (((
+            Bind1@v1
+          ).bind (
+            Snapshot.TransformerReaderT01.monadAskReaderT
+          ).ask) (\five@v9 -> 
+            (((
+              Bind1@v1
+            ).bind ((
+              Snapshot.TransformerReaderT01.monadEffectReader
+            ).liftEffect ((Effect.Random.randomInt five@v9) 20))) (\i4@v10 -> 
+              (((
+                Bind1@v1
+              ).bind (
+                Snapshot.TransformerReaderT01.monadAskReaderT
+              ).ask) (\five2@v11 -> 
+                (pure1@v4 (add (add (add (add (add (add 4 i1@v6) i2@v7) i3@v8) five@v9) i4@v10) five2@v11))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+===============
+Snapshot.TransformerReaderT01.test3 (Step 0; Original)
+  ((Snapshot.TransformerReaderT01.program2 Effect.Class.monadEffectEffect) 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 1)
+  {#- Rewrite - Inline -#}
+  let Monad0@v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    Effect.monadEffect;
+  [[ LetAssoc
+    let Bind1@v1 =
+      ((
+        Monad0@v0
+      ).Bind1 <PrimUndefined>);
+    let v1 =
+      let bindReaderT1@v2 =
+        (Control.Monad.Reader.Trans.bindReaderT Bind1@v1);
+      let liftEffect1@v3 =
+        (
+          (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+        ).liftEffect;
+      let Apply0@v4 =
+        ((
+          Bind1@v1
+        ).Apply0 <PrimUndefined>);
+      let v5 =
+        ((
+          Apply0@v4
+        ).Functor0 <PrimUndefined>);
+      let ask1@v6 =
+        (
+          ((
+            Monad0@v0
+          ).Applicative0 <PrimUndefined>)
+        ).pure;
+      let v7 =
+        ((
+          Monad0@v0
+        ).Applicative0 <PrimUndefined>);
+      (((
+        bindReaderT1@v2
+      ).bind (liftEffect1@v3 (Effect.Console.log "foo"))) (\$__unused@v8 -> 
+        (((
+          bindReaderT1@v2
+        ).bind (liftEffect1@v3 ((Effect.Random.randomInt 1) 10))) (\i1@v9 -> 
+          (((
+            bindReaderT1@v2
+          ).bind let v10 =
+            ((
+              v5
+            ).map (\v@v10 -> 
+              (add v@v10 1)
+            ));
+          let v11 =
+            (liftEffect1@v3 ((Effect.Random.randomInt 1) 10));
+          (\x@v12 -> 
+            (v10 (v11 x@v12))
+          )) (\i2@v10 -> 
+            (((
+              bindReaderT1@v2
+            ).bind let v11 =
+              ((
+                v5
+              ).map Data.Semiring.intAdd);
+            let v12 =
+              (liftEffect1@v3 ((Effect.Random.randomInt 1) 10));
+            let v13 =
+              (liftEffect1@v3 ((Effect.Random.randomInt 1) 10));
+            (\r@v14 -> 
+              (((
+                Apply0@v4
+              ).apply (v11 (v12 r@v14))) (v13 r@v14))
+            )) (\i3@v11 -> 
+              (((
+                bindReaderT1@v2
+              ).bind ask1@v6) (\five@v12 -> 
+                (((
+                  bindReaderT1@v2
+                ).bind (liftEffect1@v3 ((Effect.Random.randomInt five@v12) 20))) (\i4@v13 -> 
+                  (((
+                    bindReaderT1@v2
+                  ).bind ask1@v6) (\five2@v14 -> 
+                    let v15 =
+                      ((
+                        v7
+                      ).pure (add (add (add (add (add (add 4 i1@v9) i2@v10) i3@v11) five@v12) i4@v13) five2@v14));
+                    (\v@v16 -> 
+                      v15
+                    )
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ));
+    let v1 =
+      v1;
+    (v1 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 2)
+  {#- Rewrite - Inline -#}
+  let Bind1@v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    Effect.bindEffect;
+  [[ LetAssoc
+    let bindReaderT1@v1 =
+      (Control.Monad.Reader.Trans.bindReaderT Bind1@v0);
+    let v1 =
+      let liftEffect1@v2 =
+        (
+          (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+        ).liftEffect;
+      let Apply0@v3 =
+        ((
+          Bind1@v0
+        ).Apply0 <PrimUndefined>);
+      let v4 =
+        ((
+          Apply0@v3
+        ).Functor0 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let ask1@v5 =
+        {#- Rewrite - Inline -#}
+        let v5 =
+          <PrimUndefined>;
+        Effect.pureE;
+      {#- Rewrite - Inline -#}
+      let v6 =
+        {#- Rewrite - Inline -#}
+        let v6 =
+          <PrimUndefined>;
+        Effect.applicativeEffect;
+      (((
+        bindReaderT1@v1
+      ).bind (liftEffect1@v2 (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+        (((
+          bindReaderT1@v1
+        ).bind (liftEffect1@v2 ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+          (((
+            bindReaderT1@v1
+          ).bind let v9 =
+            ((
+              v4
+            ).map (\v@v9 -> 
+              (add v@v9 1)
+            ));
+          let v10 =
+            (liftEffect1@v2 ((Effect.Random.randomInt 1) 10));
+          (\x@v11 -> 
+            (v9 (v10 x@v11))
+          )) (\i2@v9 -> 
+            (((
+              bindReaderT1@v1
+            ).bind let v10 =
+              ((
+                v4
+              ).map Data.Semiring.intAdd);
+            let v11 =
+              (liftEffect1@v2 ((Effect.Random.randomInt 1) 10));
+            let v12 =
+              (liftEffect1@v2 ((Effect.Random.randomInt 1) 10));
+            (\r@v13 -> 
+              (((
+                Apply0@v3
+              ).apply (v10 (v11 r@v13))) (v12 r@v13))
+            )) (\i3@v10 -> 
+              (((
+                bindReaderT1@v1
+              ).bind ask1@v5) (\five@v11 -> 
+                (((
+                  bindReaderT1@v1
+                ).bind (liftEffect1@v2 ((Effect.Random.randomInt five@v11) 20))) (\i4@v12 -> 
+                  (((
+                    bindReaderT1@v1
+                  ).bind ask1@v5) (\five2@v13 -> 
+                    let v14 =
+                      ((
+                        v6
+                      ).pure (add (add (add (add (add (add 4 i1@v8) i2@v9) i3@v10) five@v11) i4@v12) five2@v13));
+                    (\v@v15 -> 
+                      v14
+                    )
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ));
+    (v1 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 3)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  [[ LetAssoc
+    let liftEffect1@v1 =
+      (
+        (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+      ).liftEffect;
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let Apply0@v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          <PrimUndefined>;
+        Effect.applyEffect;
+      let v3 =
+        ((
+          Apply0@v2
+        ).Functor0 <PrimUndefined>);
+      (((
+        bindReaderT1@v0
+      ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind let v6 =
+            ((
+              v3
+            ).map (\v@v6 -> 
+              (add v@v6 1)
+            ));
+          let v7 =
+            (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+          (\x@v8 -> 
+            (v6 (v7 x@v8))
+          )) (\i2@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind let v7 =
+              ((
+                v3
+              ).map Data.Semiring.intAdd);
+            let v8 =
+              (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+            let v9 =
+              (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+            (\r@v10 -> 
+              (((
+                Apply0@v2
+              ).apply (v7 (v8 r@v10))) (v9 r@v10))
+            )) (\i3@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five@v8 -> 
+                (((
+                  bindReaderT1@v0
+                ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v8) 20))) (\i4@v9 -> 
+                  (((
+                    bindReaderT1@v0
+                  ).bind Effect.pureE) (\five2@v10 -> 
+                    [[ LetAssoc
+                      let v11 =
+                        (add (add (add (add (add (add 4 i1@v5) i2@v6) i3@v7) five@v8) i4@v9) five2@v10);
+                      let v11 =
+                        {#- Rewrite - Inline -#}
+                        let v12 =
+                          (effectPure v11);
+                        v12;
+                      (\v@v12 -> 
+                        v11
+                      )
+                    ]]
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ));
+    (v1 5)
+  ]]
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 4)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  {#- Rewrite - Inline -#}
+  let v2 =
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        <PrimUndefined>;
+      Effect.functorEffect;
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind let v5 =
+          ((
+            v2
+          ).map (\v@v5 -> 
+            (add v@v5 1)
+          ));
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\x@v7 -> 
+          (v5 (v6 x@v7))
+        )) (\i2@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind let v6 =
+            ((
+              v2
+            ).map Data.Semiring.intAdd);
+          let v7 =
+            (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+          let v8 =
+            (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+          (\r@v9 -> 
+            let v10 =
+              (v6 (v7 r@v9));
+            [[ LetAssoc
+              let v11 =
+                (v8 r@v9);
+              let v11 =
+                letEffect f'@v12 =
+                  v10;
+                letEffect a'@v13 =
+                  v11;
+                let v14 =
+                  (f'@v12 a'@v13);
+                {#- Rewrite - Inline -#}
+                let v15 =
+                  (effectPure v14);
+                v15;
+              v11
+            ]]
+          )) (\i3@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind Effect.pureE) (\five@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v7) 20))) (\i4@v8 -> 
+                (((
+                  bindReaderT1@v0
+                ).bind Effect.pureE) (\five2@v9 -> 
+                  let v10 =
+                    (add (add (add (add (add (add 4 i1@v4) i2@v5) i3@v6) five@v7) i4@v8) five2@v9);
+                  {#- Rewrite - Inline -#}
+                  let v11 =
+                    (effectPure v10);
+                  (\v@v12 -> 
+                    v11
+                  )
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ));
+  (v2 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 5)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  ((((
+    bindReaderT1@v0
+  ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v2 -> 
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind let v4 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\v@v4 -> 
+            (add v@v4 1)
+          );
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\a@v5 -> 
+            (effectDefer letEffect a'@v6 =
+              a@v5;
+            (effectPure (v4 a'@v6)))
+          );
+        v5;
+      let v5 =
+        (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+      (\x@v6 -> 
+        (v4 (v5 x@v6))
+      )) (\i2@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind {#- Rewrite - Inline -#}
+        let v5 =
+          (\a@v5 -> 
+            (effectDefer letEffect a'@v6 =
+              a@v5;
+            (effectPure (\v7 -> 
+              (add a'@v6 v7)
+            )))
+          );
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        let v7 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\r@v8 -> 
+          let v9 =
+            (v5 (v6 r@v8));
+          let v10 =
+            (v7 r@v8);
+          {#- Rewrite - Inline -#}
+          let v11 =
+            letEffect f'@v11 =
+              v9;
+            letEffect a'@v12 =
+              v10;
+            {#- Rewrite - Inline -#}
+            let v13 =
+              (f'@v11 a'@v12);
+            (effectPure v13);
+          v11
+        )) (\i3@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind Effect.pureE) (\five@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v6) 20))) (\i4@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five2@v8 -> 
+                let v9 =
+                  (add (add (add (add (add (add 4 i1@v3) i2@v4) i3@v5) five@v6) i4@v7) five2@v8);
+                (\v@v10 -> 
+                  (effectPure v9)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 6)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  ((((
+    bindReaderT1@v0
+  ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v2 -> 
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind {#- Rewrite - Inline -#}
+      let v4 =
+        (\a@v4 -> 
+          (effectDefer letEffect a'@v5 =
+            a@v4;
+          (effectPure (add a'@v5 1)))
+        );
+      let v5 =
+        (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+      (\x@v6 -> 
+        (v4 (v5 x@v6))
+      )) (\i2@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind let v5 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\r@v7 -> 
+          [[ LetAssoc
+            let v8 =
+              (v5 r@v7);
+            let v8 =
+              (effectDefer letEffect a'@v9 =
+                v8;
+              (effectPure (\v10 -> 
+                (add a'@v9 v10)
+              )));
+            let v9 =
+              (v6 r@v7);
+            letEffect f'@v10 =
+              v8;
+            letEffect a'@v11 =
+              v9;
+            (effectPure (f'@v10 a'@v11))
+          ]]
+        )) (\i3@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind Effect.pureE) (\five@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v6) 20))) (\i4@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five2@v8 -> 
+                let v9 =
+                  (add (add (add (add (add (add 4 i1@v3) i2@v4) i3@v5) five@v6) i4@v7) five2@v8);
+                (\v@v10 -> 
+                  (effectPure v9)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 7)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  ((((
+    bindReaderT1@v0
+  ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v2 -> 
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind let v4 =
+        (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+      (\x@v5 -> 
+        let v6 =
+          (v4 x@v5);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (add a'@v7 1)))
+      )) (\i2@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind let v5 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\r@v7 -> 
+          let v8 =
+            (v5 r@v7);
+          {#- Rewrite - Inline -#}
+          let v9 =
+            (effectDefer letEffect a'@v9 =
+              v8;
+            (effectPure (\v10 -> 
+              (add a'@v9 v10)
+            )));
+          let v10 =
+            (v6 r@v7);
+          letEffect f'@v11 =
+            v9;
+          letEffect a'@v12 =
+            v10;
+          (effectPure (f'@v11 a'@v12))
+        )) (\i3@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind Effect.pureE) (\five@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v6) 20))) (\i4@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five2@v8 -> 
+                let v9 =
+                  (add (add (add (add (add (add 4 i1@v3) i2@v4) i3@v5) five@v6) i4@v7) five2@v8);
+                (\v@v10 -> 
+                  (effectPure v9)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 8)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  ((((
+    bindReaderT1@v0
+  ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v2 -> 
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind let v4 =
+        (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+      (\x@v5 -> 
+        let v6 =
+          (v4 x@v5);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (add a'@v7 1)))
+      )) (\i2@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind let v5 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\r@v7 -> 
+          let v8 =
+            (v5 r@v7);
+          let v9 =
+            (v6 r@v7);
+          [[ EffectBindAssoc
+            letEffect a'@v10 =
+              v8;
+            letEffect f'@v10 =
+              (effectPure (\v11 -> 
+                (add a'@v10 v11)
+              ));
+            letEffect a'@v11 =
+              v9;
+            (effectPure (f'@v10 a'@v11))
+          ]]
+        )) (\i3@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind Effect.pureE) (\five@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v6) 20))) (\i4@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five2@v8 -> 
+                let v9 =
+                  (add (add (add (add (add (add 4 i1@v3) i2@v4) i3@v5) five@v6) i4@v7) five2@v8);
+                (\v@v10 -> 
+                  (effectPure v9)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 9)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  ((((
+    bindReaderT1@v0
+  ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v2 -> 
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind let v4 =
+        (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+      (\x@v5 -> 
+        let v6 =
+          (v4 x@v5);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (add a'@v7 1)))
+      )) (\i2@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind let v5 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\r@v7 -> 
+          let v8 =
+            (v5 r@v7);
+          let v9 =
+            (v6 r@v7);
+          letEffect a'@v10 =
+            v8;
+          {#- Rewrite - Inline -#}
+          let f'@v11 =
+            (\v11 -> 
+              (add a'@v10 v11)
+            );
+          letEffect a'@v12 =
+            v9;
+          (effectPure (f'@v11 a'@v12))
+        )) (\i3@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind Effect.pureE) (\five@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v6) 20))) (\i4@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five2@v8 -> 
+                let v9 =
+                  (add (add (add (add (add (add 4 i1@v3) i2@v4) i3@v5) five@v6) i4@v7) five2@v8);
+                (\v@v10 -> 
+                  (effectPure v9)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)
+---------------
+Snapshot.TransformerReaderT01.test3 (Step 10; Final)
+  let bindReaderT1@v0 =
+    (Control.Monad.Reader.Trans.bindReaderT Effect.bindEffect);
+  let liftEffect1@v1 =
+    (
+      (Control.Monad.Reader.Trans.monadEffectReader Effect.Class.monadEffectEffect)
+    ).liftEffect;
+  ((((
+    bindReaderT1@v0
+  ).bind (liftEffect1@v1 (Effect.Console.log "foo"))) (\$__unused@v2 -> 
+    (((
+      bindReaderT1@v0
+    ).bind (liftEffect1@v1 ((Effect.Random.randomInt 1) 10))) (\i1@v3 -> 
+      (((
+        bindReaderT1@v0
+      ).bind let v4 =
+        (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+      (\x@v5 -> 
+        let v6 =
+          (v4 x@v5);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (add a'@v7 1)))
+      )) (\i2@v4 -> 
+        (((
+          bindReaderT1@v0
+        ).bind let v5 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        let v6 =
+          (liftEffect1@v1 ((Effect.Random.randomInt 1) 10));
+        (\r@v7 -> 
+          let v8 =
+            (v5 r@v7);
+          let v9 =
+            (v6 r@v7);
+          letEffect a'@v10 =
+            v8;
+          letEffect a'@v11 =
+            v9;
+          (effectPure (add a'@v10 a'@v11))
+        )) (\i3@v5 -> 
+          (((
+            bindReaderT1@v0
+          ).bind Effect.pureE) (\five@v6 -> 
+            (((
+              bindReaderT1@v0
+            ).bind (liftEffect1@v1 ((Effect.Random.randomInt five@v6) 20))) (\i4@v7 -> 
+              (((
+                bindReaderT1@v0
+              ).bind Effect.pureE) (\five2@v8 -> 
+                let v9 =
+                  (add (add (add (add (add (add 4 i1@v3) i2@v4) i3@v5) five@v6) i4@v7) five2@v8);
+                (\v@v10 -> 
+                  (effectPure v9)
+                )
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )) 5)

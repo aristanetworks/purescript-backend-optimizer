@@ -1,0 +1,559 @@
+Snapshot.CaseHeuristics.One (Step 0; Original)
+  let One =
+    (\ value0 ->
+      { tag =
+          "One"
+      , value0 =
+          value0
+      }
+    );
+---------------
+Snapshot.CaseHeuristics.One (Step 1; Final)
+  let One =
+    (\ value0 ->
+      { tag =
+          "One"
+      , value0 =
+          value0
+      }
+    );
+
+===============
+
+Snapshot.CaseHeuristics.Two (Step 0; Original)
+  let Two =
+    (\ value0 value1 ->
+      { tag =
+          "Two"
+      , value0 =
+          value0
+      , value1 =
+          value1
+      }
+    );
+---------------
+Snapshot.CaseHeuristics.Two (Step 1; Final)
+  let Two =
+    (\ value0 value1 ->
+      { tag =
+          "Two"
+      , value0 =
+          value0
+      , value1 =
+          value1
+      }
+    );
+
+===============
+
+Snapshot.CaseHeuristics.Zero (Step 0; Original)
+  let Zero =
+    { tag =
+        "Zero"
+    };
+---------------
+Snapshot.CaseHeuristics.Zero (Step 1; Final)
+  let Zero =
+    { tag =
+        "Zero"
+    };
+
+===============
+
+Snapshot.CaseHeuristics.testP (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> \v2@v2 -> 
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      v1@v1;
+    {#- Rewrite - Inline -#}
+    let v5 =
+      v2@v2;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (\ ->
+        4
+      );
+    {#- Rewrite - Inline -#}
+    let v10 =
+      (\ ->
+        5
+      );
+    if (== v4 2) then
+      if (== v3 1) then
+        if (== v5 1) then
+          (v6)
+        else if (== v5 2) then
+          (v7)
+        else if (== v5 3) then
+          (v8)
+        else if (== v5 4) then
+          (v9)
+        else
+          (v10)
+      else if (== v5 3) then
+        (v8)
+      else
+        (v10)
+    else if (== v3 1) then
+      if (== v5 4) then
+        (v9)
+      else
+        (v10)
+    else
+      (v10)
+  )
+---------------
+Snapshot.CaseHeuristics.testP (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> \v2@v2 -> 
+    if (== v1@v1 2) then
+      if (== v@v0 1) then
+        if (== v2@v2 1) then
+          1
+        else if (== v2@v2 2) then
+          2
+        else if (== v2@v2 3) then
+          3
+        else if (== v2@v2 4) then
+          4
+        else
+          5
+      else if (== v2@v2 3) then
+        3
+      else
+        5
+    else if (== v@v0 1) then
+      if (== v2@v2 4) then
+        4
+      else
+        5
+    else
+      5
+  )
+
+===============
+
+Snapshot.CaseHeuristics.testPB (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v1@v1;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\ ->
+        4
+      );
+    if (isTag Snapshot.CaseHeuristics.One v2) then
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v2
+        )#value0;
+      if (== v8 1) then
+        if (isTag Snapshot.CaseHeuristics.One v3) then
+          {#- Rewrite - Inline -#}
+          let v9 =
+            (
+              v3
+            )#value0;
+          if (== v9 1) then
+            (v4)
+          else
+            (v7)
+        else if (isTag Snapshot.CaseHeuristics.Zero v3) then
+          (v6)
+        else
+          (v7)
+      else if (isTag Snapshot.CaseHeuristics.Zero v3) then
+        (v6)
+      else
+        (v7)
+    else if (isTag Snapshot.CaseHeuristics.Two v2) then
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v2
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (
+          v2
+        )#value1;
+      if (== v8 2) then
+        if (== v9 3) then
+          if (isTag Snapshot.CaseHeuristics.Two v3) then
+            {#- Rewrite - Inline -#}
+            let v10 =
+              (
+                v3
+              )#value0;
+            {#- Rewrite - Inline -#}
+            let v11 =
+              (
+                v3
+              )#value1;
+            if (== v10 2) then
+              if (== v11 3) then
+                (v5)
+              else
+                (v7)
+            else
+              (v7)
+          else if (isTag Snapshot.CaseHeuristics.Zero v3) then
+            (v6)
+          else
+            (v7)
+        else if (isTag Snapshot.CaseHeuristics.Zero v3) then
+          (v6)
+        else
+          (v7)
+      else if (isTag Snapshot.CaseHeuristics.Zero v3) then
+        (v6)
+      else
+        (v7)
+    else if (isTag Snapshot.CaseHeuristics.Zero v3) then
+      (v6)
+    else
+      (v7)
+  )
+---------------
+Snapshot.CaseHeuristics.testPB (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if (isTag Snapshot.CaseHeuristics.One v@v0) then
+      if (== (
+          v@v0
+        )#value0 1) then
+        if (isTag Snapshot.CaseHeuristics.One v1@v1) then
+          if (== (
+              v1@v1
+            )#value0 1) then
+            1
+          else
+            4
+        else if (isTag Snapshot.CaseHeuristics.Zero v1@v1) then
+          3
+        else
+          4
+      else if (isTag Snapshot.CaseHeuristics.Zero v1@v1) then
+        3
+      else
+        4
+    else if (isTag Snapshot.CaseHeuristics.Two v@v0) then
+      if (== (
+          v@v0
+        )#value0 2) then
+        if (== (
+            v@v0
+          )#value1 3) then
+          if (isTag Snapshot.CaseHeuristics.Two v1@v1) then
+            if (== (
+                v1@v1
+              )#value0 2) then
+              if (== (
+                  v1@v1
+                )#value1 3) then
+                2
+              else
+                4
+            else
+              4
+          else if (isTag Snapshot.CaseHeuristics.Zero v1@v1) then
+            3
+          else
+            4
+        else if (isTag Snapshot.CaseHeuristics.Zero v1@v1) then
+          3
+        else
+          4
+      else if (isTag Snapshot.CaseHeuristics.Zero v1@v1) then
+        3
+      else
+        4
+    else if (isTag Snapshot.CaseHeuristics.Zero v1@v1) then
+      3
+    else
+      4
+  )
+
+===============
+
+Snapshot.CaseHeuristics.testPBA (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v1@v1;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\ ->
+        4
+      );
+    if (isTag Snapshot.CaseHeuristics.One v3) then
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v3
+        )#value0;
+      if (isTag Snapshot.CaseHeuristics.One v2) then
+        {#- Rewrite - Inline -#}
+        let v9 =
+          (
+            v2
+          )#value0;
+        if (== v9 1) then
+          if (== v8 1) then
+            (v4)
+          else
+            (v7)
+        else if (== v9 2) then
+          if (== v8 2) then
+            (v5)
+          else
+            (v7)
+        else
+          (v7)
+      else
+        (v7)
+    else if (isTag Snapshot.CaseHeuristics.Two v2) then
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v2
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (
+          v2
+        )#value1;
+      if (== v8 1) then
+        if (isTag Snapshot.CaseHeuristics.Two v3) then
+          {#- Rewrite - Inline -#}
+          let v10 =
+            (
+              v3
+            )#value0;
+          {#- Rewrite - Inline -#}
+          let v11 =
+            (
+              v3
+            )#value1;
+          (v6)
+        else
+          (v7)
+      else
+        (v7)
+    else
+      (v7)
+  )
+---------------
+Snapshot.CaseHeuristics.testPBA (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if (isTag Snapshot.CaseHeuristics.One v1@v1) then
+      if (isTag Snapshot.CaseHeuristics.One v@v0) then
+        if (== (
+            v@v0
+          )#value0 1) then
+          if (== (
+              v1@v1
+            )#value0 1) then
+            1
+          else
+            4
+        else if (== (
+            v@v0
+          )#value0 2) then
+          if (== (
+              v1@v1
+            )#value0 2) then
+            2
+          else
+            4
+        else
+          4
+      else
+        4
+    else if (isTag Snapshot.CaseHeuristics.Two v@v0) then
+      if (== (
+          v@v0
+        )#value0 1) then
+        if (isTag Snapshot.CaseHeuristics.Two v1@v1) then
+          3
+        else
+          4
+      else
+        4
+    else
+      4
+  )
+
+===============
+
+Snapshot.CaseHeuristics.testPBAN (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v1@v1;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\ ->
+        4
+      );
+    if (isTag Snapshot.CaseHeuristics.One v2) then
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v2
+        )#value0;
+      if (isTag Snapshot.CaseHeuristics.One v3) then
+        {#- Rewrite - Inline -#}
+        let v9 =
+          (
+            v3
+          )#value0;
+        if (== v8 1) then
+          if (== v9 1) then
+            (v4)
+          else
+            (v7)
+        else if (== v8 2) then
+          if (== v9 2) then
+            (v5)
+          else
+            (v7)
+        else
+          (v7)
+      else
+        (v7)
+    else if (isTag Snapshot.CaseHeuristics.Two v2) then
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (
+          v2
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (
+          v2
+        )#value1;
+      if (isTag Snapshot.CaseHeuristics.Two v3) then
+        {#- Rewrite - Inline -#}
+        let v10 =
+          (
+            v3
+          )#value0;
+        {#- Rewrite - Inline -#}
+        let v11 =
+          (
+            v3
+          )#value1;
+        (v6)
+      else
+        (v7)
+    else
+      (v7)
+  )
+---------------
+Snapshot.CaseHeuristics.testPBAN (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if (isTag Snapshot.CaseHeuristics.One v@v0) then
+      if (isTag Snapshot.CaseHeuristics.One v1@v1) then
+        if (== (
+            v@v0
+          )#value0 1) then
+          if (== (
+              v1@v1
+            )#value0 1) then
+            1
+          else
+            4
+        else if (== (
+            v@v0
+          )#value0 2) then
+          if (== (
+              v1@v1
+            )#value0 2) then
+            2
+          else
+            4
+        else
+          4
+      else
+        4
+    else if (isTag Snapshot.CaseHeuristics.Two v@v0) then
+      if (isTag Snapshot.CaseHeuristics.Two v1@v1) then
+        3
+      else
+        4
+    else
+      4
+  )

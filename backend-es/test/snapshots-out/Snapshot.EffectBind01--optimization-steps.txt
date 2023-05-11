@@ -1,0 +1,119 @@
+Snapshot.EffectBind01.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.EffectBind01.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectBind01.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Effect.bindEffect)
+---------------
+Snapshot.EffectBind01.discard (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectBind01.log (Step 0; Original)
+  (Effect.Class.Console.log Effect.Class.monadEffectEffect)
+---------------
+Snapshot.EffectBind01.log (Step 1; Final)
+  (Effect.Class.Console.log Effect.Class.monadEffectEffect)
+
+===============
+
+Snapshot.EffectBind01.pure (Step 0; Original)
+  (Control.Applicative.pure Effect.applicativeEffect)
+---------------
+Snapshot.EffectBind01.pure (Step 1; Final)
+  Effect.pureE
+
+===============
+
+Snapshot.EffectBind01.test1 (Step 0; Original)
+  ((Snapshot.EffectBind01.discard (Snapshot.EffectBind01.log "1")) (\$__unused@v0 -> 
+    ((Snapshot.EffectBind01.bind (Snapshot.EffectBind01.log "2")) (\value@v1 -> 
+      ((Snapshot.EffectBind01.discard (Snapshot.EffectBind01.log "3")) (\$__unused@v2 -> 
+        (Snapshot.EffectBind01.pure value@v1)
+      ))
+    ))
+  ))
+---------------
+Snapshot.EffectBind01.test1 (Step 1)
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      "1";
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Effect.Console.log v0);
+      v1;
+    v1;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    letEffect $__unused@v1 =
+      v0;
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        "2";
+      {#- Rewrite - Inline -#}
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (Effect.Console.log v2);
+        v3;
+      v3;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      letEffect value@v3 =
+        v2;
+      let v4 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          "3";
+        {#- Rewrite - Inline -#}
+        let v5 =
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (Effect.Console.log v4);
+          v5;
+        v5;
+      {#- Rewrite - Inline -#}
+      let v5 =
+        letEffect $__unused@v5 =
+          v4;
+        (effectPure value@v3);
+      v5;
+    v3;
+  v1
+---------------
+Snapshot.EffectBind01.test1 (Step 2)
+  let v0 =
+    (Effect.Console.log "1");
+  letEffect $__unused@v1 =
+    v0;
+  {#- Rewrite - Inline -#}
+  let v2 =
+    (Effect.Console.log "2");
+  letEffect value@v3 =
+    v2;
+  {#- Rewrite - Inline -#}
+  let v4 =
+    (Effect.Console.log "3");
+  letEffect $__unused@v5 =
+    v4;
+  (effectPure value@v3)
+---------------
+Snapshot.EffectBind01.test1 (Step 3; Final)
+  let v0 =
+    (Effect.Console.log "1");
+  letEffect $__unused@v1 =
+    v0;
+  letEffect value@v2 =
+    (Effect.Console.log "2");
+  letEffect $__unused@v3 =
+    (Effect.Console.log "3");
+  (effectPure value@v2)

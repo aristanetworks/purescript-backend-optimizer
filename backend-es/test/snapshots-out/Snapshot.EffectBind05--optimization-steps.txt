@@ -1,0 +1,384 @@
+Snapshot.EffectBind05.Id (Step 0; Original)
+  (\x@v0 -> 
+    x@v0
+  )
+---------------
+Snapshot.EffectBind05.Id (Step 1; Final)
+  (\x@v0 -> 
+    x@v0
+  )
+
+===============
+
+Snapshot.EffectBind05.applicativeId (Step 0; Original)
+  { pure =
+      (\a@v0 -> \v@v1 -> 
+        a@v0
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.applyId
+      )
+  }
+---------------
+Snapshot.EffectBind05.applicativeId (Step 1; Final)
+  { pure =
+      (\a@v0 -> \v@v1 -> 
+        a@v0
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.applyId
+      )
+  }
+
+===============
+
+Snapshot.EffectBind05.applyId (Step 0; Original)
+  { apply =
+      (Control.Monad.ap Snapshot.EffectBind05.monadId)
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.functorId
+      )
+  }
+---------------
+Snapshot.EffectBind05.applyId (Step 1)
+  { apply =
+      {#- Rewrite - Inline -#}
+      let bind@v0 =
+        {#- Rewrite - Inline -#}
+        let v0 =
+          <PrimUndefined>;
+        (
+          Snapshot.EffectBind05.bindId
+        ).bind;
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let pure@v1 =
+            {#- Rewrite - Inline -#}
+            let v1 =
+              <PrimUndefined>;
+            (
+              Snapshot.EffectBind05.applicativeId
+            ).pure;
+          (\f@v2 -> \a@v3 -> 
+            ((bind@v0 f@v2) (\f'@v4 -> 
+              ((bind@v0 a@v3) (\a'@v5 -> 
+                (pure@v1 (f'@v4 a'@v5))
+              ))
+            ))
+          );
+        v1;
+      v1
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.functorId
+      )
+  }
+---------------
+Snapshot.EffectBind05.applyId (Step 2)
+  { apply =
+      (\f@v0 -> \a@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\f'@v2 -> 
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\a'@v3 -> 
+                ((
+                  Snapshot.EffectBind05.applicativeId
+                ).pure (f'@v2 a'@v3))
+              );
+            (v3 (a@v1 <PrimUndefined>))
+          );
+        (v2 (f@v0 <PrimUndefined>))
+      )
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.functorId
+      )
+  }
+---------------
+Snapshot.EffectBind05.applyId (Step 3)
+  { apply =
+      (\f@v0 -> \a@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (f@v0 <PrimUndefined>);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (a@v1 <PrimUndefined>);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          ((
+            Snapshot.EffectBind05.applicativeId
+          ).pure (v2 v3));
+        v4
+      )
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.functorId
+      )
+  }
+---------------
+Snapshot.EffectBind05.applyId (Step 4; Final)
+  { apply =
+      (\f@v0 -> \a@v1 -> 
+        ((
+          Snapshot.EffectBind05.applicativeId
+        ).pure ((f@v0 <PrimUndefined>) (a@v1 <PrimUndefined>)))
+      )
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.functorId
+      )
+  }
+
+===============
+
+Snapshot.EffectBind05.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.EffectBind05.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectBind05.bind1 (Step 0; Original)
+  (Control.Bind.bind Snapshot.EffectBind05.bindId)
+---------------
+Snapshot.EffectBind05.bind1 (Step 1; Final)
+  (
+    Snapshot.EffectBind05.bindId
+  ).bind
+
+===============
+
+Snapshot.EffectBind05.bindId (Step 0; Original)
+  { bind =
+      (\v@v0 -> \k@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          v@v0;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          k@v1;
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\a@v4 k1@v5 ->
+            (k1@v5 (a@v4 Data.Unit.unit))
+          );
+        (v4 a@v2 k1@v3)
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.applyId
+      )
+  }
+---------------
+Snapshot.EffectBind05.bindId (Step 1; Final)
+  { bind =
+      (\v@v0 -> \k@v1 -> 
+        (k@v1 (v@v0 <PrimUndefined>))
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.applyId
+      )
+  }
+
+===============
+
+Snapshot.EffectBind05.functorId (Step 0; Original)
+  { map =
+      (Control.Monad.liftM1 Snapshot.EffectBind05.monadId)
+  }
+---------------
+Snapshot.EffectBind05.functorId (Step 1)
+  { map =
+      {#- Rewrite - Inline -#}
+      let bind@v0 =
+        {#- Rewrite - Inline -#}
+        let v0 =
+          <PrimUndefined>;
+        (
+          Snapshot.EffectBind05.bindId
+        ).bind;
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let pure@v1 =
+            {#- Rewrite - Inline -#}
+            let v1 =
+              <PrimUndefined>;
+            (
+              Snapshot.EffectBind05.applicativeId
+            ).pure;
+          (\f@v2 -> \a@v3 -> 
+            ((bind@v0 a@v3) (\a'@v4 -> 
+              (pure@v1 (f@v2 a'@v4))
+            ))
+          );
+        v1;
+      v1
+  }
+---------------
+Snapshot.EffectBind05.functorId (Step 2; Final)
+  { map =
+      (\f@v0 -> \a@v1 -> 
+        (((
+          Snapshot.EffectBind05.bindId
+        ).bind a@v1) (\a'@v2 -> 
+          ((
+            Snapshot.EffectBind05.applicativeId
+          ).pure (f@v0 a'@v2))
+        ))
+      )
+  }
+
+===============
+
+Snapshot.EffectBind05.monadId (Step 0; Original)
+  { Applicative0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.applicativeId
+      )
+  , Bind1 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.bindId
+      )
+  }
+---------------
+Snapshot.EffectBind05.monadId (Step 1; Final)
+  { Applicative0 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.applicativeId
+      )
+  , Bind1 =
+      (\$__unused@v0 -> 
+        Snapshot.EffectBind05.bindId
+      )
+  }
+
+===============
+
+Snapshot.EffectBind05.pure (Step 0; Original)
+  (Control.Applicative.pure Effect.applicativeEffect)
+---------------
+Snapshot.EffectBind05.pure (Step 1; Final)
+  Effect.pureE
+
+===============
+
+Snapshot.EffectBind05.pure1 (Step 0; Original)
+  (Control.Applicative.pure Snapshot.EffectBind05.applicativeId)
+---------------
+Snapshot.EffectBind05.pure1 (Step 1; Final)
+  (
+    Snapshot.EffectBind05.applicativeId
+  ).pure
+
+===============
+
+Snapshot.EffectBind05.test1 (Step 0; Original)
+  (\k@v0 -> 
+    ((Snapshot.EffectBind05.bind (Snapshot.EffectBind05.pure Data.Unit.unit)) (\$__unused@v1 -> 
+      (k@v0 Data.Unit.unit)
+    ))
+  )
+---------------
+Snapshot.EffectBind05.test1 (Step 1)
+  (\k@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        <PrimUndefined>;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (effectPure v1);
+      v2;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      letEffect $__unused@v2 =
+        v1;
+      (k@v0 <PrimUndefined>);
+    v2
+  )
+---------------
+Snapshot.EffectBind05.test1 (Step 2)
+  (\k@v0 -> 
+    (effectDefer {#- Rewrite - Inline -#}
+    let $__unused@v1 =
+      <PrimUndefined>;
+    (k@v0 <PrimUndefined>))
+  )
+---------------
+Snapshot.EffectBind05.test1 (Step 3; Final)
+  (\k@v0 -> 
+    (effectDefer (k@v0 <PrimUndefined>))
+  )
+
+===============
+
+Snapshot.EffectBind05.test2 (Step 0; Original)
+  (\k@v0 -> 
+    ((Snapshot.EffectBind05.bind1 (Snapshot.EffectBind05.pure1 Data.Unit.unit)) (\$__unused@v1 -> 
+      (k@v0 Data.Unit.unit)
+    ))
+  )
+---------------
+Snapshot.EffectBind05.test2 (Step 1)
+  (\k@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        <PrimUndefined>;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v@v2 -> 
+          v1
+        );
+      v2;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\k@v2 -> 
+        (k@v2 (v1 <PrimUndefined>))
+      );
+    (v2 (\$__unused@v3 -> 
+      (k@v0 <PrimUndefined>)
+    ))
+  )
+---------------
+Snapshot.EffectBind05.test2 (Step 2)
+  (\k@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\$__unused@v1 -> 
+        (k@v0 <PrimUndefined>)
+      );
+    (v1 {#- Rewrite - Inline -#}
+    let v2 =
+      <PrimUndefined>;
+    <PrimUndefined>)
+  )
+---------------
+Snapshot.EffectBind05.test2 (Step 3)
+  (\k@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      <PrimUndefined>;
+    (k@v0 <PrimUndefined>)
+  )
+---------------
+Snapshot.EffectBind05.test2 (Step 4; Final)
+  (\k@v0 -> 
+    (k@v0 <PrimUndefined>)
+  )

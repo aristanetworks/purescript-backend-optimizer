@@ -1,0 +1,1856 @@
+Snapshot.HalogenVDomST02.aIsSymbol (Step 0; Original)
+  { reflectSymbol =
+      (\$__unused@v0 -> 
+        "a"
+      )
+  }
+---------------
+Snapshot.HalogenVDomST02.aIsSymbol (Step 1; Final)
+  { reflectSymbol =
+      (\$__unused@v0 -> 
+        "a"
+      )
+  }
+
+===============
+
+Snapshot.HalogenVDomST02.assertEqual (Step 0; Original)
+  ((Assert.assertEqual (Data.Eq.eqArray (Snapshot.HalogenVDomST02.eqRec ((((Data.Eq.eqRowCons ((Snapshot.HalogenVDomST02.eqRowCons Snapshot.HalogenVDomST02.bIsSymbol) Data.Eq.eqInt)) <PrimUndefined>) Snapshot.HalogenVDomST02.aIsSymbol) Data.Eq.eqString)))) (Data.Show.showArray (Snapshot.HalogenVDomST02.showRecord ((Snapshot.HalogenVDomST02.showRecordFieldsCons ((Data.Show.showRecordFieldsConsNil Snapshot.HalogenVDomST02.bIsSymbol) Data.Show.showInt)) Data.Show.showString))))
+---------------
+Snapshot.HalogenVDomST02.assertEqual (Step 1)
+  ((Assert.assertEqual {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    [[ LetAssoc
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          <PrimUndefined>;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            { eqRecord =
+                (\v@v2 -> \ra@v3 -> \rb@v4 -> 
+                  let get@v5 =
+                    (Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+                    let v5 =
+                      Type.Proxy.Proxy;
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      "b";
+                    v6);
+                  (booleanAnd let v6 =
+                    (get@v5 ra@v3);
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (\v7 -> 
+                      (== v6 v7)
+                    );
+                  (v7 (get@v5 rb@v4)) {#- Rewrite - Inline -#}
+                  let v6 =
+                    Type.Proxy.Proxy;
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (\v1@v7 -> \v2@v8 -> 
+                      true
+                    );
+                  ((v7 ra@v3) rb@v4))
+                )
+            };
+          v2;
+        v2;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          { eqRecord =
+              (\v@v3 -> \ra@v4 -> \rb@v5 -> 
+                let get@v6 =
+                  (Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+                  let v6 =
+                    Type.Proxy.Proxy;
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    "a";
+                  v7);
+                (booleanAnd let v7 =
+                  (get@v6 ra@v4);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\v8 -> 
+                    (== v7 v8)
+                  );
+                (v8 (get@v6 rb@v5)) ((((
+                  v1
+                ).eqRecord Type.Proxy.Proxy) ra@v4) rb@v5))
+              )
+          };
+        v2;
+      let v1 =
+        { eq =
+            ((
+              v1
+            ).eqRecord Type.Proxy.Proxy)
+        };
+      let v1 =
+        v1;
+      v1
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    { eq =
+        (Data.Eq.eqArrayImpl (
+          v0
+        ).eq)
+    };
+  v1) {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          <PrimUndefined>;
+        let v2 =
+          [[ UnpackOp
+            For identifier v2
+              Unpack record
+              labels = ["showRecordFields"]
+            inside
+              {#- Rewrite - Inline -#}
+              let v3 =
+                {#- Rewrite - Inline -#}
+                let v3 =
+                  { showRecordFields =
+                      (\v@v3 -> \record@v4 -> 
+                        {#- Rewrite - Inline -#}
+                        let key@v5 =
+                          {#- Rewrite - Inline -#}
+                          let v5 =
+                            Type.Proxy.Proxy;
+                          {#- Rewrite - Inline -#}
+                          let v6 =
+                            "a";
+                          v6;
+                        (stringAppend " " (stringAppend key@v5 (stringAppend ": " (stringAppend (Data.Show.showStringImpl ((Record.Unsafe.unsafeGet key@v5) record@v4)) (stringAppend "," (((
+                          v2
+                        ).showRecordFields Type.Proxy.Proxy) record@v4))))))
+                      )
+                  };
+                v3;
+              v3
+          ]];
+        { show =
+            (\record@v3 -> 
+              (stringAppend "{" (stringAppend (((
+                v2
+              ).showRecordFields Type.Proxy.Proxy) record@v3) "}"))
+            )
+        };
+      v1;
+    v1;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    { show =
+        (Data.Show.showArrayImpl (
+          v0
+        ).show)
+    };
+  v1)
+---------------
+Snapshot.HalogenVDomST02.assertEqual (Step 2)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl [[ UnpackOp
+        For identifier v0
+          Unpack record
+          labels = ["eqRecord"]
+        inside
+          {#- Rewrite - Inline -#}
+          let v1 =
+            {#- Rewrite - Inline -#}
+            let v1 =
+              { eqRecord =
+                  (\v@v1 -> \ra@v2 -> \rb@v3 -> 
+                    {#- Rewrite - Inline -#}
+                    let get@v4 =
+                      (\v4 -> 
+                        (
+                          v4
+                        ).a
+                      );
+                    (booleanAnd {#- Rewrite - Inline -#}
+                    let v5 =
+                      (get@v4 ra@v2);
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      (get@v4 rb@v3);
+                    (== v5 v6) ((((
+                      v0
+                    ).eqRecord Type.Proxy.Proxy) ra@v2) rb@v3))
+                  )
+              };
+            {#- Rewrite - Inline -#}
+            let v2 =
+              { eq =
+                  ((
+                    v1
+                  ).eqRecord Type.Proxy.Proxy)
+              };
+            v2;
+          (
+            v1
+          ).eq
+      ]])
+  }) { show =
+      (Data.Show.showArrayImpl let v0 =
+        {#- Rewrite - Inline -#}
+        let v0 =
+          (\v@v0 -> \record@v1 -> 
+            (stringAppend " b: " (stringAppend (Data.Show.showIntImpl (
+              record@v1
+            ).b) " "))
+          );
+        { showRecordFields =
+            (\v@v1 -> \record@v2 -> 
+              (stringAppend " a: " (stringAppend (Data.Show.showStringImpl (
+                record@v2
+              ).a) (stringAppend "," ((v0 Type.Proxy.Proxy) record@v2))))
+            )
+        };
+      {#- Rewrite - Inline -#}
+      let v1 =
+        { show =
+            (\record@v1 -> 
+              (stringAppend "{" (stringAppend (((
+                v0
+              ).showRecordFields Type.Proxy.Proxy) record@v1) "}"))
+            )
+        };
+      (
+        v1
+      ).show)
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual (Step 3)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl {#- Rewrite - Inline -#}
+      let v0 =
+        (\v@v0 -> \ra@v1 -> \rb@v2 -> 
+          (== (
+            ra@v1
+          ).b (
+            rb@v2
+          ).b)
+        );
+      {#- Rewrite - Inline -#}
+      let v1 =
+        Type.Proxy.Proxy;
+      (\ra@v2 -> \rb@v3 -> 
+        (booleanAnd (== (
+          ra@v2
+        ).a (
+          rb@v3
+        ).a) (((v0 Type.Proxy.Proxy) ra@v2) rb@v3))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl [[ UnpackOp
+        For identifier v0
+          Unpack record
+          labels = ["showRecordFields"]
+        inside
+          (\record@v1 -> 
+            (stringAppend "{" (stringAppend (((
+              v0
+            ).showRecordFields Type.Proxy.Proxy) record@v1) "}"))
+          )
+      ]])
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual (Step 4)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl (\ra@v0 -> \rb@v1 -> 
+        (booleanAnd (== (
+          ra@v0
+        ).a (
+          rb@v1
+        ).a) {#- Rewrite - Inline -#}
+        let v2 =
+          Type.Proxy.Proxy;
+        (== (
+          ra@v0
+        ).b (
+          rb@v1
+        ).b))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl {#- Rewrite - Inline -#}
+      let v0 =
+        (\v@v0 -> \record@v1 -> 
+          (stringAppend " a: " (stringAppend (Data.Show.showStringImpl (
+            record@v1
+          ).a) (stringAppend ", b: " (stringAppend (Data.Show.showIntImpl (
+            record@v1
+          ).b) " "))))
+        );
+      (\record@v1 -> 
+        (stringAppend "{" (stringAppend ((v0 Type.Proxy.Proxy) record@v1) "}"))
+      ))
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual (Step 5)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl (\ra@v0 -> \rb@v1 -> 
+        (booleanAnd (== (
+          ra@v0
+        ).a (
+          rb@v1
+        ).a) (== (
+          ra@v0
+        ).b (
+          rb@v1
+        ).b))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl (\record@v0 -> 
+        {#- Rewrite - Inline -#}
+        let v1 =
+          Type.Proxy.Proxy;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (stringAppend " a: " (stringAppend (Data.Show.showStringImpl (
+              record@v0
+            ).a) (stringAppend ", b: " (stringAppend (Data.Show.showIntImpl (
+              record@v0
+            ).b) " "))));
+          (stringAppend v2 "}");
+        (stringAppend "{" v2)
+      ))
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual (Step 6; Final)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl (\ra@v0 -> \rb@v1 -> 
+        (booleanAnd (== (
+          ra@v0
+        ).a (
+          rb@v1
+        ).a) (== (
+          ra@v0
+        ).b (
+          rb@v1
+        ).b))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl (\record@v0 -> 
+        (stringAppend (stringAppend "{ a: " (stringAppend (Data.Show.showStringImpl (
+          record@v0
+        ).a) (stringAppend ", b: " (stringAppend (Data.Show.showIntImpl (
+          record@v0
+        ).b) " ")))) "}")
+      ))
+  })
+
+===============
+
+Snapshot.HalogenVDomST02.assertEqual1 (Step 0; Original)
+  ((Assert.assertEqual (Data.Eq.eqArray Data.Eq.eqInt)) (Data.Show.showArray Data.Show.showInt))
+---------------
+Snapshot.HalogenVDomST02.assertEqual1 (Step 1; Final)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl Data.Eq.eqIntImpl)
+  }) { show =
+      (Data.Show.showArrayImpl Data.Show.showIntImpl)
+  })
+
+===============
+
+Snapshot.HalogenVDomST02.assertEqual2 (Step 0; Original)
+  ((Assert.assertEqual (Data.Eq.eqArray Data.Eq.eqString)) (Data.Show.showArray Data.Show.showString))
+---------------
+Snapshot.HalogenVDomST02.assertEqual2 (Step 1; Final)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl Data.Eq.eqStringImpl)
+  }) { show =
+      (Data.Show.showArrayImpl Data.Show.showStringImpl)
+  })
+
+===============
+
+Snapshot.HalogenVDomST02.assertEqual3 (Step 0; Original)
+  ((Assert.assertEqual (Data.Eq.eqArray (Snapshot.HalogenVDomST02.eqRec ((((Data.Eq.eqRowCons ((((Data.Eq.eqRowCons ((Snapshot.HalogenVDomST02.eqRowCons Snapshot.HalogenVDomST02.ixIsSymbol) Data.Eq.eqInt)) <PrimUndefined>) Snapshot.HalogenVDomST02.bIsSymbol) Data.Eq.eqInt)) <PrimUndefined>) Snapshot.HalogenVDomST02.aIsSymbol) Data.Eq.eqString)))) (Data.Show.showArray (Snapshot.HalogenVDomST02.showRecord ((Snapshot.HalogenVDomST02.showRecordFieldsCons (((Data.Show.showRecordFieldsCons Snapshot.HalogenVDomST02.bIsSymbol) ((Data.Show.showRecordFieldsConsNil Snapshot.HalogenVDomST02.ixIsSymbol) Data.Show.showInt)) Data.Show.showInt)) Data.Show.showString))))
+---------------
+Snapshot.HalogenVDomST02.assertEqual3 (Step 1)
+  ((Assert.assertEqual {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    [[ LetAssoc
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          <PrimUndefined>;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            { eqRecord =
+                (\v@v2 -> \ra@v3 -> \rb@v4 -> 
+                  let get@v5 =
+                    (Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+                    let v5 =
+                      Type.Proxy.Proxy;
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      "ix";
+                    v6);
+                  (booleanAnd let v6 =
+                    (get@v5 ra@v3);
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (\v7 -> 
+                      (== v6 v7)
+                    );
+                  (v7 (get@v5 rb@v4)) {#- Rewrite - Inline -#}
+                  let v6 =
+                    Type.Proxy.Proxy;
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (\v1@v7 -> \v2@v8 -> 
+                      true
+                    );
+                  ((v7 ra@v3) rb@v4))
+                )
+            };
+          v2;
+        v2;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          { eqRecord =
+              (\v@v3 -> \ra@v4 -> \rb@v5 -> 
+                let get@v6 =
+                  (Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+                  let v6 =
+                    Type.Proxy.Proxy;
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    "b";
+                  v7);
+                (booleanAnd let v7 =
+                  (get@v6 ra@v4);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\v8 -> 
+                    (== v7 v8)
+                  );
+                (v8 (get@v6 rb@v5)) ((((
+                  v1
+                ).eqRecord Type.Proxy.Proxy) ra@v4) rb@v5))
+              )
+          };
+        v2;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          { eqRecord =
+              (\v@v3 -> \ra@v4 -> \rb@v5 -> 
+                let get@v6 =
+                  (Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+                  let v6 =
+                    Type.Proxy.Proxy;
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    "a";
+                  v7);
+                (booleanAnd let v7 =
+                  (get@v6 ra@v4);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\v8 -> 
+                    (== v7 v8)
+                  );
+                (v8 (get@v6 rb@v5)) ((((
+                  v1
+                ).eqRecord Type.Proxy.Proxy) ra@v4) rb@v5))
+              )
+          };
+        v2;
+      let v1 =
+        { eq =
+            ((
+              v1
+            ).eqRecord Type.Proxy.Proxy)
+        };
+      let v1 =
+        v1;
+      v1
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    { eq =
+        (Data.Eq.eqArrayImpl (
+          v0
+        ).eq)
+    };
+  v1) {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          <PrimUndefined>;
+        [[ LetAssoc
+          let v2 =
+            [[ UnpackOp
+              For identifier v2
+                Unpack record
+                labels = ["showRecordFields"]
+              inside
+                {#- Rewrite - Inline -#}
+                let v3 =
+                  { showRecordFields =
+                      (\v@v3 -> \record@v4 -> 
+                        {#- Rewrite - Inline -#}
+                        let key@v5 =
+                          {#- Rewrite - Inline -#}
+                          let v5 =
+                            Type.Proxy.Proxy;
+                          {#- Rewrite - Inline -#}
+                          let v6 =
+                            "b";
+                          v6;
+                        (stringAppend " " (stringAppend key@v5 (stringAppend ": " (stringAppend (Data.Show.showIntImpl ((Record.Unsafe.unsafeGet key@v5) record@v4)) (stringAppend "," (((
+                          v2
+                        ).showRecordFields Type.Proxy.Proxy) record@v4))))))
+                      )
+                  };
+                v3
+            ]];
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              {#- Rewrite - Inline -#}
+              let v3 =
+                { showRecordFields =
+                    (\v@v3 -> \record@v4 -> 
+                      {#- Rewrite - Inline -#}
+                      let key@v5 =
+                        {#- Rewrite - Inline -#}
+                        let v5 =
+                          Type.Proxy.Proxy;
+                        {#- Rewrite - Inline -#}
+                        let v6 =
+                          "a";
+                        v6;
+                      (stringAppend " " (stringAppend key@v5 (stringAppend ": " (stringAppend (Data.Show.showStringImpl ((Record.Unsafe.unsafeGet key@v5) record@v4)) (stringAppend "," (((
+                        v2
+                      ).showRecordFields Type.Proxy.Proxy) record@v4))))))
+                    )
+                };
+              v3;
+            v3;
+          { show =
+              (\record@v3 -> 
+                (stringAppend "{" (stringAppend (((
+                  v2
+                ).showRecordFields Type.Proxy.Proxy) record@v3) "}"))
+              )
+          }
+        ]];
+      v1;
+    v1;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    { show =
+        (Data.Show.showArrayImpl (
+          v0
+        ).show)
+    };
+  v1)
+---------------
+Snapshot.HalogenVDomST02.assertEqual3 (Step 2)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl [[ UnpackOp
+        For identifier v0
+          Unpack record
+          labels = ["eqRecord"]
+        inside
+          {#- Rewrite - Inline -#}
+          let v1 =
+            [[ UnpackOp
+              For identifier v1
+                Unpack record
+                labels = ["eqRecord"]
+              inside
+                {#- Rewrite - Inline -#}
+                let v2 =
+                  { eqRecord =
+                      (\v@v2 -> \ra@v3 -> \rb@v4 -> 
+                        {#- Rewrite - Inline -#}
+                        let get@v5 =
+                          (\v5 -> 
+                            (
+                              v5
+                            ).a
+                          );
+                        (booleanAnd {#- Rewrite - Inline -#}
+                        let v6 =
+                          (get@v5 ra@v3);
+                        {#- Rewrite - Inline -#}
+                        let v7 =
+                          (get@v5 rb@v4);
+                        (== v6 v7) ((((
+                          v1
+                        ).eqRecord Type.Proxy.Proxy) ra@v3) rb@v4))
+                      )
+                  };
+                {#- Rewrite - Inline -#}
+                let v3 =
+                  { eq =
+                      ((
+                        v2
+                      ).eqRecord Type.Proxy.Proxy)
+                  };
+                v3
+            ]];
+          (
+            v1
+          ).eq
+      ]])
+  }) { show =
+      (Data.Show.showArrayImpl let v0 =
+        {#- Rewrite - Inline -#}
+        let v0 =
+          (\v@v0 -> \record@v1 -> 
+            (stringAppend " ix: " (stringAppend (Data.Show.showIntImpl (
+              record@v1
+            ).ix) " "))
+          );
+        { showRecordFields =
+            (\v@v1 -> \record@v2 -> 
+              (stringAppend " b: " (stringAppend (Data.Show.showIntImpl (
+                record@v2
+              ).b) (stringAppend "," ((v0 Type.Proxy.Proxy) record@v2))))
+            )
+        };
+      {#- Rewrite - Inline -#}
+      let v1 =
+        [[ UnpackOp
+          For identifier v1
+            Unpack record
+            labels = ["showRecordFields"]
+          inside
+            { show =
+                (\record@v2 -> 
+                  (stringAppend "{" (stringAppend (((
+                    v1
+                  ).showRecordFields Type.Proxy.Proxy) record@v2) "}"))
+                )
+            }
+        ]];
+      (
+        v1
+      ).show)
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual3 (Step 3)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl {#- Rewrite - Inline -#}
+      let v0 =
+        (\v@v0 -> \ra@v1 -> \rb@v2 -> 
+          (== (
+            ra@v1
+          ).ix (
+            rb@v2
+          ).ix)
+        );
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\v@v1 -> \ra@v2 -> \rb@v3 -> 
+          (booleanAnd (== (
+            ra@v2
+          ).b (
+            rb@v3
+          ).b) (((v0 Type.Proxy.Proxy) ra@v2) rb@v3))
+        );
+      {#- Rewrite - Inline -#}
+      let v2 =
+        { eq =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              Type.Proxy.Proxy;
+            (\ra@v3 -> \rb@v4 -> 
+              (booleanAnd (== (
+                ra@v3
+              ).a (
+                rb@v4
+              ).a) (((v1 Type.Proxy.Proxy) ra@v3) rb@v4))
+            )
+        };
+      (
+        v2
+      ).eq)
+  }) { show =
+      (Data.Show.showArrayImpl [[ UnpackOp
+        For identifier v0
+          Unpack record
+          labels = ["showRecordFields"]
+        inside
+          {#- Rewrite - Inline -#}
+          let v1 =
+            (\v@v1 -> \record@v2 -> 
+              (stringAppend " a: " (stringAppend (Data.Show.showStringImpl (
+                record@v2
+              ).a) (stringAppend "," (((
+                v0
+              ).showRecordFields Type.Proxy.Proxy) record@v2))))
+            );
+          {#- Rewrite - Inline -#}
+          let v2 =
+            { show =
+                (\record@v2 -> 
+                  (stringAppend "{" (stringAppend ((v1 Type.Proxy.Proxy) record@v2) "}"))
+                )
+            };
+          (
+            v2
+          ).show
+      ]])
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual3 (Step 4)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl (\ra@v0 -> \rb@v1 -> 
+        (booleanAnd (== (
+          ra@v0
+        ).a (
+          rb@v1
+        ).a) {#- Rewrite - Inline -#}
+        let v2 =
+          Type.Proxy.Proxy;
+        (booleanAnd (== (
+          ra@v0
+        ).b (
+          rb@v1
+        ).b) {#- Rewrite - Inline -#}
+        let v3 =
+          Type.Proxy.Proxy;
+        (== (
+          ra@v0
+        ).ix (
+          rb@v1
+        ).ix)))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl {#- Rewrite - Inline -#}
+      let v0 =
+        (\v@v0 -> \record@v1 -> 
+          (stringAppend " b: " (stringAppend (Data.Show.showIntImpl (
+            record@v1
+          ).b) (stringAppend ", ix: " (stringAppend (Data.Show.showIntImpl (
+            record@v1
+          ).ix) " "))))
+        );
+      (\record@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          Type.Proxy.Proxy;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (stringAppend " a: " (stringAppend (Data.Show.showStringImpl (
+              record@v1
+            ).a) (stringAppend "," ((v0 Type.Proxy.Proxy) record@v1))));
+          (stringAppend v3 "}");
+        (stringAppend "{" v3)
+      ))
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual3 (Step 5)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl (\ra@v0 -> \rb@v1 -> 
+        (booleanAnd (== (
+          ra@v0
+        ).a (
+          rb@v1
+        ).a) (booleanAnd (== (
+          ra@v0
+        ).b (
+          rb@v1
+        ).b) (== (
+          ra@v0
+        ).ix (
+          rb@v1
+        ).ix)))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl (\record@v0 -> 
+        {#- Rewrite - Inline -#}
+        let v1 =
+          Type.Proxy.Proxy;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              {#- Rewrite - Inline -#}
+              let v2 =
+                {#- Rewrite - Inline -#}
+                let v2 =
+                  (stringAppend " b: " (stringAppend (Data.Show.showIntImpl (
+                    record@v0
+                  ).b) (stringAppend ", ix: " (stringAppend (Data.Show.showIntImpl (
+                    record@v0
+                  ).ix) " "))));
+                (stringAppend "," v2);
+              (stringAppend (Data.Show.showStringImpl (
+                record@v0
+              ).a) v2);
+            (stringAppend " a: " v2);
+          (stringAppend v2 "}");
+        (stringAppend "{" v2)
+      ))
+  })
+---------------
+Snapshot.HalogenVDomST02.assertEqual3 (Step 6; Final)
+  ((Assert.assertEqual { eq =
+      (Data.Eq.eqArrayImpl (\ra@v0 -> \rb@v1 -> 
+        (booleanAnd (== (
+          ra@v0
+        ).a (
+          rb@v1
+        ).a) (booleanAnd (== (
+          ra@v0
+        ).b (
+          rb@v1
+        ).b) (== (
+          ra@v0
+        ).ix (
+          rb@v1
+        ).ix)))
+      ))
+  }) { show =
+      (Data.Show.showArrayImpl (\record@v0 -> 
+        (stringAppend (stringAppend "{ a: " (stringAppend (Data.Show.showStringImpl (
+          record@v0
+        ).a) (stringAppend ", b: " (stringAppend (Data.Show.showIntImpl (
+          record@v0
+        ).b) (stringAppend ", ix: " (stringAppend (Data.Show.showIntImpl (
+          record@v0
+        ).ix) " ")))))) "}")
+      ))
+  })
+
+===============
+
+Snapshot.HalogenVDomST02.bIsSymbol (Step 0; Original)
+  { reflectSymbol =
+      (\$__unused@v0 -> 
+        "b"
+      )
+  }
+---------------
+Snapshot.HalogenVDomST02.bIsSymbol (Step 1; Final)
+  { reflectSymbol =
+      (\$__unused@v0 -> 
+        "b"
+      )
+  }
+
+===============
+
+Snapshot.HalogenVDomST02.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.HalogenVDomST02.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.HalogenVDomST02.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Effect.bindEffect)
+---------------
+Snapshot.HalogenVDomST02.discard (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.HalogenVDomST02.eqRec (Step 0; Original)
+  (Data.Eq.eqRec <PrimUndefined>)
+---------------
+Snapshot.HalogenVDomST02.eqRec (Step 1; Final)
+  (Data.Eq.eqRec <PrimUndefined>)
+
+===============
+
+Snapshot.HalogenVDomST02.eqRowCons (Step 0; Original)
+  ((Data.Eq.eqRowCons Data.Eq.eqRowNil) <PrimUndefined>)
+---------------
+Snapshot.HalogenVDomST02.eqRowCons (Step 1; Final)
+  ((Data.Eq.eqRowCons Data.Eq.eqRowNil) <PrimUndefined>)
+
+===============
+
+Snapshot.HalogenVDomST02.ixIsSymbol (Step 0; Original)
+  { reflectSymbol =
+      (\$__unused@v0 -> 
+        "ix"
+      )
+  }
+---------------
+Snapshot.HalogenVDomST02.ixIsSymbol (Step 1; Final)
+  { reflectSymbol =
+      (\$__unused@v0 -> 
+        "ix"
+      )
+  }
+
+===============
+
+Snapshot.HalogenVDomST02.liftST (Step 0; Original)
+  (Control.Monad.ST.Class.liftST Control.Monad.ST.Class.monadSTEffect)
+---------------
+Snapshot.HalogenVDomST02.liftST (Step 1; Final)
+  Unsafe.Coerce.unsafeCoerce
+
+===============
+
+Snapshot.HalogenVDomST02.main (Step 0; Original)
+  ((Snapshot.HalogenVDomST02.bind (Snapshot.HalogenVDomST02.liftST Data.Array.ST.new)) (\merged1@v0 -> 
+    ((Snapshot.HalogenVDomST02.bind (Snapshot.HalogenVDomST02.liftST Data.Array.ST.new)) (\added1@v1 -> 
+      ((Snapshot.HalogenVDomST02.bind (Snapshot.HalogenVDomST02.liftST Data.Array.ST.new)) (\deleted1@v2 -> 
+        ((Snapshot.HalogenVDomST02.bind ((((((Effect.Uncurried.runEffectFn5 Snapshot.HalogenVDomST01.diffWithIxE) [
+          "1",
+          "2",
+          "3",
+        ]) [
+          1,
+          2,
+        ]) (Effect.Uncurried.mkEffectFn3 (\ix@v3 -> \a@v4 -> \b@v5 -> 
+          ((Snapshot.HalogenVDomST02.discard (Snapshot.HalogenVDomST02.void (Snapshot.HalogenVDomST02.liftST ((Data.Array.ST.push { a =
+              a@v4
+          , b =
+              b@v5
+          }) merged1@v0)))) (\$__unused@v6 -> 
+            (Snapshot.HalogenVDomST02.pure { ix =
+                ix@v3
+            , a =
+                a@v4
+            , b =
+                b@v5
+            })
+          ))
+        ))) (Effect.Uncurried.mkEffectFn2 (\v@v3 -> \a@v4 -> 
+          (Snapshot.HalogenVDomST02.void (Snapshot.HalogenVDomST02.liftST ((Data.Array.ST.push a@v4) deleted1@v2)))
+        ))) (Effect.Uncurried.mkEffectFn2 (\ix@v3 -> \b@v4 -> 
+          ((Snapshot.HalogenVDomST02.discard (Snapshot.HalogenVDomST02.void (Snapshot.HalogenVDomST02.liftST ((Data.Array.ST.push b@v4) added1@v1)))) (\$__unused@v5 -> 
+            (Snapshot.HalogenVDomST02.pure { ix =
+                ix@v3
+            , a =
+                ""
+            , b =
+                b@v4
+            })
+          ))
+        )))) (\result@v3 -> 
+          ((Snapshot.HalogenVDomST02.bind (Snapshot.HalogenVDomST02.liftST (Data.Array.ST.freeze merged1@v0))) (\m1@v4 -> 
+            ((Snapshot.HalogenVDomST02.bind (Snapshot.HalogenVDomST02.liftST (Data.Array.ST.freeze added1@v1))) (\a1@v5 -> 
+              ((Snapshot.HalogenVDomST02.bind (Snapshot.HalogenVDomST02.liftST (Data.Array.ST.freeze deleted1@v2))) (\d1@v6 -> 
+                ((Snapshot.HalogenVDomST02.discard ((Snapshot.HalogenVDomST02.assertEqual "diffWithIxE/merged") { expected =
+                    [
+                      { a =
+                          "1"
+                      , b =
+                          1
+                      },
+                      { a =
+                          "2"
+                      , b =
+                          2
+                      },
+                    ]
+                , actual =
+                    m1@v4
+                })) (\$__unused@v7 -> 
+                  ((Snapshot.HalogenVDomST02.discard ((Snapshot.HalogenVDomST02.assertEqual1 "diffWithIxE/added") { expected =
+                      ]
+                  , actual =
+                      a1@v5
+                  })) (\$__unused@v8 -> 
+                    ((Snapshot.HalogenVDomST02.discard ((Snapshot.HalogenVDomST02.assertEqual2 "diffWithIxE/deleted") { expected =
+                        [
+                          "3",
+                        ]
+                    , actual =
+                        d1@v6
+                    })) (\$__unused@v9 -> 
+                      ((Snapshot.HalogenVDomST02.assertEqual3 "diffWithIxE/result") { expected =
+                          [
+                            { ix =
+                                0
+                            , a =
+                                "1"
+                            , b =
+                                1
+                            },
+                            { ix =
+                                1
+                            , a =
+                                "2"
+                            , b =
+                                2
+                            },
+                          ]
+                      , actual =
+                          result@v3
+                      })
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.HalogenVDomST02.main (Step 1)
+  letEffect merged1@v0 =
+    Data.Array.ST.new;
+  letEffect added1@v1 =
+    Data.Array.ST.new;
+  letEffect deleted1@v2 =
+    Data.Array.ST.new;
+  let v3 =
+    {#- Rewrite - Inline -#}
+    let v3 =
+      [
+        "1",
+        "2",
+        "3",
+      ];
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        [
+          1,
+          2,
+        ];
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (#\ix@v5 a@v6 b@v7 ->
+          [[ LetAssoc
+            let v8 =
+              {#- Rewrite - Inline -#}
+              let v8 =
+                { a =
+                    a@v6
+                , b =
+                    b@v7
+                };
+              {#- Rewrite - Inline -#}
+              let v9 =
+                {#- Rewrite - Inline -#}
+                let v9 =
+                  (\v9 -> 
+                    (effectDefer (([[ Stop
+                      Data.Array.ST.pushAll
+                    ]] [
+                      v8,
+                    ]) v9))
+                  );
+                (v9 merged1@v0);
+              v9;
+            let v8 =
+              (effectDefer letEffect a'@v9 =
+                v8;
+              (effectPure <PrimUndefined>));
+            {#- Rewrite - Inline -#}
+            let v9 =
+              letEffect $__unused@v9 =
+                v8;
+              {#- Rewrite - Inline -#}
+              let v10 =
+                { ix =
+                    ix@v5
+                , a =
+                    a@v6
+                , b =
+                    b@v7
+                };
+              {#- Rewrite - Inline -#}
+              let v11 =
+                (effectPure v10);
+              v11;
+            v9
+          ]]
+        #);
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (#\v@v6 a@v7 ->
+          {#- Rewrite - Inline -#}
+          let v8 =
+            (effectDefer (([[ Stop
+              Data.Array.ST.pushAll
+            ]] [
+              a@v7,
+            ]) deleted1@v2));
+          (effectDefer letEffect a'@v9 =
+            v8;
+          (effectPure <PrimUndefined>))
+        #);
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (#\ix@v7 b@v8 ->
+          let v9 =
+            {#- Rewrite - Inline -#}
+            let v9 =
+              (effectDefer (([[ Stop
+                Data.Array.ST.pushAll
+              ]] [
+                b@v8,
+              ]) added1@v1));
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure <PrimUndefined>));
+          {#- Rewrite - Inline -#}
+          let v10 =
+            letEffect $__unused@v10 =
+              v9;
+            {#- Rewrite - Inline -#}
+            let v11 =
+              { ix =
+                  ix@v7
+              , a =
+                  ""
+              , b =
+                  b@v8
+              };
+            {#- Rewrite - Inline -#}
+            let v12 =
+              (effectPure v11);
+            v12;
+          v10
+        #);
+      (#Snapshot.HalogenVDomST01.diffWithIxE v3 v4 v5 v6 v7#);
+    v4;
+  {#- Rewrite - Inline -#}
+  let v4 =
+    letEffect result@v4 =
+      v3;
+    let v5 =
+      (Data.Array.ST.freeze merged1@v0);
+    {#- Rewrite - Inline -#}
+    let v6 =
+      letEffect m1@v6 =
+        v5;
+      let v7 =
+        (Data.Array.ST.freeze added1@v1);
+      {#- Rewrite - Inline -#}
+      let v8 =
+        letEffect a1@v8 =
+          v7;
+        let v9 =
+          (Data.Array.ST.freeze deleted1@v2);
+        {#- Rewrite - Inline -#}
+        let v10 =
+          letEffect d1@v10 =
+            v9;
+          let v11 =
+            ((Snapshot.HalogenVDomST02.assertEqual "diffWithIxE/merged") { expected =
+                [
+                  { a =
+                      "1"
+                  , b =
+                      1
+                  },
+                  { a =
+                      "2"
+                  , b =
+                      2
+                  },
+                ]
+            , actual =
+                m1@v6
+            });
+          {#- Rewrite - Inline -#}
+          let v12 =
+            letEffect $__unused@v12 =
+              v11;
+            let v13 =
+              ((((Assert.assertEqual { eq =
+                  (Data.Eq.eqArrayImpl Data.Eq.eqIntImpl)
+              }) { show =
+                  (Data.Show.showArrayImpl Data.Show.showIntImpl)
+              }) "diffWithIxE/added") { expected =
+                  ]
+              , actual =
+                  a1@v8
+              });
+            {#- Rewrite - Inline -#}
+            let v14 =
+              letEffect $__unused@v14 =
+                v13;
+              let v15 =
+                ((((Assert.assertEqual { eq =
+                    (Data.Eq.eqArrayImpl Data.Eq.eqStringImpl)
+                }) { show =
+                    (Data.Show.showArrayImpl Data.Show.showStringImpl)
+                }) "diffWithIxE/deleted") { expected =
+                    [
+                      "3",
+                    ]
+                , actual =
+                    d1@v10
+                });
+              {#- Rewrite - Inline -#}
+              let v16 =
+                letEffect $__unused@v16 =
+                  v15;
+                ((Snapshot.HalogenVDomST02.assertEqual3 "diffWithIxE/result") { expected =
+                    [
+                      { ix =
+                          0
+                      , a =
+                          "1"
+                      , b =
+                          1
+                      },
+                      { ix =
+                          1
+                      , a =
+                          "2"
+                      , b =
+                          2
+                      },
+                    ]
+                , actual =
+                    result@v4
+                });
+              v16;
+            v14;
+          v12;
+        v10;
+      v8;
+    v6;
+  v4
+---------------
+Snapshot.HalogenVDomST02.main (Step 2)
+  letEffect merged1@v0 =
+    Data.Array.ST.new;
+  letEffect added1@v1 =
+    Data.Array.ST.new;
+  letEffect deleted1@v2 =
+    Data.Array.ST.new;
+  {#- Rewrite - Inline -#}
+  let v3 =
+    (#Snapshot.HalogenVDomST01.diffWithIxE [
+      "1",
+      "2",
+      "3",
+    ] [
+      1,
+      2,
+    ] (#\ix@v3 a@v4 b@v5 ->
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (effectDefer (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          { a =
+              a@v4
+          , b =
+              b@v5
+          },
+        ]) merged1@v0));
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure <PrimUndefined>));
+      letEffect $__unused@v8 =
+        v7;
+      (effectPure { ix =
+          ix@v3
+      , a =
+          a@v4
+      , b =
+          b@v5
+      })
+    #) (#\v@v3 a@v4 ->
+      (effectDefer letEffect a'@v5 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          a@v4,
+        ]) deleted1@v2);
+      (effectPure <PrimUndefined>))
+    #) (#\ix@v3 b@v4 ->
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (effectDefer letEffect a'@v5 =
+          (([[ Stop
+            Data.Array.ST.pushAll
+          ]] [
+            b@v4,
+          ]) added1@v1);
+        (effectPure <PrimUndefined>));
+      letEffect $__unused@v6 =
+        v5;
+      (effectPure { ix =
+          ix@v3
+      , a =
+          ""
+      , b =
+          b@v4
+      })
+    #)#);
+  letEffect result@v4 =
+    v3;
+  {#- Rewrite - Inline -#}
+  let v5 =
+    (Data.Array.ST.freeze merged1@v0);
+  letEffect m1@v6 =
+    v5;
+  {#- Rewrite - Inline -#}
+  let v7 =
+    (Data.Array.ST.freeze added1@v1);
+  letEffect a1@v8 =
+    v7;
+  {#- Rewrite - Inline -#}
+  let v9 =
+    (Data.Array.ST.freeze deleted1@v2);
+  letEffect d1@v10 =
+    v9;
+  {#- Rewrite - Inline -#}
+  let v11 =
+    ((Snapshot.HalogenVDomST02.assertEqual "diffWithIxE/merged") { expected =
+        [
+          { a =
+              "1"
+          , b =
+              1
+          },
+          { a =
+              "2"
+          , b =
+              2
+          },
+        ]
+    , actual =
+        m1@v6
+    });
+  letEffect $__unused@v12 =
+    v11;
+  {#- Rewrite - Inline -#}
+  let v13 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqIntImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showIntImpl)
+    }) "diffWithIxE/added") { expected =
+        ]
+    , actual =
+        a1@v8
+    });
+  letEffect $__unused@v14 =
+    v13;
+  {#- Rewrite - Inline -#}
+  let v15 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqStringImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showStringImpl)
+    }) "diffWithIxE/deleted") { expected =
+        [
+          "3",
+        ]
+    , actual =
+        d1@v10
+    });
+  letEffect $__unused@v16 =
+    v15;
+  ((Snapshot.HalogenVDomST02.assertEqual3 "diffWithIxE/result") { expected =
+      [
+        { ix =
+            0
+        , a =
+            "1"
+        , b =
+            1
+        },
+        { ix =
+            1
+        , a =
+            "2"
+        , b =
+            2
+        },
+      ]
+  , actual =
+      result@v4
+  })
+---------------
+Snapshot.HalogenVDomST02.main (Step 3)
+  letEffect merged1@v0 =
+    Data.Array.ST.new;
+  letEffect added1@v1 =
+    Data.Array.ST.new;
+  letEffect deleted1@v2 =
+    Data.Array.ST.new;
+  letEffect result@v3 =
+    (#Snapshot.HalogenVDomST01.diffWithIxE [
+      "1",
+      "2",
+      "3",
+    ] [
+      1,
+      2,
+    ] (#\ix@v3 a@v4 b@v5 ->
+      [[ EffectBindAssoc
+        letEffect a'@v6 =
+          (([[ Stop
+            Data.Array.ST.pushAll
+          ]] [
+            { a =
+                a@v4
+            , b =
+                b@v5
+            },
+          ]) merged1@v0);
+        letEffect $__unused@v6 =
+          (effectPure <PrimUndefined>);
+        (effectPure { ix =
+            ix@v3
+        , a =
+            a@v4
+        , b =
+            b@v5
+        })
+      ]]
+    #) (#\v@v3 a@v4 ->
+      (effectDefer letEffect a'@v5 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          a@v4,
+        ]) deleted1@v2);
+      (effectPure <PrimUndefined>))
+    #) (#\ix@v3 b@v4 ->
+      [[ EffectBindAssoc
+        letEffect a'@v5 =
+          (([[ Stop
+            Data.Array.ST.pushAll
+          ]] [
+            b@v4,
+          ]) added1@v1);
+        letEffect $__unused@v5 =
+          (effectPure <PrimUndefined>);
+        (effectPure { ix =
+            ix@v3
+        , a =
+            ""
+        , b =
+            b@v4
+        })
+      ]]
+    #)#);
+  letEffect m1@v4 =
+    (Data.Array.ST.freeze merged1@v0);
+  letEffect a1@v5 =
+    (Data.Array.ST.freeze added1@v1);
+  letEffect d1@v6 =
+    (Data.Array.ST.freeze deleted1@v2);
+  letEffect $__unused@v7 =
+    ((Snapshot.HalogenVDomST02.assertEqual "diffWithIxE/merged") { expected =
+        [
+          { a =
+              "1"
+          , b =
+              1
+          },
+          { a =
+              "2"
+          , b =
+              2
+          },
+        ]
+    , actual =
+        m1@v4
+    });
+  letEffect $__unused@v8 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqIntImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showIntImpl)
+    }) "diffWithIxE/added") { expected =
+        ]
+    , actual =
+        a1@v5
+    });
+  letEffect $__unused@v9 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqStringImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showStringImpl)
+    }) "diffWithIxE/deleted") { expected =
+        [
+          "3",
+        ]
+    , actual =
+        d1@v6
+    });
+  ((Snapshot.HalogenVDomST02.assertEqual3 "diffWithIxE/result") { expected =
+      [
+        { ix =
+            0
+        , a =
+            "1"
+        , b =
+            1
+        },
+        { ix =
+            1
+        , a =
+            "2"
+        , b =
+            2
+        },
+      ]
+  , actual =
+      result@v3
+  })
+---------------
+Snapshot.HalogenVDomST02.main (Step 4)
+  letEffect merged1@v0 =
+    Data.Array.ST.new;
+  letEffect added1@v1 =
+    Data.Array.ST.new;
+  letEffect deleted1@v2 =
+    Data.Array.ST.new;
+  letEffect result@v3 =
+    (#Snapshot.HalogenVDomST01.diffWithIxE [
+      "1",
+      "2",
+      "3",
+    ] [
+      1,
+      2,
+    ] (#\ix@v3 a@v4 b@v5 ->
+      letEffect a'@v6 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          { a =
+              a@v4
+          , b =
+              b@v5
+          },
+        ]) merged1@v0);
+      {#- Rewrite - Inline -#}
+      let $__unused@v7 =
+        <PrimUndefined>;
+      (effectPure { ix =
+          ix@v3
+      , a =
+          a@v4
+      , b =
+          b@v5
+      })
+    #) (#\v@v3 a@v4 ->
+      (effectDefer letEffect a'@v5 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          a@v4,
+        ]) deleted1@v2);
+      (effectPure <PrimUndefined>))
+    #) (#\ix@v3 b@v4 ->
+      letEffect a'@v5 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          b@v4,
+        ]) added1@v1);
+      {#- Rewrite - Inline -#}
+      let $__unused@v6 =
+        <PrimUndefined>;
+      (effectPure { ix =
+          ix@v3
+      , a =
+          ""
+      , b =
+          b@v4
+      })
+    #)#);
+  letEffect m1@v4 =
+    (Data.Array.ST.freeze merged1@v0);
+  letEffect a1@v5 =
+    (Data.Array.ST.freeze added1@v1);
+  letEffect d1@v6 =
+    (Data.Array.ST.freeze deleted1@v2);
+  letEffect $__unused@v7 =
+    ((Snapshot.HalogenVDomST02.assertEqual "diffWithIxE/merged") { expected =
+        [
+          { a =
+              "1"
+          , b =
+              1
+          },
+          { a =
+              "2"
+          , b =
+              2
+          },
+        ]
+    , actual =
+        m1@v4
+    });
+  letEffect $__unused@v8 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqIntImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showIntImpl)
+    }) "diffWithIxE/added") { expected =
+        ]
+    , actual =
+        a1@v5
+    });
+  letEffect $__unused@v9 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqStringImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showStringImpl)
+    }) "diffWithIxE/deleted") { expected =
+        [
+          "3",
+        ]
+    , actual =
+        d1@v6
+    });
+  ((Snapshot.HalogenVDomST02.assertEqual3 "diffWithIxE/result") { expected =
+      [
+        { ix =
+            0
+        , a =
+            "1"
+        , b =
+            1
+        },
+        { ix =
+            1
+        , a =
+            "2"
+        , b =
+            2
+        },
+      ]
+  , actual =
+      result@v3
+  })
+---------------
+Snapshot.HalogenVDomST02.main (Step 5; Final)
+  letEffect merged1@v0 =
+    Data.Array.ST.new;
+  letEffect added1@v1 =
+    Data.Array.ST.new;
+  letEffect deleted1@v2 =
+    Data.Array.ST.new;
+  letEffect result@v3 =
+    (#Snapshot.HalogenVDomST01.diffWithIxE [
+      "1",
+      "2",
+      "3",
+    ] [
+      1,
+      2,
+    ] (#\ix@v3 a@v4 b@v5 ->
+      letEffect a'@v6 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          { a =
+              a@v4
+          , b =
+              b@v5
+          },
+        ]) merged1@v0);
+      (effectPure { ix =
+          ix@v3
+      , a =
+          a@v4
+      , b =
+          b@v5
+      })
+    #) (#\v@v3 a@v4 ->
+      (effectDefer letEffect a'@v5 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          a@v4,
+        ]) deleted1@v2);
+      (effectPure <PrimUndefined>))
+    #) (#\ix@v3 b@v4 ->
+      letEffect a'@v5 =
+        (([[ Stop
+          Data.Array.ST.pushAll
+        ]] [
+          b@v4,
+        ]) added1@v1);
+      (effectPure { ix =
+          ix@v3
+      , a =
+          ""
+      , b =
+          b@v4
+      })
+    #)#);
+  letEffect m1@v4 =
+    (Data.Array.ST.freeze merged1@v0);
+  letEffect a1@v5 =
+    (Data.Array.ST.freeze added1@v1);
+  letEffect d1@v6 =
+    (Data.Array.ST.freeze deleted1@v2);
+  letEffect $__unused@v7 =
+    ((Snapshot.HalogenVDomST02.assertEqual "diffWithIxE/merged") { expected =
+        [
+          { a =
+              "1"
+          , b =
+              1
+          },
+          { a =
+              "2"
+          , b =
+              2
+          },
+        ]
+    , actual =
+        m1@v4
+    });
+  letEffect $__unused@v8 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqIntImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showIntImpl)
+    }) "diffWithIxE/added") { expected =
+        ]
+    , actual =
+        a1@v5
+    });
+  letEffect $__unused@v9 =
+    ((((Assert.assertEqual { eq =
+        (Data.Eq.eqArrayImpl Data.Eq.eqStringImpl)
+    }) { show =
+        (Data.Show.showArrayImpl Data.Show.showStringImpl)
+    }) "diffWithIxE/deleted") { expected =
+        [
+          "3",
+        ]
+    , actual =
+        d1@v6
+    });
+  ((Snapshot.HalogenVDomST02.assertEqual3 "diffWithIxE/result") { expected =
+      [
+        { ix =
+            0
+        , a =
+            "1"
+        , b =
+            1
+        },
+        { ix =
+            1
+        , a =
+            "2"
+        , b =
+            2
+        },
+      ]
+  , actual =
+      result@v3
+  })
+
+===============
+
+Snapshot.HalogenVDomST02.pure (Step 0; Original)
+  (Control.Applicative.pure Effect.applicativeEffect)
+---------------
+Snapshot.HalogenVDomST02.pure (Step 1; Final)
+  Effect.pureE
+
+===============
+
+Snapshot.HalogenVDomST02.showRecord (Step 0; Original)
+  ((Data.Show.showRecord <PrimUndefined>) <PrimUndefined>)
+---------------
+Snapshot.HalogenVDomST02.showRecord (Step 1; Final)
+  ((Data.Show.showRecord <PrimUndefined>) <PrimUndefined>)
+
+===============
+
+Snapshot.HalogenVDomST02.showRecordFieldsCons (Step 0; Original)
+  (Data.Show.showRecordFieldsCons Snapshot.HalogenVDomST02.aIsSymbol)
+---------------
+Snapshot.HalogenVDomST02.showRecordFieldsCons (Step 1; Final)
+  (Data.Show.showRecordFieldsCons Snapshot.HalogenVDomST02.aIsSymbol)
+
+===============
+
+Snapshot.HalogenVDomST02.void (Step 0; Original)
+  (Data.Functor.void Effect.functorEffect)
+---------------
+Snapshot.HalogenVDomST02.void (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v@v0 -> 
+      <PrimUndefined>
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\a@v1 -> 
+          (effectDefer letEffect a'@v2 =
+            a@v1;
+          (effectPure (v0 a'@v2)))
+        );
+      v1;
+    v1;
+  v1
+---------------
+Snapshot.HalogenVDomST02.void (Step 2; Final)
+  (\a@v0 -> 
+    (effectDefer letEffect a'@v1 =
+      a@v0;
+    (effectPure <PrimUndefined>))
+  )

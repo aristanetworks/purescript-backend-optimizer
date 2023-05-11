@@ -1,0 +1,1102 @@
+Snapshot.STObject01.bind (Step 0; Original)
+  (Control.Bind.bind Control.Monad.ST.Internal.bindST)
+---------------
+Snapshot.STObject01.bind (Step 1; Final)
+  Control.Monad.ST.Internal.bind_
+
+===============
+
+Snapshot.STObject01.pure (Step 0; Original)
+  (Control.Applicative.pure Control.Monad.ST.Internal.applicativeST)
+---------------
+Snapshot.STObject01.pure (Step 1; Final)
+  Control.Monad.ST.Internal.pure_
+
+===============
+
+Snapshot.STObject01.test1 (Step 0; Original)
+  (Foreign.Object.runST Foreign.Object.ST.new)
+---------------
+Snapshot.STObject01.test1 (Step 1; Final)
+  (Foreign.Object.runST Foreign.Object.ST.new)
+
+===============
+
+Snapshot.STObject01.test2 (Step 0; Original)
+  (Control.Monad.ST.Internal.run ((Snapshot.STObject01.bind Foreign.Object.ST.new) (\obj@v0 -> 
+    (Foreign.Object.freezeST obj@v0)
+  )))
+---------------
+Snapshot.STObject01.test2 (Step 1; Final)
+  (Control.Monad.ST.Internal.run letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  ([[ Stop
+    Foreign.Object._copyST
+  ]] obj@v0))
+
+===============
+
+Snapshot.STObject01.test3 (Step 0; Original)
+  (Foreign.Object.runST ((Snapshot.STObject01.bind Foreign.Object.ST.new) (\obj@v0 -> 
+    ((Snapshot.STObject01.bind (((Foreign.Object.ST.poke "a") 1) obj@v0)) (\$__unused@v1 -> 
+      ((Snapshot.STObject01.bind (((Foreign.Object.ST.poke "b") 2) obj@v0)) (\$__unused@v2 -> 
+        ((Snapshot.STObject01.bind (((Foreign.Object.ST.poke "c") 3) obj@v0)) (\$__unused@v3 -> 
+          (Snapshot.STObject01.pure obj@v0)
+        ))
+      ))
+    ))
+  )))
+---------------
+Snapshot.STObject01.test3 (Step 1)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      "a";
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        1;
+      (\v3 -> 
+        letEffect v4 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] v1) v2) v3);
+        (effectPure v3)
+      );
+    (v2 obj@v0);
+  {#- Rewrite - Inline -#}
+  let v2 =
+    letEffect $__unused@v2 =
+      v1;
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        "b";
+      {#- Rewrite - Inline -#}
+      let v4 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          2;
+        (\v5 -> 
+          letEffect v6 =
+            ((([[ Stop
+              Foreign.Object.ST.poke
+            ]] v3) v4) v5);
+          (effectPure v5)
+        );
+      (v4 obj@v0);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      letEffect $__unused@v4 =
+        v3;
+      let v5 =
+        {#- Rewrite - Inline -#}
+        let v5 =
+          "c";
+        {#- Rewrite - Inline -#}
+        let v6 =
+          {#- Rewrite - Inline -#}
+          let v6 =
+            3;
+          (\v7 -> 
+            letEffect v8 =
+              ((([[ Stop
+                Foreign.Object.ST.poke
+              ]] v5) v6) v7);
+            (effectPure v7)
+          );
+        (v6 obj@v0);
+      {#- Rewrite - Inline -#}
+      let v6 =
+        letEffect $__unused@v6 =
+          v5;
+        (effectPure obj@v0);
+      v6;
+    v4;
+  v2)
+---------------
+Snapshot.STObject01.test3 (Step 2)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "a") 1) obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v2 =
+    v1;
+  {#- Rewrite - Inline -#}
+  let v3 =
+    letEffect v3 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "b") 2) obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v4 =
+    v3;
+  {#- Rewrite - Inline -#}
+  let v5 =
+    letEffect v5 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "c") 3) obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v6 =
+    v5;
+  (effectPure obj@v0))
+---------------
+Snapshot.STObject01.test3 (Step 3)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  [[ EffectBindAssoc
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "a") 1) obj@v0);
+    letEffect $__unused@v1 =
+      (effectPure obj@v0);
+    [[ EffectBindAssoc
+      letEffect v2 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) obj@v0);
+      letEffect $__unused@v2 =
+        (effectPure obj@v0);
+      [[ EffectBindAssoc
+        letEffect v3 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] "c") 3) obj@v0);
+        letEffect $__unused@v3 =
+          (effectPure obj@v0);
+        (effectPure obj@v0)
+      ]]
+    ]]
+  ]])
+---------------
+Snapshot.STObject01.test3 (Step 4)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v2 =
+    obj@v0;
+  letEffect v3 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v4 =
+    obj@v0;
+  letEffect v5 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "c") 3) obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v6 =
+    obj@v0;
+  (effectPure obj@v0))
+---------------
+Snapshot.STObject01.test3 (Step 5; Final)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) obj@v0);
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) obj@v0);
+  letEffect v3 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "c") 3) obj@v0);
+  (effectPure obj@v0))
+
+===============
+
+Snapshot.STObject01.test4 (Step 0; Original)
+  (Foreign.Object.runST ((Snapshot.STObject01.bind ((Snapshot.STObject01.bind ((Snapshot.STObject01.bind Foreign.Object.ST.new) ((Foreign.Object.ST.poke "a") 1))) ((Foreign.Object.ST.poke "b") 2))) ((Foreign.Object.ST.poke "c") 3)))
+---------------
+Snapshot.STObject01.test4 (Step 1)
+  (Foreign.Object.runST [[ LetAssoc
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        "a";
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          1;
+        (\v2 -> 
+          letEffect v3 =
+            ((([[ Stop
+              Foreign.Object.ST.poke
+            ]] v0) v1) v2);
+          (effectPure v2)
+        );
+      v1;
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        letEffect v1 =
+          Foreign.Object.ST.new;
+        (v0 v1);
+      v1;
+    let v0 =
+      [[ LetAssoc
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            "b";
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              2;
+            (\v3 -> 
+              letEffect v4 =
+                ((([[ Stop
+                  Foreign.Object.ST.poke
+                ]] v1) v2) v3);
+              (effectPure v3)
+            );
+          v2;
+        let v1 =
+          letEffect v2 =
+            v0;
+          (v1 v2);
+        v1
+      ]];
+    [[ LetAssoc
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          "c";
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            3;
+          (\v3 -> 
+            letEffect v4 =
+              ((([[ Stop
+                Foreign.Object.ST.poke
+              ]] v1) v2) v3);
+            (effectPure v3)
+          );
+        v2;
+      let v1 =
+        letEffect v2 =
+          v0;
+        (v1 v2);
+      v1
+    ]]
+  ]])
+---------------
+Snapshot.STObject01.test4 (Step 2)
+  (Foreign.Object.runST {#- Rewrite - Inline -#}
+  let v0 =
+    (\v0 -> 
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "a") 1) v0);
+      (effectPure v0)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    letEffect v1 =
+      Foreign.Object.ST.new;
+    (v0 v1);
+  let v2 =
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        letEffect v3 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] "b") 2) v2);
+        (effectPure v2)
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      letEffect v3 =
+        v1;
+      (v2 v3);
+    v3;
+  {#- Rewrite - Inline -#}
+  let v3 =
+    (\v3 -> 
+      letEffect v4 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "c") 3) v3);
+      (effectPure v3)
+    );
+  {#- Rewrite - Inline -#}
+  let v4 =
+    letEffect v4 =
+      v2;
+    (v3 v4);
+  v4)
+---------------
+Snapshot.STObject01.test4 (Step 3)
+  (Foreign.Object.runST let v0 =
+    [[ EffectBindAssoc
+      letEffect v0 =
+        Foreign.Object.ST.new;
+      letEffect v0 =
+        letEffect v1 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] "a") 1) v0);
+        (effectPure v0);
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v0);
+      (effectPure v0)
+    ]];
+  letEffect v1 =
+    v0;
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "c") 3) v1);
+  (effectPure v1))
+---------------
+Snapshot.STObject01.test4 (Step 4)
+  (Foreign.Object.runST {#- Rewrite - Inline -#}
+  let v0 =
+    letEffect v0 =
+      Foreign.Object.ST.new;
+    [[ EffectBindAssoc
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "a") 1) v0);
+      letEffect v1 =
+        (effectPure v0);
+      letEffect v2 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v1);
+      (effectPure v1)
+    ]];
+  letEffect v1 =
+    v0;
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "c") 3) v1);
+  (effectPure v1))
+---------------
+Snapshot.STObject01.test4 (Step 5)
+  (Foreign.Object.runST [[ EffectBindAssoc
+    letEffect v0 =
+      Foreign.Object.ST.new;
+    letEffect v0 =
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "a") 1) v0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        v0;
+      letEffect v3 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v2);
+      (effectPure v2);
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "c") 3) v0);
+    (effectPure v0)
+  ]])
+---------------
+Snapshot.STObject01.test4 (Step 6)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  [[ EffectBindAssoc
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "a") 1) v0);
+    letEffect v1 =
+      letEffect v2 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v0);
+      (effectPure v0);
+    letEffect v2 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "c") 3) v1);
+    (effectPure v1)
+  ]])
+---------------
+Snapshot.STObject01.test4 (Step 7)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) v0);
+  [[ EffectBindAssoc
+    letEffect v2 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "b") 2) v0);
+    letEffect v2 =
+      (effectPure v0);
+    letEffect v3 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "c") 3) v2);
+    (effectPure v2)
+  ]])
+---------------
+Snapshot.STObject01.test4 (Step 8)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) v0);
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) v0);
+  {#- Rewrite - Inline -#}
+  let v3 =
+    v0;
+  letEffect v4 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "c") 3) v3);
+  (effectPure v3))
+---------------
+Snapshot.STObject01.test4 (Step 9; Final)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) v0);
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) v0);
+  letEffect v3 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "c") 3) v0);
+  (effectPure v0))
+
+===============
+
+Snapshot.STObject01.test5 (Step 0; Original)
+  (Foreign.Object.runST ((Snapshot.STObject01.bind Foreign.Object.ST.new) (\obj@v0 -> 
+    ((Snapshot.STObject01.bind (((Foreign.Object.ST.poke "a") 1) obj@v0)) (\$__unused@v1 -> 
+      ((Snapshot.STObject01.bind (((Foreign.Object.ST.poke "b") 2) obj@v0)) (\$__unused@v2 -> 
+        ((Snapshot.STObject01.bind ((Foreign.Object.ST.delete "a") obj@v0)) (\$__unused@v3 -> 
+          ((Snapshot.STObject01.bind ((Foreign.Object.ST.delete "b") obj@v0)) (\$__unused@v4 -> 
+            (Snapshot.STObject01.pure obj@v0)
+          ))
+        ))
+      ))
+    ))
+  )))
+---------------
+Snapshot.STObject01.test5 (Step 1)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      "a";
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        1;
+      (\v3 -> 
+        letEffect v4 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] v1) v2) v3);
+        (effectPure v3)
+      );
+    (v2 obj@v0);
+  {#- Rewrite - Inline -#}
+  let v2 =
+    letEffect $__unused@v2 =
+      v1;
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        "b";
+      {#- Rewrite - Inline -#}
+      let v4 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          2;
+        (\v5 -> 
+          letEffect v6 =
+            ((([[ Stop
+              Foreign.Object.ST.poke
+            ]] v3) v4) v5);
+          (effectPure v5)
+        );
+      (v4 obj@v0);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      letEffect $__unused@v4 =
+        v3;
+      let v5 =
+        {#- Rewrite - Inline -#}
+        let v5 =
+          "a";
+        {#- Rewrite - Inline -#}
+        let v6 =
+          (\v6 -> 
+            letEffect v7 =
+              (([[ Stop
+                Foreign.Object.ST.delete
+              ]] v5) v6);
+            (effectPure v6)
+          );
+        (v6 obj@v0);
+      {#- Rewrite - Inline -#}
+      let v6 =
+        letEffect $__unused@v6 =
+          v5;
+        let v7 =
+          {#- Rewrite - Inline -#}
+          let v7 =
+            "b";
+          {#- Rewrite - Inline -#}
+          let v8 =
+            (\v8 -> 
+              letEffect v9 =
+                (([[ Stop
+                  Foreign.Object.ST.delete
+                ]] v7) v8);
+              (effectPure v8)
+            );
+          (v8 obj@v0);
+        {#- Rewrite - Inline -#}
+        let v8 =
+          letEffect $__unused@v8 =
+            v7;
+          (effectPure obj@v0);
+        v8;
+      v6;
+    v4;
+  v2)
+---------------
+Snapshot.STObject01.test5 (Step 2)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "a") 1) obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v2 =
+    v1;
+  {#- Rewrite - Inline -#}
+  let v3 =
+    letEffect v3 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "b") 2) obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v4 =
+    v3;
+  {#- Rewrite - Inline -#}
+  let v5 =
+    letEffect v5 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "a") obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v6 =
+    v5;
+  {#- Rewrite - Inline -#}
+  let v7 =
+    letEffect v7 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "b") obj@v0);
+    (effectPure obj@v0);
+  letEffect $__unused@v8 =
+    v7;
+  (effectPure obj@v0))
+---------------
+Snapshot.STObject01.test5 (Step 3)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  [[ EffectBindAssoc
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "a") 1) obj@v0);
+    letEffect $__unused@v1 =
+      (effectPure obj@v0);
+    [[ EffectBindAssoc
+      letEffect v2 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) obj@v0);
+      letEffect $__unused@v2 =
+        (effectPure obj@v0);
+      [[ EffectBindAssoc
+        letEffect v3 =
+          (([[ Stop
+            Foreign.Object.ST.delete
+          ]] "a") obj@v0);
+        letEffect $__unused@v3 =
+          (effectPure obj@v0);
+        [[ EffectBindAssoc
+          letEffect v4 =
+            (([[ Stop
+              Foreign.Object.ST.delete
+            ]] "b") obj@v0);
+          letEffect $__unused@v4 =
+            (effectPure obj@v0);
+          (effectPure obj@v0)
+        ]]
+      ]]
+    ]]
+  ]])
+---------------
+Snapshot.STObject01.test5 (Step 4)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v2 =
+    obj@v0;
+  letEffect v3 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v4 =
+    obj@v0;
+  letEffect v5 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "a") obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v6 =
+    obj@v0;
+  letEffect v7 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "b") obj@v0);
+  {#- Rewrite - Inline -#}
+  let $__unused@v8 =
+    obj@v0;
+  (effectPure obj@v0))
+---------------
+Snapshot.STObject01.test5 (Step 5; Final)
+  (Foreign.Object.runST letEffect obj@v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) obj@v0);
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) obj@v0);
+  letEffect v3 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "a") obj@v0);
+  letEffect v4 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "b") obj@v0);
+  (effectPure obj@v0))
+
+===============
+
+Snapshot.STObject01.test6 (Step 0; Original)
+  (Foreign.Object.runST ((Snapshot.STObject01.bind ((Snapshot.STObject01.bind ((Snapshot.STObject01.bind ((Snapshot.STObject01.bind Foreign.Object.ST.new) ((Foreign.Object.ST.poke "a") 1))) ((Foreign.Object.ST.poke "b") 2))) (Foreign.Object.ST.delete "a"))) (Foreign.Object.ST.delete "b")))
+---------------
+Snapshot.STObject01.test6 (Step 1)
+  (Foreign.Object.runST [[ LetAssoc
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        "a";
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          1;
+        (\v2 -> 
+          letEffect v3 =
+            ((([[ Stop
+              Foreign.Object.ST.poke
+            ]] v0) v1) v2);
+          (effectPure v2)
+        );
+      v1;
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        letEffect v1 =
+          Foreign.Object.ST.new;
+        (v0 v1);
+      v1;
+    let v0 =
+      [[ LetAssoc
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            "b";
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              2;
+            (\v3 -> 
+              letEffect v4 =
+                ((([[ Stop
+                  Foreign.Object.ST.poke
+                ]] v1) v2) v3);
+              (effectPure v3)
+            );
+          v2;
+        let v1 =
+          letEffect v2 =
+            v0;
+          (v1 v2);
+        v1
+      ]];
+    let v0 =
+      [[ LetAssoc
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            "a";
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\v2 -> 
+              letEffect v3 =
+                (([[ Stop
+                  Foreign.Object.ST.delete
+                ]] v1) v2);
+              (effectPure v2)
+            );
+          v2;
+        let v1 =
+          letEffect v2 =
+            v0;
+          (v1 v2);
+        v1
+      ]];
+    [[ LetAssoc
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          "b";
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\v2 -> 
+            letEffect v3 =
+              (([[ Stop
+                Foreign.Object.ST.delete
+              ]] v1) v2);
+            (effectPure v2)
+          );
+        v2;
+      let v1 =
+        letEffect v2 =
+          v0;
+        (v1 v2);
+      v1
+    ]]
+  ]])
+---------------
+Snapshot.STObject01.test6 (Step 2)
+  (Foreign.Object.runST {#- Rewrite - Inline -#}
+  let v0 =
+    (\v0 -> 
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "a") 1) v0);
+      (effectPure v0)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    letEffect v1 =
+      Foreign.Object.ST.new;
+    (v0 v1);
+  let v2 =
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        letEffect v3 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] "b") 2) v2);
+        (effectPure v2)
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      letEffect v3 =
+        v1;
+      (v2 v3);
+    v3;
+  let v3 =
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\v3 -> 
+        letEffect v4 =
+          (([[ Stop
+            Foreign.Object.ST.delete
+          ]] "a") v3);
+        (effectPure v3)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      letEffect v4 =
+        v2;
+      (v3 v4);
+    v4;
+  {#- Rewrite - Inline -#}
+  let v4 =
+    (\v4 -> 
+      letEffect v5 =
+        (([[ Stop
+          Foreign.Object.ST.delete
+        ]] "b") v4);
+      (effectPure v4)
+    );
+  {#- Rewrite - Inline -#}
+  let v5 =
+    letEffect v5 =
+      v3;
+    (v4 v5);
+  v5)
+---------------
+Snapshot.STObject01.test6 (Step 3)
+  (Foreign.Object.runST let v0 =
+    [[ EffectBindAssoc
+      letEffect v0 =
+        Foreign.Object.ST.new;
+      letEffect v0 =
+        letEffect v1 =
+          ((([[ Stop
+            Foreign.Object.ST.poke
+          ]] "a") 1) v0);
+        (effectPure v0);
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v0);
+      (effectPure v0)
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    letEffect v1 =
+      v0;
+    letEffect v2 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "a") v1);
+    (effectPure v1);
+  letEffect v2 =
+    v1;
+  letEffect v3 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "b") v2);
+  (effectPure v2))
+---------------
+Snapshot.STObject01.test6 (Step 4)
+  (Foreign.Object.runST {#- Rewrite - Inline -#}
+  let v0 =
+    letEffect v0 =
+      Foreign.Object.ST.new;
+    [[ EffectBindAssoc
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "a") 1) v0);
+      letEffect v1 =
+        (effectPure v0);
+      letEffect v2 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v1);
+      (effectPure v1)
+    ]];
+  [[ EffectBindAssoc
+    letEffect v1 =
+      v0;
+    letEffect v1 =
+      letEffect v2 =
+        (([[ Stop
+          Foreign.Object.ST.delete
+        ]] "a") v1);
+      (effectPure v1);
+    letEffect v2 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "b") v1);
+    (effectPure v1)
+  ]])
+---------------
+Snapshot.STObject01.test6 (Step 5)
+  (Foreign.Object.runST [[ EffectBindAssoc
+    letEffect v0 =
+      Foreign.Object.ST.new;
+    letEffect v0 =
+      letEffect v1 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "a") 1) v0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        v0;
+      letEffect v3 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v2);
+      (effectPure v2);
+    [[ EffectBindAssoc
+      letEffect v1 =
+        (([[ Stop
+          Foreign.Object.ST.delete
+        ]] "a") v0);
+      letEffect v1 =
+        (effectPure v0);
+      letEffect v2 =
+        (([[ Stop
+          Foreign.Object.ST.delete
+        ]] "b") v1);
+      (effectPure v1)
+    ]]
+  ]])
+---------------
+Snapshot.STObject01.test6 (Step 6)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  [[ EffectBindAssoc
+    letEffect v1 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "a") 1) v0);
+    letEffect v1 =
+      letEffect v2 =
+        ((([[ Stop
+          Foreign.Object.ST.poke
+        ]] "b") 2) v0);
+      (effectPure v0);
+    letEffect v2 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "a") v1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v1;
+    letEffect v4 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "b") v3);
+    (effectPure v3)
+  ]])
+---------------
+Snapshot.STObject01.test6 (Step 7)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) v0);
+  [[ EffectBindAssoc
+    letEffect v2 =
+      ((([[ Stop
+        Foreign.Object.ST.poke
+      ]] "b") 2) v0);
+    letEffect v2 =
+      (effectPure v0);
+    letEffect v3 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "a") v2);
+    letEffect v4 =
+      (([[ Stop
+        Foreign.Object.ST.delete
+      ]] "b") v2);
+    (effectPure v2)
+  ]])
+---------------
+Snapshot.STObject01.test6 (Step 8)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) v0);
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) v0);
+  {#- Rewrite - Inline -#}
+  let v3 =
+    v0;
+  letEffect v4 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "a") v3);
+  letEffect v5 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "b") v3);
+  (effectPure v3))
+---------------
+Snapshot.STObject01.test6 (Step 9; Final)
+  (Foreign.Object.runST letEffect v0 =
+    Foreign.Object.ST.new;
+  letEffect v1 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "a") 1) v0);
+  letEffect v2 =
+    ((([[ Stop
+      Foreign.Object.ST.poke
+    ]] "b") 2) v0);
+  letEffect v3 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "a") v0);
+  letEffect v4 =
+    (([[ Stop
+      Foreign.Object.ST.delete
+    ]] "b") v0);
+  (effectPure v0))

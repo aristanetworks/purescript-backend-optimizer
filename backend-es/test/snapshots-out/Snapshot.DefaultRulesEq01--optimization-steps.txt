@@ -1,0 +1,959 @@
+Snapshot.DefaultRulesEq01.eq (Step 0; Original)
+  (Data.Eq.eq ((Data.Eq.eqRec <PrimUndefined>) ((((Data.Eq.eqRowCons ((((Data.Eq.eqRowCons ((((Data.Eq.eqRowCons Data.Eq.eqRowNil) <PrimUndefined>) { reflectSymbol =
+      (\$__unused@v0 -> 
+        "foo"
+      )
+  }) Data.Eq.eqInt)) <PrimUndefined>) { reflectSymbol =
+      (\$__unused@v0 -> 
+        "baz"
+      )
+  }) Data.Eq.eqBoolean)) <PrimUndefined>) { reflectSymbol =
+      (\$__unused@v0 -> 
+        "bar"
+      )
+  }) Data.Eq.eqString)))
+---------------
+Snapshot.DefaultRulesEq01.eq (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      <PrimUndefined>;
+    [[ LetAssoc
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          <PrimUndefined>;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            { reflectSymbol =
+                (\$__unused@v2 -> 
+                  "foo"
+                )
+            };
+          { eqRecord =
+              (\v@v3 -> \ra@v4 -> \rb@v5 -> 
+                let get@v6 =
+                  (Record.Unsafe.unsafeGet ((
+                    v2
+                  ).reflectSymbol Type.Proxy.Proxy));
+                (booleanAnd let v7 =
+                  (get@v6 ra@v4);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\v8 -> 
+                    (== v7 v8)
+                  );
+                (v8 (get@v6 rb@v5)) {#- Rewrite - Inline -#}
+                let v7 =
+                  Type.Proxy.Proxy;
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\v1@v8 -> \v2@v9 -> 
+                    true
+                  );
+                ((v8 ra@v4) rb@v5))
+              )
+          };
+        v2;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            { reflectSymbol =
+                (\$__unused@v3 -> 
+                  "baz"
+                )
+            };
+          { eqRecord =
+              (\v@v4 -> \ra@v5 -> \rb@v6 -> 
+                let get@v7 =
+                  (Record.Unsafe.unsafeGet ((
+                    v3
+                  ).reflectSymbol Type.Proxy.Proxy));
+                (booleanAnd let v8 =
+                  (get@v7 ra@v5);
+                {#- Rewrite - Inline -#}
+                let v9 =
+                  (\v9 -> 
+                    (== v8 v9)
+                  );
+                (v9 (get@v7 rb@v6)) ((((
+                  v1
+                ).eqRecord Type.Proxy.Proxy) ra@v5) rb@v6))
+              )
+          };
+        v2;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            { reflectSymbol =
+                (\$__unused@v3 -> 
+                  "bar"
+                )
+            };
+          { eqRecord =
+              (\v@v4 -> \ra@v5 -> \rb@v6 -> 
+                let get@v7 =
+                  (Record.Unsafe.unsafeGet ((
+                    v3
+                  ).reflectSymbol Type.Proxy.Proxy));
+                (booleanAnd let v8 =
+                  (get@v7 ra@v5);
+                {#- Rewrite - Inline -#}
+                let v9 =
+                  (\v9 -> 
+                    (== v8 v9)
+                  );
+                (v9 (get@v7 rb@v6)) ((((
+                  v1
+                ).eqRecord Type.Proxy.Proxy) ra@v5) rb@v6))
+              )
+          };
+        v2;
+      let v1 =
+        { eq =
+            ((
+              v1
+            ).eqRecord Type.Proxy.Proxy)
+        };
+      v1
+    ]];
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).eq;
+  v1
+---------------
+Snapshot.DefaultRulesEq01.eq (Step 2)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["eqRecord"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        [[ UnpackOp
+          For identifier v1
+            Unpack record
+            labels = ["eqRecord"]
+          inside
+            {#- Rewrite - Inline -#}
+            let v2 =
+              { eqRecord =
+                  (\v@v2 -> \ra@v3 -> \rb@v4 -> 
+                    let get@v5 =
+                      (Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+                      let v5 =
+                        Type.Proxy.Proxy;
+                      "bar");
+                    (booleanAnd {#- Rewrite - Inline -#}
+                    let v6 =
+                      (get@v5 ra@v3);
+                    {#- Rewrite - Inline -#}
+                    let v7 =
+                      (get@v5 rb@v4);
+                    (== v6 v7) ((((
+                      v1
+                    ).eqRecord Type.Proxy.Proxy) ra@v3) rb@v4))
+                  )
+              };
+            {#- Rewrite - Inline -#}
+            let v3 =
+              { eq =
+                  ((
+                    v2
+                  ).eqRecord Type.Proxy.Proxy)
+              };
+            v3
+        ]];
+      (
+        v1
+      ).eq
+  ]]
+---------------
+Snapshot.DefaultRulesEq01.eq (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v@v0 -> \ra@v1 -> \rb@v2 -> 
+      {#- Rewrite - Inline -#}
+      let get@v3 =
+        (\v3 -> 
+          (
+            v3
+          ).foo
+        );
+      (== (get@v3 ra@v1) (get@v3 rb@v2))
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\v@v1 -> \ra@v2 -> \rb@v3 -> 
+      {#- Rewrite - Inline -#}
+      let get@v4 =
+        (\v4 -> 
+          (
+            v4
+          ).baz
+        );
+      (booleanAnd (== (get@v4 ra@v2) (get@v4 rb@v3)) (((v0 Type.Proxy.Proxy) ra@v2) rb@v3))
+    );
+  {#- Rewrite - Inline -#}
+  let v2 =
+    { eq =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          Type.Proxy.Proxy;
+        (\ra@v3 -> \rb@v4 -> 
+          {#- Rewrite - Inline -#}
+          let get@v5 =
+            (\v5 -> 
+              (
+                v5
+              ).bar
+            );
+          (booleanAnd (== (get@v5 ra@v3) (get@v5 rb@v4)) (((v1 Type.Proxy.Proxy) ra@v3) rb@v4))
+        )
+    };
+  (
+    v2
+  ).eq
+---------------
+Snapshot.DefaultRulesEq01.eq (Step 4)
+  (\ra@v0 -> \rb@v1 -> 
+    (booleanAnd (== (
+      ra@v0
+    ).bar (
+      rb@v1
+    ).bar) {#- Rewrite - Inline -#}
+    let v2 =
+      Type.Proxy.Proxy;
+    (booleanAnd (== (
+      ra@v0
+    ).baz (
+      rb@v1
+    ).baz) {#- Rewrite - Inline -#}
+    let v3 =
+      Type.Proxy.Proxy;
+    (== (
+      ra@v0
+    ).foo (
+      rb@v1
+    ).foo)))
+  )
+---------------
+Snapshot.DefaultRulesEq01.eq (Step 5; Final)
+  (\ra@v0 -> \rb@v1 -> 
+    (booleanAnd (== (
+      ra@v0
+    ).bar (
+      rb@v1
+    ).bar) (booleanAnd (== (
+      ra@v0
+    ).baz (
+      rb@v1
+    ).baz) (== (
+      ra@v0
+    ).foo (
+      rb@v1
+    ).foo)))
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test1 (Step 0; Original)
+  Snapshot.DefaultRulesEq01.eq
+---------------
+Snapshot.DefaultRulesEq01.test1 (Step 1; Final)
+  Snapshot.DefaultRulesEq01.eq
+
+===============
+
+Snapshot.DefaultRulesEq01.test10 (Step 0; Original)
+  (\x@v0 -> 
+    (Snapshot.DefaultRulesEq01.eq { foo =
+        42
+    , bar =
+        (x@v0 Data.Unit.unit)
+    , baz =
+        true
+    })
+  )
+---------------
+Snapshot.DefaultRulesEq01.test10 (Step 1)
+  (\x@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\rb@v2 -> 
+            (booleanAnd (== (
+              v1
+            ).bar (
+              rb@v2
+            ).bar) (booleanAnd (== (
+              v1
+            ).baz (
+              rb@v2
+            ).baz) (== (
+              v1
+            ).foo (
+              rb@v2
+            ).foo)))
+          );
+        v2
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test10 (Step 2)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      42;
+    let v2 =
+      (x@v0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      true;
+    (\rb@v4 -> 
+      (booleanAnd (== v2 (
+        rb@v4
+      ).bar) (booleanAnd (== v3 (
+        rb@v4
+      ).baz) (== v1 (
+        rb@v4
+      ).foo)))
+    )
+  )
+---------------
+Snapshot.DefaultRulesEq01.test10 (Step 3; Final)
+  (\x@v0 -> 
+    let v1 =
+      (x@v0 <PrimUndefined>);
+    (\rb@v2 -> 
+      (booleanAnd (== v1 (
+        rb@v2
+      ).bar) (booleanAnd (
+        rb@v2
+      ).baz (== 42 (
+        rb@v2
+      ).foo)))
+    )
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test2 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.DefaultRulesEq01.eq a@v0) b@v1)
+  )
+---------------
+Snapshot.DefaultRulesEq01.test2 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (booleanAnd (== (
+      a@v0
+    ).bar (
+      b@v1
+    ).bar) (booleanAnd (== (
+      a@v0
+    ).baz (
+      b@v1
+    ).baz) (== (
+      a@v0
+    ).foo (
+      b@v1
+    ).foo)))
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test3 (Step 0; Original)
+  (Snapshot.DefaultRulesEq01.eq { foo =
+      42
+  , bar =
+      "hello"
+  , baz =
+      false
+  })
+---------------
+Snapshot.DefaultRulesEq01.test3 (Step 1)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["foo","bar","baz"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\rb@v1 -> 
+          (booleanAnd (== (
+            v0
+          ).bar (
+            rb@v1
+          ).bar) (booleanAnd (== (
+            v0
+          ).baz (
+            rb@v1
+          ).baz) (== (
+            v0
+          ).foo (
+            rb@v1
+          ).foo)))
+        );
+      v1
+  ]]
+---------------
+Snapshot.DefaultRulesEq01.test3 (Step 2)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    42;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    "hello";
+  {#- Rewrite - Inline -#}
+  let v2 =
+    false;
+  (\rb@v3 -> 
+    (booleanAnd (== v1 (
+      rb@v3
+    ).bar) (booleanAnd (== v2 (
+      rb@v3
+    ).baz) (== v0 (
+      rb@v3
+    ).foo)))
+  )
+---------------
+Snapshot.DefaultRulesEq01.test3 (Step 3; Final)
+  (\rb@v0 -> 
+    (booleanAnd (== "hello" (
+      rb@v0
+    ).bar) (booleanAnd (not (
+      rb@v0
+    ).baz) (== 42 (
+      rb@v0
+    ).foo)))
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test4 (Step 0; Original)
+  (\a@v0 -> 
+    ((Snapshot.DefaultRulesEq01.eq { foo =
+        42
+    , bar =
+        "hello"
+    , baz =
+        false
+    }) a@v0)
+  )
+---------------
+Snapshot.DefaultRulesEq01.test4 (Step 1)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\rb@v2 -> 
+            (booleanAnd (== (
+              v1
+            ).bar (
+              rb@v2
+            ).bar) (booleanAnd (== (
+              v1
+            ).baz (
+              rb@v2
+            ).baz) (== (
+              v1
+            ).foo (
+              rb@v2
+            ).foo)))
+          );
+        (v2 a@v0)
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test4 (Step 2)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      42;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      "hello";
+    {#- Rewrite - Inline -#}
+    let v3 =
+      false;
+    (booleanAnd (== v2 (
+      a@v0
+    ).bar) (booleanAnd (== v3 (
+      a@v0
+    ).baz) (== v1 (
+      a@v0
+    ).foo)))
+  )
+---------------
+Snapshot.DefaultRulesEq01.test4 (Step 3; Final)
+  (\a@v0 -> 
+    (booleanAnd (== "hello" (
+      a@v0
+    ).bar) (booleanAnd (not (
+      a@v0
+    ).baz) (== 42 (
+      a@v0
+    ).foo)))
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test5 (Step 0; Original)
+  (\a@v0 -> 
+    ((Snapshot.DefaultRulesEq01.eq a@v0) { foo =
+        42
+    , bar =
+        "hello"
+    , baz =
+        false
+    })
+  )
+---------------
+Snapshot.DefaultRulesEq01.test5 (Step 1)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        (booleanAnd (== (
+          a@v0
+        ).bar (
+          v1
+        ).bar) (booleanAnd (== (
+          a@v0
+        ).baz (
+          v1
+        ).baz) (== (
+          a@v0
+        ).foo (
+          v1
+        ).foo)))
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test5 (Step 2)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      42;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      "hello";
+    {#- Rewrite - Inline -#}
+    let v3 =
+      false;
+    (booleanAnd (== (
+      a@v0
+    ).bar v2) (booleanAnd (== (
+      a@v0
+    ).baz v3) (== (
+      a@v0
+    ).foo v1)))
+  )
+---------------
+Snapshot.DefaultRulesEq01.test5 (Step 3; Final)
+  (\a@v0 -> 
+    (booleanAnd (== (
+      a@v0
+    ).bar "hello") (booleanAnd (not (
+      a@v0
+    ).baz) (== (
+      a@v0
+    ).foo 42)))
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test6 (Step 0; Original)
+  ((Snapshot.DefaultRulesEq01.eq { foo =
+      42
+  , bar =
+      "hello"
+  , baz =
+      false
+  }) { foo =
+      42
+  , bar =
+      "hello"
+  , baz =
+      false
+  })
+---------------
+Snapshot.DefaultRulesEq01.test6 (Step 1)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["foo","bar","baz"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\rb@v1 -> 
+          (booleanAnd (== (
+            v0
+          ).bar (
+            rb@v1
+          ).bar) (booleanAnd (== (
+            v0
+          ).baz (
+            rb@v1
+          ).baz) (== (
+            v0
+          ).foo (
+            rb@v1
+          ).foo)))
+        );
+      (v1 { foo =
+          42
+      , bar =
+          "hello"
+      , baz =
+          false
+      })
+  ]]
+---------------
+Snapshot.DefaultRulesEq01.test6 (Step 2)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    42;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    "hello";
+  {#- Rewrite - Inline -#}
+  let v2 =
+    false;
+  [[ UnpackOp
+    For identifier v3
+      Unpack record
+      labels = ["foo","bar","baz"]
+    inside
+      (booleanAnd (== v1 (
+        v3
+      ).bar) (booleanAnd (== v2 (
+        v3
+      ).baz) (== v0 (
+        v3
+      ).foo)))
+  ]]
+---------------
+Snapshot.DefaultRulesEq01.test6 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    42;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    "hello";
+  {#- Rewrite - Inline -#}
+  let v2 =
+    false;
+  (booleanAnd (== "hello" v1) (booleanAnd (not v2) (== 42 v0)))
+---------------
+Snapshot.DefaultRulesEq01.test6 (Step 4; Final)
+  true
+
+===============
+
+Snapshot.DefaultRulesEq01.test7 (Step 0; Original)
+  ((Snapshot.DefaultRulesEq01.eq { foo =
+      42
+  , bar =
+      "hello"
+  , baz =
+      false
+  }) { foo =
+      43
+  , bar =
+      "hello"
+  , baz =
+      false
+  })
+---------------
+Snapshot.DefaultRulesEq01.test7 (Step 1)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["foo","bar","baz"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\rb@v1 -> 
+          (booleanAnd (== (
+            v0
+          ).bar (
+            rb@v1
+          ).bar) (booleanAnd (== (
+            v0
+          ).baz (
+            rb@v1
+          ).baz) (== (
+            v0
+          ).foo (
+            rb@v1
+          ).foo)))
+        );
+      (v1 { foo =
+          43
+      , bar =
+          "hello"
+      , baz =
+          false
+      })
+  ]]
+---------------
+Snapshot.DefaultRulesEq01.test7 (Step 2)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    42;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    "hello";
+  {#- Rewrite - Inline -#}
+  let v2 =
+    false;
+  [[ UnpackOp
+    For identifier v3
+      Unpack record
+      labels = ["foo","bar","baz"]
+    inside
+      (booleanAnd (== v1 (
+        v3
+      ).bar) (booleanAnd (== v2 (
+        v3
+      ).baz) (== v0 (
+        v3
+      ).foo)))
+  ]]
+---------------
+Snapshot.DefaultRulesEq01.test7 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    43;
+  {#- Rewrite - Inline -#}
+  let v1 =
+    "hello";
+  {#- Rewrite - Inline -#}
+  let v2 =
+    false;
+  (booleanAnd (== "hello" v1) (booleanAnd (not v2) (== 42 v0)))
+---------------
+Snapshot.DefaultRulesEq01.test7 (Step 4; Final)
+  false
+
+===============
+
+Snapshot.DefaultRulesEq01.test8 (Step 0; Original)
+  (\x@v0 -> 
+    ((Snapshot.DefaultRulesEq01.eq { foo =
+        42
+    , bar =
+        "hello"
+    , baz =
+        false
+    }) { foo =
+        43
+    , bar =
+        (x@v0 Data.Unit.unit)
+    , baz =
+        false
+    })
+  )
+---------------
+Snapshot.DefaultRulesEq01.test8 (Step 1)
+  (\x@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\rb@v2 -> 
+            (booleanAnd (== (
+              v1
+            ).bar (
+              rb@v2
+            ).bar) (booleanAnd (== (
+              v1
+            ).baz (
+              rb@v2
+            ).baz) (== (
+              v1
+            ).foo (
+              rb@v2
+            ).foo)))
+          );
+        (v2 { foo =
+            43
+        , bar =
+            (x@v0 <PrimUndefined>)
+        , baz =
+            false
+        })
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test8 (Step 2)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      42;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      "hello";
+    {#- Rewrite - Inline -#}
+    let v3 =
+      false;
+    [[ UnpackOp
+      For identifier v4
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        (booleanAnd (== v2 (
+          v4
+        ).bar) (booleanAnd (== v3 (
+          v4
+        ).baz) (== v1 (
+          v4
+        ).foo)))
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test8 (Step 3)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      43;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (x@v0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      false;
+    (booleanAnd (== "hello" v2) (booleanAnd (not v3) (== 42 v1)))
+  )
+---------------
+Snapshot.DefaultRulesEq01.test8 (Step 4; Final)
+  (\x@v0 -> 
+    false
+  )
+
+===============
+
+Snapshot.DefaultRulesEq01.test9 (Step 0; Original)
+  (\x@v0 -> 
+    ((Snapshot.DefaultRulesEq01.eq { foo =
+        42
+    , bar =
+        "hello"
+    , baz =
+        true
+    }) { foo =
+        42
+    , bar =
+        (x@v0 Data.Unit.unit)
+    , baz =
+        true
+    })
+  )
+---------------
+Snapshot.DefaultRulesEq01.test9 (Step 1)
+  (\x@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\rb@v2 -> 
+            (booleanAnd (== (
+              v1
+            ).bar (
+              rb@v2
+            ).bar) (booleanAnd (== (
+              v1
+            ).baz (
+              rb@v2
+            ).baz) (== (
+              v1
+            ).foo (
+              rb@v2
+            ).foo)))
+          );
+        (v2 { foo =
+            42
+        , bar =
+            (x@v0 <PrimUndefined>)
+        , baz =
+            true
+        })
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test9 (Step 2)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      42;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      "hello";
+    {#- Rewrite - Inline -#}
+    let v3 =
+      true;
+    [[ UnpackOp
+      For identifier v4
+        Unpack record
+        labels = ["foo","bar","baz"]
+      inside
+        (booleanAnd (== v2 (
+          v4
+        ).bar) (booleanAnd (== v3 (
+          v4
+        ).baz) (== v1 (
+          v4
+        ).foo)))
+    ]]
+  )
+---------------
+Snapshot.DefaultRulesEq01.test9 (Step 3)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      42;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (x@v0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      true;
+    (booleanAnd (== "hello" v2) (booleanAnd v3 (== 42 v1)))
+  )
+---------------
+Snapshot.DefaultRulesEq01.test9 (Step 4; Final)
+  (\x@v0 -> 
+    (== "hello" (x@v0 <PrimUndefined>))
+  )

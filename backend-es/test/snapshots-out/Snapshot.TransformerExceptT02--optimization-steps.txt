@@ -1,0 +1,4716 @@
+Snapshot.TransformerExceptT02.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.TransformerExceptT02.add (Step 1; Final)
+  Data.Semiring.intAdd
+===============
+Snapshot.TransformerExceptT02.applicativeExceptT (Step 0; Original)
+  (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect)
+---------------
+Snapshot.TransformerExceptT02.applicativeExceptT (Step 1; Final)
+  (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect)
+===============
+Snapshot.TransformerExceptT02.apply (Step 0; Original)
+  (Control.Apply.apply (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect))
+---------------
+Snapshot.TransformerExceptT02.apply (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).apply;
+  v1
+---------------
+Snapshot.TransformerExceptT02.apply (Step 2; Final)
+  (
+    (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+  ).apply
+===============
+Snapshot.TransformerExceptT02.bind (Step 0; Original)
+  (Control.Bind.bind Snapshot.TransformerExceptT02.bindExceptT)
+---------------
+Snapshot.TransformerExceptT02.bind (Step 1; Final)
+  (
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind
+===============
+Snapshot.TransformerExceptT02.bindExceptT (Step 0; Original)
+  (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect)
+---------------
+Snapshot.TransformerExceptT02.bindExceptT (Step 1; Final)
+  (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect)
+===============
+Snapshot.TransformerExceptT02.catchError (Step 0; Original)
+  (Control.Monad.Error.Class.catchError Snapshot.TransformerExceptT02.monadErrorExceptT)
+---------------
+Snapshot.TransformerExceptT02.catchError (Step 1; Final)
+  (
+    Snapshot.TransformerExceptT02.monadErrorExceptT
+  ).catchError
+===============
+Snapshot.TransformerExceptT02.discard (Step 0; Original)
+  (Control.Bind.discard Control.Bind.discardUnit)
+---------------
+Snapshot.TransformerExceptT02.discard (Step 1; Final)
+  (
+    Control.Bind.discardUnit
+  ).discard
+===============
+Snapshot.TransformerExceptT02.discard1 (Step 0; Original)
+  (Snapshot.TransformerExceptT02.discard Snapshot.TransformerExceptT02.bindExceptT)
+---------------
+Snapshot.TransformerExceptT02.discard1 (Step 1; Final)
+  (
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind
+===============
+Snapshot.TransformerExceptT02.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordInt)
+---------------
+Snapshot.TransformerExceptT02.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+===============
+Snapshot.TransformerExceptT02.liftEffect (Step 0; Original)
+  (Effect.Class.liftEffect Effect.Class.monadEffectEffect)
+---------------
+Snapshot.TransformerExceptT02.liftEffect (Step 1; Final)
+  (
+    Effect.Class.monadEffectEffect
+  ).liftEffect
+===============
+Snapshot.TransformerExceptT02.map (Step 0; Original)
+  (Data.Functor.map Effect.functorEffect)
+---------------
+Snapshot.TransformerExceptT02.map (Step 1; Final)
+  (
+    Effect.functorEffect
+  ).map
+===============
+Snapshot.TransformerExceptT02.map1 (Step 0; Original)
+  (Data.Functor.map (Control.Monad.Except.Trans.functorExceptT Effect.functorEffect))
+---------------
+Snapshot.TransformerExceptT02.map1 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    { map =
+        (\f@v0 -> 
+          {#- Rewrite - Inline -#}
+          let v1 =
+            ((
+              Data.Either.functorEither
+            ).map f@v0);
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\a@v2 -> 
+              (effectDefer letEffect a'@v3 =
+                a@v2;
+              (effectPure (v1 a'@v3)))
+            );
+          v2
+        )
+    };
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).map;
+  v1
+---------------
+Snapshot.TransformerExceptT02.map1 (Step 2; Final)
+  (\f@v0 -> \a@v1 -> 
+    (effectDefer letEffect a'@v2 =
+      a@v1;
+    (effectPure if (isTag Data.Either.Left a'@v2) then
+      (Data.Either.Left.Either (
+        a'@v2
+      )#value0)
+    else if (isTag Data.Either.Right a'@v2) then
+      (Data.Either.Right.Either (f@v0 (
+        a'@v2
+      )#value0))
+    else
+      <PatternMatchFailure>))
+  )
+===============
+Snapshot.TransformerExceptT02.map2 (Step 0; Original)
+  (Data.Functor.map Data.Either.functorEither)
+---------------
+Snapshot.TransformerExceptT02.map2 (Step 1; Final)
+  (
+    Data.Either.functorEither
+  ).map
+===============
+Snapshot.TransformerExceptT02.monadErrorExceptT (Step 0; Original)
+  (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+---------------
+Snapshot.TransformerExceptT02.monadErrorExceptT (Step 1; Final)
+  (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+===============
+Snapshot.TransformerExceptT02.program1 (Step 0; Original)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    let discard2@v3 =
+      (Snapshot.TransformerExceptT02.discard bindExceptT1@v2);
+    let Functor0@v4 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let map3@v5 =
+      (Data.Functor.map Functor0@v4);
+    let liftEffect1@v6 =
+      (Effect.Class.liftEffect dictMonadEffect@v0);
+    let bind1@v7 =
+      (Control.Bind.bind bindExceptT1@v2);
+    let map4@v8 =
+      (Data.Functor.map (Control.Monad.Except.Trans.functorExceptT Functor0@v4));
+    let apply1@v9 =
+      (Control.Apply.apply (Control.Monad.Except.Trans.applyExceptT Monad0@v1));
+    let catchError1@v10 =
+      (Control.Monad.Error.Class.catchError (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1));
+    let applicativeExceptT1@v11 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    let pure1@v12 =
+      (Control.Applicative.pure applicativeExceptT1@v11);
+    let throwError1@v13 =
+      (Control.Monad.Error.Class.throwError (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1));
+    {#- Rewrite - Inline -#}
+    let when1@v14 =
+      (Control.Applicative.when applicativeExceptT1@v11);
+    ((discard2@v3 ((map3@v5 Data.Either.Right) (liftEffect1@v6 (Effect.Console.log "foo")))) (\$__unused@v15 -> 
+      ((bind1@v7 (liftEffect1@v6 ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10)))) (\i1@v16 -> 
+        ((bind1@v7 ((map4@v8 (\v@v17 -> 
+          ((Snapshot.TransformerExceptT02.add v@v17) 4)
+        )) ((map3@v5 (Snapshot.TransformerExceptT02.map2 (\v@v17 -> 
+          ((Snapshot.TransformerExceptT02.add v@v17) 1)
+        ))) (liftEffect1@v6 ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10)))))) (\i2@v17 -> 
+          ((bind1@v7 ((apply1@v9 ((map4@v8 Snapshot.TransformerExceptT02.add) (liftEffect1@v6 ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10))))) (liftEffect1@v6 ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10))))) (\i3@v18 -> 
+            ((bind1@v7 (((Data.Function.flip catchError1@v10) (\e@v19 -> 
+              {#- Rewrite - Inline -#}
+              let v20 =
+                ((Snapshot.TransformerExceptT02.lessThan i2@v17) 5);
+              {#- Rewrite - Inline -#}
+              let v21 =
+                (\ ->
+                  (pure1@v12 8)
+                );
+              {#- Rewrite - Inline -#}
+              let v22 =
+                (\ ->
+                  (throwError1@v13 e@v19)
+                );
+              if (== v20 true) then
+                (v21)
+              else
+                (v22)
+            )) ((bind1@v7 (liftEffect1@v6 ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10)))) (\i5@v19 -> 
+              ((discard2@v3 ((when1@v14 ((Snapshot.TransformerExceptT02.lessThan i5@v19) 5)) (throwError1@v13 "below 5"))) (\$__unused@v20 -> 
+                (pure1@v12 i5@v19)
+              ))
+            )))) (\i4@v19 -> 
+              (pure1@v12 ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add 1) i1@v16)) i2@v17)) i3@v18)) i4@v19))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerExceptT02.program1 (Step 1)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    {#- Rewrite - Inline -#}
+    let discard2@v3 =
+      (
+        bindExceptT1@v2
+      ).bind;
+    let Functor0@v4 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let map3@v5 =
+      (
+        Functor0@v4
+      ).map;
+    {#- Rewrite - Inline -#}
+    let liftEffect1@v6 =
+      (
+        dictMonadEffect@v0
+      ).liftEffect;
+    {#- Rewrite - Inline -#}
+    let bind1@v7 =
+      (
+        bindExceptT1@v2
+      ).bind;
+    let map4@v8 =
+      {#- Rewrite - Inline -#}
+      let v8 =
+        { map =
+            (\f@v8 -> 
+              ((
+                Functor0@v4
+              ).map ((
+                Data.Either.functorEither
+              ).map f@v8))
+            )
+        };
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (
+          v8
+        ).map;
+      v9;
+    let apply1@v9 =
+      {#- Rewrite - Inline -#}
+      let v9 =
+        (Control.Monad.Except.Trans.applyExceptT Monad0@v1);
+      {#- Rewrite - Inline -#}
+      let v10 =
+        (
+          v9
+        ).apply;
+      v10;
+    let catchError1@v10 =
+      {#- Rewrite - Inline -#}
+      let v10 =
+        (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1);
+      {#- Rewrite - Inline -#}
+      let v11 =
+        (
+          v10
+        ).catchError;
+      v11;
+    let applicativeExceptT1@v11 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    {#- Rewrite - Inline -#}
+    let pure1@v12 =
+      (
+        applicativeExceptT1@v11
+      ).pure;
+    let throwError1@v13 =
+      {#- Rewrite - Inline -#}
+      let v13 =
+        (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1);
+      {#- Rewrite - Inline -#}
+      let v14 =
+        (
+          v13
+        ).throwError;
+      v14;
+    ((discard2@v3 ((map3@v5 Data.Either.Right) (liftEffect1@v6 (Effect.Console.log "foo")))) (\$__unused@v14 -> 
+      ((bind1@v7 (liftEffect1@v6 let v15 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v16 =
+        v15;
+      (effectPure (Data.Either.Right.Either a'@v16))))) (\i1@v15 -> 
+        ((bind1@v7 ((map4@v8 (\v@v16 -> 
+          {#- Rewrite - Inline -#}
+          let v17 =
+            4;
+          (add v@v16 v17)
+        )) ((map3@v5 {#- Rewrite - Inline -#}
+        let v16 =
+          (\v@v16 -> 
+            {#- Rewrite - Inline -#}
+            let v17 =
+              1;
+            (add v@v16 v17)
+          );
+        {#- Rewrite - Inline -#}
+        let v17 =
+          (\m@v17 -> 
+            if (isTag Data.Either.Left m@v17) then
+              (Data.Either.Left.Either (
+                m@v17
+              )#value0)
+            else if (isTag Data.Either.Right m@v17) then
+              (Data.Either.Right.Either (v16 (
+                m@v17
+              )#value0))
+            else
+              <PatternMatchFailure>
+          );
+        v17) (liftEffect1@v6 let v16 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v17 =
+          v16;
+        (effectPure (Data.Either.Right.Either a'@v17))))))) (\i2@v16 -> 
+          ((bind1@v7 ((apply1@v9 ((map4@v8 Data.Semiring.intAdd) (liftEffect1@v6 let v17 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v18 =
+            v17;
+          (effectPure (Data.Either.Right.Either a'@v18)))))) (liftEffect1@v6 let v17 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v18 =
+            v17;
+          (effectPure (Data.Either.Right.Either a'@v18)))))) (\i3@v17 -> 
+            ((bind1@v7 {#- Rewrite - Inline -#}
+            let v18 =
+              (\e@v18 -> 
+                if {#- Rewrite - Inline -#}
+                  let v19 =
+                    5;
+                  (< i2@v16 v19) then
+                  (pure1@v12 8)
+                else
+                  (throwError1@v13 e@v18)
+              );
+            {#- Rewrite - Inline -#}
+            let v19 =
+              ((bind1@v7 (liftEffect1@v6 let v19 =
+                ((Effect.Random.randomInt 1) 10);
+              (effectDefer letEffect a'@v20 =
+                v19;
+              (effectPure (Data.Either.Right.Either a'@v20))))) (\i5@v19 -> 
+                ((discard2@v3 {#- Rewrite - Inline -#}
+                let v20 =
+                  {#- Rewrite - Inline -#}
+                  let v20 =
+                    5;
+                  (< i5@v19 v20);
+                let v21 =
+                  (throwError1@v13 "below 5");
+                if v20 then
+                  v21
+                else
+                  ((
+                    applicativeExceptT1@v11
+                  ).pure <PrimUndefined>)) (\$__unused@v20 -> 
+                  (pure1@v12 i5@v19)
+                ))
+              ));
+            ((catchError1@v10 v19) v18)) (\i4@v18 -> 
+              (pure1@v12 [[ LetAssoc
+                let v19 =
+                  {#- Rewrite - Inline -#}
+                  let v19 =
+                    1;
+                  {#- Rewrite - Inline -#}
+                  let v20 =
+                    (\v20 -> 
+                      (add v19 v20)
+                    );
+                  (v20 i1@v15);
+                let v19 =
+                  {#- Rewrite - Inline -#}
+                  let v20 =
+                    (\v20 -> 
+                      (add v19 v20)
+                    );
+                  (v20 i2@v16);
+                let v19 =
+                  {#- Rewrite - Inline -#}
+                  let v20 =
+                    (\v20 -> 
+                      (add v19 v20)
+                    );
+                  (v20 i3@v17);
+                {#- Rewrite - Inline -#}
+                let v20 =
+                  (\v20 -> 
+                    (add v19 v20)
+                  );
+                (v20 i4@v18)
+              ]])
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerExceptT02.program1 (Step 2)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let map4@v4 =
+      (\f@v4 -> 
+        ((
+          Functor0@v3
+        ).map ((
+          Data.Either.functorEither
+        ).map f@v4))
+      );
+    let apply1@v5 =
+      (
+        (Control.Monad.Except.Trans.applyExceptT Monad0@v1)
+      ).apply;
+    let catchError1@v6 =
+      (
+        (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1)
+      ).catchError;
+    let applicativeExceptT1@v7 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    let throwError1@v8 =
+      (
+        (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1)
+      ).throwError;
+    (((
+      bindExceptT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Either.Right) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v9 -> 
+      (((
+        bindExceptT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v10 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v11 =
+        v10;
+      (effectPure (Data.Either.Right.Either a'@v11))))) (\i1@v10 -> 
+        (((
+          bindExceptT1@v2
+        ).bind ((map4@v4 (\v@v11 -> 
+          (add v@v11 4)
+        )) (((
+          Functor0@v3
+        ).map (\m@v11 -> 
+          if (isTag Data.Either.Left m@v11) then
+            (Data.Either.Left.Either (
+              m@v11
+            )#value0)
+          else if (isTag Data.Either.Right m@v11) then
+            (Data.Either.Right.Either {#- Rewrite - Inline -#}
+            let v12 =
+              (
+                m@v11
+              )#value0;
+            (add v12 1))
+          else
+            <PatternMatchFailure>
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v11 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v12 =
+          v11;
+        (effectPure (Data.Either.Right.Either a'@v12))))))) (\i2@v11 -> 
+          (((
+            bindExceptT1@v2
+          ).bind ((apply1@v5 ((map4@v4 Data.Semiring.intAdd) ((
+            dictMonadEffect@v0
+          ).liftEffect let v12 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v13 =
+            v12;
+          (effectPure (Data.Either.Right.Either a'@v13)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v12 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v13 =
+            v12;
+          (effectPure (Data.Either.Right.Either a'@v13)))))) (\i3@v12 -> 
+            (((
+              bindExceptT1@v2
+            ).bind ((catchError1@v6 (((
+              bindExceptT1@v2
+            ).bind ((
+              dictMonadEffect@v0
+            ).liftEffect let v13 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v14 =
+              v13;
+            (effectPure (Data.Either.Right.Either a'@v14))))) (\i5@v13 -> 
+              (((
+                bindExceptT1@v2
+              ).bind let v14 =
+                (throwError1@v8 "below 5");
+              if (< i5@v13 5) then
+                v14
+              else
+                ((
+                  applicativeExceptT1@v7
+                ).pure <PrimUndefined>)) (\$__unused@v14 -> 
+                ((
+                  applicativeExceptT1@v7
+                ).pure i5@v13)
+              ))
+            ))) (\e@v13 -> 
+              if (< i2@v11 5) then
+                ((
+                  applicativeExceptT1@v7
+                ).pure 8)
+              else
+                (throwError1@v8 e@v13)
+            ))) (\i4@v13 -> 
+              ((
+                applicativeExceptT1@v7
+              ).pure {#- Rewrite - Inline -#}
+              let v14 =
+                (add 1 i1@v10);
+              {#- Rewrite - Inline -#}
+              let v15 =
+                (add v14 i2@v11);
+              {#- Rewrite - Inline -#}
+              let v16 =
+                (add v15 i3@v12);
+              (add v16 i4@v13))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerExceptT02.program1 (Step 3)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Except.Trans.applyExceptT Monad0@v1)
+      ).apply;
+    let catchError1@v5 =
+      (
+        (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1)
+      ).catchError;
+    let applicativeExceptT1@v6 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    let throwError1@v7 =
+      (
+        (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1)
+      ).throwError;
+    (((
+      bindExceptT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Either.Right) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v8 -> 
+      (((
+        bindExceptT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v9 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v10 =
+        v9;
+      (effectPure (Data.Either.Right.Either a'@v10))))) (\i1@v9 -> 
+        (((
+          bindExceptT1@v2
+        ).bind {#- Rewrite - Inline -#}
+        let v10 =
+          (\v@v10 -> 
+            (add v@v10 4)
+          );
+        (((
+          Functor0@v3
+        ).map ((
+          Data.Either.functorEither
+        ).map v10)) (((
+          Functor0@v3
+        ).map (\m@v11 -> 
+          if (isTag Data.Either.Left m@v11) then
+            (Data.Either.Left.Either (
+              m@v11
+            )#value0)
+          else if (isTag Data.Either.Right m@v11) then
+            (Data.Either.Right.Either (add (
+              m@v11
+            )#value0 1))
+          else
+            <PatternMatchFailure>
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v11 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v12 =
+          v11;
+        (effectPure (Data.Either.Right.Either a'@v12))))))) (\i2@v10 -> 
+          (((
+            bindExceptT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Either.functorEither
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) (\i3@v11 -> 
+            (((
+              bindExceptT1@v2
+            ).bind ((catchError1@v5 (((
+              bindExceptT1@v2
+            ).bind ((
+              dictMonadEffect@v0
+            ).liftEffect let v12 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v13 =
+              v12;
+            (effectPure (Data.Either.Right.Either a'@v13))))) (\i5@v12 -> 
+              (((
+                bindExceptT1@v2
+              ).bind let v13 =
+                (throwError1@v7 "below 5");
+              if (< i5@v12 5) then
+                v13
+              else
+                ((
+                  applicativeExceptT1@v6
+                ).pure <PrimUndefined>)) (\$__unused@v13 -> 
+                ((
+                  applicativeExceptT1@v6
+                ).pure i5@v12)
+              ))
+            ))) (\e@v12 -> 
+              if (< i2@v10 5) then
+                ((
+                  applicativeExceptT1@v6
+                ).pure 8)
+              else
+                (throwError1@v7 e@v12)
+            ))) (\i4@v12 -> 
+              ((
+                applicativeExceptT1@v6
+              ).pure (add (add (add (add 1 i1@v9) i2@v10) i3@v11) i4@v12))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerExceptT02.program1 (Step 4)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Except.Trans.applyExceptT Monad0@v1)
+      ).apply;
+    let catchError1@v5 =
+      (
+        (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1)
+      ).catchError;
+    let applicativeExceptT1@v6 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    let throwError1@v7 =
+      (
+        (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1)
+      ).throwError;
+    (((
+      bindExceptT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Either.Right) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v8 -> 
+      (((
+        bindExceptT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v9 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v10 =
+        v9;
+      (effectPure (Data.Either.Right.Either a'@v10))))) (\i1@v9 -> 
+        (((
+          bindExceptT1@v2
+        ).bind (((
+          Functor0@v3
+        ).map {#- Rewrite - Inline -#}
+        let v10 =
+          (\v@v10 -> 
+            (add v@v10 4)
+          );
+        {#- Rewrite - Inline -#}
+        let v11 =
+          (\m@v11 -> 
+            if (isTag Data.Either.Left m@v11) then
+              (Data.Either.Left.Either (
+                m@v11
+              )#value0)
+            else if (isTag Data.Either.Right m@v11) then
+              (Data.Either.Right.Either (v10 (
+                m@v11
+              )#value0))
+            else
+              <PatternMatchFailure>
+          );
+        v11) (((
+          Functor0@v3
+        ).map (\m@v10 -> 
+          if (isTag Data.Either.Left m@v10) then
+            (Data.Either.Left.Either (
+              m@v10
+            )#value0)
+          else if (isTag Data.Either.Right m@v10) then
+            (Data.Either.Right.Either (add (
+              m@v10
+            )#value0 1))
+          else
+            <PatternMatchFailure>
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v10 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v11 =
+          v10;
+        (effectPure (Data.Either.Right.Either a'@v11))))))) (\i2@v10 -> 
+          (((
+            bindExceptT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Either.functorEither
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) (\i3@v11 -> 
+            (((
+              bindExceptT1@v2
+            ).bind ((catchError1@v5 (((
+              bindExceptT1@v2
+            ).bind ((
+              dictMonadEffect@v0
+            ).liftEffect let v12 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v13 =
+              v12;
+            (effectPure (Data.Either.Right.Either a'@v13))))) (\i5@v12 -> 
+              (((
+                bindExceptT1@v2
+              ).bind let v13 =
+                (throwError1@v7 "below 5");
+              if (< i5@v12 5) then
+                v13
+              else
+                ((
+                  applicativeExceptT1@v6
+                ).pure <PrimUndefined>)) (\$__unused@v13 -> 
+                ((
+                  applicativeExceptT1@v6
+                ).pure i5@v12)
+              ))
+            ))) (\e@v12 -> 
+              if (< i2@v10 5) then
+                ((
+                  applicativeExceptT1@v6
+                ).pure 8)
+              else
+                (throwError1@v7 e@v12)
+            ))) (\i4@v12 -> 
+              ((
+                applicativeExceptT1@v6
+              ).pure (add (add (add (add 1 i1@v9) i2@v10) i3@v11) i4@v12))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerExceptT02.program1 (Step 5)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Except.Trans.applyExceptT Monad0@v1)
+      ).apply;
+    let catchError1@v5 =
+      (
+        (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1)
+      ).catchError;
+    let applicativeExceptT1@v6 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    let throwError1@v7 =
+      (
+        (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1)
+      ).throwError;
+    (((
+      bindExceptT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Either.Right) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v8 -> 
+      (((
+        bindExceptT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v9 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v10 =
+        v9;
+      (effectPure (Data.Either.Right.Either a'@v10))))) (\i1@v9 -> 
+        (((
+          bindExceptT1@v2
+        ).bind (((
+          Functor0@v3
+        ).map (\m@v10 -> 
+          if (isTag Data.Either.Left m@v10) then
+            (Data.Either.Left.Either (
+              m@v10
+            )#value0)
+          else if (isTag Data.Either.Right m@v10) then
+            (Data.Either.Right.Either {#- Rewrite - Inline -#}
+            let v11 =
+              (
+                m@v10
+              )#value0;
+            (add v11 4))
+          else
+            <PatternMatchFailure>
+        )) (((
+          Functor0@v3
+        ).map (\m@v10 -> 
+          if (isTag Data.Either.Left m@v10) then
+            (Data.Either.Left.Either (
+              m@v10
+            )#value0)
+          else if (isTag Data.Either.Right m@v10) then
+            (Data.Either.Right.Either (add (
+              m@v10
+            )#value0 1))
+          else
+            <PatternMatchFailure>
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v10 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v11 =
+          v10;
+        (effectPure (Data.Either.Right.Either a'@v11))))))) (\i2@v10 -> 
+          (((
+            bindExceptT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Either.functorEither
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) (\i3@v11 -> 
+            (((
+              bindExceptT1@v2
+            ).bind ((catchError1@v5 (((
+              bindExceptT1@v2
+            ).bind ((
+              dictMonadEffect@v0
+            ).liftEffect let v12 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v13 =
+              v12;
+            (effectPure (Data.Either.Right.Either a'@v13))))) (\i5@v12 -> 
+              (((
+                bindExceptT1@v2
+              ).bind let v13 =
+                (throwError1@v7 "below 5");
+              if (< i5@v12 5) then
+                v13
+              else
+                ((
+                  applicativeExceptT1@v6
+                ).pure <PrimUndefined>)) (\$__unused@v13 -> 
+                ((
+                  applicativeExceptT1@v6
+                ).pure i5@v12)
+              ))
+            ))) (\e@v12 -> 
+              if (< i2@v10 5) then
+                ((
+                  applicativeExceptT1@v6
+                ).pure 8)
+              else
+                (throwError1@v7 e@v12)
+            ))) (\i4@v12 -> 
+              ((
+                applicativeExceptT1@v6
+              ).pure (add (add (add (add 1 i1@v9) i2@v10) i3@v11) i4@v12))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+---------------
+Snapshot.TransformerExceptT02.program1 (Step 6; Final)
+  (\dictMonadEffect@v0 -> 
+    let Monad0@v1 =
+      ((
+        dictMonadEffect@v0
+      ).Monad0 <PrimUndefined>);
+    let bindExceptT1@v2 =
+      (Control.Monad.Except.Trans.bindExceptT Monad0@v1);
+    let Functor0@v3 =
+      ((
+        ((
+          ((
+            Monad0@v1
+          ).Bind1 <PrimUndefined>)
+        ).Apply0 <PrimUndefined>)
+      ).Functor0 <PrimUndefined>);
+    let apply1@v4 =
+      (
+        (Control.Monad.Except.Trans.applyExceptT Monad0@v1)
+      ).apply;
+    let catchError1@v5 =
+      (
+        (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v1)
+      ).catchError;
+    let applicativeExceptT1@v6 =
+      (Control.Monad.Except.Trans.applicativeExceptT Monad0@v1);
+    let throwError1@v7 =
+      (
+        (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v1)
+      ).throwError;
+    (((
+      bindExceptT1@v2
+    ).bind (((
+      Functor0@v3
+    ).map Data.Either.Right) ((
+      dictMonadEffect@v0
+    ).liftEffect (Effect.Console.log "foo")))) (\$__unused@v8 -> 
+      (((
+        bindExceptT1@v2
+      ).bind ((
+        dictMonadEffect@v0
+      ).liftEffect let v9 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v10 =
+        v9;
+      (effectPure (Data.Either.Right.Either a'@v10))))) (\i1@v9 -> 
+        (((
+          bindExceptT1@v2
+        ).bind (((
+          Functor0@v3
+        ).map (\m@v10 -> 
+          if (isTag Data.Either.Left m@v10) then
+            (Data.Either.Left.Either (
+              m@v10
+            )#value0)
+          else if (isTag Data.Either.Right m@v10) then
+            (Data.Either.Right.Either (add (
+              m@v10
+            )#value0 4))
+          else
+            <PatternMatchFailure>
+        )) (((
+          Functor0@v3
+        ).map (\m@v10 -> 
+          if (isTag Data.Either.Left m@v10) then
+            (Data.Either.Left.Either (
+              m@v10
+            )#value0)
+          else if (isTag Data.Either.Right m@v10) then
+            (Data.Either.Right.Either (add (
+              m@v10
+            )#value0 1))
+          else
+            <PatternMatchFailure>
+        )) ((
+          dictMonadEffect@v0
+        ).liftEffect let v10 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v11 =
+          v10;
+        (effectPure (Data.Either.Right.Either a'@v11))))))) (\i2@v10 -> 
+          (((
+            bindExceptT1@v2
+          ).bind ((apply1@v4 (((
+            Functor0@v3
+          ).map ((
+            Data.Either.functorEither
+          ).map Data.Semiring.intAdd)) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) ((
+            dictMonadEffect@v0
+          ).liftEffect let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) (\i3@v11 -> 
+            (((
+              bindExceptT1@v2
+            ).bind ((catchError1@v5 (((
+              bindExceptT1@v2
+            ).bind ((
+              dictMonadEffect@v0
+            ).liftEffect let v12 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v13 =
+              v12;
+            (effectPure (Data.Either.Right.Either a'@v13))))) (\i5@v12 -> 
+              (((
+                bindExceptT1@v2
+              ).bind let v13 =
+                (throwError1@v7 "below 5");
+              if (< i5@v12 5) then
+                v13
+              else
+                ((
+                  applicativeExceptT1@v6
+                ).pure <PrimUndefined>)) (\$__unused@v13 -> 
+                ((
+                  applicativeExceptT1@v6
+                ).pure i5@v12)
+              ))
+            ))) (\e@v12 -> 
+              if (< i2@v10 5) then
+                ((
+                  applicativeExceptT1@v6
+                ).pure 8)
+              else
+                (throwError1@v7 e@v12)
+            ))) (\i4@v12 -> 
+              ((
+                applicativeExceptT1@v6
+              ).pure (add (add (add (add 1 i1@v9) i2@v10) i3@v11) i4@v12))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )
+===============
+Snapshot.TransformerExceptT02.program2 (Step 0; Original)
+  (\dictMonadError@v0 -> 
+    let catchError1@v1 =
+      (Control.Monad.Error.Class.catchError dictMonadError@v0);
+    let throwError1@v2 =
+      (Control.Monad.Error.Class.throwError ((
+        dictMonadError@v0
+      ).MonadThrow0 <PrimUndefined>));
+    (\dictMonadEffect@v3 -> 
+      let Monad0@v4 =
+        ((
+          dictMonadEffect@v3
+        ).Monad0 <PrimUndefined>);
+      let Bind1@v5 =
+        ((
+          Monad0@v4
+        ).Bind1 <PrimUndefined>);
+      let discard2@v6 =
+        (Snapshot.TransformerExceptT02.discard Bind1@v5);
+      let liftEffect1@v7 =
+        (Effect.Class.liftEffect dictMonadEffect@v3);
+      let bind1@v8 =
+        (Control.Bind.bind Bind1@v5);
+      let Apply0@v9 =
+        ((
+          Bind1@v5
+        ).Apply0 <PrimUndefined>);
+      let map3@v10 =
+        (Data.Functor.map ((
+          Apply0@v9
+        ).Functor0 <PrimUndefined>));
+      let apply1@v11 =
+        (Control.Apply.apply Apply0@v9);
+      let Applicative0@v12 =
+        ((
+          Monad0@v4
+        ).Applicative0 <PrimUndefined>);
+      let pure1@v13 =
+        (Control.Applicative.pure Applicative0@v12);
+      {#- Rewrite - Inline -#}
+      let when1@v14 =
+        (Control.Applicative.when Applicative0@v12);
+      ((discard2@v6 (liftEffect1@v7 (Effect.Console.log "foo"))) (\$__unused@v15 -> 
+        ((bind1@v8 (liftEffect1@v7 ((Effect.Random.randomInt 1) 10))) (\i1@v16 -> 
+          ((bind1@v8 ((map3@v10 (\v@v17 -> 
+            ((Snapshot.TransformerExceptT02.add v@v17) 4)
+          )) (liftEffect1@v7 ((Effect.Random.randomInt 1) 10)))) (\i2@v17 -> 
+            ((bind1@v8 ((apply1@v11 ((map3@v10 Snapshot.TransformerExceptT02.add) (liftEffect1@v7 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v7 ((Effect.Random.randomInt 1) 10)))) (\i3@v18 -> 
+              ((bind1@v8 (((Data.Function.flip catchError1@v1) (\e@v19 -> 
+                {#- Rewrite - Inline -#}
+                let v20 =
+                  ((Snapshot.TransformerExceptT02.lessThan i2@v17) 5);
+                {#- Rewrite - Inline -#}
+                let v21 =
+                  (\ ->
+                    (pure1@v13 8)
+                  );
+                {#- Rewrite - Inline -#}
+                let v22 =
+                  (\ ->
+                    (throwError1@v2 e@v19)
+                  );
+                if (== v20 true) then
+                  (v21)
+                else
+                  (v22)
+              )) ((bind1@v8 (liftEffect1@v7 ((Effect.Random.randomInt 1) 10))) (\i5@v19 -> 
+                ((discard2@v6 ((when1@v14 ((Snapshot.TransformerExceptT02.lessThan i5@v19) 5)) (throwError1@v2 "below 5"))) (\$__unused@v20 -> 
+                  (pure1@v13 i5@v19)
+                ))
+              )))) (\i4@v19 -> 
+                (pure1@v13 ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add 1) i1@v16)) i2@v17)) i3@v18)) i4@v19))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+---------------
+Snapshot.TransformerExceptT02.program2 (Step 1)
+  (\dictMonadError@v0 -> 
+    {#- Rewrite - Inline -#}
+    let catchError1@v1 =
+      (
+        dictMonadError@v0
+      ).catchError;
+    let throwError1@v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        ((
+          dictMonadError@v0
+        ).MonadThrow0 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v2
+        ).throwError;
+      v3;
+    (\dictMonadEffect@v3 -> 
+      let Monad0@v4 =
+        ((
+          dictMonadEffect@v3
+        ).Monad0 <PrimUndefined>);
+      let Bind1@v5 =
+        ((
+          Monad0@v4
+        ).Bind1 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let discard2@v6 =
+        (
+          Bind1@v5
+        ).bind;
+      {#- Rewrite - Inline -#}
+      let liftEffect1@v7 =
+        (
+          dictMonadEffect@v3
+        ).liftEffect;
+      {#- Rewrite - Inline -#}
+      let bind1@v8 =
+        (
+          Bind1@v5
+        ).bind;
+      let Apply0@v9 =
+        ((
+          Bind1@v5
+        ).Apply0 <PrimUndefined>);
+      let map3@v10 =
+        {#- Rewrite - Inline -#}
+        let v10 =
+          ((
+            Apply0@v9
+          ).Functor0 <PrimUndefined>);
+        {#- Rewrite - Inline -#}
+        let v11 =
+          (
+            v10
+          ).map;
+        v11;
+      {#- Rewrite - Inline -#}
+      let apply1@v11 =
+        (
+          Apply0@v9
+        ).apply;
+      let Applicative0@v12 =
+        ((
+          Monad0@v4
+        ).Applicative0 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let pure1@v13 =
+        (
+          Applicative0@v12
+        ).pure;
+      ((discard2@v6 (liftEffect1@v7 (Effect.Console.log "foo"))) (\$__unused@v14 -> 
+        ((bind1@v8 (liftEffect1@v7 ((Effect.Random.randomInt 1) 10))) (\i1@v15 -> 
+          ((bind1@v8 ((map3@v10 (\v@v16 -> 
+            {#- Rewrite - Inline -#}
+            let v17 =
+              4;
+            (add v@v16 v17)
+          )) (liftEffect1@v7 ((Effect.Random.randomInt 1) 10)))) (\i2@v16 -> 
+            ((bind1@v8 ((apply1@v11 ((map3@v10 Data.Semiring.intAdd) (liftEffect1@v7 ((Effect.Random.randomInt 1) 10)))) (liftEffect1@v7 ((Effect.Random.randomInt 1) 10)))) (\i3@v17 -> 
+              ((bind1@v8 {#- Rewrite - Inline -#}
+              let v18 =
+                (\e@v18 -> 
+                  if {#- Rewrite - Inline -#}
+                    let v19 =
+                      5;
+                    (< i2@v16 v19) then
+                    (pure1@v13 8)
+                  else
+                    (throwError1@v2 e@v18)
+                );
+              {#- Rewrite - Inline -#}
+              let v19 =
+                ((bind1@v8 (liftEffect1@v7 ((Effect.Random.randomInt 1) 10))) (\i5@v19 -> 
+                  ((discard2@v6 {#- Rewrite - Inline -#}
+                  let v20 =
+                    {#- Rewrite - Inline -#}
+                    let v20 =
+                      5;
+                    (< i5@v19 v20);
+                  let v21 =
+                    (throwError1@v2 "below 5");
+                  if v20 then
+                    v21
+                  else
+                    ((
+                      Applicative0@v12
+                    ).pure <PrimUndefined>)) (\$__unused@v20 -> 
+                    (pure1@v13 i5@v19)
+                  ))
+                ));
+              ((catchError1@v1 v19) v18)) (\i4@v18 -> 
+                (pure1@v13 [[ LetAssoc
+                  let v19 =
+                    {#- Rewrite - Inline -#}
+                    let v19 =
+                      1;
+                    {#- Rewrite - Inline -#}
+                    let v20 =
+                      (\v20 -> 
+                        (add v19 v20)
+                      );
+                    (v20 i1@v15);
+                  let v19 =
+                    {#- Rewrite - Inline -#}
+                    let v20 =
+                      (\v20 -> 
+                        (add v19 v20)
+                      );
+                    (v20 i2@v16);
+                  let v19 =
+                    {#- Rewrite - Inline -#}
+                    let v20 =
+                      (\v20 -> 
+                        (add v19 v20)
+                      );
+                    (v20 i3@v17);
+                  {#- Rewrite - Inline -#}
+                  let v20 =
+                    (\v20 -> 
+                      (add v19 v20)
+                    );
+                  (v20 i4@v18)
+                ]])
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+---------------
+Snapshot.TransformerExceptT02.program2 (Step 2)
+  (\dictMonadError@v0 -> 
+    let throwError1@v1 =
+      (
+        ((
+          dictMonadError@v0
+        ).MonadThrow0 <PrimUndefined>)
+      ).throwError;
+    (\dictMonadEffect@v2 -> 
+      let Monad0@v3 =
+        ((
+          dictMonadEffect@v2
+        ).Monad0 <PrimUndefined>);
+      let Bind1@v4 =
+        ((
+          Monad0@v3
+        ).Bind1 <PrimUndefined>);
+      let Apply0@v5 =
+        ((
+          Bind1@v4
+        ).Apply0 <PrimUndefined>);
+      let map3@v6 =
+        (
+          ((
+            Apply0@v5
+          ).Functor0 <PrimUndefined>)
+        ).map;
+      let Applicative0@v7 =
+        ((
+          Monad0@v3
+        ).Applicative0 <PrimUndefined>);
+      (((
+        Bind1@v4
+      ).bind ((
+        dictMonadEffect@v2
+      ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v8 -> 
+        (((
+          Bind1@v4
+        ).bind ((
+          dictMonadEffect@v2
+        ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v9 -> 
+          (((
+            Bind1@v4
+          ).bind ((map3@v6 (\v@v10 -> 
+            (add v@v10 4)
+          )) ((
+            dictMonadEffect@v2
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v10 -> 
+            (((
+              Bind1@v4
+            ).bind (((
+              Apply0@v5
+            ).apply ((map3@v6 Data.Semiring.intAdd) ((
+              dictMonadEffect@v2
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+              dictMonadEffect@v2
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v11 -> 
+              (((
+                Bind1@v4
+              ).bind (((
+                dictMonadError@v0
+              ).catchError (((
+                Bind1@v4
+              ).bind ((
+                dictMonadEffect@v2
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v12 -> 
+                (((
+                  Bind1@v4
+                ).bind let v13 =
+                  (throwError1@v1 "below 5");
+                if (< i5@v12 5) then
+                  v13
+                else
+                  ((
+                    Applicative0@v7
+                  ).pure <PrimUndefined>)) (\$__unused@v13 -> 
+                  ((
+                    Applicative0@v7
+                  ).pure i5@v12)
+                ))
+              ))) (\e@v12 -> 
+                if (< i2@v10 5) then
+                  ((
+                    Applicative0@v7
+                  ).pure 8)
+                else
+                  (throwError1@v1 e@v12)
+              ))) (\i4@v12 -> 
+                ((
+                  Applicative0@v7
+                ).pure {#- Rewrite - Inline -#}
+                let v13 =
+                  (add 1 i1@v9);
+                {#- Rewrite - Inline -#}
+                let v14 =
+                  (add v13 i2@v10);
+                {#- Rewrite - Inline -#}
+                let v15 =
+                  (add v14 i3@v11);
+                (add v15 i4@v12))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+---------------
+Snapshot.TransformerExceptT02.program2 (Step 3; Final)
+  (\dictMonadError@v0 -> 
+    let throwError1@v1 =
+      (
+        ((
+          dictMonadError@v0
+        ).MonadThrow0 <PrimUndefined>)
+      ).throwError;
+    (\dictMonadEffect@v2 -> 
+      let Monad0@v3 =
+        ((
+          dictMonadEffect@v2
+        ).Monad0 <PrimUndefined>);
+      let Bind1@v4 =
+        ((
+          Monad0@v3
+        ).Bind1 <PrimUndefined>);
+      let Apply0@v5 =
+        ((
+          Bind1@v4
+        ).Apply0 <PrimUndefined>);
+      let map3@v6 =
+        (
+          ((
+            Apply0@v5
+          ).Functor0 <PrimUndefined>)
+        ).map;
+      let Applicative0@v7 =
+        ((
+          Monad0@v3
+        ).Applicative0 <PrimUndefined>);
+      (((
+        Bind1@v4
+      ).bind ((
+        dictMonadEffect@v2
+      ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v8 -> 
+        (((
+          Bind1@v4
+        ).bind ((
+          dictMonadEffect@v2
+        ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v9 -> 
+          (((
+            Bind1@v4
+          ).bind ((map3@v6 (\v@v10 -> 
+            (add v@v10 4)
+          )) ((
+            dictMonadEffect@v2
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v10 -> 
+            (((
+              Bind1@v4
+            ).bind (((
+              Apply0@v5
+            ).apply ((map3@v6 Data.Semiring.intAdd) ((
+              dictMonadEffect@v2
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+              dictMonadEffect@v2
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v11 -> 
+              (((
+                Bind1@v4
+              ).bind (((
+                dictMonadError@v0
+              ).catchError (((
+                Bind1@v4
+              ).bind ((
+                dictMonadEffect@v2
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v12 -> 
+                (((
+                  Bind1@v4
+                ).bind let v13 =
+                  (throwError1@v1 "below 5");
+                if (< i5@v12 5) then
+                  v13
+                else
+                  ((
+                    Applicative0@v7
+                  ).pure <PrimUndefined>)) (\$__unused@v13 -> 
+                  ((
+                    Applicative0@v7
+                  ).pure i5@v12)
+                ))
+              ))) (\e@v12 -> 
+                if (< i2@v10 5) then
+                  ((
+                    Applicative0@v7
+                  ).pure 8)
+                else
+                  (throwError1@v1 e@v12)
+              ))) (\i4@v12 -> 
+                ((
+                  Applicative0@v7
+                ).pure (add (add (add (add 1 i1@v9) i2@v10) i3@v11) i4@v12))
+              ))
+            ))
+          ))
+        ))
+      ))
+    )
+  )
+===============
+Snapshot.TransformerExceptT02.pure (Step 0; Original)
+  (Control.Applicative.pure Snapshot.TransformerExceptT02.applicativeExceptT)
+---------------
+Snapshot.TransformerExceptT02.pure (Step 1; Final)
+  (
+    Snapshot.TransformerExceptT02.applicativeExceptT
+  ).pure
+===============
+Snapshot.TransformerExceptT02.test1 (Step 0; Original)
+  (Control.Monad.Except.Trans.runExceptT ((Snapshot.TransformerExceptT02.discard1 ((Snapshot.TransformerExceptT02.map Data.Either.Right) (Snapshot.TransformerExceptT02.liftEffect (Effect.Console.log "foo")))) (\$__unused@v0 -> 
+    ((Snapshot.TransformerExceptT02.bind (Snapshot.TransformerExceptT02.liftEffect ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10)))) (\i1@v1 -> 
+      ((Snapshot.TransformerExceptT02.discard1 ((Snapshot.TransformerExceptT02.when ((Snapshot.TransformerExceptT02.lessThan i1@v1) 5)) (Snapshot.TransformerExceptT02.throwError "oh no!"))) (\$__unused@v2 -> 
+        ((Snapshot.TransformerExceptT02.bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+          ((Snapshot.TransformerExceptT02.add v@v3) 4)
+        )) ((Snapshot.TransformerExceptT02.map (Snapshot.TransformerExceptT02.map2 (\v@v3 -> 
+          ((Snapshot.TransformerExceptT02.add v@v3) 1)
+        ))) (Snapshot.TransformerExceptT02.liftEffect ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10)))))) (\i2@v3 -> 
+          ((Snapshot.TransformerExceptT02.bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Snapshot.TransformerExceptT02.add) (Snapshot.TransformerExceptT02.liftEffect ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10))))) (Snapshot.TransformerExceptT02.liftEffect ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10))))) (\i3@v4 -> 
+            ((Snapshot.TransformerExceptT02.bind (((Data.Function.flip Snapshot.TransformerExceptT02.catchError) (\e@v5 -> 
+              {#- Rewrite - Inline -#}
+              let v6 =
+                ((Snapshot.TransformerExceptT02.lessThan i2@v3) 5);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                (\ ->
+                  (Snapshot.TransformerExceptT02.pure 8)
+                );
+              {#- Rewrite - Inline -#}
+              let v8 =
+                (\ ->
+                  (Snapshot.TransformerExceptT02.throwError e@v5)
+                );
+              if (== v6 true) then
+                (v7)
+              else
+                (v8)
+            )) ((Snapshot.TransformerExceptT02.bind (Snapshot.TransformerExceptT02.liftEffect ((Snapshot.TransformerExceptT02.map Data.Either.Right) ((Effect.Random.randomInt 1) 10)))) (\i5@v5 -> 
+              ((Snapshot.TransformerExceptT02.discard1 ((Snapshot.TransformerExceptT02.when ((Snapshot.TransformerExceptT02.lessThan i5@v5) 5)) (Snapshot.TransformerExceptT02.throwError "below 5"))) (\$__unused@v6 -> 
+                (Snapshot.TransformerExceptT02.pure i5@v5)
+              ))
+            )))) (\i4@v5 -> 
+              (Snapshot.TransformerExceptT02.pure ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add ((Snapshot.TransformerExceptT02.add 1) i1@v1)) i2@v3)) i3@v4)) i4@v5))
+            ))
+          ))
+        ))
+      ))
+    ))
+  )))
+---------------
+Snapshot.TransformerExceptT02.test1 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (((
+      Snapshot.TransformerExceptT02.bindExceptT
+    ).bind let v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        (Effect.Console.log "foo");
+      v0;
+    (effectDefer letEffect a'@v1 =
+      v0;
+    (effectPure (Data.Either.Right.Either a'@v1)))) (\$__unused@v0 -> 
+      (((
+        Snapshot.TransformerExceptT02.bindExceptT
+      ).bind [[ LetAssoc
+        let v1 =
+          ((Effect.Random.randomInt 1) 10);
+        let v1 =
+          (effectDefer letEffect a'@v2 =
+            v1;
+          (effectPure (Data.Either.Right.Either a'@v2)));
+        v1
+      ]]) (\i1@v1 -> 
+        (((
+          Snapshot.TransformerExceptT02.bindExceptT
+        ).bind {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            5;
+          (< i1@v1 v2);
+        let v3 =
+          (Snapshot.TransformerExceptT02.throwError "oh no!");
+        if v2 then
+          v3
+        else
+          ((
+            Snapshot.TransformerExceptT02.applicativeExceptT
+          ).pure <PrimUndefined>)) (\$__unused@v2 -> 
+          (((
+            Snapshot.TransformerExceptT02.bindExceptT
+          ).bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+            {#- Rewrite - Inline -#}
+            let v4 =
+              4;
+            (add v@v3 v4)
+          )) let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\v@v3 -> 
+                {#- Rewrite - Inline -#}
+                let v4 =
+                  1;
+                (add v@v3 v4)
+              );
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (\m@v4 -> 
+                if (isTag Data.Either.Left m@v4) then
+                  (Data.Either.Left.Either (
+                    m@v4
+                  )#value0)
+                else if (isTag Data.Either.Right m@v4) then
+                  (Data.Either.Right.Either (v3 (
+                    m@v4
+                  )#value0))
+                else
+                  <PatternMatchFailure>
+              );
+            v4;
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (\a@v4 -> 
+              (effectDefer letEffect a'@v5 =
+                a@v4;
+              (effectPure (v3 a'@v5)))
+            );
+          (v4 [[ LetAssoc
+            let v5 =
+              ((Effect.Random.randomInt 1) 10);
+            let v5 =
+              (effectDefer letEffect a'@v6 =
+                v5;
+              (effectPure (Data.Either.Right.Either a'@v6)));
+            v5
+          ]]))) (\i2@v3 -> 
+            (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Data.Semiring.intAdd) [[ LetAssoc
+              let v4 =
+                ((Effect.Random.randomInt 1) 10);
+              let v4 =
+                (effectDefer letEffect a'@v5 =
+                  v4;
+                (effectPure (Data.Either.Right.Either a'@v5)));
+              v4
+            ]])) [[ LetAssoc
+              let v4 =
+                ((Effect.Random.randomInt 1) 10);
+              let v4 =
+                (effectDefer letEffect a'@v5 =
+                  v4;
+                (effectPure (Data.Either.Right.Either a'@v5)));
+              v4
+            ]])) (\i3@v4 -> 
+              (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind {#- Rewrite - Inline -#}
+              let v5 =
+                (
+                  Snapshot.TransformerExceptT02.monadErrorExceptT
+                ).catchError;
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\b@v6 -> \a@v7 -> 
+                  ((v5 a@v7) b@v6)
+                );
+              ((v6 (\e@v7 -> 
+                if {#- Rewrite - Inline -#}
+                  let v8 =
+                    5;
+                  (< i2@v3 v8) then
+                  ((
+                    Snapshot.TransformerExceptT02.applicativeExceptT
+                  ).pure 8)
+                else
+                  (Snapshot.TransformerExceptT02.throwError e@v7)
+              )) (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind [[ LetAssoc
+                let v7 =
+                  ((Effect.Random.randomInt 1) 10);
+                let v7 =
+                  (effectDefer letEffect a'@v8 =
+                    v7;
+                  (effectPure (Data.Either.Right.Either a'@v8)));
+                v7
+              ]]) (\i5@v7 -> 
+                (((
+                  Snapshot.TransformerExceptT02.bindExceptT
+                ).bind {#- Rewrite - Inline -#}
+                let v8 =
+                  {#- Rewrite - Inline -#}
+                  let v8 =
+                    5;
+                  (< i5@v7 v8);
+                let v9 =
+                  (Snapshot.TransformerExceptT02.throwError "below 5");
+                if v8 then
+                  v9
+                else
+                  ((
+                    Snapshot.TransformerExceptT02.applicativeExceptT
+                  ).pure <PrimUndefined>)) (\$__unused@v8 -> 
+                  ((
+                    Snapshot.TransformerExceptT02.applicativeExceptT
+                  ).pure i5@v7)
+                ))
+              )))) (\i4@v5 -> 
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure [[ LetAssoc
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      1;
+                    {#- Rewrite - Inline -#}
+                    let v7 =
+                      (\v7 -> 
+                        (add v6 v7)
+                      );
+                    (v7 i1@v1);
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v7 =
+                      (\v7 -> 
+                        (add v6 v7)
+                      );
+                    (v7 i2@v3);
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v7 =
+                      (\v7 -> 
+                        (add v6 v7)
+                      );
+                    (v7 i3@v4);
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (\v7 -> 
+                      (add v6 v7)
+                    );
+                  (v7 i4@v5)
+                ]])
+              ))
+            ))
+          ))
+        ))
+      ))
+    ));
+  v0
+---------------
+Snapshot.TransformerExceptT02.test1 (Step 2)
+  (((
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Either.Right.Either a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerExceptT02.bindExceptT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (effectDefer letEffect a'@v2 =
+        v1;
+      (effectPure (Data.Either.Right.Either a'@v2)));
+    v2) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerExceptT02.bindExceptT
+      ).bind let v2 =
+        (Snapshot.TransformerExceptT02.throwError "oh no!");
+      if (< i1@v1 5) then
+        v2
+      else
+        ((
+          Snapshot.TransformerExceptT02.applicativeExceptT
+        ).pure <PrimUndefined>)) (\$__unused@v2 -> 
+        (((
+          Snapshot.TransformerExceptT02.bindExceptT
+        ).bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+          (add v@v3 4)
+        )) {#- Rewrite - Inline -#}
+        let v3 =
+          (\m@v3 -> 
+            if (isTag Data.Either.Left m@v3) then
+              (Data.Either.Left.Either (
+                m@v3
+              )#value0)
+            else if (isTag Data.Either.Right m@v3) then
+              (Data.Either.Right.Either {#- Rewrite - Inline -#}
+              let v4 =
+                (
+                  m@v3
+                )#value0;
+              (add v4 1))
+            else
+              <PatternMatchFailure>
+          );
+        [[ LetAssoc
+          let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (effectDefer letEffect a'@v5 =
+                v4;
+              (effectPure (Data.Either.Right.Either a'@v5)));
+            v5;
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (v3 a'@v5)))
+        ]])) (\i2@v3 -> 
+          (((
+            Snapshot.TransformerExceptT02.bindExceptT
+          ).bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Data.Semiring.intAdd) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (effectDefer letEffect a'@v5 =
+              v4;
+            (effectPure (Data.Either.Right.Either a'@v5)));
+          v5)) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (effectDefer letEffect a'@v5 =
+              v4;
+            (effectPure (Data.Either.Right.Either a'@v5)));
+          v5)) (\i3@v4 -> 
+            (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind {#- Rewrite - Inline -#}
+            let v5 =
+              (\e@v5 -> 
+                if (< i2@v3 5) then
+                  ((
+                    Snapshot.TransformerExceptT02.applicativeExceptT
+                  ).pure 8)
+                else
+                  (Snapshot.TransformerExceptT02.throwError e@v5)
+              );
+            {#- Rewrite - Inline -#}
+            let v6 =
+              (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind let v6 =
+                ((Effect.Random.randomInt 1) 10);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                (effectDefer letEffect a'@v7 =
+                  v6;
+                (effectPure (Data.Either.Right.Either a'@v7)));
+              v7) (\i5@v6 -> 
+                (((
+                  Snapshot.TransformerExceptT02.bindExceptT
+                ).bind let v7 =
+                  (Snapshot.TransformerExceptT02.throwError "below 5");
+                if (< i5@v6 5) then
+                  v7
+                else
+                  ((
+                    Snapshot.TransformerExceptT02.applicativeExceptT
+                  ).pure <PrimUndefined>)) (\$__unused@v7 -> 
+                  ((
+                    Snapshot.TransformerExceptT02.applicativeExceptT
+                  ).pure i5@v6)
+                ))
+              ));
+            (((
+              Snapshot.TransformerExceptT02.monadErrorExceptT
+            ).catchError v6) v5)) (\i4@v5 -> 
+              ((
+                Snapshot.TransformerExceptT02.applicativeExceptT
+              ).pure {#- Rewrite - Inline -#}
+              let v6 =
+                (add 1 i1@v1);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                (add v6 i2@v3);
+              {#- Rewrite - Inline -#}
+              let v8 =
+                (add v7 i3@v4);
+              (add v8 i4@v5))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerExceptT02.test1 (Step 3)
+  (((
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Either.Right.Either a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerExceptT02.bindExceptT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Either.Right.Either a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerExceptT02.bindExceptT
+      ).bind let v2 =
+        (Snapshot.TransformerExceptT02.throwError "oh no!");
+      if (< i1@v1 5) then
+        v2
+      else
+        ((
+          Snapshot.TransformerExceptT02.applicativeExceptT
+        ).pure <PrimUndefined>)) (\$__unused@v2 -> 
+        (((
+          Snapshot.TransformerExceptT02.bindExceptT
+        ).bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+          (add v@v3 4)
+        )) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (effectDefer letEffect a'@v4 =
+            v3;
+          (effectPure (Data.Either.Right.Either a'@v4)));
+        (effectDefer letEffect a'@v5 =
+          v4;
+        (effectPure if (isTag Data.Either.Left a'@v5) then
+          (Data.Either.Left.Either (
+            a'@v5
+          )#value0)
+        else if (isTag Data.Either.Right a'@v5) then
+          (Data.Either.Right.Either (add (
+            a'@v5
+          )#value0 1))
+        else
+          <PatternMatchFailure>)))) (\i2@v3 -> 
+          (((
+            Snapshot.TransformerExceptT02.bindExceptT
+          ).bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Data.Semiring.intAdd) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) (\i3@v4 -> 
+            (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind (((
+              Snapshot.TransformerExceptT02.monadErrorExceptT
+            ).catchError (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind let v5 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v6 =
+              v5;
+            (effectPure (Data.Either.Right.Either a'@v6)))) (\i5@v5 -> 
+              (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind let v6 =
+                (Snapshot.TransformerExceptT02.throwError "below 5");
+              if (< i5@v5 5) then
+                v6
+              else
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure <PrimUndefined>)) (\$__unused@v6 -> 
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure i5@v5)
+              ))
+            ))) (\e@v5 -> 
+              if (< i2@v3 5) then
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure 8)
+              else
+                (Snapshot.TransformerExceptT02.throwError e@v5)
+            ))) (\i4@v5 -> 
+              ((
+                Snapshot.TransformerExceptT02.applicativeExceptT
+              ).pure (add (add (add (add 1 i1@v1) i2@v3) i3@v4) i4@v5))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerExceptT02.test1 (Step 4)
+  (((
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Either.Right.Either a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerExceptT02.bindExceptT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Either.Right.Either a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerExceptT02.bindExceptT
+      ).bind let v2 =
+        (Snapshot.TransformerExceptT02.throwError "oh no!");
+      if (< i1@v1 5) then
+        v2
+      else
+        ((
+          Snapshot.TransformerExceptT02.applicativeExceptT
+        ).pure <PrimUndefined>)) (\$__unused@v2 -> 
+        (((
+          Snapshot.TransformerExceptT02.bindExceptT
+        ).bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+          (add v@v3 4)
+        )) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer [[ EffectBindAssoc
+          letEffect a'@v4 =
+            v3;
+          letEffect a'@v4 =
+            (effectPure (Data.Either.Right.Either a'@v4));
+          (effectPure if (isTag Data.Either.Left a'@v4) then
+            (Data.Either.Left.Either (
+              a'@v4
+            )#value0)
+          else if (isTag Data.Either.Right a'@v4) then
+            (Data.Either.Right.Either (add (
+              a'@v4
+            )#value0 1))
+          else
+            <PatternMatchFailure>)
+        ]]))) (\i2@v3 -> 
+          (((
+            Snapshot.TransformerExceptT02.bindExceptT
+          ).bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Data.Semiring.intAdd) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) (\i3@v4 -> 
+            (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind (((
+              Snapshot.TransformerExceptT02.monadErrorExceptT
+            ).catchError (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind let v5 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v6 =
+              v5;
+            (effectPure (Data.Either.Right.Either a'@v6)))) (\i5@v5 -> 
+              (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind let v6 =
+                (Snapshot.TransformerExceptT02.throwError "below 5");
+              if (< i5@v5 5) then
+                v6
+              else
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure <PrimUndefined>)) (\$__unused@v6 -> 
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure i5@v5)
+              ))
+            ))) (\e@v5 -> 
+              if (< i2@v3 5) then
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure 8)
+              else
+                (Snapshot.TransformerExceptT02.throwError e@v5)
+            ))) (\i4@v5 -> 
+              ((
+                Snapshot.TransformerExceptT02.applicativeExceptT
+              ).pure (add (add (add (add 1 i1@v1) i2@v3) i3@v4) i4@v5))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerExceptT02.test1 (Step 5)
+  (((
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Either.Right.Either a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerExceptT02.bindExceptT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Either.Right.Either a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerExceptT02.bindExceptT
+      ).bind let v2 =
+        (Snapshot.TransformerExceptT02.throwError "oh no!");
+      if (< i1@v1 5) then
+        v2
+      else
+        ((
+          Snapshot.TransformerExceptT02.applicativeExceptT
+        ).pure <PrimUndefined>)) (\$__unused@v2 -> 
+        (((
+          Snapshot.TransformerExceptT02.bindExceptT
+        ).bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+          (add v@v3 4)
+        )) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        {#- Rewrite - Inline -#}
+        let a'@v5 =
+          (Data.Either.Right.Either a'@v4);
+        (effectPure if (isTag Data.Either.Left a'@v5) then
+          (Data.Either.Left.Either (
+            a'@v5
+          )#value0)
+        else if (isTag Data.Either.Right a'@v5) then
+          (Data.Either.Right.Either (add (
+            a'@v5
+          )#value0 1))
+        else
+          <PatternMatchFailure>)))) (\i2@v3 -> 
+          (((
+            Snapshot.TransformerExceptT02.bindExceptT
+          ).bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Data.Semiring.intAdd) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) (\i3@v4 -> 
+            (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind (((
+              Snapshot.TransformerExceptT02.monadErrorExceptT
+            ).catchError (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind let v5 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v6 =
+              v5;
+            (effectPure (Data.Either.Right.Either a'@v6)))) (\i5@v5 -> 
+              (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind let v6 =
+                (Snapshot.TransformerExceptT02.throwError "below 5");
+              if (< i5@v5 5) then
+                v6
+              else
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure <PrimUndefined>)) (\$__unused@v6 -> 
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure i5@v5)
+              ))
+            ))) (\e@v5 -> 
+              if (< i2@v3 5) then
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure 8)
+              else
+                (Snapshot.TransformerExceptT02.throwError e@v5)
+            ))) (\i4@v5 -> 
+              ((
+                Snapshot.TransformerExceptT02.applicativeExceptT
+              ).pure (add (add (add (add 1 i1@v1) i2@v3) i3@v4) i4@v5))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerExceptT02.test1 (Step 6; Final)
+  (((
+    Snapshot.TransformerExceptT02.bindExceptT
+  ).bind let v0 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v1 =
+    v0;
+  (effectPure (Data.Either.Right.Either a'@v1)))) (\$__unused@v0 -> 
+    (((
+      Snapshot.TransformerExceptT02.bindExceptT
+    ).bind let v1 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v2 =
+      v1;
+    (effectPure (Data.Either.Right.Either a'@v2)))) (\i1@v1 -> 
+      (((
+        Snapshot.TransformerExceptT02.bindExceptT
+      ).bind let v2 =
+        (Snapshot.TransformerExceptT02.throwError "oh no!");
+      if (< i1@v1 5) then
+        v2
+      else
+        ((
+          Snapshot.TransformerExceptT02.applicativeExceptT
+        ).pure <PrimUndefined>)) (\$__unused@v2 -> 
+        (((
+          Snapshot.TransformerExceptT02.bindExceptT
+        ).bind ((Snapshot.TransformerExceptT02.map1 (\v@v3 -> 
+          (add v@v3 4)
+        )) let v3 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v4 =
+          v3;
+        (effectPure (Data.Either.Right.Either (add a'@v4 1)))))) (\i2@v3 -> 
+          (((
+            Snapshot.TransformerExceptT02.bindExceptT
+          ).bind ((Snapshot.TransformerExceptT02.apply ((Snapshot.TransformerExceptT02.map1 Data.Semiring.intAdd) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) let v4 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v5 =
+            v4;
+          (effectPure (Data.Either.Right.Either a'@v5))))) (\i3@v4 -> 
+            (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind (((
+              Snapshot.TransformerExceptT02.monadErrorExceptT
+            ).catchError (((
+              Snapshot.TransformerExceptT02.bindExceptT
+            ).bind let v5 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v6 =
+              v5;
+            (effectPure (Data.Either.Right.Either a'@v6)))) (\i5@v5 -> 
+              (((
+                Snapshot.TransformerExceptT02.bindExceptT
+              ).bind let v6 =
+                (Snapshot.TransformerExceptT02.throwError "below 5");
+              if (< i5@v5 5) then
+                v6
+              else
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure <PrimUndefined>)) (\$__unused@v6 -> 
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure i5@v5)
+              ))
+            ))) (\e@v5 -> 
+              if (< i2@v3 5) then
+                ((
+                  Snapshot.TransformerExceptT02.applicativeExceptT
+                ).pure 8)
+              else
+                (Snapshot.TransformerExceptT02.throwError e@v5)
+            ))) (\i4@v5 -> 
+              ((
+                Snapshot.TransformerExceptT02.applicativeExceptT
+              ).pure (add (add (add (add 1 i1@v1) i2@v3) i3@v4) i4@v5))
+            ))
+          ))
+        ))
+      ))
+    ))
+  ))
+===============
+Snapshot.TransformerExceptT02.test2 (Step 0; Original)
+  (Control.Monad.Except.Trans.runExceptT (Snapshot.TransformerExceptT02.program1 Effect.Class.monadEffectEffect))
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let Monad0@v0 =
+      {#- Rewrite - Inline -#}
+      let v0 =
+        <PrimUndefined>;
+      Effect.monadEffect;
+    [[ LetAssoc
+      let bindExceptT1@v1 =
+        (Control.Monad.Except.Trans.bindExceptT Monad0@v0);
+      let v1 =
+        let Functor0@v2 =
+          ((
+            ((
+              ((
+                Monad0@v0
+              ).Bind1 <PrimUndefined>)
+            ).Apply0 <PrimUndefined>)
+          ).Functor0 <PrimUndefined>);
+        let apply1@v3 =
+          (
+            (Control.Monad.Except.Trans.applyExceptT Monad0@v0)
+          ).apply;
+        let catchError1@v4 =
+          (
+            (Control.Monad.Except.Trans.monadErrorExceptT Monad0@v0)
+          ).catchError;
+        let applicativeExceptT1@v5 =
+          (Control.Monad.Except.Trans.applicativeExceptT Monad0@v0);
+        let throwError1@v6 =
+          (
+            (Control.Monad.Except.Trans.monadThrowExceptT Monad0@v0)
+          ).throwError;
+        (((
+          bindExceptT1@v1
+        ).bind (((
+          Functor0@v2
+        ).map Data.Either.Right) {#- Rewrite - Inline -#}
+        let v7 =
+          (Effect.Console.log "foo");
+        v7)) (\$__unused@v7 -> 
+          (((
+            bindExceptT1@v1
+          ).bind [[ LetAssoc
+            let v8 =
+              ((Effect.Random.randomInt 1) 10);
+            let v8 =
+              (effectDefer letEffect a'@v9 =
+                v8;
+              (effectPure (Data.Either.Right.Either a'@v9)));
+            v8
+          ]]) (\i1@v8 -> 
+            (((
+              bindExceptT1@v1
+            ).bind (((
+              Functor0@v2
+            ).map (\m@v9 -> 
+              if (isTag Data.Either.Left m@v9) then
+                (Data.Either.Left.Either (
+                  m@v9
+                )#value0)
+              else if (isTag Data.Either.Right m@v9) then
+                (Data.Either.Right.Either (add (
+                  m@v9
+                )#value0 4))
+              else
+                <PatternMatchFailure>
+            )) (((
+              Functor0@v2
+            ).map (\m@v9 -> 
+              if (isTag Data.Either.Left m@v9) then
+                (Data.Either.Left.Either (
+                  m@v9
+                )#value0)
+              else if (isTag Data.Either.Right m@v9) then
+                (Data.Either.Right.Either (add (
+                  m@v9
+                )#value0 1))
+              else
+                <PatternMatchFailure>
+            )) [[ LetAssoc
+              let v9 =
+                ((Effect.Random.randomInt 1) 10);
+              let v9 =
+                (effectDefer letEffect a'@v10 =
+                  v9;
+                (effectPure (Data.Either.Right.Either a'@v10)));
+              v9
+            ]]))) (\i2@v9 -> 
+              (((
+                bindExceptT1@v1
+              ).bind ((apply1@v3 (((
+                Functor0@v2
+              ).map ((
+                Data.Either.functorEither
+              ).map Data.Semiring.intAdd)) [[ LetAssoc
+                let v10 =
+                  ((Effect.Random.randomInt 1) 10);
+                let v10 =
+                  (effectDefer letEffect a'@v11 =
+                    v10;
+                  (effectPure (Data.Either.Right.Either a'@v11)));
+                v10
+              ]])) [[ LetAssoc
+                let v10 =
+                  ((Effect.Random.randomInt 1) 10);
+                let v10 =
+                  (effectDefer letEffect a'@v11 =
+                    v10;
+                  (effectPure (Data.Either.Right.Either a'@v11)));
+                v10
+              ]])) (\i3@v10 -> 
+                (((
+                  bindExceptT1@v1
+                ).bind ((catchError1@v4 (((
+                  bindExceptT1@v1
+                ).bind [[ LetAssoc
+                  let v11 =
+                    ((Effect.Random.randomInt 1) 10);
+                  let v11 =
+                    (effectDefer letEffect a'@v12 =
+                      v11;
+                    (effectPure (Data.Either.Right.Either a'@v12)));
+                  v11
+                ]]) (\i5@v11 -> 
+                  (((
+                    bindExceptT1@v1
+                  ).bind let v12 =
+                    (throwError1@v6 "below 5");
+                  if (< i5@v11 5) then
+                    v12
+                  else
+                    ((
+                      applicativeExceptT1@v5
+                    ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                    ((
+                      applicativeExceptT1@v5
+                    ).pure i5@v11)
+                  ))
+                ))) (\e@v11 -> 
+                  if (< i2@v9 5) then
+                    ((
+                      applicativeExceptT1@v5
+                    ).pure 8)
+                  else
+                    (throwError1@v6 e@v11)
+                ))) (\i4@v11 -> 
+                  ((
+                    applicativeExceptT1@v5
+                  ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                ))
+              ))
+            ))
+          ))
+        ));
+      let v1 =
+        v1;
+      v1
+    ]];
+  v0
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 2)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  [[ LetAssoc
+    let Functor0@v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        <PrimUndefined>;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              Effect.bindEffect
+            ).Apply0;
+          (v2 <PrimUndefined>);
+        (
+          v2
+        ).Functor0;
+      (v2 <PrimUndefined>);
+    let v1 =
+      let apply1@v2 =
+        (
+          (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+        ).apply;
+      let catchError1@v3 =
+        (
+          (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+        ).catchError;
+      let applicativeExceptT1@v4 =
+        (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+      let throwError1@v5 =
+        (
+          (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+        ).throwError;
+      (((
+        bindExceptT1@v0
+      ).bind (((
+        Functor0@v1
+      ).map Data.Either.Right) (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+        (((
+          bindExceptT1@v0
+        ).bind let v7 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v8 =
+          (effectDefer letEffect a'@v8 =
+            v7;
+          (effectPure (Data.Either.Right.Either a'@v8)));
+        v8) (\i1@v7 -> 
+          (((
+            bindExceptT1@v0
+          ).bind (((
+            Functor0@v1
+          ).map (\m@v8 -> 
+            if (isTag Data.Either.Left m@v8) then
+              (Data.Either.Left.Either (
+                m@v8
+              )#value0)
+            else if (isTag Data.Either.Right m@v8) then
+              (Data.Either.Right.Either (add (
+                m@v8
+              )#value0 4))
+            else
+              <PatternMatchFailure>
+          )) (((
+            Functor0@v1
+          ).map (\m@v8 -> 
+            if (isTag Data.Either.Left m@v8) then
+              (Data.Either.Left.Either (
+                m@v8
+              )#value0)
+            else if (isTag Data.Either.Right m@v8) then
+              (Data.Either.Right.Either (add (
+                m@v8
+              )#value0 1))
+            else
+              <PatternMatchFailure>
+          )) let v8 =
+            ((Effect.Random.randomInt 1) 10);
+          {#- Rewrite - Inline -#}
+          let v9 =
+            (effectDefer letEffect a'@v9 =
+              v8;
+            (effectPure (Data.Either.Right.Either a'@v9)));
+          v9))) (\i2@v8 -> 
+            (((
+              bindExceptT1@v0
+            ).bind ((apply1@v2 (((
+              Functor0@v1
+            ).map ((
+              Data.Either.functorEither
+            ).map Data.Semiring.intAdd)) let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            {#- Rewrite - Inline -#}
+            let v10 =
+              (effectDefer letEffect a'@v10 =
+                v9;
+              (effectPure (Data.Either.Right.Either a'@v10)));
+            v10)) let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            {#- Rewrite - Inline -#}
+            let v10 =
+              (effectDefer letEffect a'@v10 =
+                v9;
+              (effectPure (Data.Either.Right.Either a'@v10)));
+            v10)) (\i3@v9 -> 
+              (((
+                bindExceptT1@v0
+              ).bind ((catchError1@v3 (((
+                bindExceptT1@v0
+              ).bind let v10 =
+                ((Effect.Random.randomInt 1) 10);
+              {#- Rewrite - Inline -#}
+              let v11 =
+                (effectDefer letEffect a'@v11 =
+                  v10;
+                (effectPure (Data.Either.Right.Either a'@v11)));
+              v11) (\i5@v10 -> 
+                (((
+                  bindExceptT1@v0
+                ).bind let v11 =
+                  (throwError1@v5 "below 5");
+                if (< i5@v10 5) then
+                  v11
+                else
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure <PrimUndefined>)) (\$__unused@v11 -> 
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure i5@v10)
+                ))
+              ))) (\e@v10 -> 
+                if (< i2@v8 5) then
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure 8)
+                else
+                  (throwError1@v5 e@v10)
+              ))) (\i4@v10 -> 
+                ((
+                  applicativeExceptT1@v4
+                ).pure (add (add (add (add 1 i1@v7) i2@v8) i3@v9) i4@v10))
+              ))
+            ))
+          ))
+        ))
+      ));
+    v1
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 3)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let Functor0@v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      <PrimUndefined>;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (
+        Effect.applyEffect
+      ).Functor0;
+    (v2 <PrimUndefined>);
+  [[ LetAssoc
+    let apply1@v2 =
+      (
+        (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+      ).apply;
+    let v2 =
+      let catchError1@v3 =
+        (
+          (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+        ).catchError;
+      let applicativeExceptT1@v4 =
+        (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+      let throwError1@v5 =
+        (
+          (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+        ).throwError;
+      (((
+        bindExceptT1@v0
+      ).bind (((
+        Functor0@v1
+      ).map Data.Either.Right) (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+        (((
+          bindExceptT1@v0
+        ).bind let v7 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v8 =
+          v7;
+        (effectPure (Data.Either.Right.Either a'@v8)))) (\i1@v7 -> 
+          (((
+            bindExceptT1@v0
+          ).bind (((
+            Functor0@v1
+          ).map (\m@v8 -> 
+            if (isTag Data.Either.Left m@v8) then
+              (Data.Either.Left.Either (
+                m@v8
+              )#value0)
+            else if (isTag Data.Either.Right m@v8) then
+              (Data.Either.Right.Either (add (
+                m@v8
+              )#value0 4))
+            else
+              <PatternMatchFailure>
+          )) (((
+            Functor0@v1
+          ).map (\m@v8 -> 
+            if (isTag Data.Either.Left m@v8) then
+              (Data.Either.Left.Either (
+                m@v8
+              )#value0)
+            else if (isTag Data.Either.Right m@v8) then
+              (Data.Either.Right.Either (add (
+                m@v8
+              )#value0 1))
+            else
+              <PatternMatchFailure>
+          )) let v8 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v9 =
+            v8;
+          (effectPure (Data.Either.Right.Either a'@v9)))))) (\i2@v8 -> 
+            (((
+              bindExceptT1@v0
+            ).bind ((apply1@v2 (((
+              Functor0@v1
+            ).map ((
+              Data.Either.functorEither
+            ).map Data.Semiring.intAdd)) let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure (Data.Either.Right.Either a'@v10))))) let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure (Data.Either.Right.Either a'@v10))))) (\i3@v9 -> 
+              (((
+                bindExceptT1@v0
+              ).bind ((catchError1@v3 (((
+                bindExceptT1@v0
+              ).bind let v10 =
+                ((Effect.Random.randomInt 1) 10);
+              (effectDefer letEffect a'@v11 =
+                v10;
+              (effectPure (Data.Either.Right.Either a'@v11)))) (\i5@v10 -> 
+                (((
+                  bindExceptT1@v0
+                ).bind let v11 =
+                  (throwError1@v5 "below 5");
+                if (< i5@v10 5) then
+                  v11
+                else
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure <PrimUndefined>)) (\$__unused@v11 -> 
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure i5@v10)
+                ))
+              ))) (\e@v10 -> 
+                if (< i2@v8 5) then
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure 8)
+                else
+                  (throwError1@v5 e@v10)
+              ))) (\i4@v10 -> 
+                ((
+                  applicativeExceptT1@v4
+                ).pure (add (add (add (add 1 i1@v7) i2@v8) i3@v9) i4@v10))
+              ))
+            ))
+          ))
+        ))
+      ));
+    v2
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 4)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let Functor0@v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      <PrimUndefined>;
+    Effect.functorEffect;
+  let apply1@v2 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  [[ LetAssoc
+    let catchError1@v3 =
+      (
+        (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+      ).catchError;
+    let v3 =
+      let applicativeExceptT1@v4 =
+        (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+      let throwError1@v5 =
+        (
+          (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+        ).throwError;
+      (((
+        bindExceptT1@v0
+      ).bind (((
+        Functor0@v1
+      ).map Data.Either.Right) (Effect.Console.log "foo"))) (\$__unused@v6 -> 
+        (((
+          bindExceptT1@v0
+        ).bind let v7 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v8 =
+          v7;
+        (effectPure (Data.Either.Right.Either a'@v8)))) (\i1@v7 -> 
+          (((
+            bindExceptT1@v0
+          ).bind (((
+            Functor0@v1
+          ).map (\m@v8 -> 
+            if (isTag Data.Either.Left m@v8) then
+              (Data.Either.Left.Either (
+                m@v8
+              )#value0)
+            else if (isTag Data.Either.Right m@v8) then
+              (Data.Either.Right.Either (add (
+                m@v8
+              )#value0 4))
+            else
+              <PatternMatchFailure>
+          )) (((
+            Functor0@v1
+          ).map (\m@v8 -> 
+            if (isTag Data.Either.Left m@v8) then
+              (Data.Either.Left.Either (
+                m@v8
+              )#value0)
+            else if (isTag Data.Either.Right m@v8) then
+              (Data.Either.Right.Either (add (
+                m@v8
+              )#value0 1))
+            else
+              <PatternMatchFailure>
+          )) let v8 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v9 =
+            v8;
+          (effectPure (Data.Either.Right.Either a'@v9)))))) (\i2@v8 -> 
+            (((
+              bindExceptT1@v0
+            ).bind ((apply1@v2 (((
+              Functor0@v1
+            ).map ((
+              Data.Either.functorEither
+            ).map Data.Semiring.intAdd)) let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure (Data.Either.Right.Either a'@v10))))) let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure (Data.Either.Right.Either a'@v10))))) (\i3@v9 -> 
+              (((
+                bindExceptT1@v0
+              ).bind ((catchError1@v3 (((
+                bindExceptT1@v0
+              ).bind let v10 =
+                ((Effect.Random.randomInt 1) 10);
+              (effectDefer letEffect a'@v11 =
+                v10;
+              (effectPure (Data.Either.Right.Either a'@v11)))) (\i5@v10 -> 
+                (((
+                  bindExceptT1@v0
+                ).bind let v11 =
+                  (throwError1@v5 "below 5");
+                if (< i5@v10 5) then
+                  v11
+                else
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure <PrimUndefined>)) (\$__unused@v11 -> 
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure i5@v10)
+                ))
+              ))) (\e@v10 -> 
+                if (< i2@v8 5) then
+                  ((
+                    applicativeExceptT1@v4
+                  ).pure 8)
+                else
+                  (throwError1@v5 e@v10)
+              ))) (\i4@v10 -> 
+                ((
+                  applicativeExceptT1@v4
+                ).pure (add (add (add (add 1 i1@v7) i2@v8) i3@v9) i4@v10))
+              ))
+            ))
+          ))
+        ))
+      ));
+    v3
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 5)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  let catchError1@v2 =
+    (
+      (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+    ).catchError;
+  [[ LetAssoc
+    let applicativeExceptT1@v3 =
+      (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+    let v3 =
+      let throwError1@v4 =
+        (
+          (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+        ).throwError;
+      (((
+        bindExceptT1@v0
+      ).bind let v5 =
+        (Effect.Console.log "foo");
+      (effectDefer letEffect a'@v6 =
+        v5;
+      (effectPure (Data.Either.Right.Either a'@v6)))) (\$__unused@v5 -> 
+        (((
+          bindExceptT1@v0
+        ).bind let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Either.Right.Either a'@v7)))) (\i1@v6 -> 
+          (((
+            bindExceptT1@v0
+          ).bind {#- Rewrite - Inline -#}
+          let v7 =
+            (\m@v7 -> 
+              if (isTag Data.Either.Left m@v7) then
+                (Data.Either.Left.Either (
+                  m@v7
+                )#value0)
+              else if (isTag Data.Either.Right m@v7) then
+                (Data.Either.Right.Either (add (
+                  m@v7
+                )#value0 4))
+              else
+                <PatternMatchFailure>
+            );
+          {#- Rewrite - Inline -#}
+          let v8 =
+            (\a@v8 -> 
+              (effectDefer letEffect a'@v9 =
+                a@v8;
+              (effectPure (v7 a'@v9)))
+            );
+          (v8 {#- Rewrite - Inline -#}
+          let v9 =
+            (\m@v9 -> 
+              if (isTag Data.Either.Left m@v9) then
+                (Data.Either.Left.Either (
+                  m@v9
+                )#value0)
+              else if (isTag Data.Either.Right m@v9) then
+                (Data.Either.Right.Either (add (
+                  m@v9
+                )#value0 1))
+              else
+                <PatternMatchFailure>
+            );
+          {#- Rewrite - Inline -#}
+          let v10 =
+            (\a@v10 -> 
+              (effectDefer letEffect a'@v11 =
+                a@v10;
+              (effectPure (v9 a'@v11)))
+            );
+          (v10 let v11 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v12 =
+            v11;
+          (effectPure (Data.Either.Right.Either a'@v12)))))) (\i2@v7 -> 
+            (((
+              bindExceptT1@v0
+            ).bind ((apply1@v1 {#- Rewrite - Inline -#}
+            let v8 =
+              ((
+                Data.Either.functorEither
+              ).map Data.Semiring.intAdd);
+            {#- Rewrite - Inline -#}
+            let v9 =
+              (\a@v9 -> 
+                (effectDefer letEffect a'@v10 =
+                  a@v9;
+                (effectPure (v8 a'@v10)))
+              );
+            (v9 let v10 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v11 =
+              v10;
+            (effectPure (Data.Either.Right.Either a'@v11))))) let v8 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v9 =
+              v8;
+            (effectPure (Data.Either.Right.Either a'@v9))))) (\i3@v8 -> 
+              (((
+                bindExceptT1@v0
+              ).bind ((catchError1@v2 (((
+                bindExceptT1@v0
+              ).bind let v9 =
+                ((Effect.Random.randomInt 1) 10);
+              (effectDefer letEffect a'@v10 =
+                v9;
+              (effectPure (Data.Either.Right.Either a'@v10)))) (\i5@v9 -> 
+                (((
+                  bindExceptT1@v0
+                ).bind let v10 =
+                  (throwError1@v4 "below 5");
+                if (< i5@v9 5) then
+                  v10
+                else
+                  ((
+                    applicativeExceptT1@v3
+                  ).pure <PrimUndefined>)) (\$__unused@v10 -> 
+                  ((
+                    applicativeExceptT1@v3
+                  ).pure i5@v9)
+                ))
+              ))) (\e@v9 -> 
+                if (< i2@v7 5) then
+                  ((
+                    applicativeExceptT1@v3
+                  ).pure 8)
+                else
+                  (throwError1@v4 e@v9)
+              ))) (\i4@v9 -> 
+                ((
+                  applicativeExceptT1@v3
+                ).pure (add (add (add (add 1 i1@v6) i2@v7) i3@v8) i4@v9))
+              ))
+            ))
+          ))
+        ))
+      ));
+    v3
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 6)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  let catchError1@v2 =
+    (
+      (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+    ).catchError;
+  let applicativeExceptT1@v3 =
+    (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+  [[ LetAssoc
+    let throwError1@v4 =
+      (
+        (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+      ).throwError;
+    let v4 =
+      (((
+        bindExceptT1@v0
+      ).bind let v5 =
+        (Effect.Console.log "foo");
+      (effectDefer letEffect a'@v6 =
+        v5;
+      (effectPure (Data.Either.Right.Either a'@v6)))) (\$__unused@v5 -> 
+        (((
+          bindExceptT1@v0
+        ).bind let v6 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v7 =
+          v6;
+        (effectPure (Data.Either.Right.Either a'@v7)))) (\i1@v6 -> 
+          (((
+            bindExceptT1@v0
+          ).bind [[ LetAssoc
+            let v7 =
+              ((Effect.Random.randomInt 1) 10);
+            let v7 =
+              (effectDefer letEffect a'@v8 =
+                v7;
+              (effectPure (Data.Either.Right.Either a'@v8)));
+            let v7 =
+              (effectDefer letEffect a'@v8 =
+                v7;
+              (effectPure if (isTag Data.Either.Left a'@v8) then
+                (Data.Either.Left.Either (
+                  a'@v8
+                )#value0)
+              else if (isTag Data.Either.Right a'@v8) then
+                (Data.Either.Right.Either (add (
+                  a'@v8
+                )#value0 1))
+              else
+                <PatternMatchFailure>));
+            (effectDefer letEffect a'@v8 =
+              v7;
+            (effectPure if (isTag Data.Either.Left a'@v8) then
+              (Data.Either.Left.Either (
+                a'@v8
+              )#value0)
+            else if (isTag Data.Either.Right a'@v8) then
+              (Data.Either.Right.Either (add (
+                a'@v8
+              )#value0 4))
+            else
+              <PatternMatchFailure>))
+          ]]) (\i2@v7 -> 
+            (((
+              bindExceptT1@v0
+            ).bind ((apply1@v1 [[ LetAssoc
+              let v8 =
+                ((Effect.Random.randomInt 1) 10);
+              let v8 =
+                (effectDefer letEffect a'@v9 =
+                  v8;
+                (effectPure (Data.Either.Right.Either a'@v9)));
+              (effectDefer letEffect a'@v9 =
+                v8;
+              (effectPure if (isTag Data.Either.Left a'@v9) then
+                (Data.Either.Left.Either (
+                  a'@v9
+                )#value0)
+              else if (isTag Data.Either.Right a'@v9) then
+                (Data.Either.Right.Either let v10 =
+                  (
+                    a'@v9
+                  )#value0;
+                {#- Rewrite - Inline -#}
+                let v11 =
+                  (\v11 -> 
+                    (add v10 v11)
+                  );
+                v11)
+              else
+                <PatternMatchFailure>))
+            ]]) let v8 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v9 =
+              v8;
+            (effectPure (Data.Either.Right.Either a'@v9))))) (\i3@v8 -> 
+              (((
+                bindExceptT1@v0
+              ).bind ((catchError1@v2 (((
+                bindExceptT1@v0
+              ).bind let v9 =
+                ((Effect.Random.randomInt 1) 10);
+              (effectDefer letEffect a'@v10 =
+                v9;
+              (effectPure (Data.Either.Right.Either a'@v10)))) (\i5@v9 -> 
+                (((
+                  bindExceptT1@v0
+                ).bind let v10 =
+                  (throwError1@v4 "below 5");
+                if (< i5@v9 5) then
+                  v10
+                else
+                  ((
+                    applicativeExceptT1@v3
+                  ).pure <PrimUndefined>)) (\$__unused@v10 -> 
+                  ((
+                    applicativeExceptT1@v3
+                  ).pure i5@v9)
+                ))
+              ))) (\e@v9 -> 
+                if (< i2@v7 5) then
+                  ((
+                    applicativeExceptT1@v3
+                  ).pure 8)
+                else
+                  (throwError1@v4 e@v9)
+              ))) (\i4@v9 -> 
+                ((
+                  applicativeExceptT1@v3
+                ).pure (add (add (add (add 1 i1@v6) i2@v7) i3@v8) i4@v9))
+              ))
+            ))
+          ))
+        ))
+      ));
+    v4
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 7)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  let catchError1@v2 =
+    (
+      (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+    ).catchError;
+  let applicativeExceptT1@v3 =
+    (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+  let throwError1@v4 =
+    (
+      (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+    ).throwError;
+  {#- Rewrite - Inline -#}
+  let v5 =
+    (((
+      bindExceptT1@v0
+    ).bind let v5 =
+      (Effect.Console.log "foo");
+    (effectDefer letEffect a'@v6 =
+      v5;
+    (effectPure (Data.Either.Right.Either a'@v6)))) (\$__unused@v5 -> 
+      (((
+        bindExceptT1@v0
+      ).bind let v6 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v7 =
+        v6;
+      (effectPure (Data.Either.Right.Either a'@v7)))) (\i1@v6 -> 
+        (((
+          bindExceptT1@v0
+        ).bind let v7 =
+          ((Effect.Random.randomInt 1) 10);
+        {#- Rewrite - Inline -#}
+        let v8 =
+          (effectDefer letEffect a'@v8 =
+            v7;
+          (effectPure (Data.Either.Right.Either a'@v8)));
+        {#- Rewrite - Inline -#}
+        let v9 =
+          (effectDefer letEffect a'@v9 =
+            v8;
+          (effectPure if (isTag Data.Either.Left a'@v9) then
+            (Data.Either.Left.Either (
+              a'@v9
+            )#value0)
+          else if (isTag Data.Either.Right a'@v9) then
+            (Data.Either.Right.Either (add (
+              a'@v9
+            )#value0 1))
+          else
+            <PatternMatchFailure>));
+        (effectDefer letEffect a'@v10 =
+          v9;
+        (effectPure if (isTag Data.Either.Left a'@v10) then
+          (Data.Either.Left.Either (
+            a'@v10
+          )#value0)
+        else if (isTag Data.Either.Right a'@v10) then
+          (Data.Either.Right.Either (add (
+            a'@v10
+          )#value0 4))
+        else
+          <PatternMatchFailure>))) (\i2@v7 -> 
+          (((
+            bindExceptT1@v0
+          ).bind ((apply1@v1 let v8 =
+            ((Effect.Random.randomInt 1) 10);
+          {#- Rewrite - Inline -#}
+          let v9 =
+            (effectDefer letEffect a'@v9 =
+              v8;
+            (effectPure (Data.Either.Right.Either a'@v9)));
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure if (isTag Data.Either.Left a'@v10) then
+            (Data.Either.Left.Either (
+              a'@v10
+            )#value0)
+          else if (isTag Data.Either.Right a'@v10) then
+            (Data.Either.Right.Either let v11 =
+              (
+                a'@v10
+              )#value0;
+            (\v12 -> 
+              (add v11 v12)
+            ))
+          else
+            <PatternMatchFailure>))) let v8 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v9 =
+            v8;
+          (effectPure (Data.Either.Right.Either a'@v9))))) (\i3@v8 -> 
+            (((
+              bindExceptT1@v0
+            ).bind ((catchError1@v2 (((
+              bindExceptT1@v0
+            ).bind let v9 =
+              ((Effect.Random.randomInt 1) 10);
+            (effectDefer letEffect a'@v10 =
+              v9;
+            (effectPure (Data.Either.Right.Either a'@v10)))) (\i5@v9 -> 
+              (((
+                bindExceptT1@v0
+              ).bind let v10 =
+                (throwError1@v4 "below 5");
+              if (< i5@v9 5) then
+                v10
+              else
+                ((
+                  applicativeExceptT1@v3
+                ).pure <PrimUndefined>)) (\$__unused@v10 -> 
+                ((
+                  applicativeExceptT1@v3
+                ).pure i5@v9)
+              ))
+            ))) (\e@v9 -> 
+              if (< i2@v7 5) then
+                ((
+                  applicativeExceptT1@v3
+                ).pure 8)
+              else
+                (throwError1@v4 e@v9)
+            ))) (\i4@v9 -> 
+              ((
+                applicativeExceptT1@v3
+              ).pure (add (add (add (add 1 i1@v6) i2@v7) i3@v8) i4@v9))
+            ))
+          ))
+        ))
+      ))
+    ));
+  v5
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 8)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  let catchError1@v2 =
+    (
+      (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+    ).catchError;
+  let applicativeExceptT1@v3 =
+    (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+  let throwError1@v4 =
+    (
+      (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+    ).throwError;
+  (((
+    bindExceptT1@v0
+  ).bind let v5 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v6 =
+    v5;
+  (effectPure (Data.Either.Right.Either a'@v6)))) (\$__unused@v5 -> 
+    (((
+      bindExceptT1@v0
+    ).bind let v6 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v7 =
+      v6;
+    (effectPure (Data.Either.Right.Either a'@v7)))) (\i1@v6 -> 
+      (((
+        bindExceptT1@v0
+      ).bind let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer [[ EffectBindAssoc
+        letEffect a'@v8 =
+          v7;
+        letEffect a'@v8 =
+          (effectPure (Data.Either.Right.Either a'@v8));
+        letEffect a'@v8 =
+          (effectPure if (isTag Data.Either.Left a'@v8) then
+            (Data.Either.Left.Either (
+              a'@v8
+            )#value0)
+          else if (isTag Data.Either.Right a'@v8) then
+            (Data.Either.Right.Either (add (
+              a'@v8
+            )#value0 1))
+          else
+            <PatternMatchFailure>);
+        (effectPure if (isTag Data.Either.Left a'@v8) then
+          (Data.Either.Left.Either (
+            a'@v8
+          )#value0)
+        else if (isTag Data.Either.Right a'@v8) then
+          (Data.Either.Right.Either (add (
+            a'@v8
+          )#value0 4))
+        else
+          <PatternMatchFailure>)
+      ]])) (\i2@v7 -> 
+        (((
+          bindExceptT1@v0
+        ).bind ((apply1@v1 let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer [[ EffectBindAssoc
+          letEffect a'@v9 =
+            v8;
+          letEffect a'@v9 =
+            (effectPure (Data.Either.Right.Either a'@v9));
+          (effectPure if (isTag Data.Either.Left a'@v9) then
+            (Data.Either.Left.Either (
+              a'@v9
+            )#value0)
+          else if (isTag Data.Either.Right a'@v9) then
+            (Data.Either.Right.Either let v10 =
+              (
+                a'@v9
+              )#value0;
+            (\v11 -> 
+              (add v10 v11)
+            ))
+          else
+            <PatternMatchFailure>)
+        ]])) let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Either.Right.Either a'@v9))))) (\i3@v8 -> 
+          (((
+            bindExceptT1@v0
+          ).bind ((catchError1@v2 (((
+            bindExceptT1@v0
+          ).bind let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Either.Right.Either a'@v10)))) (\i5@v9 -> 
+            (((
+              bindExceptT1@v0
+            ).bind let v10 =
+              (throwError1@v4 "below 5");
+            if (< i5@v9 5) then
+              v10
+            else
+              ((
+                applicativeExceptT1@v3
+              ).pure <PrimUndefined>)) (\$__unused@v10 -> 
+              ((
+                applicativeExceptT1@v3
+              ).pure i5@v9)
+            ))
+          ))) (\e@v9 -> 
+            if (< i2@v7 5) then
+              ((
+                applicativeExceptT1@v3
+              ).pure 8)
+            else
+              (throwError1@v4 e@v9)
+          ))) (\i4@v9 -> 
+            ((
+              applicativeExceptT1@v3
+            ).pure (add (add (add (add 1 i1@v6) i2@v7) i3@v8) i4@v9))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 9)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  let catchError1@v2 =
+    (
+      (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+    ).catchError;
+  let applicativeExceptT1@v3 =
+    (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+  let throwError1@v4 =
+    (
+      (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+    ).throwError;
+  (((
+    bindExceptT1@v0
+  ).bind let v5 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v6 =
+    v5;
+  (effectPure (Data.Either.Right.Either a'@v6)))) (\$__unused@v5 -> 
+    (((
+      bindExceptT1@v0
+    ).bind let v6 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v7 =
+      v6;
+    (effectPure (Data.Either.Right.Either a'@v7)))) (\i1@v6 -> 
+      (((
+        bindExceptT1@v0
+      ).bind let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v8 =
+        v7;
+      {#- Rewrite - Inline -#}
+      let a'@v9 =
+        (Data.Either.Right.Either a'@v8);
+      (effectDefer [[ DistBranchesLet
+        let a'@v10 =
+          if (isTag Data.Either.Left a'@v9) then
+            (Data.Either.Left.Either (
+              a'@v9
+            )#value0)
+          else if (isTag Data.Either.Right a'@v9) then
+            (Data.Either.Right.Either (add (
+              a'@v9
+            )#value0 1))
+          else
+            <PatternMatchFailure>;
+        (effectPure if (isTag Data.Either.Left a'@v10) then
+          (Data.Either.Left.Either (
+            a'@v10
+          )#value0)
+        else if (isTag Data.Either.Right a'@v10) then
+          (Data.Either.Right.Either (add (
+            a'@v10
+          )#value0 4))
+        else
+          <PatternMatchFailure>)
+      ]]))) (\i2@v7 -> 
+        (((
+          bindExceptT1@v0
+        ).bind ((apply1@v1 let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        {#- Rewrite - Inline -#}
+        let a'@v10 =
+          (Data.Either.Right.Either a'@v9);
+        (effectPure if (isTag Data.Either.Left a'@v10) then
+          (Data.Either.Left.Either (
+            a'@v10
+          )#value0)
+        else if (isTag Data.Either.Right a'@v10) then
+          (Data.Either.Right.Either let v11 =
+            (
+              a'@v10
+            )#value0;
+          (\v12 -> 
+            (add v11 v12)
+          ))
+        else
+          <PatternMatchFailure>))) let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Either.Right.Either a'@v9))))) (\i3@v8 -> 
+          (((
+            bindExceptT1@v0
+          ).bind ((catchError1@v2 (((
+            bindExceptT1@v0
+          ).bind let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Either.Right.Either a'@v10)))) (\i5@v9 -> 
+            (((
+              bindExceptT1@v0
+            ).bind let v10 =
+              (throwError1@v4 "below 5");
+            if (< i5@v9 5) then
+              v10
+            else
+              ((
+                applicativeExceptT1@v3
+              ).pure <PrimUndefined>)) (\$__unused@v10 -> 
+              ((
+                applicativeExceptT1@v3
+              ).pure i5@v9)
+            ))
+          ))) (\e@v9 -> 
+            if (< i2@v7 5) then
+              ((
+                applicativeExceptT1@v3
+              ).pure 8)
+            else
+              (throwError1@v4 e@v9)
+          ))) (\i4@v9 -> 
+            ((
+              applicativeExceptT1@v3
+            ).pure (add (add (add (add 1 i1@v6) i2@v7) i3@v8) i4@v9))
+          ))
+        ))
+      ))
+    ))
+  ))
+---------------
+Snapshot.TransformerExceptT02.test2 (Step 10; Final)
+  let bindExceptT1@v0 =
+    (Control.Monad.Except.Trans.bindExceptT Effect.monadEffect);
+  let apply1@v1 =
+    (
+      (Control.Monad.Except.Trans.applyExceptT Effect.monadEffect)
+    ).apply;
+  let catchError1@v2 =
+    (
+      (Control.Monad.Except.Trans.monadErrorExceptT Effect.monadEffect)
+    ).catchError;
+  let applicativeExceptT1@v3 =
+    (Control.Monad.Except.Trans.applicativeExceptT Effect.monadEffect);
+  let throwError1@v4 =
+    (
+      (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+    ).throwError;
+  (((
+    bindExceptT1@v0
+  ).bind let v5 =
+    (Effect.Console.log "foo");
+  (effectDefer letEffect a'@v6 =
+    v5;
+  (effectPure (Data.Either.Right.Either a'@v6)))) (\$__unused@v5 -> 
+    (((
+      bindExceptT1@v0
+    ).bind let v6 =
+      ((Effect.Random.randomInt 1) 10);
+    (effectDefer letEffect a'@v7 =
+      v6;
+    (effectPure (Data.Either.Right.Either a'@v7)))) (\i1@v6 -> 
+      (((
+        bindExceptT1@v0
+      ).bind let v7 =
+        ((Effect.Random.randomInt 1) 10);
+      (effectDefer letEffect a'@v8 =
+        v7;
+      (effectPure (Data.Either.Right.Either (add a'@v8 5))))) (\i2@v7 -> 
+        (((
+          bindExceptT1@v0
+        ).bind ((apply1@v1 let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Either.Right.Either (\v10 -> 
+          (add a'@v9 v10)
+        ))))) let v8 =
+          ((Effect.Random.randomInt 1) 10);
+        (effectDefer letEffect a'@v9 =
+          v8;
+        (effectPure (Data.Either.Right.Either a'@v9))))) (\i3@v8 -> 
+          (((
+            bindExceptT1@v0
+          ).bind ((catchError1@v2 (((
+            bindExceptT1@v0
+          ).bind let v9 =
+            ((Effect.Random.randomInt 1) 10);
+          (effectDefer letEffect a'@v10 =
+            v9;
+          (effectPure (Data.Either.Right.Either a'@v10)))) (\i5@v9 -> 
+            (((
+              bindExceptT1@v0
+            ).bind let v10 =
+              (throwError1@v4 "below 5");
+            if (< i5@v9 5) then
+              v10
+            else
+              ((
+                applicativeExceptT1@v3
+              ).pure <PrimUndefined>)) (\$__unused@v10 -> 
+              ((
+                applicativeExceptT1@v3
+              ).pure i5@v9)
+            ))
+          ))) (\e@v9 -> 
+            if (< i2@v7 5) then
+              ((
+                applicativeExceptT1@v3
+              ).pure 8)
+            else
+              (throwError1@v4 e@v9)
+          ))) (\i4@v9 -> 
+            ((
+              applicativeExceptT1@v3
+            ).pure (add (add (add (add 1 i1@v6) i2@v7) i3@v8) i4@v9))
+          ))
+        ))
+      ))
+    ))
+  ))
+===============
+Snapshot.TransformerExceptT02.test3 (Step 0; Original)
+  (Control.Monad.Except.Trans.runExceptT ((Snapshot.TransformerExceptT02.program2 Snapshot.TransformerExceptT02.monadErrorExceptT) (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect)))
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 1)
+  [[ LetAssoc
+    let throwError1@v0 =
+      (
+        ((
+          Snapshot.TransformerExceptT02.monadErrorExceptT
+        ).MonadThrow0 <PrimUndefined>)
+      ).throwError;
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          (\dictMonadEffect@v1 -> 
+            let Monad0@v2 =
+              ((
+                dictMonadEffect@v1
+              ).Monad0 <PrimUndefined>);
+            let Bind1@v3 =
+              ((
+                Monad0@v2
+              ).Bind1 <PrimUndefined>);
+            let Apply0@v4 =
+              ((
+                Bind1@v3
+              ).Apply0 <PrimUndefined>);
+            let map3@v5 =
+              (
+                ((
+                  Apply0@v4
+                ).Functor0 <PrimUndefined>)
+              ).map;
+            let Applicative0@v6 =
+              ((
+                Monad0@v2
+              ).Applicative0 <PrimUndefined>);
+            (((
+              Bind1@v3
+            ).bind ((
+              dictMonadEffect@v1
+            ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+              (((
+                Bind1@v3
+              ).bind ((
+                dictMonadEffect@v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+                (((
+                  Bind1@v3
+                ).bind ((map3@v5 (\v@v9 -> 
+                  (add v@v9 4)
+                )) ((
+                  dictMonadEffect@v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+                  (((
+                    Bind1@v3
+                  ).bind (((
+                    Apply0@v4
+                  ).apply ((map3@v5 Data.Semiring.intAdd) ((
+                    dictMonadEffect@v1
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                    dictMonadEffect@v1
+                  ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                    (((
+                      Bind1@v3
+                    ).bind (((
+                      Snapshot.TransformerExceptT02.monadErrorExceptT
+                    ).catchError (((
+                      Bind1@v3
+                    ).bind ((
+                      dictMonadEffect@v1
+                    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                      (((
+                        Bind1@v3
+                      ).bind let v12 =
+                        (throwError1@v0 "below 5");
+                      if (< i5@v11 5) then
+                        v12
+                      else
+                        ((
+                          Applicative0@v6
+                        ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                        ((
+                          Applicative0@v6
+                        ).pure i5@v11)
+                      ))
+                    ))) (\e@v11 -> 
+                      if (< i2@v9 5) then
+                        ((
+                          Applicative0@v6
+                        ).pure 8)
+                      else
+                        (throwError1@v0 e@v11)
+                    ))) (\i4@v11 -> 
+                      ((
+                        Applicative0@v6
+                      ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                    ))
+                  ))
+                ))
+              ))
+            ))
+          );
+        (v1 (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect));
+      v1;
+    v0
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 2)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  [[ LetAssoc
+    let v1 =
+      (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+    let v1 =
+      let Monad0@v2 =
+        ((
+          v1
+        ).Monad0 <PrimUndefined>);
+      [[ LetAssoc
+        let Bind1@v3 =
+          ((
+            Monad0@v2
+          ).Bind1 <PrimUndefined>);
+        let v3 =
+          let Apply0@v4 =
+            ((
+              Bind1@v3
+            ).Apply0 <PrimUndefined>);
+          let map3@v5 =
+            (
+              ((
+                Apply0@v4
+              ).Functor0 <PrimUndefined>)
+            ).map;
+          let Applicative0@v6 =
+            ((
+              Monad0@v2
+            ).Applicative0 <PrimUndefined>);
+          (((
+            Bind1@v3
+          ).bind ((
+            v1
+          ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+            (((
+              Bind1@v3
+            ).bind ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+              (((
+                Bind1@v3
+              ).bind ((map3@v5 (\v@v9 -> 
+                (add v@v9 4)
+              )) ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+                (((
+                  Bind1@v3
+                ).bind (((
+                  Apply0@v4
+                ).apply ((map3@v5 Data.Semiring.intAdd) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                  (((
+                    Bind1@v3
+                  ).bind (((
+                    Snapshot.TransformerExceptT02.monadErrorExceptT
+                  ).catchError (((
+                    Bind1@v3
+                  ).bind ((
+                    v1
+                  ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                    (((
+                      Bind1@v3
+                    ).bind let v12 =
+                      (throwError1@v0 "below 5");
+                    if (< i5@v11 5) then
+                      v12
+                    else
+                      ((
+                        Applicative0@v6
+                      ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                      ((
+                        Applicative0@v6
+                      ).pure i5@v11)
+                    ))
+                  ))) (\e@v11 -> 
+                    if (< i2@v9 5) then
+                      ((
+                        Applicative0@v6
+                      ).pure 8)
+                    else
+                      (throwError1@v0 e@v11)
+                  ))) (\i4@v11 -> 
+                    ((
+                      Applicative0@v6
+                    ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                  ))
+                ))
+              ))
+            ))
+          ));
+        v3
+      ]];
+    v1
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 3)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  [[ LetAssoc
+    let Monad0@v2 =
+      ((
+        v1
+      ).Monad0 <PrimUndefined>);
+    let v2 =
+      let Bind1@v3 =
+        ((
+          Monad0@v2
+        ).Bind1 <PrimUndefined>);
+      [[ LetAssoc
+        let Apply0@v4 =
+          ((
+            Bind1@v3
+          ).Apply0 <PrimUndefined>);
+        let v4 =
+          let map3@v5 =
+            (
+              ((
+                Apply0@v4
+              ).Functor0 <PrimUndefined>)
+            ).map;
+          let Applicative0@v6 =
+            ((
+              Monad0@v2
+            ).Applicative0 <PrimUndefined>);
+          (((
+            Bind1@v3
+          ).bind ((
+            v1
+          ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+            (((
+              Bind1@v3
+            ).bind ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+              (((
+                Bind1@v3
+              ).bind ((map3@v5 (\v@v9 -> 
+                (add v@v9 4)
+              )) ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+                (((
+                  Bind1@v3
+                ).bind (((
+                  Apply0@v4
+                ).apply ((map3@v5 Data.Semiring.intAdd) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                  (((
+                    Bind1@v3
+                  ).bind (((
+                    Snapshot.TransformerExceptT02.monadErrorExceptT
+                  ).catchError (((
+                    Bind1@v3
+                  ).bind ((
+                    v1
+                  ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                    (((
+                      Bind1@v3
+                    ).bind let v12 =
+                      (throwError1@v0 "below 5");
+                    if (< i5@v11 5) then
+                      v12
+                    else
+                      ((
+                        Applicative0@v6
+                      ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                      ((
+                        Applicative0@v6
+                      ).pure i5@v11)
+                    ))
+                  ))) (\e@v11 -> 
+                    if (< i2@v9 5) then
+                      ((
+                        Applicative0@v6
+                      ).pure 8)
+                    else
+                      (throwError1@v0 e@v11)
+                  ))) (\i4@v11 -> 
+                    ((
+                      Applicative0@v6
+                    ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                  ))
+                ))
+              ))
+            ))
+          ));
+        v4
+      ]];
+    v2
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 4)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  let Monad0@v2 =
+    ((
+      v1
+    ).Monad0 <PrimUndefined>);
+  [[ LetAssoc
+    let Bind1@v3 =
+      ((
+        Monad0@v2
+      ).Bind1 <PrimUndefined>);
+    let v3 =
+      let Apply0@v4 =
+        ((
+          Bind1@v3
+        ).Apply0 <PrimUndefined>);
+      [[ LetAssoc
+        let map3@v5 =
+          (
+            ((
+              Apply0@v4
+            ).Functor0 <PrimUndefined>)
+          ).map;
+        let v5 =
+          let Applicative0@v6 =
+            ((
+              Monad0@v2
+            ).Applicative0 <PrimUndefined>);
+          (((
+            Bind1@v3
+          ).bind ((
+            v1
+          ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+            (((
+              Bind1@v3
+            ).bind ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+              (((
+                Bind1@v3
+              ).bind ((map3@v5 (\v@v9 -> 
+                (add v@v9 4)
+              )) ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+                (((
+                  Bind1@v3
+                ).bind (((
+                  Apply0@v4
+                ).apply ((map3@v5 Data.Semiring.intAdd) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                  (((
+                    Bind1@v3
+                  ).bind (((
+                    Snapshot.TransformerExceptT02.monadErrorExceptT
+                  ).catchError (((
+                    Bind1@v3
+                  ).bind ((
+                    v1
+                  ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                    (((
+                      Bind1@v3
+                    ).bind let v12 =
+                      (throwError1@v0 "below 5");
+                    if (< i5@v11 5) then
+                      v12
+                    else
+                      ((
+                        Applicative0@v6
+                      ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                      ((
+                        Applicative0@v6
+                      ).pure i5@v11)
+                    ))
+                  ))) (\e@v11 -> 
+                    if (< i2@v9 5) then
+                      ((
+                        Applicative0@v6
+                      ).pure 8)
+                    else
+                      (throwError1@v0 e@v11)
+                  ))) (\i4@v11 -> 
+                    ((
+                      Applicative0@v6
+                    ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                  ))
+                ))
+              ))
+            ))
+          ));
+        v5
+      ]];
+    v3
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 5)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  let Monad0@v2 =
+    ((
+      v1
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v3 =
+    ((
+      Monad0@v2
+    ).Bind1 <PrimUndefined>);
+  [[ LetAssoc
+    let Apply0@v4 =
+      ((
+        Bind1@v3
+      ).Apply0 <PrimUndefined>);
+    let v4 =
+      let map3@v5 =
+        (
+          ((
+            Apply0@v4
+          ).Functor0 <PrimUndefined>)
+        ).map;
+      [[ LetAssoc
+        let Applicative0@v6 =
+          ((
+            Monad0@v2
+          ).Applicative0 <PrimUndefined>);
+        let v6 =
+          (((
+            Bind1@v3
+          ).bind ((
+            v1
+          ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+            (((
+              Bind1@v3
+            ).bind ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+              (((
+                Bind1@v3
+              ).bind ((map3@v5 (\v@v9 -> 
+                (add v@v9 4)
+              )) ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+                (((
+                  Bind1@v3
+                ).bind (((
+                  Apply0@v4
+                ).apply ((map3@v5 Data.Semiring.intAdd) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                  (((
+                    Bind1@v3
+                  ).bind (((
+                    Snapshot.TransformerExceptT02.monadErrorExceptT
+                  ).catchError (((
+                    Bind1@v3
+                  ).bind ((
+                    v1
+                  ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                    (((
+                      Bind1@v3
+                    ).bind let v12 =
+                      (throwError1@v0 "below 5");
+                    if (< i5@v11 5) then
+                      v12
+                    else
+                      ((
+                        Applicative0@v6
+                      ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                      ((
+                        Applicative0@v6
+                      ).pure i5@v11)
+                    ))
+                  ))) (\e@v11 -> 
+                    if (< i2@v9 5) then
+                      ((
+                        Applicative0@v6
+                      ).pure 8)
+                    else
+                      (throwError1@v0 e@v11)
+                  ))) (\i4@v11 -> 
+                    ((
+                      Applicative0@v6
+                    ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                  ))
+                ))
+              ))
+            ))
+          ));
+        v6
+      ]];
+    v4
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 6)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  let Monad0@v2 =
+    ((
+      v1
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v3 =
+    ((
+      Monad0@v2
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v4 =
+    ((
+      Bind1@v3
+    ).Apply0 <PrimUndefined>);
+  [[ LetAssoc
+    let map3@v5 =
+      (
+        ((
+          Apply0@v4
+        ).Functor0 <PrimUndefined>)
+      ).map;
+    let v5 =
+      let Applicative0@v6 =
+        ((
+          Monad0@v2
+        ).Applicative0 <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (((
+          Bind1@v3
+        ).bind ((
+          v1
+        ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+          (((
+            Bind1@v3
+          ).bind ((
+            v1
+          ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+            (((
+              Bind1@v3
+            ).bind ((map3@v5 (\v@v9 -> 
+              (add v@v9 4)
+            )) ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+              (((
+                Bind1@v3
+              ).bind (((
+                Apply0@v4
+              ).apply ((map3@v5 Data.Semiring.intAdd) ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+                (((
+                  Bind1@v3
+                ).bind (((
+                  Snapshot.TransformerExceptT02.monadErrorExceptT
+                ).catchError (((
+                  Bind1@v3
+                ).bind ((
+                  v1
+                ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                  (((
+                    Bind1@v3
+                  ).bind let v12 =
+                    (throwError1@v0 "below 5");
+                  if (< i5@v11 5) then
+                    v12
+                  else
+                    ((
+                      Applicative0@v6
+                    ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                    ((
+                      Applicative0@v6
+                    ).pure i5@v11)
+                  ))
+                ))) (\e@v11 -> 
+                  if (< i2@v9 5) then
+                    ((
+                      Applicative0@v6
+                    ).pure 8)
+                  else
+                    (throwError1@v0 e@v11)
+                ))) (\i4@v11 -> 
+                  ((
+                    Applicative0@v6
+                  ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+                ))
+              ))
+            ))
+          ))
+        ));
+      v7;
+    v5
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 7)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  let Monad0@v2 =
+    ((
+      v1
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v3 =
+    ((
+      Monad0@v2
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v4 =
+    ((
+      Bind1@v3
+    ).Apply0 <PrimUndefined>);
+  let map3@v5 =
+    (
+      ((
+        Apply0@v4
+      ).Functor0 <PrimUndefined>)
+    ).map;
+  [[ LetAssoc
+    let Applicative0@v6 =
+      ((
+        Monad0@v2
+      ).Applicative0 <PrimUndefined>);
+    let v6 =
+      (((
+        Bind1@v3
+      ).bind ((
+        v1
+      ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+        (((
+          Bind1@v3
+        ).bind ((
+          v1
+        ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+          (((
+            Bind1@v3
+          ).bind ((map3@v5 (\v@v9 -> 
+            (add v@v9 4)
+          )) ((
+            v1
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+            (((
+              Bind1@v3
+            ).bind (((
+              Apply0@v4
+            ).apply ((map3@v5 Data.Semiring.intAdd) ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+              (((
+                Bind1@v3
+              ).bind (((
+                Snapshot.TransformerExceptT02.monadErrorExceptT
+              ).catchError (((
+                Bind1@v3
+              ).bind ((
+                v1
+              ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+                (((
+                  Bind1@v3
+                ).bind let v12 =
+                  (throwError1@v0 "below 5");
+                if (< i5@v11 5) then
+                  v12
+                else
+                  ((
+                    Applicative0@v6
+                  ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                  ((
+                    Applicative0@v6
+                  ).pure i5@v11)
+                ))
+              ))) (\e@v11 -> 
+                if (< i2@v9 5) then
+                  ((
+                    Applicative0@v6
+                  ).pure 8)
+                else
+                  (throwError1@v0 e@v11)
+              ))) (\i4@v11 -> 
+                ((
+                  Applicative0@v6
+                ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+              ))
+            ))
+          ))
+        ))
+      ));
+    v6
+  ]]
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 8)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  let Monad0@v2 =
+    ((
+      v1
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v3 =
+    ((
+      Monad0@v2
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v4 =
+    ((
+      Bind1@v3
+    ).Apply0 <PrimUndefined>);
+  let map3@v5 =
+    (
+      ((
+        Apply0@v4
+      ).Functor0 <PrimUndefined>)
+    ).map;
+  let Applicative0@v6 =
+    ((
+      Monad0@v2
+    ).Applicative0 <PrimUndefined>);
+  {#- Rewrite - Inline -#}
+  let v7 =
+    (((
+      Bind1@v3
+    ).bind ((
+      v1
+    ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+      (((
+        Bind1@v3
+      ).bind ((
+        v1
+      ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+        (((
+          Bind1@v3
+        ).bind ((map3@v5 (\v@v9 -> 
+          (add v@v9 4)
+        )) ((
+          v1
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+          (((
+            Bind1@v3
+          ).bind (((
+            Apply0@v4
+          ).apply ((map3@v5 Data.Semiring.intAdd) ((
+            v1
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+            v1
+          ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+            (((
+              Bind1@v3
+            ).bind (((
+              Snapshot.TransformerExceptT02.monadErrorExceptT
+            ).catchError (((
+              Bind1@v3
+            ).bind ((
+              v1
+            ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+              (((
+                Bind1@v3
+              ).bind let v12 =
+                (throwError1@v0 "below 5");
+              if (< i5@v11 5) then
+                v12
+              else
+                ((
+                  Applicative0@v6
+                ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+                ((
+                  Applicative0@v6
+                ).pure i5@v11)
+              ))
+            ))) (\e@v11 -> 
+              if (< i2@v9 5) then
+                ((
+                  Applicative0@v6
+                ).pure 8)
+              else
+                (throwError1@v0 e@v11)
+            ))) (\i4@v11 -> 
+              ((
+                Applicative0@v6
+              ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+            ))
+          ))
+        ))
+      ))
+    ));
+  v7
+---------------
+Snapshot.TransformerExceptT02.test3 (Step 9; Final)
+  let throwError1@v0 =
+    (
+      ((
+        Snapshot.TransformerExceptT02.monadErrorExceptT
+      ).MonadThrow0 <PrimUndefined>)
+    ).throwError;
+  let v1 =
+    (Control.Monad.Except.Trans.monadEffectExceptT Effect.Class.monadEffectEffect);
+  let Monad0@v2 =
+    ((
+      v1
+    ).Monad0 <PrimUndefined>);
+  let Bind1@v3 =
+    ((
+      Monad0@v2
+    ).Bind1 <PrimUndefined>);
+  let Apply0@v4 =
+    ((
+      Bind1@v3
+    ).Apply0 <PrimUndefined>);
+  let map3@v5 =
+    (
+      ((
+        Apply0@v4
+      ).Functor0 <PrimUndefined>)
+    ).map;
+  let Applicative0@v6 =
+    ((
+      Monad0@v2
+    ).Applicative0 <PrimUndefined>);
+  (((
+    Bind1@v3
+  ).bind ((
+    v1
+  ).liftEffect (Effect.Console.log "foo"))) (\$__unused@v7 -> 
+    (((
+      Bind1@v3
+    ).bind ((
+      v1
+    ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i1@v8 -> 
+      (((
+        Bind1@v3
+      ).bind ((map3@v5 (\v@v9 -> 
+        (add v@v9 4)
+      )) ((
+        v1
+      ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i2@v9 -> 
+        (((
+          Bind1@v3
+        ).bind (((
+          Apply0@v4
+        ).apply ((map3@v5 Data.Semiring.intAdd) ((
+          v1
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) ((
+          v1
+        ).liftEffect ((Effect.Random.randomInt 1) 10)))) (\i3@v10 -> 
+          (((
+            Bind1@v3
+          ).bind (((
+            Snapshot.TransformerExceptT02.monadErrorExceptT
+          ).catchError (((
+            Bind1@v3
+          ).bind ((
+            v1
+          ).liftEffect ((Effect.Random.randomInt 1) 10))) (\i5@v11 -> 
+            (((
+              Bind1@v3
+            ).bind let v12 =
+              (throwError1@v0 "below 5");
+            if (< i5@v11 5) then
+              v12
+            else
+              ((
+                Applicative0@v6
+              ).pure <PrimUndefined>)) (\$__unused@v12 -> 
+              ((
+                Applicative0@v6
+              ).pure i5@v11)
+            ))
+          ))) (\e@v11 -> 
+            if (< i2@v9 5) then
+              ((
+                Applicative0@v6
+              ).pure 8)
+            else
+              (throwError1@v0 e@v11)
+          ))) (\i4@v11 -> 
+            ((
+              Applicative0@v6
+            ).pure (add (add (add (add 1 i1@v8) i2@v9) i3@v10) i4@v11))
+          ))
+        ))
+      ))
+    ))
+  ))
+===============
+Snapshot.TransformerExceptT02.throwError (Step 0; Original)
+  (Control.Monad.Error.Class.throwError (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect))
+---------------
+Snapshot.TransformerExceptT02.throwError (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect);
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (
+      v0
+    ).throwError;
+  v1
+---------------
+Snapshot.TransformerExceptT02.throwError (Step 2; Final)
+  (
+    (Control.Monad.Except.Trans.monadThrowExceptT Effect.monadEffect)
+  ).throwError
+===============
+Snapshot.TransformerExceptT02.when (Step 0; Original)
+  (Control.Applicative.when Snapshot.TransformerExceptT02.applicativeExceptT)
+---------------
+Snapshot.TransformerExceptT02.when (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if v@v0 then
+      v1@v1
+    else
+      ((
+        Snapshot.TransformerExceptT02.applicativeExceptT
+      ).pure <PrimUndefined>)
+  )

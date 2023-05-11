@@ -1,0 +1,521 @@
+Snapshot.Cps01.State (Step 0; Original)
+  (\x@v0 -> 
+    x@v0
+  )
+---------------
+Snapshot.Cps01.State (Step 1; Final)
+  (\x@v0 -> 
+    x@v0
+  )
+
+===============
+
+Snapshot.Cps01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.Cps01.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.Cps01.applicativeState (Step 0; Original)
+  { pure =
+      (\a@v0 -> \next@v1 -> \s1@v2 -> 
+        ((next@v1 s1@v2) a@v0)
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applyState
+      )
+  }
+---------------
+Snapshot.Cps01.applicativeState (Step 1; Final)
+  { pure =
+      (\a@v0 -> \next@v1 -> \s1@v2 -> 
+        ((next@v1 s1@v2) a@v0)
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applyState
+      )
+  }
+
+===============
+
+Snapshot.Cps01.applyState (Step 0; Original)
+  { apply =
+      (Control.Monad.ap Snapshot.Cps01.monadState)
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.functorState
+      )
+  }
+---------------
+Snapshot.Cps01.applyState (Step 1)
+  { apply =
+      {#- Rewrite - Inline -#}
+      let bind@v0 =
+        {#- Rewrite - Inline -#}
+        let v0 =
+          <PrimUndefined>;
+        (
+          Snapshot.Cps01.bindState
+        ).bind;
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let pure@v1 =
+            {#- Rewrite - Inline -#}
+            let v1 =
+              <PrimUndefined>;
+            (
+              Snapshot.Cps01.applicativeState
+            ).pure;
+          (\f@v2 -> \a@v3 -> 
+            ((bind@v0 f@v2) (\f'@v4 -> 
+              ((bind@v0 a@v3) (\a'@v5 -> 
+                (pure@v1 (f'@v4 a'@v5))
+              ))
+            ))
+          );
+        v1;
+      v1
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.functorState
+      )
+  }
+---------------
+Snapshot.Cps01.applyState (Step 2)
+  { apply =
+      (\f@v0 -> \a@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\f'@v2 -> 
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\a'@v3 -> 
+                ((
+                  Snapshot.Cps01.applicativeState
+                ).pure (f'@v2 a'@v3))
+              );
+            (\next1@v4 -> \s1@v5 -> 
+              ((a@v1 (\s2@v6 -> \a@v7 -> 
+                (((v3 a@v7) next1@v4) s2@v6)
+              )) s1@v5)
+            )
+          );
+        (\next1@v3 -> \s1@v4 -> 
+          ((f@v0 (\s2@v5 -> \a@v6 -> 
+            (((v2 a@v6) next1@v3) s2@v5)
+          )) s1@v4)
+        )
+      )
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.functorState
+      )
+  }
+---------------
+Snapshot.Cps01.applyState (Step 3; Final)
+  { apply =
+      (\f@v0 -> \a@v1 -> \next1@v2 -> \s1@v3 -> 
+        ((f@v0 (\s2@v4 -> \a@v5 -> 
+          ((a@v1 (\s2@v6 -> \a@v7 -> 
+            ((((
+              Snapshot.Cps01.applicativeState
+            ).pure (a@v5 a@v7)) next1@v2) s2@v6)
+          )) s2@v4)
+        )) s1@v3)
+      )
+  , Functor0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.functorState
+      )
+  }
+
+===============
+
+Snapshot.Cps01.bind (Step 0; Original)
+  (Control.Bind.bind Snapshot.Cps01.bindState)
+---------------
+Snapshot.Cps01.bind (Step 1; Final)
+  (
+    Snapshot.Cps01.bindState
+  ).bind
+
+===============
+
+Snapshot.Cps01.bindState (Step 0; Original)
+  { bind =
+      (\v@v0 -> \k2@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          v@v0;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          k2@v1;
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\k1@v4 k21@v5 ->
+            (\next1@v6 -> \s1@v7 -> 
+              ((k1@v4 (\s2@v8 -> \a@v9 -> 
+                {#- Rewrite - Inline -#}
+                let v1@v10 =
+                  (k21@v5 a@v9);
+                {#- Rewrite - Inline -#}
+                let v11 =
+                  v1@v10;
+                {#- Rewrite - Inline -#}
+                let v12 =
+                  (\k3@v12 ->
+                    ((k3@v12 next1@v6) s2@v8)
+                  );
+                (v12 k3@v11)
+              )) s1@v7)
+            )
+          );
+        (v4 k1@v2 k21@v3)
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applyState
+      )
+  }
+---------------
+Snapshot.Cps01.bindState (Step 1)
+  { bind =
+      (\v@v0 -> \k2@v1 -> \next1@v2 -> \s1@v3 -> 
+        ((v@v0 (\s2@v4 -> \a@v5 -> 
+          {#- Rewrite - Inline -#}
+          let v6 =
+            (k2@v1 a@v5);
+          ((v6 next1@v2) s2@v4)
+        )) s1@v3)
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applyState
+      )
+  }
+---------------
+Snapshot.Cps01.bindState (Step 2; Final)
+  { bind =
+      (\v@v0 -> \k2@v1 -> \next1@v2 -> \s1@v3 -> 
+        ((v@v0 (\s2@v4 -> \a@v5 -> 
+          (((k2@v1 a@v5) next1@v2) s2@v4)
+        )) s1@v3)
+      )
+  , Apply0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applyState
+      )
+  }
+
+===============
+
+Snapshot.Cps01.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.Cps01.compose (Step 1; Final)
+  (
+    Control.Semigroupoid.semigroupoidFn
+  ).compose
+
+===============
+
+Snapshot.Cps01.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Snapshot.Cps01.bindState)
+---------------
+Snapshot.Cps01.discard (Step 1; Final)
+  (
+    Snapshot.Cps01.bindState
+  ).bind
+
+===============
+
+Snapshot.Cps01.functorState (Step 0; Original)
+  { map =
+      (\f@v0 -> \v@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          f@v0;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          v@v1;
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\f1@v4 k@v5 ->
+            (\next1@v6 -> \s1@v7 -> 
+              ((k@v5 (\s2@v8 -> 
+                ((Snapshot.Cps01.compose (next1@v6 s2@v8)) f1@v4)
+              )) s1@v7)
+            )
+          );
+        (v4 f1@v2 k@v3)
+      )
+  }
+---------------
+Snapshot.Cps01.functorState (Step 1)
+  { map =
+      (\f@v0 -> \v@v1 -> \next1@v2 -> \s1@v3 -> 
+        ((v@v1 (\s2@v4 -> 
+          let v5 =
+            (next1@v2 s2@v4);
+          {#- Rewrite - Inline -#}
+          let v6 =
+            (\x@v6 -> 
+              (v5 (f@v0 x@v6))
+            );
+          v6
+        )) s1@v3)
+      )
+  }
+---------------
+Snapshot.Cps01.functorState (Step 2; Final)
+  { map =
+      (\f@v0 -> \v@v1 -> \next1@v2 -> \s1@v3 -> 
+        ((v@v1 (\s2@v4 -> 
+          let v5 =
+            (next1@v2 s2@v4);
+          (\x@v6 -> 
+            (v5 (f@v0 x@v6))
+          )
+        )) s1@v3)
+      )
+  }
+
+===============
+
+Snapshot.Cps01.get (Step 0; Original)
+  (\next@v0 -> \s@v1 -> 
+    ((next@v0 s@v1) s@v1)
+  )
+---------------
+Snapshot.Cps01.get (Step 1; Final)
+  (\next@v0 -> \s@v1 -> 
+    ((next@v0 s@v1) s@v1)
+  )
+
+===============
+
+Snapshot.Cps01.monadState (Step 0; Original)
+  { Applicative0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applicativeState
+      )
+  , Bind1 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.bindState
+      )
+  }
+---------------
+Snapshot.Cps01.monadState (Step 1; Final)
+  { Applicative0 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.applicativeState
+      )
+  , Bind1 =
+      (\$__unused@v0 -> 
+        Snapshot.Cps01.bindState
+      )
+  }
+
+===============
+
+Snapshot.Cps01.put (Step 0; Original)
+  (\s@v0 -> \next@v1 -> \v@v2 -> 
+    ((next@v1 s@v0) Data.Unit.unit)
+  )
+---------------
+Snapshot.Cps01.put (Step 1; Final)
+  (\s@v0 -> \next@v1 -> \v@v2 -> 
+    ((next@v1 s@v0) <PrimUndefined>)
+  )
+
+===============
+
+Snapshot.Cps01.runState (Step 0; Original)
+  (\s@v0 -> \v@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      s@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v@v1;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\k@v4 s1@v5 ->
+        ((k@v4 Data.Tuple.Tuple) s1@v5)
+      );
+    (v4 k@v3 s1@v2)
+  )
+---------------
+Snapshot.Cps01.runState (Step 1; Final)
+  (\s@v0 -> \v@v1 -> 
+    ((v@v1 Data.Tuple.Tuple) s@v0)
+  )
+
+===============
+
+Snapshot.Cps01.test4 (Step 0; Original)
+  ((Snapshot.Cps01.bind Snapshot.Cps01.get) (\res1@v0 -> 
+    ((Snapshot.Cps01.discard (Snapshot.Cps01.put ((Snapshot.Cps01.add res1@v0) 1))) (\$__unused@v1 -> 
+      ((Snapshot.Cps01.bind Snapshot.Cps01.get) (\res2@v2 -> 
+        (Snapshot.Cps01.put ((Snapshot.Cps01.add res2@v2) 1))
+      ))
+    ))
+  ))
+---------------
+Snapshot.Cps01.test4 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\res1@v0 -> 
+      [[ LetAssoc
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            1;
+          (add res1@v0 v1);
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\next@v2 -> \v@v3 -> 
+              ((next@v2 v1) <PrimUndefined>)
+            );
+          v2;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\k2@v2 -> \next1@v3 -> \s1@v4 -> 
+            ((v1 (\s2@v5 -> \a@v6 -> 
+              (((k2@v2 a@v6) next1@v3) s2@v5)
+            )) s1@v4)
+          );
+        (v2 (\$__unused@v3 -> 
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (\res2@v4 -> 
+              let v5 =
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  1;
+                (add res2@v4 v5);
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\next@v6 -> \v@v7 -> 
+                  ((next@v6 v5) <PrimUndefined>)
+                );
+              v6
+            );
+          (\next1@v5 -> \s1@v6 -> 
+            {#- Rewrite - Inline -#}
+            let v7 =
+              (\s2@v7 -> \a@v8 -> 
+                (((v4 a@v8) next1@v5) s2@v7)
+              );
+            {#- Rewrite - Inline -#}
+            let v8 =
+              (\s@v8 -> 
+                ((v7 s@v8) s@v8)
+              );
+            (v8 s1@v6)
+          )
+        ))
+      ]]
+    );
+  (\next1@v1 -> \s1@v2 -> 
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\s2@v3 -> \a@v4 -> 
+        (((v0 a@v4) next1@v1) s2@v3)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\s@v4 -> 
+        ((v3 s@v4) s@v4)
+      );
+    (v4 s1@v2)
+  )
+---------------
+Snapshot.Cps01.test4 (Step 2)
+  (\next1@v0 -> \s1@v1 -> 
+    let v2 =
+      (add s1@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\next@v3 -> \v@v4 -> 
+              ((next@v3 v2) <PrimUndefined>)
+            );
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (\$__unused@v4 -> \next1@v5 -> \s1@v6 -> 
+              let v7 =
+                (add s1@v6 1);
+              {#- Rewrite - Inline -#}
+              let v8 =
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  {#- Rewrite - Inline -#}
+                  let v8 =
+                    (\next@v8 -> \v@v9 -> 
+                      ((next@v8 v7) <PrimUndefined>)
+                    );
+                  ((v8 next1@v5) s1@v6);
+                v8;
+              v8
+            );
+          (\next1@v5 -> \s1@v6 -> 
+            ((v3 (\s2@v7 -> \a@v8 -> 
+              (((v4 a@v8) next1@v5) s2@v7)
+            )) s1@v6)
+          );
+        ((v3 next1@v0) s1@v1);
+      v3;
+    v3
+  )
+---------------
+Snapshot.Cps01.test4 (Step 3)
+  (\next1@v0 -> \s1@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (add s1@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\s2@v3 -> \a@v4 -> 
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (add s2@v3 1);
+        {#- Rewrite - Inline -#}
+        let v6 =
+          ((next1@v0 v5) <PrimUndefined>);
+        v6
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      ((v3 v2) <PrimUndefined>);
+    v4
+  )
+---------------
+Snapshot.Cps01.test4 (Step 4)
+  (\next1@v0 -> \s1@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (add s1@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      <PrimUndefined>;
+    ((next1@v0 (add v2 1)) <PrimUndefined>)
+  )
+---------------
+Snapshot.Cps01.test4 (Step 5; Final)
+  (\next1@v0 -> \s1@v1 -> 
+    ((next1@v0 (add s1@v1 2)) <PrimUndefined>)
+  )

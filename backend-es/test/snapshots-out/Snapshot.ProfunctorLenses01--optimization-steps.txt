@@ -1,0 +1,3778 @@
+Snapshot.ProfunctorLenses01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.ProfunctorLenses01.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.ProfunctorLenses01.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.ProfunctorLenses01.compose (Step 1; Final)
+  (
+    Control.Semigroupoid.semigroupoidFn
+  ).compose
+
+===============
+
+Snapshot.ProfunctorLenses01.prop (Step 0; Original)
+  (((Data.Lens.Record.prop { reflectSymbol =
+      (\$__unused@v0 -> 
+        "bar"
+      )
+  }) <PrimUndefined>) <PrimUndefined>)
+---------------
+Snapshot.ProfunctorLenses01.prop (Step 1; Final)
+  (((Data.Lens.Record.prop { reflectSymbol =
+      (\$__unused@v0 -> 
+        "bar"
+      )
+  }) <PrimUndefined>) <PrimUndefined>)
+
+===============
+
+Snapshot.ProfunctorLenses01.prop1 (Step 0; Original)
+  (((Data.Lens.Record.prop { reflectSymbol =
+      (\$__unused@v0 -> 
+        "foo"
+      )
+  }) <PrimUndefined>) <PrimUndefined>)
+---------------
+Snapshot.ProfunctorLenses01.prop1 (Step 1; Final)
+  (((Data.Lens.Record.prop { reflectSymbol =
+      (\$__unused@v0 -> 
+        "foo"
+      )
+  }) <PrimUndefined>) <PrimUndefined>)
+
+===============
+
+Snapshot.ProfunctorLenses01.prop2 (Step 0; Original)
+  (((Data.Lens.Record.prop { reflectSymbol =
+      (\$__unused@v0 -> 
+        "baz"
+      )
+  }) <PrimUndefined>) <PrimUndefined>)
+---------------
+Snapshot.ProfunctorLenses01.prop2 (Step 1; Final)
+  (((Data.Lens.Record.prop { reflectSymbol =
+      (\$__unused@v0 -> 
+        "baz"
+      )
+  }) <PrimUndefined>) <PrimUndefined>)
+
+===============
+
+Snapshot.ProfunctorLenses01.test1 (Step 0; Original)
+  (Data.Lens.Getter.view ((Snapshot.ProfunctorLenses01.prop1 Type.Proxy.Proxy) Data.Lens.Internal.Forget.strongForget))
+---------------
+Snapshot.ProfunctorLenses01.test1 (Step 1)
+  [[ LetAssoc
+    let v0 =
+      { reflectSymbol =
+          (\$__unused@v0 -> 
+            "foo"
+          )
+      };
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            Type.Proxy.Proxy;
+          (\dictStrong@v4 -> 
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (((Record.get v0) <PrimUndefined>) v3);
+            {#- Rewrite - Inline -#}
+            let v6 =
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\b@v6 -> \a@v7 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol v3)) a@v7) b@v6)
+                );
+              (\dictStrong@v7 -> 
+                let dimap@v8 =
+                  (
+                    ((
+                      dictStrong@v7
+                    ).Profunctor0 <PrimUndefined>)
+                  ).dimap;
+                (\pab@v9 -> 
+                  (((dimap@v8 (\s@v10 -> 
+                    (Data.Tuple.Tuple.Tuple (v5 s@v10) (\b@v11 -> 
+                      ((v6 s@v10) b@v11)
+                    ))
+                  )) (\v@v10 -> 
+                    ((
+                      v@v10
+                    )#value1 (
+                      v@v10
+                    )#value0)
+                  )) ((
+                    dictStrong@v7
+                  ).first pab@v9))
+                )
+              );
+            (v6 dictStrong@v4)
+          );
+        v1;
+      (v1 Data.Lens.Internal.Forget.strongForget);
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (v0 Data.Lens.Getter.identity);
+    v1
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test1 (Step 2)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["reflectSymbol"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let dimap@v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (
+            Data.Lens.Internal.Forget.profunctorForget
+          ).dimap;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\pab@v2 -> 
+              (((dimap@v1 (\s@v3 -> 
+                (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                let v4 =
+                  <PrimUndefined>;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  {#- Rewrite - Inline -#}
+                  let v5 =
+                    Type.Proxy.Proxy;
+                  ((Record.Unsafe.unsafeGet ((
+                    v0
+                  ).reflectSymbol v5)) s@v3);
+                v5 (\b@v4 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol Type.Proxy.Proxy)) b@v4) s@v3)
+                ))
+              )) (\v@v3 -> 
+                ((
+                  v@v3
+                )#value1 (
+                  v@v3
+                )#value0)
+              )) (\x@v3 -> 
+                (pab@v2 (
+                  x@v3
+                )#value0)
+              ))
+            );
+          v2;
+        v2;
+      (v1 Data.Lens.Getter.identity)
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test1 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\$__unused@v0 -> 
+      "foo"
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\s@v1 -> 
+      (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) s@v1) (\b@v2 -> 
+        (((Record.Unsafe.unsafeSet (v0 Type.Proxy.Proxy)) b@v2) s@v1)
+      ))
+    );
+  {#- Rewrite - Inline -#}
+  let v2 =
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v@v2 -> \v1@v3 -> \x@v4 -> 
+        (v1@v3 (v1 x@v4))
+      );
+    ((v2 (\v@v3 -> 
+      ((
+        v@v3
+      )#value1 (
+        v@v3
+      )#value0)
+    )) (\x@v3 -> 
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (
+          x@v3
+        )#value0;
+      v4
+    ));
+  v2
+---------------
+Snapshot.ProfunctorLenses01.test1 (Step 4)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v@v0 -> 
+      ((
+        v@v0
+      )#value1 (
+        v@v0
+      )#value0)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\x@v1 -> 
+      (
+        x@v1
+      )#value0
+    );
+  (\x@v2 -> 
+    (v1 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+    let v3 =
+      Type.Proxy.Proxy;
+    "foo") x@v2) (\b@v3 -> 
+      (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+      let v4 =
+        Type.Proxy.Proxy;
+      "foo") b@v3) x@v2)
+    )))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test1 (Step 5)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (Data.Tuple.Tuple.Tuple (
+        x@v0
+      ).foo (\b@v1 -> 
+        (
+          x@v0
+            {
+            foo = b@v1
+            }
+        )
+      ));
+    (
+      v1
+    )#value0
+  )
+---------------
+Snapshot.ProfunctorLenses01.test1 (Step 6; Final)
+  (\x@v0 -> 
+    (
+      x@v0
+    ).foo
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test2 (Step 0; Original)
+  (\a@v0 -> 
+    ((Data.Lens.Getter.view ((Snapshot.ProfunctorLenses01.prop1 Type.Proxy.Proxy) Data.Lens.Internal.Forget.strongForget)) a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test2 (Step 1)
+  (\a@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        { reflectSymbol =
+            (\$__unused@v1 -> 
+              "foo"
+            )
+        };
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v3 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              Type.Proxy.Proxy;
+            (\dictStrong@v5 -> 
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (((Record.get v1) <PrimUndefined>) v4);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (\b@v7 -> \a@v8 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol v4)) a@v8) b@v7)
+                  );
+                (\dictStrong@v8 -> 
+                  let dimap@v9 =
+                    (
+                      ((
+                        dictStrong@v8
+                      ).Profunctor0 <PrimUndefined>)
+                    ).dimap;
+                  (\pab@v10 -> 
+                    (((dimap@v9 (\s@v11 -> 
+                      (Data.Tuple.Tuple.Tuple (v6 s@v11) (\b@v12 -> 
+                        ((v7 s@v11) b@v12)
+                      ))
+                    )) (\v@v11 -> 
+                      ((
+                        v@v11
+                      )#value1 (
+                        v@v11
+                      )#value0)
+                    )) ((
+                      dictStrong@v8
+                    ).first pab@v10))
+                  )
+                );
+              (v7 dictStrong@v5)
+            );
+          v2;
+        (v2 Data.Lens.Internal.Forget.strongForget);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (v1 Data.Lens.Getter.identity);
+      (v2 a@v0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test2 (Step 2)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["reflectSymbol"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let dimap@v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            (
+              Data.Lens.Internal.Forget.profunctorForget
+            ).dimap;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\pab@v3 -> 
+                (((dimap@v2 (\s@v4 -> 
+                  (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                  let v5 =
+                    <PrimUndefined>;
+                  {#- Rewrite - Inline -#}
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      Type.Proxy.Proxy;
+                    ((Record.Unsafe.unsafeGet ((
+                      v1
+                    ).reflectSymbol v6)) s@v4);
+                  v6 (\b@v5 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol Type.Proxy.Proxy)) b@v5) s@v4)
+                  ))
+                )) (\v@v4 -> 
+                  ((
+                    v@v4
+                  )#value1 (
+                    v@v4
+                  )#value0)
+                )) (\x@v4 -> 
+                  (pab@v3 (
+                    x@v4
+                  )#value0)
+                ))
+              );
+            v3;
+          v3;
+        ((v2 Data.Lens.Getter.identity) a@v0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test2 (Step 3)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\$__unused@v1 -> 
+        "foo"
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\s@v2 -> 
+        (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v1 Type.Proxy.Proxy)) s@v2) (\b@v3 -> 
+          (((Record.Unsafe.unsafeSet (v1 Type.Proxy.Proxy)) b@v3) s@v2)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\v@v3 -> \v1@v4 -> \x@v5 -> 
+          (v1@v4 (v2 x@v5))
+        );
+      ((v3 (\v@v4 -> 
+        ((
+          v@v4
+        )#value1 (
+          v@v4
+        )#value0)
+      )) (\x@v4 -> 
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (
+            x@v4
+          )#value0;
+        v5
+      ));
+    (v3 a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test2 (Step 4)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v@v1 -> 
+        ((
+          v@v1
+        )#value1 (
+          v@v1
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\x@v2 -> 
+          (
+            x@v2
+          )#value0
+        );
+      (\x@v3 -> 
+        (v2 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+        let v4 =
+          Type.Proxy.Proxy;
+        "foo") x@v3) (\b@v4 -> 
+          (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+          let v5 =
+            Type.Proxy.Proxy;
+          "foo") b@v4) x@v3)
+        )))
+      );
+    (v2 a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test2 (Step 5)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (Data.Tuple.Tuple.Tuple (
+        a@v0
+      ).foo (\b@v1 -> 
+        (
+          a@v0
+            {
+            foo = b@v1
+            }
+        )
+      ));
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (
+        v1
+      )#value0;
+    v2
+  )
+---------------
+Snapshot.ProfunctorLenses01.test2 (Step 6; Final)
+  (\a@v0 -> 
+    (
+      a@v0
+    ).foo
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test3 (Step 0; Original)
+  ((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.prop Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) (Snapshot.ProfunctorLenses01.add 1))
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 1)
+  [[ LetAssoc
+    let v0 =
+      { reflectSymbol =
+          (\$__unused@v0 -> 
+            "bar"
+          )
+      };
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            Type.Proxy.Proxy;
+          (\dictStrong@v4 -> 
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (((Record.get v0) <PrimUndefined>) v3);
+            {#- Rewrite - Inline -#}
+            let v6 =
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\b@v6 -> \a@v7 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol v3)) a@v7) b@v6)
+                );
+              (\dictStrong@v7 -> 
+                let dimap@v8 =
+                  (
+                    ((
+                      dictStrong@v7
+                    ).Profunctor0 <PrimUndefined>)
+                  ).dimap;
+                (\pab@v9 -> 
+                  (((dimap@v8 (\s@v10 -> 
+                    (Data.Tuple.Tuple.Tuple (v5 s@v10) (\b@v11 -> 
+                      ((v6 s@v10) b@v11)
+                    ))
+                  )) (\v@v10 -> 
+                    ((
+                      v@v10
+                    )#value1 (
+                      v@v10
+                    )#value0)
+                  )) ((
+                    dictStrong@v7
+                  ).first pab@v9))
+                )
+              );
+            (v6 dictStrong@v4)
+          );
+        v1;
+      (v1 Data.Profunctor.Strong.strongFn);
+    (v0 {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (add v1 v2)
+      );
+    v2)
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 2)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["reflectSymbol"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let dimap@v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (
+            Data.Profunctor.profunctorFn
+          ).dimap;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\pab@v2 -> 
+              (((dimap@v1 (\s@v3 -> 
+                (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                let v4 =
+                  <PrimUndefined>;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  {#- Rewrite - Inline -#}
+                  let v5 =
+                    Type.Proxy.Proxy;
+                  ((Record.Unsafe.unsafeGet ((
+                    v0
+                  ).reflectSymbol v5)) s@v3);
+                v5 (\b@v4 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol Type.Proxy.Proxy)) b@v4) s@v3)
+                ))
+              )) (\v@v3 -> 
+                ((
+                  v@v3
+                )#value1 (
+                  v@v3
+                )#value0)
+              )) (\v@v3 -> 
+                (Data.Tuple.Tuple.Tuple (pab@v2 (
+                  v@v3
+                )#value0) (
+                  v@v3
+                )#value1)
+              ))
+            );
+          v2;
+        v2;
+      (v1 (\v2 -> 
+        (add 1 v2)
+      ))
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\$__unused@v0 -> 
+      "bar"
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\v1 -> 
+      (add 1 v1)
+    );
+  {#- Rewrite - Inline -#}
+  let v2 =
+    (\s@v2 -> 
+      (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) s@v2) (\b@v3 -> 
+        (((Record.Unsafe.unsafeSet (v0 Type.Proxy.Proxy)) b@v3) s@v2)
+      ))
+    );
+  {#- Rewrite - Inline -#}
+  let v3 =
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\c2d@v3 -> \b2c@v4 -> \x@v5 -> 
+        (c2d@v3 (b2c@v4 (v2 x@v5)))
+      );
+    ((v3 (\v@v4 -> 
+      ((
+        v@v4
+      )#value1 (
+        v@v4
+      )#value0)
+    )) (\v@v4 -> 
+      (Data.Tuple.Tuple.Tuple (v1 (
+        v@v4
+      )#value0) (
+        v@v4
+      )#value1)
+    ));
+  v3
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 4)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v@v0 -> 
+      ((
+        v@v0
+      )#value1 (
+        v@v0
+      )#value0)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\v@v1 -> 
+      (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v1
+        )#value0;
+      (add 1 v2) (
+        v@v1
+      )#value1)
+    );
+  (\x@v2 -> 
+    (v0 (v1 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+    let v3 =
+      Type.Proxy.Proxy;
+    "bar") x@v2) (\b@v3 -> 
+      (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+      let v4 =
+        Type.Proxy.Proxy;
+      "bar") b@v3) x@v2)
+    ))))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 5)
+  (\x@v0 -> 
+    let v1 =
+      [[ UnpackOp
+        For identifier v1
+          Unpack Data
+            qualified ident = Data.Tuple.Tuple
+            tyName = Tuple
+        inside
+          (Data.Tuple.Tuple.Tuple (add 1 (
+            v1
+          )#value0) (
+            v1
+          )#value1)
+      ]];
+    ((
+      v1
+    )#value1 (
+      v1
+    )#value0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 6)
+  (\x@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          x@v0
+        ).bar;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\b@v2 -> 
+          (
+            x@v0
+              {
+              bar = b@v2
+              }
+          )
+        );
+      (Data.Tuple.Tuple.Tuple (add 1 v1) v2);
+    ((
+      v1
+    )#value1 (
+      v1
+    )#value0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 7)
+  (\x@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack Data
+          qualified ident = Data.Tuple.Tuple
+          tyName = Tuple
+      inside
+        ((
+          v1
+        )#value1 (
+          v1
+        )#value0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 8)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        x@v0
+      ).bar);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\b@v2 -> 
+        (
+          x@v0
+            {
+            bar = b@v2
+            }
+        )
+      );
+    (v2 v1)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 9)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        x@v0
+      ).bar);
+    (
+      x@v0
+        {
+        bar = v1
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test3 (Step 10; Final)
+  (\x@v0 -> 
+    (
+      x@v0
+        {
+        bar = (add 1 (
+          x@v0
+        ).bar)
+        }
+    )
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test4 (Step 0; Original)
+  (\a@v0 -> 
+    (((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.prop Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) (Snapshot.ProfunctorLenses01.add 1)) a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 1)
+  (\a@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        { reflectSymbol =
+            (\$__unused@v1 -> 
+              "bar"
+            )
+        };
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v3 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              Type.Proxy.Proxy;
+            (\dictStrong@v5 -> 
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (((Record.get v1) <PrimUndefined>) v4);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (\b@v7 -> \a@v8 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol v4)) a@v8) b@v7)
+                  );
+                (\dictStrong@v8 -> 
+                  let dimap@v9 =
+                    (
+                      ((
+                        dictStrong@v8
+                      ).Profunctor0 <PrimUndefined>)
+                    ).dimap;
+                  (\pab@v10 -> 
+                    (((dimap@v9 (\s@v11 -> 
+                      (Data.Tuple.Tuple.Tuple (v6 s@v11) (\b@v12 -> 
+                        ((v7 s@v11) b@v12)
+                      ))
+                    )) (\v@v11 -> 
+                      ((
+                        v@v11
+                      )#value1 (
+                        v@v11
+                      )#value0)
+                    )) ((
+                      dictStrong@v8
+                    ).first pab@v10))
+                  )
+                );
+              (v7 dictStrong@v5)
+            );
+          v2;
+        (v2 Data.Profunctor.Strong.strongFn);
+      ((v1 {#- Rewrite - Inline -#}
+      let v2 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\v3 -> 
+          (add v2 v3)
+        );
+      v3) a@v0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 2)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["reflectSymbol"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let dimap@v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            (
+              Data.Profunctor.profunctorFn
+            ).dimap;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\pab@v3 -> 
+                (((dimap@v2 (\s@v4 -> 
+                  (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                  let v5 =
+                    <PrimUndefined>;
+                  {#- Rewrite - Inline -#}
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      Type.Proxy.Proxy;
+                    ((Record.Unsafe.unsafeGet ((
+                      v1
+                    ).reflectSymbol v6)) s@v4);
+                  v6 (\b@v5 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol Type.Proxy.Proxy)) b@v5) s@v4)
+                  ))
+                )) (\v@v4 -> 
+                  ((
+                    v@v4
+                  )#value1 (
+                    v@v4
+                  )#value0)
+                )) (\v@v4 -> 
+                  (Data.Tuple.Tuple.Tuple (pab@v3 (
+                    v@v4
+                  )#value0) (
+                    v@v4
+                  )#value1)
+                ))
+              );
+            v3;
+          v3;
+        ((v2 (\v3 -> 
+          (add 1 v3)
+        )) a@v0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 3)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\$__unused@v1 -> 
+        "bar"
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (add 1 v2)
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\s@v3 -> 
+        (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v1 Type.Proxy.Proxy)) s@v3) (\b@v4 -> 
+          (((Record.Unsafe.unsafeSet (v1 Type.Proxy.Proxy)) b@v4) s@v3)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\c2d@v4 -> \b2c@v5 -> \x@v6 -> 
+          (c2d@v4 (b2c@v5 (v3 x@v6)))
+        );
+      ((v4 (\v@v5 -> 
+        ((
+          v@v5
+        )#value1 (
+          v@v5
+        )#value0)
+      )) (\v@v5 -> 
+        (Data.Tuple.Tuple.Tuple (v2 (
+          v@v5
+        )#value0) (
+          v@v5
+        )#value1)
+      ));
+    (v4 a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 4)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v@v1 -> 
+        ((
+          v@v1
+        )#value1 (
+          v@v1
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v@v2 -> 
+          (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v@v2
+            )#value0;
+          (add 1 v3) (
+            v@v2
+          )#value1)
+        );
+      (\x@v3 -> 
+        (v1 (v2 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+        let v4 =
+          Type.Proxy.Proxy;
+        "bar") x@v3) (\b@v4 -> 
+          (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+          let v5 =
+            Type.Proxy.Proxy;
+          "bar") b@v4) x@v3)
+        ))))
+      );
+    (v2 a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 5)
+  (\a@v0 -> 
+    let v1 =
+      [[ UnpackOp
+        For identifier v1
+          Unpack Data
+            qualified ident = Data.Tuple.Tuple
+            tyName = Tuple
+        inside
+          (Data.Tuple.Tuple.Tuple (add 1 (
+            v1
+          )#value0) (
+            v1
+          )#value1)
+      ]];
+    {#- Rewrite - Inline -#}
+    let v2 =
+      ((
+        v1
+      )#value1 (
+        v1
+      )#value0);
+    v2
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 6)
+  (\a@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          a@v0
+        ).bar;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\b@v2 -> 
+          (
+            a@v0
+              {
+              bar = b@v2
+              }
+          )
+        );
+      (Data.Tuple.Tuple.Tuple (add 1 v1) v2);
+    ((
+      v1
+    )#value1 (
+      v1
+    )#value0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 7)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack Data
+          qualified ident = Data.Tuple.Tuple
+          tyName = Tuple
+      inside
+        ((
+          v1
+        )#value1 (
+          v1
+        )#value0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 8)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        a@v0
+      ).bar);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\b@v2 -> 
+        (
+          a@v0
+            {
+            bar = b@v2
+            }
+        )
+      );
+    (v2 v1)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 9)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        a@v0
+      ).bar);
+    (
+      a@v0
+        {
+        bar = v1
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test4 (Step 10; Final)
+  (\a@v0 -> 
+    (
+      a@v0
+        {
+        bar = (add 1 (
+          a@v0
+        ).bar)
+        }
+    )
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test5 (Step 0; Original)
+  ((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.compose ((Snapshot.ProfunctorLenses01.prop Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) ((Snapshot.ProfunctorLenses01.prop2 Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn))) (Snapshot.ProfunctorLenses01.add 1))
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 1)
+  [[ LetAssoc
+    let v0 =
+      { reflectSymbol =
+          (\$__unused@v0 -> 
+            "bar"
+          )
+      };
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            Type.Proxy.Proxy;
+          (\dictStrong@v4 -> 
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (((Record.get v0) <PrimUndefined>) v3);
+            {#- Rewrite - Inline -#}
+            let v6 =
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\b@v6 -> \a@v7 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol v3)) a@v7) b@v6)
+                );
+              (\dictStrong@v7 -> 
+                let dimap@v8 =
+                  (
+                    ((
+                      dictStrong@v7
+                    ).Profunctor0 <PrimUndefined>)
+                  ).dimap;
+                (\pab@v9 -> 
+                  (((dimap@v8 (\s@v10 -> 
+                    (Data.Tuple.Tuple.Tuple (v5 s@v10) (\b@v11 -> 
+                      ((v6 s@v10) b@v11)
+                    ))
+                  )) (\v@v10 -> 
+                    ((
+                      v@v10
+                    )#value1 (
+                      v@v10
+                    )#value0)
+                  )) ((
+                    dictStrong@v7
+                  ).first pab@v9))
+                )
+              );
+            (v6 dictStrong@v4)
+          );
+        v1;
+      (v1 Data.Profunctor.Strong.strongFn);
+    let v0 =
+      [[ LetAssoc
+        let v1 =
+          { reflectSymbol =
+              (\$__unused@v1 -> 
+                "baz"
+              )
+          };
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              {#- Rewrite - Inline -#}
+              let v2 =
+                <PrimUndefined>;
+              {#- Rewrite - Inline -#}
+              let v3 =
+                <PrimUndefined>;
+              {#- Rewrite - Inline -#}
+              let v4 =
+                Type.Proxy.Proxy;
+              (\dictStrong@v5 -> 
+                {#- Rewrite - Inline -#}
+                let v6 =
+                  (((Record.get v1) <PrimUndefined>) v4);
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (\b@v7 -> \a@v8 -> 
+                      (((Record.Unsafe.unsafeSet ((
+                        v1
+                      ).reflectSymbol v4)) a@v8) b@v7)
+                    );
+                  (\dictStrong@v8 -> 
+                    let dimap@v9 =
+                      (
+                        ((
+                          dictStrong@v8
+                        ).Profunctor0 <PrimUndefined>)
+                      ).dimap;
+                    (\pab@v10 -> 
+                      (((dimap@v9 (\s@v11 -> 
+                        (Data.Tuple.Tuple.Tuple (v6 s@v11) (\b@v12 -> 
+                          ((v7 s@v11) b@v12)
+                        ))
+                      )) (\v@v11 -> 
+                        ((
+                          v@v11
+                        )#value1 (
+                          v@v11
+                        )#value0)
+                      )) ((
+                        dictStrong@v8
+                      ).first pab@v10))
+                    )
+                  );
+                (v7 dictStrong@v5)
+              );
+            v2;
+          (v2 Data.Profunctor.Strong.strongFn);
+        let v1 =
+          (\x@v2 -> 
+            (v0 (v1 x@v2))
+          );
+        v1
+      ]];
+    (v0 {#- Rewrite - Inline -#}
+    let v1 =
+      1;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (add v1 v2)
+      );
+    v2)
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 2)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["reflectSymbol"]
+    inside
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let dimap@v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (
+            Data.Profunctor.profunctorFn
+          ).dimap;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\pab@v2 -> 
+              (((dimap@v1 (\s@v3 -> 
+                (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                let v4 =
+                  <PrimUndefined>;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  {#- Rewrite - Inline -#}
+                  let v5 =
+                    Type.Proxy.Proxy;
+                  ((Record.Unsafe.unsafeGet ((
+                    v0
+                  ).reflectSymbol v5)) s@v3);
+                v5 (\b@v4 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol Type.Proxy.Proxy)) b@v4) s@v3)
+                ))
+              )) (\v@v3 -> 
+                ((
+                  v@v3
+                )#value1 (
+                  v@v3
+                )#value0)
+              )) (\v@v3 -> 
+                (Data.Tuple.Tuple.Tuple (pab@v2 (
+                  v@v3
+                )#value0) (
+                  v@v3
+                )#value1)
+              ))
+            );
+          v2;
+        v2;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        [[ UnpackOp
+          For identifier v2
+            Unpack record
+            labels = ["reflectSymbol"]
+          inside
+            let v3 =
+              {#- Rewrite - Inline -#}
+              let dimap@v3 =
+                {#- Rewrite - Inline -#}
+                let v3 =
+                  <PrimUndefined>;
+                (
+                  Data.Profunctor.profunctorFn
+                ).dimap;
+              {#- Rewrite - Inline -#}
+              let v4 =
+                {#- Rewrite - Inline -#}
+                let v4 =
+                  (\pab@v4 -> 
+                    (((dimap@v3 (\s@v5 -> 
+                      (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                      let v6 =
+                        <PrimUndefined>;
+                      {#- Rewrite - Inline -#}
+                      let v7 =
+                        {#- Rewrite - Inline -#}
+                        let v7 =
+                          Type.Proxy.Proxy;
+                        ((Record.Unsafe.unsafeGet ((
+                          v2
+                        ).reflectSymbol v7)) s@v5);
+                      v7 (\b@v6 -> 
+                        (((Record.Unsafe.unsafeSet ((
+                          v2
+                        ).reflectSymbol Type.Proxy.Proxy)) b@v6) s@v5)
+                      ))
+                    )) (\v@v5 -> 
+                      ((
+                        v@v5
+                      )#value1 (
+                        v@v5
+                      )#value0)
+                    )) (\v@v5 -> 
+                      (Data.Tuple.Tuple.Tuple (pab@v4 (
+                        v@v5
+                      )#value0) (
+                        v@v5
+                      )#value1)
+                    ))
+                  );
+                v4;
+              v4;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (\x@v4 -> 
+                (v1 (v3 x@v4))
+              );
+            v4
+        ]];
+      (v2 (\v3 -> 
+        (add 1 v3)
+      ))
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\$__unused@v0 -> 
+      "bar"
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\pab@v1 -> 
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\s@v2 -> 
+          (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) s@v2) (\b@v3 -> 
+            (((Record.Unsafe.unsafeSet (v0 Type.Proxy.Proxy)) b@v3) s@v2)
+          ))
+        );
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\c2d@v3 -> \b2c@v4 -> \x@v5 -> 
+          (c2d@v3 (b2c@v4 (v2 x@v5)))
+        );
+      ((v3 (\v@v4 -> 
+        ((
+          v@v4
+        )#value1 (
+          v@v4
+        )#value0)
+      )) (\v@v4 -> 
+        (Data.Tuple.Tuple.Tuple (pab@v1 (
+          v@v4
+        )#value0) (
+          v@v4
+        )#value1)
+      ))
+    );
+  {#- Rewrite - Inline -#}
+  let v2 =
+    (\$__unused@v2 -> 
+      "baz"
+    );
+  {#- Rewrite - Inline -#}
+  let v3 =
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\pab@v3 -> 
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\s@v4 -> 
+            (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v2 Type.Proxy.Proxy)) s@v4) (\b@v5 -> 
+              (((Record.Unsafe.unsafeSet (v2 Type.Proxy.Proxy)) b@v5) s@v4)
+            ))
+          );
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\c2d@v5 -> \b2c@v6 -> \x@v7 -> 
+            (c2d@v5 (b2c@v6 (v4 x@v7)))
+          );
+        ((v5 (\v@v6 -> 
+          ((
+            v@v6
+          )#value1 (
+            v@v6
+          )#value0)
+        )) (\v@v6 -> 
+          (Data.Tuple.Tuple.Tuple (pab@v3 (
+            v@v6
+          )#value0) (
+            v@v6
+          )#value1)
+        ))
+      );
+    (\x@v4 -> 
+      (v1 (v3 x@v4))
+    );
+  (v3 (\v4 -> 
+    (add 1 v4)
+  ))
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 4)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v0 -> 
+      (add 1 v0)
+    );
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v@v1 -> 
+        ((
+          v@v1
+        )#value1 (
+          v@v1
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v@v2 -> 
+          (Data.Tuple.Tuple.Tuple (v0 (
+            v@v2
+          )#value0) (
+            v@v2
+          )#value1)
+        );
+      (\x@v3 -> 
+        (v1 (v2 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+        let v4 =
+          Type.Proxy.Proxy;
+        "baz") x@v3) (\b@v4 -> 
+          (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+          let v5 =
+            Type.Proxy.Proxy;
+          "baz") b@v4) x@v3)
+        ))))
+      );
+    v2;
+  {#- Rewrite - Inline -#}
+  let v2 =
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v@v2 -> 
+        ((
+          v@v2
+        )#value1 (
+          v@v2
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\v@v3 -> 
+          (Data.Tuple.Tuple.Tuple (v1 (
+            v@v3
+          )#value0) (
+            v@v3
+          )#value1)
+        );
+      (\x@v4 -> 
+        (v2 (v3 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+        let v5 =
+          Type.Proxy.Proxy;
+        "bar") x@v4) (\b@v5 -> 
+          (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+          let v6 =
+            Type.Proxy.Proxy;
+          "bar") b@v5) x@v4)
+        ))))
+      );
+    v3;
+  v2
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 5)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\x@v0 -> 
+      let v1 =
+        [[ UnpackOp
+          For identifier v1
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+            let v2 =
+              (
+                v1
+              )#value0;
+            (add 1 v2) (
+              v1
+            )#value1)
+        ]];
+      ((
+        v1
+      )#value1 (
+        v1
+      )#value0)
+    );
+  (\x@v1 -> 
+    let v2 =
+      [[ UnpackOp
+        For identifier v2
+          Unpack Data
+            qualified ident = Data.Tuple.Tuple
+            tyName = Tuple
+        inside
+          (Data.Tuple.Tuple.Tuple (v0 (
+            v2
+          )#value0) (
+            v2
+          )#value1)
+      ]];
+    ((
+      v2
+    )#value1 (
+      v2
+    )#value0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 6)
+  (\x@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        (
+          x@v0
+        ).bar;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\b@v2 -> 
+            (
+              x@v0
+                {
+                bar = b@v2
+                }
+            )
+          );
+        (Data.Tuple.Tuple.Tuple let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1
+            ).baz;
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (\b@v4 -> 
+              (
+                v1
+                  {
+                  baz = b@v4
+                  }
+              )
+            );
+          (Data.Tuple.Tuple.Tuple (add 1 v3) v4);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          ((
+            v3
+          )#value1 (
+            v3
+          )#value0);
+        v4 v2);
+      ((
+        v1
+      )#value1 (
+        v1
+      )#value0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 7)
+  (\x@v0 -> 
+    let v1 =
+      (
+        x@v0
+      ).bar;
+    [[ UnpackOp
+      For identifier v2
+        Unpack Data
+          qualified ident = Data.Tuple.Tuple
+          tyName = Tuple
+      inside
+        ((
+          v2
+        )#value1 (
+          v2
+        )#value0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 8)
+  (\x@v0 -> 
+    let v1 =
+      (
+        x@v0
+      ).bar;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (add 1 (
+          v1
+        ).baz);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\b@v3 -> 
+          (
+            v1
+              {
+              baz = b@v3
+              }
+          )
+        );
+      (v3 v2);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\b@v3 -> 
+        (
+          x@v0
+            {
+            bar = b@v3
+            }
+        )
+      );
+    (v3 v2)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 9)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (
+        x@v0
+      ).bar;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (add 1 (
+          v1
+        ).baz);
+      (
+        v1
+          {
+          baz = v2
+          }
+      );
+    (
+      x@v0
+        {
+        bar = v2
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test5 (Step 10; Final)
+  (\x@v0 -> 
+    (
+      x@v0
+        {
+        bar = (
+          (
+            x@v0
+          ).bar
+            {
+            baz = (add 1 (
+              (
+                x@v0
+              ).bar
+            ).baz)
+            }
+        )
+        }
+    )
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test6 (Step 0; Original)
+  (\a@v0 -> 
+    (((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.compose ((Snapshot.ProfunctorLenses01.prop Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) ((Snapshot.ProfunctorLenses01.prop2 Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn))) (Snapshot.ProfunctorLenses01.add 1)) a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 1)
+  (\a@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        { reflectSymbol =
+            (\$__unused@v1 -> 
+              "bar"
+            )
+        };
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v3 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              Type.Proxy.Proxy;
+            (\dictStrong@v5 -> 
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (((Record.get v1) <PrimUndefined>) v4);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (\b@v7 -> \a@v8 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol v4)) a@v8) b@v7)
+                  );
+                (\dictStrong@v8 -> 
+                  let dimap@v9 =
+                    (
+                      ((
+                        dictStrong@v8
+                      ).Profunctor0 <PrimUndefined>)
+                    ).dimap;
+                  (\pab@v10 -> 
+                    (((dimap@v9 (\s@v11 -> 
+                      (Data.Tuple.Tuple.Tuple (v6 s@v11) (\b@v12 -> 
+                        ((v7 s@v11) b@v12)
+                      ))
+                    )) (\v@v11 -> 
+                      ((
+                        v@v11
+                      )#value1 (
+                        v@v11
+                      )#value0)
+                    )) ((
+                      dictStrong@v8
+                    ).first pab@v10))
+                  )
+                );
+              (v7 dictStrong@v5)
+            );
+          v2;
+        (v2 Data.Profunctor.Strong.strongFn);
+      let v1 =
+        [[ LetAssoc
+          let v2 =
+            { reflectSymbol =
+                (\$__unused@v2 -> 
+                  "baz"
+                )
+            };
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              {#- Rewrite - Inline -#}
+              let v3 =
+                {#- Rewrite - Inline -#}
+                let v3 =
+                  <PrimUndefined>;
+                {#- Rewrite - Inline -#}
+                let v4 =
+                  <PrimUndefined>;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  Type.Proxy.Proxy;
+                (\dictStrong@v6 -> 
+                  {#- Rewrite - Inline -#}
+                  let v7 =
+                    (((Record.get v2) <PrimUndefined>) v5);
+                  {#- Rewrite - Inline -#}
+                  let v8 =
+                    {#- Rewrite - Inline -#}
+                    let v8 =
+                      (\b@v8 -> \a@v9 -> 
+                        (((Record.Unsafe.unsafeSet ((
+                          v2
+                        ).reflectSymbol v5)) a@v9) b@v8)
+                      );
+                    (\dictStrong@v9 -> 
+                      let dimap@v10 =
+                        (
+                          ((
+                            dictStrong@v9
+                          ).Profunctor0 <PrimUndefined>)
+                        ).dimap;
+                      (\pab@v11 -> 
+                        (((dimap@v10 (\s@v12 -> 
+                          (Data.Tuple.Tuple.Tuple (v7 s@v12) (\b@v13 -> 
+                            ((v8 s@v12) b@v13)
+                          ))
+                        )) (\v@v12 -> 
+                          ((
+                            v@v12
+                          )#value1 (
+                            v@v12
+                          )#value0)
+                        )) ((
+                          dictStrong@v9
+                        ).first pab@v11))
+                      )
+                    );
+                  (v8 dictStrong@v6)
+                );
+              v3;
+            (v3 Data.Profunctor.Strong.strongFn);
+          let v2 =
+            (\x@v3 -> 
+              (v1 (v2 x@v3))
+            );
+          v2
+        ]];
+      ((v1 {#- Rewrite - Inline -#}
+      let v2 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\v3 -> 
+          (add v2 v3)
+        );
+      v3) a@v0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 2)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["reflectSymbol"]
+      inside
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let dimap@v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            (
+              Data.Profunctor.profunctorFn
+            ).dimap;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\pab@v3 -> 
+                (((dimap@v2 (\s@v4 -> 
+                  (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                  let v5 =
+                    <PrimUndefined>;
+                  {#- Rewrite - Inline -#}
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      Type.Proxy.Proxy;
+                    ((Record.Unsafe.unsafeGet ((
+                      v1
+                    ).reflectSymbol v6)) s@v4);
+                  v6 (\b@v5 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol Type.Proxy.Proxy)) b@v5) s@v4)
+                  ))
+                )) (\v@v4 -> 
+                  ((
+                    v@v4
+                  )#value1 (
+                    v@v4
+                  )#value0)
+                )) (\v@v4 -> 
+                  (Data.Tuple.Tuple.Tuple (pab@v3 (
+                    v@v4
+                  )#value0) (
+                    v@v4
+                  )#value1)
+                ))
+              );
+            v3;
+          v3;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          [[ UnpackOp
+            For identifier v3
+              Unpack record
+              labels = ["reflectSymbol"]
+            inside
+              let v4 =
+                {#- Rewrite - Inline -#}
+                let dimap@v4 =
+                  {#- Rewrite - Inline -#}
+                  let v4 =
+                    <PrimUndefined>;
+                  (
+                    Data.Profunctor.profunctorFn
+                  ).dimap;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  {#- Rewrite - Inline -#}
+                  let v5 =
+                    (\pab@v5 -> 
+                      (((dimap@v4 (\s@v6 -> 
+                        (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                        let v7 =
+                          <PrimUndefined>;
+                        {#- Rewrite - Inline -#}
+                        let v8 =
+                          {#- Rewrite - Inline -#}
+                          let v8 =
+                            Type.Proxy.Proxy;
+                          ((Record.Unsafe.unsafeGet ((
+                            v3
+                          ).reflectSymbol v8)) s@v6);
+                        v8 (\b@v7 -> 
+                          (((Record.Unsafe.unsafeSet ((
+                            v3
+                          ).reflectSymbol Type.Proxy.Proxy)) b@v7) s@v6)
+                        ))
+                      )) (\v@v6 -> 
+                        ((
+                          v@v6
+                        )#value1 (
+                          v@v6
+                        )#value0)
+                      )) (\v@v6 -> 
+                        (Data.Tuple.Tuple.Tuple (pab@v5 (
+                          v@v6
+                        )#value0) (
+                          v@v6
+                        )#value1)
+                      ))
+                    );
+                  v5;
+                v5;
+              {#- Rewrite - Inline -#}
+              let v5 =
+                (\x@v5 -> 
+                  (v2 (v4 x@v5))
+                );
+              v5
+          ]];
+        ((v3 (\v4 -> 
+          (add 1 v4)
+        )) a@v0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 3)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\$__unused@v1 -> 
+        "bar"
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\pab@v2 -> 
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\s@v3 -> 
+            (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v1 Type.Proxy.Proxy)) s@v3) (\b@v4 -> 
+              (((Record.Unsafe.unsafeSet (v1 Type.Proxy.Proxy)) b@v4) s@v3)
+            ))
+          );
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\c2d@v4 -> \b2c@v5 -> \x@v6 -> 
+            (c2d@v4 (b2c@v5 (v3 x@v6)))
+          );
+        ((v4 (\v@v5 -> 
+          ((
+            v@v5
+          )#value1 (
+            v@v5
+          )#value0)
+        )) (\v@v5 -> 
+          (Data.Tuple.Tuple.Tuple (pab@v2 (
+            v@v5
+          )#value0) (
+            v@v5
+          )#value1)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\$__unused@v3 -> 
+        "baz"
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\pab@v4 -> 
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\s@v5 -> 
+              (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v3 Type.Proxy.Proxy)) s@v5) (\b@v6 -> 
+                (((Record.Unsafe.unsafeSet (v3 Type.Proxy.Proxy)) b@v6) s@v5)
+              ))
+            );
+          {#- Rewrite - Inline -#}
+          let v6 =
+            (\c2d@v6 -> \b2c@v7 -> \x@v8 -> 
+              (c2d@v6 (b2c@v7 (v5 x@v8)))
+            );
+          ((v6 (\v@v7 -> 
+            ((
+              v@v7
+            )#value1 (
+              v@v7
+            )#value0)
+          )) (\v@v7 -> 
+            (Data.Tuple.Tuple.Tuple (pab@v4 (
+              v@v7
+            )#value0) (
+              v@v7
+            )#value1)
+          ))
+        );
+      (\x@v5 -> 
+        (v2 (v4 x@v5))
+      );
+    ((v4 (\v5 -> 
+      (add 1 v5)
+    )) a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 4)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add 1 v1)
+      );
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v@v2 -> 
+          ((
+            v@v2
+          )#value1 (
+            v@v2
+          )#value0)
+        );
+      {#- Rewrite - Inline -#}
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\v@v3 -> 
+            (Data.Tuple.Tuple.Tuple (v1 (
+              v@v3
+            )#value0) (
+              v@v3
+            )#value1)
+          );
+        (\x@v4 -> 
+          (v2 (v3 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+          let v5 =
+            Type.Proxy.Proxy;
+          "baz") x@v4) (\b@v5 -> 
+            (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+            let v6 =
+              Type.Proxy.Proxy;
+            "baz") b@v5) x@v4)
+          ))))
+        );
+      v3;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\v@v3 -> 
+          ((
+            v@v3
+          )#value1 (
+            v@v3
+          )#value0)
+        );
+      {#- Rewrite - Inline -#}
+      let v4 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\v@v4 -> 
+            (Data.Tuple.Tuple.Tuple (v2 (
+              v@v4
+            )#value0) (
+              v@v4
+            )#value1)
+          );
+        (\x@v5 -> 
+          (v3 (v4 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+          let v6 =
+            Type.Proxy.Proxy;
+          "bar") x@v5) (\b@v6 -> 
+            (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+            let v7 =
+              Type.Proxy.Proxy;
+            "bar") b@v6) x@v5)
+          ))))
+        );
+      v4;
+    (v3 a@v0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 5)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\x@v1 -> 
+        let v2 =
+          [[ UnpackOp
+            For identifier v2
+              Unpack Data
+                qualified ident = Data.Tuple.Tuple
+                tyName = Tuple
+            inside
+              (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+              let v3 =
+                (
+                  v2
+                )#value0;
+              (add 1 v3) (
+                v2
+              )#value1)
+          ]];
+        ((
+          v2
+        )#value1 (
+          v2
+        )#value0)
+      );
+    let v2 =
+      [[ UnpackOp
+        For identifier v2
+          Unpack Data
+            qualified ident = Data.Tuple.Tuple
+            tyName = Tuple
+        inside
+          (Data.Tuple.Tuple.Tuple (v1 (
+            v2
+          )#value0) (
+            v2
+          )#value1)
+      ]];
+    {#- Rewrite - Inline -#}
+    let v3 =
+      ((
+        v2
+      )#value1 (
+        v2
+      )#value0);
+    v3
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 6)
+  (\a@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        (
+          a@v0
+        ).bar;
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\b@v2 -> 
+            (
+              a@v0
+                {
+                bar = b@v2
+                }
+            )
+          );
+        (Data.Tuple.Tuple.Tuple let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1
+            ).baz;
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (\b@v4 -> 
+              (
+                v1
+                  {
+                  baz = b@v4
+                  }
+              )
+            );
+          (Data.Tuple.Tuple.Tuple (add 1 v3) v4);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          ((
+            v3
+          )#value1 (
+            v3
+          )#value0);
+        v4 v2);
+      ((
+        v1
+      )#value1 (
+        v1
+      )#value0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 7)
+  (\a@v0 -> 
+    let v1 =
+      (
+        a@v0
+      ).bar;
+    [[ UnpackOp
+      For identifier v2
+        Unpack Data
+          qualified ident = Data.Tuple.Tuple
+          tyName = Tuple
+      inside
+        ((
+          v2
+        )#value1 (
+          v2
+        )#value0)
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 8)
+  (\a@v0 -> 
+    let v1 =
+      (
+        a@v0
+      ).bar;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (add 1 (
+          v1
+        ).baz);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\b@v3 -> 
+          (
+            v1
+              {
+              baz = b@v3
+              }
+          )
+        );
+      (v3 v2);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\b@v3 -> 
+        (
+          a@v0
+            {
+            bar = b@v3
+            }
+        )
+      );
+    (v3 v2)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 9)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (
+        a@v0
+      ).bar;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (add 1 (
+          v1
+        ).baz);
+      (
+        v1
+          {
+          baz = v2
+          }
+      );
+    (
+      a@v0
+        {
+        bar = v2
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test6 (Step 10; Final)
+  (\a@v0 -> 
+    (
+      a@v0
+        {
+        bar = (
+          (
+            a@v0
+          ).bar
+            {
+            baz = (add 1 (
+              (
+                a@v0
+              ).bar
+            ).baz)
+            }
+        )
+        }
+    )
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test7 (Step 0; Original)
+  (((Control.Semigroupoid.composeFlipped Control.Semigroupoid.semigroupoidFn) ((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.prop1 Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) (Snapshot.ProfunctorLenses01.add 1))) ((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.prop Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) (Snapshot.ProfunctorLenses01.add 42)))
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 1)
+  [[ LetAssoc
+    let v0 =
+      { reflectSymbol =
+          (\$__unused@v0 -> 
+            "foo"
+          )
+      };
+    let v0 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v2 =
+            <PrimUndefined>;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            Type.Proxy.Proxy;
+          (\dictStrong@v4 -> 
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (((Record.get v0) <PrimUndefined>) v3);
+            {#- Rewrite - Inline -#}
+            let v6 =
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\b@v6 -> \a@v7 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol v3)) a@v7) b@v6)
+                );
+              (\dictStrong@v7 -> 
+                let dimap@v8 =
+                  (
+                    ((
+                      dictStrong@v7
+                    ).Profunctor0 <PrimUndefined>)
+                  ).dimap;
+                (\pab@v9 -> 
+                  (((dimap@v8 (\s@v10 -> 
+                    (Data.Tuple.Tuple.Tuple (v5 s@v10) (\b@v11 -> 
+                      ((v6 s@v10) b@v11)
+                    ))
+                  )) (\v@v10 -> 
+                    ((
+                      v@v10
+                    )#value1 (
+                      v@v10
+                    )#value0)
+                  )) ((
+                    dictStrong@v7
+                  ).first pab@v9))
+                )
+              );
+            (v6 dictStrong@v4)
+          );
+        v1;
+      (v1 Data.Profunctor.Strong.strongFn);
+    let v0 =
+      (v0 {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (add v1 v2)
+        );
+      v2);
+    [[ LetAssoc
+      let v1 =
+        { reflectSymbol =
+            (\$__unused@v1 -> 
+              "bar"
+            )
+        };
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v3 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              Type.Proxy.Proxy;
+            (\dictStrong@v5 -> 
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (((Record.get v1) <PrimUndefined>) v4);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (\b@v7 -> \a@v8 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol v4)) a@v8) b@v7)
+                  );
+                (\dictStrong@v8 -> 
+                  let dimap@v9 =
+                    (
+                      ((
+                        dictStrong@v8
+                      ).Profunctor0 <PrimUndefined>)
+                    ).dimap;
+                  (\pab@v10 -> 
+                    (((dimap@v9 (\s@v11 -> 
+                      (Data.Tuple.Tuple.Tuple (v6 s@v11) (\b@v12 -> 
+                        ((v7 s@v11) b@v12)
+                      ))
+                    )) (\v@v11 -> 
+                      ((
+                        v@v11
+                      )#value1 (
+                        v@v11
+                      )#value0)
+                    )) ((
+                      dictStrong@v8
+                    ).first pab@v10))
+                  )
+                );
+              (v7 dictStrong@v5)
+            );
+          v2;
+        (v2 Data.Profunctor.Strong.strongFn);
+      let v1 =
+        (v1 {#- Rewrite - Inline -#}
+        let v2 =
+          42;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\v3 -> 
+            (add v2 v3)
+          );
+        v3);
+      (\x@v2 -> 
+        (v1 (v0 x@v2))
+      )
+    ]]
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 2)
+  [[ UnpackOp
+    For identifier v0
+      Unpack record
+      labels = ["reflectSymbol"]
+    inside
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let dimap@v1 =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (
+            Data.Profunctor.profunctorFn
+          ).dimap;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (\pab@v2 -> 
+              (((dimap@v1 (\s@v3 -> 
+                (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                let v4 =
+                  <PrimUndefined>;
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  {#- Rewrite - Inline -#}
+                  let v5 =
+                    Type.Proxy.Proxy;
+                  ((Record.Unsafe.unsafeGet ((
+                    v0
+                  ).reflectSymbol v5)) s@v3);
+                v5 (\b@v4 -> 
+                  (((Record.Unsafe.unsafeSet ((
+                    v0
+                  ).reflectSymbol Type.Proxy.Proxy)) b@v4) s@v3)
+                ))
+              )) (\v@v3 -> 
+                ((
+                  v@v3
+                )#value1 (
+                  v@v3
+                )#value0)
+              )) (\v@v3 -> 
+                (Data.Tuple.Tuple.Tuple (pab@v2 (
+                  v@v3
+                )#value0) (
+                  v@v3
+                )#value1)
+              ))
+            );
+          v2;
+        v2;
+      let v2 =
+        (v1 (\v2 -> 
+          (add 1 v2)
+        ));
+      [[ UnpackOp
+        For identifier v3
+          Unpack record
+          labels = ["reflectSymbol"]
+        inside
+          {#- Rewrite - Inline -#}
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let dimap@v4 =
+              {#- Rewrite - Inline -#}
+              let v4 =
+                <PrimUndefined>;
+              (
+                Data.Profunctor.profunctorFn
+              ).dimap;
+            {#- Rewrite - Inline -#}
+            let v5 =
+              {#- Rewrite - Inline -#}
+              let v5 =
+                (\pab@v5 -> 
+                  (((dimap@v4 (\s@v6 -> 
+                    (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                    let v7 =
+                      <PrimUndefined>;
+                    {#- Rewrite - Inline -#}
+                    let v8 =
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        Type.Proxy.Proxy;
+                      ((Record.Unsafe.unsafeGet ((
+                        v3
+                      ).reflectSymbol v8)) s@v6);
+                    v8 (\b@v7 -> 
+                      (((Record.Unsafe.unsafeSet ((
+                        v3
+                      ).reflectSymbol Type.Proxy.Proxy)) b@v7) s@v6)
+                    ))
+                  )) (\v@v6 -> 
+                    ((
+                      v@v6
+                    )#value1 (
+                      v@v6
+                    )#value0)
+                  )) (\v@v6 -> 
+                    (Data.Tuple.Tuple.Tuple (pab@v5 (
+                      v@v6
+                    )#value0) (
+                      v@v6
+                    )#value1)
+                  ))
+                );
+              v5;
+            v5;
+          let v5 =
+            (v4 (\v5 -> 
+              (add 42 v5)
+            ));
+          (\x@v6 -> 
+            (v5 (v2 x@v6))
+          )
+      ]]
+  ]]
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 3)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\$__unused@v0 -> 
+      "foo"
+    );
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add 1 v1)
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\s@v2 -> 
+        (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) s@v2) (\b@v3 -> 
+          (((Record.Unsafe.unsafeSet (v0 Type.Proxy.Proxy)) b@v3) s@v2)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\c2d@v3 -> \b2c@v4 -> \x@v5 -> 
+          (c2d@v3 (b2c@v4 (v2 x@v5)))
+        );
+      ((v3 (\v@v4 -> 
+        ((
+          v@v4
+        )#value1 (
+          v@v4
+        )#value0)
+      )) (\v@v4 -> 
+        (Data.Tuple.Tuple.Tuple (v1 (
+          v@v4
+        )#value0) (
+          v@v4
+        )#value1)
+      ));
+    v3;
+  {#- Rewrite - Inline -#}
+  let v2 =
+    (\$__unused@v2 -> 
+      "bar"
+    );
+  let v3 =
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\v3 -> 
+        (add 42 v3)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\s@v4 -> 
+        (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v2 Type.Proxy.Proxy)) s@v4) (\b@v5 -> 
+          (((Record.Unsafe.unsafeSet (v2 Type.Proxy.Proxy)) b@v5) s@v4)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\c2d@v5 -> \b2c@v6 -> \x@v7 -> 
+          (c2d@v5 (b2c@v6 (v4 x@v7)))
+        );
+      ((v5 (\v@v6 -> 
+        ((
+          v@v6
+        )#value1 (
+          v@v6
+        )#value0)
+      )) (\v@v6 -> 
+        (Data.Tuple.Tuple.Tuple (v3 (
+          v@v6
+        )#value0) (
+          v@v6
+        )#value1)
+      ));
+    v5;
+  (\x@v4 -> 
+    (v3 (v1 x@v4))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 4)
+  let v0 =
+    {#- Rewrite - Inline -#}
+    let v0 =
+      (\v@v0 -> 
+        ((
+          v@v0
+        )#value1 (
+          v@v0
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v@v1 -> 
+        (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v1
+          )#value0;
+        (add 1 v2) (
+          v@v1
+        )#value1)
+      );
+    (\x@v2 -> 
+      (v0 (v1 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+      let v3 =
+        Type.Proxy.Proxy;
+      "foo") x@v2) (\b@v3 -> 
+        (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+        let v4 =
+          Type.Proxy.Proxy;
+        "foo") b@v3) x@v2)
+      ))))
+    );
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v@v1 -> 
+        ((
+          v@v1
+        )#value1 (
+          v@v1
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v@v2 -> 
+        (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v@v2
+          )#value0;
+        (add 42 v3) (
+          v@v2
+        )#value1)
+      );
+    (\x@v3 -> 
+      (v1 (v2 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+      let v4 =
+        Type.Proxy.Proxy;
+      "bar") x@v3) (\b@v4 -> 
+        (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+        let v5 =
+          Type.Proxy.Proxy;
+        "bar") b@v4) x@v3)
+      ))))
+    );
+  (\x@v2 -> 
+    (v1 (v0 x@v2))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 5)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\x@v0 -> 
+      let v1 =
+        [[ UnpackOp
+          For identifier v1
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            (Data.Tuple.Tuple.Tuple (add 1 (
+              v1
+            )#value0) (
+              v1
+            )#value1)
+        ]];
+      ((
+        v1
+      )#value1 (
+        v1
+      )#value0)
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    (\x@v1 -> 
+      let v2 =
+        [[ UnpackOp
+          For identifier v2
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            (Data.Tuple.Tuple.Tuple (add 42 (
+              v2
+            )#value0) (
+              v2
+            )#value1)
+        ]];
+      ((
+        v2
+      )#value1 (
+        v2
+      )#value0)
+    );
+  (\x@v2 -> 
+    (v1 (v0 x@v2))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 6)
+  (\x@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          (
+            x@v0
+          ).foo;
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (\b@v2 -> 
+            (
+              x@v0
+                {
+                foo = b@v2
+                }
+            )
+          );
+        (Data.Tuple.Tuple.Tuple (add 1 v1) v2);
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          ((
+            v1
+          )#value1 (
+            v1
+          )#value0);
+        v2;
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v1
+          ).bar;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\b@v3 -> 
+            (
+              v1
+                {
+                bar = b@v3
+                }
+            )
+          );
+        (Data.Tuple.Tuple.Tuple (add 42 v2) v3);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        ((
+          v2
+        )#value1 (
+          v2
+        )#value0);
+      v3
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 7)
+  (\x@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack Data
+          qualified ident = Data.Tuple.Tuple
+          tyName = Tuple
+      inside
+        let v2 =
+          ((
+            v1
+          )#value1 (
+            v1
+          )#value0);
+        [[ UnpackOp
+          For identifier v3
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            ((
+              v3
+            )#value1 (
+              v3
+            )#value0)
+        ]]
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 8)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        x@v0
+      ).foo);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\b@v2 -> 
+        (
+          x@v0
+            {
+            foo = b@v2
+            }
+        )
+      );
+    let v3 =
+      (v2 v1);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (add 42 (
+        v3
+      ).bar);
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\b@v5 -> 
+        (
+          v3
+            {
+            bar = b@v5
+            }
+        )
+      );
+    (v5 v4)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 9)
+  (\x@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (add 1 (
+          x@v0
+        ).foo);
+      (
+        x@v0
+          {
+          foo = v1
+          }
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (add 42 (
+        v1
+      ).bar);
+    (
+      v1
+        {
+        bar = v2
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 10)
+  (\x@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack update
+          expression = x@v0
+          update labels = ["foo"]
+      inside
+        (
+          v1
+            {
+            bar = (add 42 (
+              v1
+            ).bar)
+            }
+        )
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 11)
+  (\x@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        x@v0
+      ).foo);
+    (
+      x@v0
+        {
+        bar = (add 42 (
+          x@v0
+        ).bar)
+        , foo = v1
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test7 (Step 12; Final)
+  (\x@v0 -> 
+    (
+      x@v0
+        {
+        bar = (add 42 (
+          x@v0
+        ).bar)
+        , foo = (add 1 (
+          x@v0
+        ).foo)
+        }
+    )
+  )
+
+===============
+
+Snapshot.ProfunctorLenses01.test8 (Step 0; Original)
+  (\a@v0 -> 
+    (((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.prop Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) (Snapshot.ProfunctorLenses01.add 42)) (((Data.Lens.Setter.over ((Snapshot.ProfunctorLenses01.prop1 Type.Proxy.Proxy) Data.Profunctor.Strong.strongFn)) (Snapshot.ProfunctorLenses01.add 1)) a@v0))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 1)
+  (\a@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        { reflectSymbol =
+            (\$__unused@v1 -> 
+              "bar"
+            )
+        };
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v3 =
+              <PrimUndefined>;
+            {#- Rewrite - Inline -#}
+            let v4 =
+              Type.Proxy.Proxy;
+            (\dictStrong@v5 -> 
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (((Record.get v1) <PrimUndefined>) v4);
+              {#- Rewrite - Inline -#}
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (\b@v7 -> \a@v8 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol v4)) a@v8) b@v7)
+                  );
+                (\dictStrong@v8 -> 
+                  let dimap@v9 =
+                    (
+                      ((
+                        dictStrong@v8
+                      ).Profunctor0 <PrimUndefined>)
+                    ).dimap;
+                  (\pab@v10 -> 
+                    (((dimap@v9 (\s@v11 -> 
+                      (Data.Tuple.Tuple.Tuple (v6 s@v11) (\b@v12 -> 
+                        ((v7 s@v11) b@v12)
+                      ))
+                    )) (\v@v11 -> 
+                      ((
+                        v@v11
+                      )#value1 (
+                        v@v11
+                      )#value0)
+                    )) ((
+                      dictStrong@v8
+                    ).first pab@v10))
+                  )
+                );
+              (v7 dictStrong@v5)
+            );
+          v2;
+        (v2 Data.Profunctor.Strong.strongFn);
+      ((v1 {#- Rewrite - Inline -#}
+      let v2 =
+        42;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (\v3 -> 
+          (add v2 v3)
+        );
+      v3) [[ LetAssoc
+        let v2 =
+          { reflectSymbol =
+              (\$__unused@v2 -> 
+                "foo"
+              )
+          };
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              {#- Rewrite - Inline -#}
+              let v3 =
+                <PrimUndefined>;
+              {#- Rewrite - Inline -#}
+              let v4 =
+                <PrimUndefined>;
+              {#- Rewrite - Inline -#}
+              let v5 =
+                Type.Proxy.Proxy;
+              (\dictStrong@v6 -> 
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (((Record.get v2) <PrimUndefined>) v5);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  {#- Rewrite - Inline -#}
+                  let v8 =
+                    (\b@v8 -> \a@v9 -> 
+                      (((Record.Unsafe.unsafeSet ((
+                        v2
+                      ).reflectSymbol v5)) a@v9) b@v8)
+                    );
+                  (\dictStrong@v9 -> 
+                    let dimap@v10 =
+                      (
+                        ((
+                          dictStrong@v9
+                        ).Profunctor0 <PrimUndefined>)
+                      ).dimap;
+                    (\pab@v11 -> 
+                      (((dimap@v10 (\s@v12 -> 
+                        (Data.Tuple.Tuple.Tuple (v7 s@v12) (\b@v13 -> 
+                          ((v8 s@v12) b@v13)
+                        ))
+                      )) (\v@v12 -> 
+                        ((
+                          v@v12
+                        )#value1 (
+                          v@v12
+                        )#value0)
+                      )) ((
+                        dictStrong@v9
+                      ).first pab@v11))
+                    )
+                  );
+                (v8 dictStrong@v6)
+              );
+            v3;
+          (v3 Data.Profunctor.Strong.strongFn);
+        ((v2 {#- Rewrite - Inline -#}
+        let v3 =
+          1;
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\v4 -> 
+            (add v3 v4)
+          );
+        v4) a@v0)
+      ]])
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 2)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack record
+        labels = ["reflectSymbol"]
+      inside
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let dimap@v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              <PrimUndefined>;
+            (
+              Data.Profunctor.profunctorFn
+            ).dimap;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (\pab@v3 -> 
+                (((dimap@v2 (\s@v4 -> 
+                  (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                  let v5 =
+                    <PrimUndefined>;
+                  {#- Rewrite - Inline -#}
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      Type.Proxy.Proxy;
+                    ((Record.Unsafe.unsafeGet ((
+                      v1
+                    ).reflectSymbol v6)) s@v4);
+                  v6 (\b@v5 -> 
+                    (((Record.Unsafe.unsafeSet ((
+                      v1
+                    ).reflectSymbol Type.Proxy.Proxy)) b@v5) s@v4)
+                  ))
+                )) (\v@v4 -> 
+                  ((
+                    v@v4
+                  )#value1 (
+                    v@v4
+                  )#value0)
+                )) (\v@v4 -> 
+                  (Data.Tuple.Tuple.Tuple (pab@v3 (
+                    v@v4
+                  )#value0) (
+                    v@v4
+                  )#value1)
+                ))
+              );
+            v3;
+          v3;
+        ((v2 (\v3 -> 
+          (add 42 v3)
+        )) [[ UnpackOp
+          For identifier v3
+            Unpack record
+            labels = ["reflectSymbol"]
+          inside
+            {#- Rewrite - Inline -#}
+            let v4 =
+              {#- Rewrite - Inline -#}
+              let dimap@v4 =
+                {#- Rewrite - Inline -#}
+                let v4 =
+                  <PrimUndefined>;
+                (
+                  Data.Profunctor.profunctorFn
+                ).dimap;
+              {#- Rewrite - Inline -#}
+              let v5 =
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  (\pab@v5 -> 
+                    (((dimap@v4 (\s@v6 -> 
+                      (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+                      let v7 =
+                        <PrimUndefined>;
+                      {#- Rewrite - Inline -#}
+                      let v8 =
+                        {#- Rewrite - Inline -#}
+                        let v8 =
+                          Type.Proxy.Proxy;
+                        ((Record.Unsafe.unsafeGet ((
+                          v3
+                        ).reflectSymbol v8)) s@v6);
+                      v8 (\b@v7 -> 
+                        (((Record.Unsafe.unsafeSet ((
+                          v3
+                        ).reflectSymbol Type.Proxy.Proxy)) b@v7) s@v6)
+                      ))
+                    )) (\v@v6 -> 
+                      ((
+                        v@v6
+                      )#value1 (
+                        v@v6
+                      )#value0)
+                    )) (\v@v6 -> 
+                      (Data.Tuple.Tuple.Tuple (pab@v5 (
+                        v@v6
+                      )#value0) (
+                        v@v6
+                      )#value1)
+                    ))
+                  );
+                v5;
+              v5;
+            ((v4 (\v5 -> 
+              (add 1 v5)
+            )) a@v0)
+        ]])
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 3)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\$__unused@v1 -> 
+        "bar"
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (add 42 v2)
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\s@v3 -> 
+        (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v1 Type.Proxy.Proxy)) s@v3) (\b@v4 -> 
+          (((Record.Unsafe.unsafeSet (v1 Type.Proxy.Proxy)) b@v4) s@v3)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\c2d@v4 -> \b2c@v5 -> \x@v6 -> 
+          (c2d@v4 (b2c@v5 (v3 x@v6)))
+        );
+      ((v4 (\v@v5 -> 
+        ((
+          v@v5
+        )#value1 (
+          v@v5
+        )#value0)
+      )) (\v@v5 -> 
+        (Data.Tuple.Tuple.Tuple (v2 (
+          v@v5
+        )#value0) (
+          v@v5
+        )#value1)
+      ));
+    (v4 {#- Rewrite - Inline -#}
+    let v5 =
+      (\$__unused@v5 -> 
+        "foo"
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\v6 -> 
+        (add 1 v6)
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\s@v7 -> 
+        (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet (v5 Type.Proxy.Proxy)) s@v7) (\b@v8 -> 
+          (((Record.Unsafe.unsafeSet (v5 Type.Proxy.Proxy)) b@v8) s@v7)
+        ))
+      );
+    {#- Rewrite - Inline -#}
+    let v8 =
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (\c2d@v8 -> \b2c@v9 -> \x@v10 -> 
+          (c2d@v8 (b2c@v9 (v7 x@v10)))
+        );
+      ((v8 (\v@v9 -> 
+        ((
+          v@v9
+        )#value1 (
+          v@v9
+        )#value0)
+      )) (\v@v9 -> 
+        (Data.Tuple.Tuple.Tuple (v6 (
+          v@v9
+        )#value0) (
+          v@v9
+        )#value1)
+      ));
+    (v8 a@v0))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 4)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v@v1 -> 
+        ((
+          v@v1
+        )#value1 (
+          v@v1
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v@v2 -> 
+          (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v@v2
+            )#value0;
+          (add 42 v3) (
+            v@v2
+          )#value1)
+        );
+      (\x@v3 -> 
+        (v1 (v2 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+        let v4 =
+          Type.Proxy.Proxy;
+        "bar") x@v3) (\b@v4 -> 
+          (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+          let v5 =
+            Type.Proxy.Proxy;
+          "bar") b@v4) x@v3)
+        ))))
+      );
+    (v2 {#- Rewrite - Inline -#}
+    let v3 =
+      (\v@v3 -> 
+        ((
+          v@v3
+        )#value1 (
+          v@v3
+        )#value0)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\v@v4 -> 
+          (Data.Tuple.Tuple.Tuple {#- Rewrite - Inline -#}
+          let v5 =
+            (
+              v@v4
+            )#value0;
+          (add 1 v5) (
+            v@v4
+          )#value1)
+        );
+      (\x@v5 -> 
+        (v3 (v4 (Data.Tuple.Tuple.Tuple ((Record.Unsafe.unsafeGet {#- Rewrite - Inline -#}
+        let v6 =
+          Type.Proxy.Proxy;
+        "foo") x@v5) (\b@v6 -> 
+          (((Record.Unsafe.unsafeSet {#- Rewrite - Inline -#}
+          let v7 =
+            Type.Proxy.Proxy;
+          "foo") b@v6) x@v5)
+        ))))
+      );
+    (v4 a@v0))
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 5)
+  (\a@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        [[ UnpackOp
+          For identifier v1
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            (Data.Tuple.Tuple.Tuple (add 1 (
+              v1
+            )#value0) (
+              v1
+            )#value1)
+        ]];
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          ((
+            v1
+          )#value1 (
+            v1
+          )#value0);
+        v2;
+      let v2 =
+        [[ UnpackOp
+          For identifier v2
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            (Data.Tuple.Tuple.Tuple (add 42 (
+              v2
+            )#value0) (
+              v2
+            )#value1)
+        ]];
+      {#- Rewrite - Inline -#}
+      let v3 =
+        ((
+          v2
+        )#value1 (
+          v2
+        )#value0);
+      v3
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 6)
+  (\a@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          a@v0
+        ).foo;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\b@v2 -> 
+          (
+            a@v0
+              {
+              foo = b@v2
+              }
+          )
+        );
+      (Data.Tuple.Tuple.Tuple (add 1 v1) v2);
+    let v2 =
+      ((
+        v1
+      )#value1 (
+        v1
+      )#value0);
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v2
+        ).bar;
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\b@v4 -> 
+          (
+            v2
+              {
+              bar = b@v4
+              }
+          )
+        );
+      (Data.Tuple.Tuple.Tuple (add 42 v3) v4);
+    ((
+      v3
+    )#value1 (
+      v3
+    )#value0)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 7)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack Data
+          qualified ident = Data.Tuple.Tuple
+          tyName = Tuple
+      inside
+        let v2 =
+          ((
+            v1
+          )#value1 (
+            v1
+          )#value0);
+        [[ UnpackOp
+          For identifier v3
+            Unpack Data
+              qualified ident = Data.Tuple.Tuple
+              tyName = Tuple
+          inside
+            ((
+              v3
+            )#value1 (
+              v3
+            )#value0)
+        ]]
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 8)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        a@v0
+      ).foo);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\b@v2 -> 
+        (
+          a@v0
+            {
+            foo = b@v2
+            }
+        )
+      );
+    let v3 =
+      (v2 v1);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (add 42 (
+        v3
+      ).bar);
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\b@v5 -> 
+        (
+          v3
+            {
+            bar = b@v5
+            }
+        )
+      );
+    (v5 v4)
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 9)
+  (\a@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (add 1 (
+          a@v0
+        ).foo);
+      (
+        a@v0
+          {
+          foo = v1
+          }
+      );
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (add 42 (
+        v1
+      ).bar);
+    (
+      v1
+        {
+        bar = v2
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 10)
+  (\a@v0 -> 
+    [[ UnpackOp
+      For identifier v1
+        Unpack update
+          expression = a@v0
+          update labels = ["foo"]
+      inside
+        (
+          v1
+            {
+            bar = (add 42 (
+              v1
+            ).bar)
+            }
+        )
+    ]]
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 11)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (add 1 (
+        a@v0
+      ).foo);
+    (
+      a@v0
+        {
+        bar = (add 42 (
+          a@v0
+        ).bar)
+        , foo = v1
+        }
+    )
+  )
+---------------
+Snapshot.ProfunctorLenses01.test8 (Step 12; Final)
+  (\a@v0 -> 
+    (
+      a@v0
+        {
+        bar = (add 42 (
+          a@v0
+        ).bar)
+        , foo = (add 1 (
+          a@v0
+        ).foo)
+        }
+    )
+  )

@@ -1,0 +1,799 @@
+Snapshot.STLoops01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.STLoops01.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.STLoops01.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.STLoops01.compose (Step 1; Final)
+  (
+    Control.Semigroupoid.semigroupoidFn
+  ).compose
+
+===============
+
+Snapshot.STLoops01.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Control.Monad.ST.Internal.bindST)
+---------------
+Snapshot.STLoops01.discard (Step 1; Final)
+  Control.Monad.ST.Internal.bind_
+
+===============
+
+Snapshot.STLoops01.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordInt)
+---------------
+Snapshot.STLoops01.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.STLoops01.test1 (Step 0; Original)
+  (\ref@v0 -> \k@v1 -> 
+    ((Control.Monad.ST.Internal.foreach (k@v1 42)) (\a@v2 -> 
+      ((Snapshot.STLoops01.discard (Snapshot.STLoops01.void ((Control.Monad.ST.Internal.modify (\v@v3 -> 
+        ((Snapshot.STLoops01.add v@v3) a@v2)
+      )) ref@v0))) (\$__unused@v3 -> 
+        (Snapshot.STLoops01.void ((Control.Monad.ST.Internal.modify (\v@v4 -> 
+          ((Snapshot.STLoops01.add v@v4) a@v2)
+        )) ref@v0))
+      ))
+    ))
+  )
+---------------
+Snapshot.STLoops01.test1 (Step 1)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (effectDefer (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v2) (\a@v3 -> 
+        (effectDefer [[ LetAssoc
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (\v@v4 -> 
+                (add v@v4 a@v3)
+              );
+            {#- Rewrite - Inline -#}
+            let v5 =
+              letEffect v5 =
+                (refRead ref@v0);
+              (refWrite ref@v0 (v4 v5));
+            v5;
+          let v4 =
+            letEffect v5 =
+              v4;
+            (effectPure <PrimUndefined>);
+          {#- Rewrite - Inline -#}
+          let v5 =
+            letEffect $__unused@v5 =
+              v4;
+            {#- Rewrite - Inline -#}
+            let v6 =
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (\v@v6 -> 
+                  (add v@v6 a@v3)
+                );
+              {#- Rewrite - Inline -#}
+              let v7 =
+                letEffect v7 =
+                  (refRead ref@v0);
+                (refWrite ref@v0 (v6 v7));
+              v7;
+            letEffect v7 =
+              v6;
+            (effectPure <PrimUndefined>);
+          v5
+        ]])
+      )));
+    v3
+  )
+---------------
+Snapshot.STLoops01.test1 (Step 2)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] v2) (\a@v3 -> 
+      (effectDefer {#- Rewrite - Inline -#}
+      let v4 =
+        letEffect v4 =
+          (refRead ref@v0);
+        (refWrite ref@v0 (add v4 a@v3));
+      {#- Rewrite - Inline -#}
+      let v5 =
+        letEffect v5 =
+          v4;
+        (effectPure <PrimUndefined>);
+      letEffect $__unused@v6 =
+        v5;
+      [[ EffectBindAssoc
+        letEffect v7 =
+          (refRead ref@v0);
+        letEffect v7 =
+          (refWrite ref@v0 (add v7 a@v3));
+        (effectPure <PrimUndefined>)
+      ]])
+    )))
+  )
+---------------
+Snapshot.STLoops01.test1 (Step 3)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] v2) (\a@v3 -> 
+      (effectDefer [[ EffectBindAssoc
+        letEffect v4 =
+          (refRead ref@v0);
+        letEffect v4 =
+          (refWrite ref@v0 (add v4 a@v3));
+        letEffect $__unused@v4 =
+          (effectPure <PrimUndefined>);
+        letEffect v5 =
+          (refRead ref@v0);
+        letEffect v6 =
+          (refWrite ref@v0 (add v5 a@v3));
+        (effectPure <PrimUndefined>)
+      ]])
+    )))
+  )
+---------------
+Snapshot.STLoops01.test1 (Step 4)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] v2) (\a@v3 -> 
+      (effectDefer letEffect v4 =
+        (refRead ref@v0);
+      letEffect v5 =
+        (refWrite ref@v0 (add v4 a@v3));
+      {#- Rewrite - Inline -#}
+      let $__unused@v6 =
+        <PrimUndefined>;
+      letEffect v7 =
+        (refRead ref@v0);
+      letEffect v8 =
+        (refWrite ref@v0 (add v7 a@v3));
+      (effectPure <PrimUndefined>))
+    )))
+  )
+---------------
+Snapshot.STLoops01.test1 (Step 5; Final)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] v2) (\a@v3 -> 
+      (effectDefer letEffect v4 =
+        (refRead ref@v0);
+      letEffect v5 =
+        (refWrite ref@v0 (add v4 a@v3));
+      letEffect v6 =
+        (refRead ref@v0);
+      letEffect v7 =
+        (refWrite ref@v0 (add v6 a@v3));
+      (effectPure <PrimUndefined>))
+    )))
+  )
+
+===============
+
+Snapshot.STLoops01.test2 (Step 0; Original)
+  (\ref@v0 -> \k@v1 -> 
+    ((Snapshot.STLoops01.discard ((Control.Monad.ST.Internal.foreach (k@v1 42)) (\a@v2 -> 
+      (Snapshot.STLoops01.void ((Control.Monad.ST.Internal.modify (\v@v3 -> 
+        ((Snapshot.STLoops01.add v@v3) a@v2)
+      )) ref@v0))
+    ))) (\$__unused@v2 -> 
+      ((Snapshot.STLoops01.discard ((Control.Monad.ST.Internal.foreach (k@v1 42)) ((Snapshot.STLoops01.compose Snapshot.STLoops01.void) ((Snapshot.STLoops01.compose ((Data.Function.flip Control.Monad.ST.Internal.modify) ref@v0)) Snapshot.STLoops01.add)))) (\$__unused@v3 -> 
+        ((Control.Monad.ST.Internal.foreach (k@v1 42)) (Data.Function.const (Snapshot.STLoops01.void ((Control.Monad.ST.Internal.modify (\v@v4 -> 
+          ((Snapshot.STLoops01.add v@v4) 1)
+        )) ref@v0))))
+      ))
+    ))
+  )
+---------------
+Snapshot.STLoops01.test2 (Step 1)
+  (\ref@v0 -> \k@v1 -> 
+    [[ LetAssoc
+      let v2 =
+        (k@v1 42);
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (effectDefer (([[ Stop
+            Control.Monad.ST.Internal.foreach
+          ]] v2) (\a@v3 -> 
+            (effectDefer {#- Rewrite - Inline -#}
+            let v4 =
+              {#- Rewrite - Inline -#}
+              let v4 =
+                (\v@v4 -> 
+                  (add v@v4 a@v3)
+                );
+              {#- Rewrite - Inline -#}
+              let v5 =
+                letEffect v5 =
+                  (refRead ref@v0);
+                (refWrite ref@v0 (v4 v5));
+              v5;
+            letEffect v5 =
+              v4;
+            (effectPure <PrimUndefined>))
+          )));
+        v3;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        letEffect $__unused@v3 =
+          v2;
+        [[ LetAssoc
+          let v4 =
+            (k@v1 42);
+          let v4 =
+            [[ LetAssoc
+              let v5 =
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  (\v5 -> 
+                    letEffect v6 =
+                      v5;
+                    (effectPure <PrimUndefined>)
+                  );
+                [[ LetAssoc
+                  let v6 =
+                    {#- Rewrite - Inline -#}
+                    let v6 =
+                      (\a@v6 -> 
+                        letEffect v7 =
+                          (refRead ref@v0);
+                        (refWrite ref@v0 (a@v6 v7))
+                      );
+                    {#- Rewrite - Inline -#}
+                    let v7 =
+                      (\x@v7 -> 
+                        (v6 (\v8 -> 
+                          (add x@v7 v8)
+                        ))
+                      );
+                    v7;
+                  let v6 =
+                    (\x@v7 -> 
+                      (v5 (v6 x@v7))
+                    );
+                  v6
+                ]];
+              let v5 =
+                (effectDefer (([[ Stop
+                  Control.Monad.ST.Internal.foreach
+                ]] v4) (\v6 -> 
+                  (effectDefer (v5 v6))
+                )));
+              v5
+            ]];
+          {#- Rewrite - Inline -#}
+          let v5 =
+            letEffect $__unused@v5 =
+              v4;
+            let v6 =
+              (k@v1 42);
+            [[ LetAssoc
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  (\v@v7 -> 
+                    {#- Rewrite - Inline -#}
+                    let v8 =
+                      1;
+                    (add v@v7 v8)
+                  );
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  letEffect v8 =
+                    (refRead ref@v0);
+                  (refWrite ref@v0 (v7 v8));
+                v8;
+              let v7 =
+                letEffect v8 =
+                  v7;
+                (effectPure <PrimUndefined>);
+              let v7 =
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\v@v8 -> 
+                    v7
+                  );
+                v8;
+              let v7 =
+                (effectDefer (([[ Stop
+                  Control.Monad.ST.Internal.foreach
+                ]] v6) (\v8 -> 
+                  (effectDefer (v7 v8))
+                )));
+              v7
+            ]];
+          v5
+        ]];
+      v3
+    ]]
+  )
+---------------
+Snapshot.STLoops01.test2 (Step 2)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (effectDefer (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v2) (\a@v3 -> 
+        (effectDefer [[ EffectBindAssoc
+          letEffect v4 =
+            (refRead ref@v0);
+          letEffect v4 =
+            (refWrite ref@v0 (add v4 a@v3));
+          (effectPure <PrimUndefined>)
+        ]])
+      )));
+    letEffect $__unused@v4 =
+      v3;
+    let v5 =
+      (k@v1 42);
+    [[ LetAssoc
+      let v6 =
+        {#- Rewrite - Inline -#}
+        let v6 =
+          (\x@v6 -> 
+            {#- Rewrite - Inline -#}
+            let v7 =
+              (\v7 -> 
+                (add x@v6 v7)
+              );
+            letEffect v8 =
+              (refRead ref@v0);
+            (refWrite ref@v0 (v7 v8))
+          );
+        {#- Rewrite - Inline -#}
+        let v7 =
+          (\x@v7 -> 
+            let v8 =
+              (v6 x@v7);
+            letEffect v9 =
+              v8;
+            (effectPure <PrimUndefined>)
+          );
+        v7;
+      let v6 =
+        {#- Rewrite - Inline -#}
+        let v7 =
+          (effectDefer (([[ Stop
+            Control.Monad.ST.Internal.foreach
+          ]] v5) (\v7 -> 
+            (effectDefer (v6 v7))
+          )));
+        v7;
+      letEffect $__unused@v7 =
+        v6;
+      let v8 =
+        (k@v1 42);
+      {#- Rewrite - Inline -#}
+      let v9 =
+        letEffect v9 =
+          (refRead ref@v0);
+        (refWrite ref@v0 (add v9 1));
+      {#- Rewrite - Inline -#}
+      let v10 =
+        letEffect v10 =
+          v9;
+        (effectPure <PrimUndefined>);
+      {#- Rewrite - Inline -#}
+      let v11 =
+        (\v@v11 -> 
+          v10
+        );
+      {#- Rewrite - Inline -#}
+      let v12 =
+        (effectDefer (([[ Stop
+          Control.Monad.ST.Internal.foreach
+        ]] v8) (\v12 -> 
+          (effectDefer (v11 v12))
+        )));
+      v12
+    ]]
+  )
+---------------
+Snapshot.STLoops01.test2 (Step 3)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    letEffect $__unused@v3 =
+      (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v2) (\a@v3 -> 
+        (effectDefer letEffect v4 =
+          (refRead ref@v0);
+        letEffect v5 =
+          (refWrite ref@v0 (add v4 a@v3));
+        (effectPure <PrimUndefined>))
+      ));
+    let v4 =
+      (k@v1 42);
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\x@v5 -> 
+        {#- Rewrite - Inline -#}
+        let v6 =
+          letEffect v6 =
+            (refRead ref@v0);
+          (refWrite ref@v0 (add x@v5 v6));
+        letEffect v7 =
+          v6;
+        (effectPure <PrimUndefined>)
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (effectDefer (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v4) (\v6 -> 
+        (effectDefer (v5 v6))
+      )));
+    letEffect $__unused@v7 =
+      v6;
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (k@v1 42);
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] v8) (\v9 -> 
+      (effectDefer [[ EffectBindAssoc
+        letEffect v10 =
+          (refRead ref@v0);
+        letEffect v10 =
+          (refWrite ref@v0 (add v10 1));
+        (effectPure <PrimUndefined>)
+      ]])
+    )))
+  )
+---------------
+Snapshot.STLoops01.test2 (Step 4)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    letEffect $__unused@v3 =
+      (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v2) (\a@v3 -> 
+        (effectDefer letEffect v4 =
+          (refRead ref@v0);
+        letEffect v5 =
+          (refWrite ref@v0 (add v4 a@v3));
+        (effectPure <PrimUndefined>))
+      ));
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (k@v1 42);
+    letEffect $__unused@v5 =
+      (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v4) (\v5 -> 
+        (effectDefer [[ EffectBindAssoc
+          letEffect v6 =
+            (refRead ref@v0);
+          letEffect v6 =
+            (refWrite ref@v0 (add v5 v6));
+          (effectPure <PrimUndefined>)
+        ]])
+      ));
+    (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] (k@v1 42)) (\v6 -> 
+      (effectDefer letEffect v7 =
+        (refRead ref@v0);
+      letEffect v8 =
+        (refWrite ref@v0 (add v7 1));
+      (effectPure <PrimUndefined>))
+    ))
+  )
+---------------
+Snapshot.STLoops01.test2 (Step 5; Final)
+  (\ref@v0 -> \k@v1 -> 
+    let v2 =
+      (k@v1 42);
+    letEffect $__unused@v3 =
+      (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] v2) (\a@v3 -> 
+        (effectDefer letEffect v4 =
+          (refRead ref@v0);
+        letEffect v5 =
+          (refWrite ref@v0 (add v4 a@v3));
+        (effectPure <PrimUndefined>))
+      ));
+    letEffect $__unused@v4 =
+      (([[ Stop
+        Control.Monad.ST.Internal.foreach
+      ]] (k@v1 42)) (\v4 -> 
+        (effectDefer letEffect v5 =
+          (refRead ref@v0);
+        letEffect v6 =
+          (refWrite ref@v0 (add v4 v5));
+        (effectPure <PrimUndefined>))
+      ));
+    (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] (k@v1 42)) (\v5 -> 
+      (effectDefer letEffect v6 =
+        (refRead ref@v0);
+      letEffect v7 =
+        (refWrite ref@v0 (add v6 1));
+      (effectPure <PrimUndefined>))
+    ))
+  )
+
+===============
+
+Snapshot.STLoops01.test3 (Step 0; Original)
+  (\ref@v0 -> \arr@v1 -> 
+    ((Control.Monad.ST.Internal.foreach arr@v1) (\a@v2 -> 
+      ((Snapshot.STLoops01.when ((Snapshot.STLoops01.lessThan a@v2) 10)) (Snapshot.STLoops01.void ((Control.Monad.ST.Internal.modify (\v@v3 -> 
+        ((Snapshot.STLoops01.add v@v3) a@v2)
+      )) ref@v0)))
+    ))
+  )
+---------------
+Snapshot.STLoops01.test3 (Step 1)
+  (\ref@v0 -> \arr@v1 -> 
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] arr@v1) (\a@v2 -> 
+      (effectDefer {#- Rewrite - Inline -#}
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          10;
+        (< a@v2 v3);
+      [[ LetAssoc
+        let v4 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            (\v@v4 -> 
+              (add v@v4 a@v2)
+            );
+          {#- Rewrite - Inline -#}
+          let v5 =
+            letEffect v5 =
+              (refRead ref@v0);
+            (refWrite ref@v0 (v4 v5));
+          v5;
+        let v4 =
+          letEffect v5 =
+            v4;
+          (effectPure <PrimUndefined>);
+        if v3 then
+          v4
+        else
+          (effectPure <PrimUndefined>)
+      ]])
+    )))
+  )
+---------------
+Snapshot.STLoops01.test3 (Step 2)
+  (\ref@v0 -> \arr@v1 -> 
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] arr@v1) (\a@v2 -> 
+      (effectDefer {#- Rewrite - Inline -#}
+      let v3 =
+        letEffect v3 =
+          (refRead ref@v0);
+        (refWrite ref@v0 (add v3 a@v2));
+      {#- Rewrite - Inline -#}
+      let v4 =
+        letEffect v4 =
+          v3;
+        (effectPure <PrimUndefined>);
+      if (< a@v2 10) then
+        v4
+      else
+        (effectPure <PrimUndefined>))
+    )))
+  )
+---------------
+Snapshot.STLoops01.test3 (Step 3)
+  (\ref@v0 -> \arr@v1 -> 
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] arr@v1) (\a@v2 -> 
+      (effectDefer if (< a@v2 10) then
+        [[ EffectBindAssoc
+          letEffect v3 =
+            (refRead ref@v0);
+          letEffect v3 =
+            (refWrite ref@v0 (add v3 a@v2));
+          (effectPure <PrimUndefined>)
+        ]]
+      else
+        (effectPure <PrimUndefined>))
+    )))
+  )
+---------------
+Snapshot.STLoops01.test3 (Step 4; Final)
+  (\ref@v0 -> \arr@v1 -> 
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] arr@v1) (\a@v2 -> 
+      (effectDefer if (< a@v2 10) then
+        letEffect v3 =
+          (refRead ref@v0);
+        letEffect v4 =
+          (refWrite ref@v0 (add v3 a@v2));
+        (effectPure <PrimUndefined>)
+      else
+        (effectPure <PrimUndefined>))
+    )))
+  )
+
+===============
+
+Snapshot.STLoops01.test4 (Step 0; Original)
+  (\ref@v0 -> \arr@v1 -> 
+    ((Control.Monad.ST.Internal.foreach arr@v1) (\a@v2 -> 
+      (Snapshot.STLoops01.void {#- Rewrite - Inline -#}
+      let v3 =
+        ((Snapshot.STLoops01.lessThan a@v2) 10);
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\ ->
+          ((Control.Monad.ST.Internal.modify (\v@v4 -> 
+            ((Snapshot.STLoops01.add v@v4) a@v2)
+          )) ref@v0)
+        );
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\ ->
+          ((Control.Monad.ST.Internal.modify (\v@v5 -> 
+            ((Snapshot.STLoops01.add v@v5) 1)
+          )) ref@v0)
+        );
+      if (== v3 true) then
+        (v4)
+      else
+        (v5))
+    ))
+  )
+---------------
+Snapshot.STLoops01.test4 (Step 1)
+  (\ref@v0 -> \arr@v1 -> 
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] arr@v1) (\a@v2 -> 
+      (effectDefer {#- Rewrite - Inline -#}
+      let v3 =
+        if {#- Rewrite - Inline -#}
+          let v3 =
+            10;
+          (< a@v2 v3) then
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\v@v3 -> 
+              (add v@v3 a@v2)
+            );
+          {#- Rewrite - Inline -#}
+          let v4 =
+            letEffect v4 =
+              (refRead ref@v0);
+            (refWrite ref@v0 (v3 v4));
+          v4
+        else
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\v@v3 -> 
+              {#- Rewrite - Inline -#}
+              let v4 =
+                1;
+              (add v@v3 v4)
+            );
+          {#- Rewrite - Inline -#}
+          let v4 =
+            letEffect v4 =
+              (refRead ref@v0);
+            (refWrite ref@v0 (v3 v4));
+          v4;
+      letEffect v4 =
+        v3;
+      (effectPure <PrimUndefined>))
+    )))
+  )
+---------------
+Snapshot.STLoops01.test4 (Step 2; Final)
+  (\ref@v0 -> \arr@v1 -> 
+    (effectDefer (([[ Stop
+      Control.Monad.ST.Internal.foreach
+    ]] arr@v1) (\a@v2 -> 
+      (effectDefer letEffect v3 =
+        if (< a@v2 10) then
+          letEffect v3 =
+            (refRead ref@v0);
+          (refWrite ref@v0 (add v3 a@v2))
+        else
+          letEffect v3 =
+            (refRead ref@v0);
+          (refWrite ref@v0 (add v3 1));
+      (effectPure <PrimUndefined>))
+    )))
+  )
+
+===============
+
+Snapshot.STLoops01.void (Step 0; Original)
+  (Data.Functor.void Control.Monad.ST.Internal.functorST)
+---------------
+Snapshot.STLoops01.void (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v@v0 -> 
+      <PrimUndefined>
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\v1 -> 
+          letEffect v2 =
+            v1;
+          (effectPure (v0 v2))
+        );
+      v1;
+    v1;
+  v1
+---------------
+Snapshot.STLoops01.void (Step 2; Final)
+  (\v0 -> 
+    letEffect v1 =
+      v0;
+    (effectPure <PrimUndefined>)
+  )
+
+===============
+
+Snapshot.STLoops01.when (Step 0; Original)
+  (Control.Applicative.when Control.Monad.ST.Internal.applicativeST)
+---------------
+Snapshot.STLoops01.when (Step 1)
+  (\v@v0 -> \v1@v1 -> 
+    if v@v0 then
+      v1@v1
+    else
+      {#- Rewrite - Inline -#}
+      let v2 =
+        <PrimUndefined>;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (effectPure v2);
+      v3
+  )
+---------------
+Snapshot.STLoops01.when (Step 2; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if v@v0 then
+      v1@v1
+    else
+      (effectPure <PrimUndefined>)
+  )

@@ -1,0 +1,187 @@
+Snapshot.PrimOpBoolean01.conj (Step 0; Original)
+  (Data.HeytingAlgebra.conj Data.HeytingAlgebra.heytingAlgebraBoolean)
+---------------
+Snapshot.PrimOpBoolean01.conj (Step 1; Final)
+  Data.HeytingAlgebra.boolConj
+
+===============
+
+Snapshot.PrimOpBoolean01.disj (Step 0; Original)
+  (Data.HeytingAlgebra.disj Data.HeytingAlgebra.heytingAlgebraBoolean)
+---------------
+Snapshot.PrimOpBoolean01.disj (Step 1; Final)
+  Data.HeytingAlgebra.boolDisj
+
+===============
+
+Snapshot.PrimOpBoolean01.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqBoolean)
+---------------
+Snapshot.PrimOpBoolean01.eq (Step 1; Final)
+  Data.Eq.eqBooleanImpl
+
+===============
+
+Snapshot.PrimOpBoolean01.greaterThan (Step 0; Original)
+  (Data.Ord.greaterThan Data.Ord.ordBoolean)
+---------------
+Snapshot.PrimOpBoolean01.greaterThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (> a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.greaterThanOrEq (Step 0; Original)
+  (Data.Ord.greaterThanOrEq Data.Ord.ordBoolean)
+---------------
+Snapshot.PrimOpBoolean01.greaterThanOrEq (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (>= a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordBoolean)
+---------------
+Snapshot.PrimOpBoolean01.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.lessThanOrEq (Step 0; Original)
+  (Data.Ord.lessThanOrEq Data.Ord.ordBoolean)
+---------------
+Snapshot.PrimOpBoolean01.lessThanOrEq (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (<= a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.not (Step 0; Original)
+  (Data.HeytingAlgebra.not Data.HeytingAlgebra.heytingAlgebraBoolean)
+---------------
+Snapshot.PrimOpBoolean01.not (Step 1; Final)
+  Data.HeytingAlgebra.boolNot
+
+===============
+
+Snapshot.PrimOpBoolean01.notEq (Step 0; Original)
+  (Data.Eq.notEq Data.Eq.eqBoolean)
+---------------
+Snapshot.PrimOpBoolean01.notEq (Step 1; Final)
+  (\x@v0 -> \y@v1 -> 
+    (/= x@v0 y@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test1 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.conj a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test1 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (booleanAnd a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test2 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.disj a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test2 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (booleanOr a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test3 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.eq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test3 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (== a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test4 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.notEq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test4 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (/= a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test5 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.lessThan a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test5 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (< a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test6 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.greaterThan a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test6 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (> a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test7 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.lessThanOrEq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test7 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (<= a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test8 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> 
+    ((Snapshot.PrimOpBoolean01.greaterThanOrEq a@v0) b@v1)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test8 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> 
+    (>= a@v0 b@v1)
+  )
+
+===============
+
+Snapshot.PrimOpBoolean01.test9 (Step 0; Original)
+  (\a@v0 -> 
+    (Snapshot.PrimOpBoolean01.not a@v0)
+  )
+---------------
+Snapshot.PrimOpBoolean01.test9 (Step 1; Final)
+  (\a@v0 -> 
+    (not a@v0)
+  )

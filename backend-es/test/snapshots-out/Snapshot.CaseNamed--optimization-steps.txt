@@ -1,0 +1,550 @@
+Snapshot.CaseNamed.Product3 (Step 0; Original)
+  let Product3 =
+    (\ value0 value1 value2 ->
+      { tag =
+          "Product3"
+      , value0 =
+          value0
+      , value1 =
+          value1
+      , value2 =
+          value2
+      }
+    );
+---------------
+Snapshot.CaseNamed.Product3 (Step 1; Final)
+  let Product3 =
+    (\ value0 value1 value2 ->
+      { tag =
+          "Product3"
+      , value0 =
+          value0
+      , value1 =
+          value1
+      , value2 =
+          value2
+      }
+    );
+
+===============
+
+Snapshot.CaseNamed.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupString)
+---------------
+Snapshot.CaseNamed.append (Step 1; Final)
+  Data.Semigroup.concatString
+
+===============
+
+Snapshot.CaseNamed.show (Step 0; Original)
+  (Data.Show.show Data.Show.showInt)
+---------------
+Snapshot.CaseNamed.show (Step 1; Final)
+  Data.Show.showIntImpl
+
+===============
+
+Snapshot.CaseNamed.test1 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\one@v2 one'@v3 one''@v4 ->
+        ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show one@v2)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show one'@v3)) (Snapshot.CaseNamed.show one''@v4)))
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\two@v3 ->
+        (Snapshot.CaseNamed.show two@v3)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\any@v4 any0@v5 any1@v6 ->
+        ((Snapshot.CaseNamed.append "any: ") ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show any0@v5)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show any1@v6)) (Snapshot.CaseNamed.show any@v4))))
+      );
+    if (== v1 1) then
+      (v2 one@v1 one'@v1 one''@v1)
+    else if (== v1 2) then
+      (v3 two@v1)
+    else
+      (v4 any@v1 any0@v1 any1@v1)
+  )
+---------------
+Snapshot.CaseNamed.test1 (Step 1)
+  (\v@v0 -> 
+    if (== v@v0 1) then
+      let v1 =
+        (Data.Show.showIntImpl v@v0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (stringAppend v1 v2)
+        );
+      (v2 let v3 =
+        (Data.Show.showIntImpl v@v0);
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\v4 -> 
+          (stringAppend v3 v4)
+        );
+      (v4 (Data.Show.showIntImpl v@v0)))
+    else if (== v@v0 2) then
+      (Data.Show.showIntImpl v@v0)
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        "any: ";
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (stringAppend v1 v2)
+        );
+      (v2 let v3 =
+        (Data.Show.showIntImpl v@v0);
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\v4 -> 
+          (stringAppend v3 v4)
+        );
+      (v4 let v5 =
+        (Data.Show.showIntImpl v@v0);
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (\v6 -> 
+          (stringAppend v5 v6)
+        );
+      (v6 (Data.Show.showIntImpl v@v0))))
+  )
+---------------
+Snapshot.CaseNamed.test1 (Step 2)
+  (\v@v0 -> 
+    if (== v@v0 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Data.Show.showIntImpl v@v0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (Data.Show.showIntImpl v@v0);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (Data.Show.showIntImpl v@v0);
+        (stringAppend v2 v3);
+      (stringAppend v1 v2)
+    else if (== v@v0 2) then
+      (Data.Show.showIntImpl v@v0)
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          (Data.Show.showIntImpl v@v0);
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (Data.Show.showIntImpl v@v0);
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (Data.Show.showIntImpl v@v0);
+          (stringAppend v2 v3);
+        (stringAppend v1 v2);
+      (stringAppend "any: " v1)
+  )
+---------------
+Snapshot.CaseNamed.test1 (Step 3; Final)
+  (\v@v0 -> 
+    if (== v@v0 1) then
+      (stringAppend (Data.Show.showIntImpl v@v0) (stringAppend (Data.Show.showIntImpl v@v0) (Data.Show.showIntImpl v@v0)))
+    else if (== v@v0 2) then
+      (Data.Show.showIntImpl v@v0)
+    else
+      (stringAppend "any: " (stringAppend (Data.Show.showIntImpl v@v0) (stringAppend (Data.Show.showIntImpl v@v0) (Data.Show.showIntImpl v@v0))))
+  )
+
+===============
+
+Snapshot.CaseNamed.test2 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\a@v2 b@v3 c@v4 ->
+        ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show a@v2)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show b@v3)) (Snapshot.CaseNamed.show c@v4)))
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\a@v3 b@v4 c@v5 ->
+        ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show a@v3)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show b@v4)) (Snapshot.CaseNamed.show c@v5)))
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\a@v4 b@v5 c@v6 ->
+        ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show a@v4)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show b@v5)) (Snapshot.CaseNamed.show c@v6)))
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\a@v5 b@v6 c@v7 x@v8 y@v9 z@v10 ->
+        ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show a@v5)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show x@v8)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show b@v6)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show y@v9)) ((Snapshot.CaseNamed.append (Snapshot.CaseNamed.show c@v7)) (Snapshot.CaseNamed.show z@v10))))))
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      )#value0;
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (
+        v1
+      )#value1;
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (
+        v1
+      )#value2;
+    if (== v6 1) then
+      (v2 a@v7 b@v8 c@v6)
+    else if (== v7 1) then
+      (v3 a@v6 b@v8 c@v7)
+    else if (== v8 1) then
+      (v4 a@v6 b@v7 c@v8)
+    else
+      (v5 a@v6 b@v7 c@v8 x@v6 y@v7 z@v8)
+  )
+---------------
+Snapshot.CaseNamed.test2 (Step 1)
+  (\v@v0 -> 
+    if (== (
+        v@v0
+      )#value0 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value1;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value2;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v@v0
+        )#value0;
+      let v4 =
+        (Data.Show.showIntImpl v1);
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\v5 -> 
+          (stringAppend v4 v5)
+        );
+      (v5 let v6 =
+        (Data.Show.showIntImpl v2);
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (\v7 -> 
+          (stringAppend v6 v7)
+        );
+      (v7 (Data.Show.showIntImpl v3)))
+    else if (== (
+        v@v0
+      )#value1 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value2;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v@v0
+        )#value1;
+      let v4 =
+        (Data.Show.showIntImpl v1);
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\v5 -> 
+          (stringAppend v4 v5)
+        );
+      (v5 let v6 =
+        (Data.Show.showIntImpl v2);
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (\v7 -> 
+          (stringAppend v6 v7)
+        );
+      (v7 (Data.Show.showIntImpl v3)))
+    else if (== (
+        v@v0
+      )#value2 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value1;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v@v0
+        )#value2;
+      let v4 =
+        (Data.Show.showIntImpl v1);
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\v5 -> 
+          (stringAppend v4 v5)
+        );
+      (v5 let v6 =
+        (Data.Show.showIntImpl v2);
+      {#- Rewrite - Inline -#}
+      let v7 =
+        (\v7 -> 
+          (stringAppend v6 v7)
+        );
+      (v7 (Data.Show.showIntImpl v3)))
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value1;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v@v0
+        )#value2;
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (
+          v@v0
+        )#value1;
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (
+          v@v0
+        )#value2;
+      let v7 =
+        (Data.Show.showIntImpl v1);
+      {#- Rewrite - Inline -#}
+      let v8 =
+        (\v8 -> 
+          (stringAppend v7 v8)
+        );
+      (v8 let v9 =
+        (Data.Show.showIntImpl v4);
+      {#- Rewrite - Inline -#}
+      let v10 =
+        (\v10 -> 
+          (stringAppend v9 v10)
+        );
+      (v10 let v11 =
+        (Data.Show.showIntImpl v2);
+      {#- Rewrite - Inline -#}
+      let v12 =
+        (\v12 -> 
+          (stringAppend v11 v12)
+        );
+      (v12 let v13 =
+        (Data.Show.showIntImpl v5);
+      {#- Rewrite - Inline -#}
+      let v14 =
+        (\v14 -> 
+          (stringAppend v13 v14)
+        );
+      (v14 let v15 =
+        (Data.Show.showIntImpl v3);
+      {#- Rewrite - Inline -#}
+      let v16 =
+        (\v16 -> 
+          (stringAppend v15 v16)
+        );
+      (v16 (Data.Show.showIntImpl v6))))))
+  )
+---------------
+Snapshot.CaseNamed.test2 (Step 2)
+  (\v@v0 -> 
+    if (== (
+        v@v0
+      )#value0 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Data.Show.showIntImpl (
+          v@v0
+        )#value1);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value2);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value0);
+        (stringAppend v2 v3);
+      (stringAppend v1 v2)
+    else if (== (
+        v@v0
+      )#value1 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Data.Show.showIntImpl (
+          v@v0
+        )#value0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value2);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value1);
+        (stringAppend v2 v3);
+      (stringAppend v1 v2)
+    else if (== (
+        v@v0
+      )#value2 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Data.Show.showIntImpl (
+          v@v0
+        )#value0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value1);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value2);
+        (stringAppend v2 v3);
+      (stringAppend v1 v2)
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Data.Show.showIntImpl (
+          v@v0
+        )#value0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (Data.Show.showIntImpl (
+            v@v0
+          )#value0);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (Data.Show.showIntImpl (
+              v@v0
+            )#value1);
+          {#- Rewrite - Inline -#}
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let v4 =
+              (Data.Show.showIntImpl (
+                v@v0
+              )#value1);
+            {#- Rewrite - Inline -#}
+            let v5 =
+              {#- Rewrite - Inline -#}
+              let v5 =
+                (Data.Show.showIntImpl (
+                  v@v0
+                )#value2);
+              {#- Rewrite - Inline -#}
+              let v6 =
+                (Data.Show.showIntImpl (
+                  v@v0
+                )#value2);
+              (stringAppend v5 v6);
+            (stringAppend v4 v5);
+          (stringAppend v3 v4);
+        (stringAppend v2 v3);
+      (stringAppend v1 v2)
+  )
+---------------
+Snapshot.CaseNamed.test2 (Step 3; Final)
+  (\v@v0 -> 
+    if (== (
+        v@v0
+      )#value0 1) then
+      (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value1) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value2) (Data.Show.showIntImpl (
+        v@v0
+      )#value0)))
+    else if (== (
+        v@v0
+      )#value1 1) then
+      (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value0) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value2) (Data.Show.showIntImpl (
+        v@v0
+      )#value1)))
+    else if (== (
+        v@v0
+      )#value2 1) then
+      (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value0) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value1) (Data.Show.showIntImpl (
+        v@v0
+      )#value2)))
+    else
+      (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value0) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value0) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value1) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value1) (stringAppend (Data.Show.showIntImpl (
+        v@v0
+      )#value2) (Data.Show.showIntImpl (
+        v@v0
+      )#value2))))))
+  )

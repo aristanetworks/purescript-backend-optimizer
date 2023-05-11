@@ -1,0 +1,132 @@
+Snapshot.RecursiveBindingGroup02.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordInt)
+---------------
+Snapshot.RecursiveBindingGroup02.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.RecursiveBindingGroup02.test (Step 0; Original)
+  letrec
+    let test3@v0 =
+      (\n@v1 -> 
+        {#- Rewrite - Inline -#}
+        let v2 =
+          n@v1;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\n1@v3 ->
+            n1@v3
+          );
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\n1@v4 ->
+            (
+              test1@v0
+            ).bar
+          );
+        {#- Rewrite - Inline -#}
+        let n1@v5 =
+          v2;
+        if ((Snapshot.RecursiveBindingGroup02.lessThan n1@v5) 100) then
+          (v3 n1@v5)
+        else if Data.Boolean.otherwise then
+          (v4 n1@v5)
+        else
+          <PatternMatchFailure>
+      );
+    let test2@v0 =
+      { baz =
+          ((\v@v1 -> 
+            (
+              test1@v0
+            ).bar
+          ) Data.Unit.unit)
+      };
+    let test1@v0 =
+      { foo =
+          ((\v@v1 -> 
+            (
+              test2@v0
+            ).baz
+          ) Data.Unit.unit)
+      , bar =
+          ((\v@v1 -> 
+            (test3@v0 42)
+          ) Data.Unit.unit)
+      };
+  (
+    test1@v0
+  ).bar
+---------------
+Snapshot.RecursiveBindingGroup02.test (Step 1)
+  letrec
+    let test3@v0 =
+      (\n@v1 -> 
+        if {#- Rewrite - Inline -#}
+          let v2 =
+            100;
+          (< n@v1 v2) then
+          n@v1
+        else
+          (
+            test1@v0
+          ).bar
+      );
+    let test2@v0 =
+      { baz =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (
+            test1@v0
+          ).bar
+      };
+    let test1@v0 =
+      { foo =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (
+            test2@v0
+          ).baz
+      , bar =
+          {#- Rewrite - Inline -#}
+          let v1 =
+            <PrimUndefined>;
+          (test3@v0 42)
+      };
+  (
+    test1@v0
+  ).bar
+---------------
+Snapshot.RecursiveBindingGroup02.test (Step 2; Final)
+  letrec
+    let test3@v0 =
+      (\n@v1 -> 
+        if (< n@v1 100) then
+          n@v1
+        else
+          (
+            test1@v0
+          ).bar
+      );
+    let test2@v0 =
+      { baz =
+          (
+            test1@v0
+          ).bar
+      };
+    let test1@v0 =
+      { foo =
+          (
+            test2@v0
+          ).baz
+      , bar =
+          (test3@v0 42)
+      };
+  (
+    test1@v0
+  ).bar

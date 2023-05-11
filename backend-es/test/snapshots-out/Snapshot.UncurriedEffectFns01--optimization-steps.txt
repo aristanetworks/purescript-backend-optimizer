@@ -1,0 +1,254 @@
+Snapshot.UncurriedEffectFns01.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Effect.bindEffect)
+---------------
+Snapshot.UncurriedEffectFns01.discard (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.UncurriedEffectFns01.test1 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    ((((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2) 3)
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test1 (Step 1)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        2;
+      {#- Rewrite - Inline -#}
+      let v4 =
+        3;
+      (#f@v0 v2 v3 v4#);
+    v3
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test1 (Step 2; Final)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    (#f@v0 v2 2 3#)
+  )
+
+===============
+
+Snapshot.UncurriedEffectFns01.test2 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    (((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2)
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test2 (Step 1; Final)
+  (\f@v0 -> \g@v1 -> 
+    (((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2)
+  )
+
+===============
+
+Snapshot.UncurriedEffectFns01.test3 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    ((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1))
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test3 (Step 1; Final)
+  (\f@v0 -> \g@v1 -> 
+    ((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1))
+  )
+
+===============
+
+Snapshot.UncurriedEffectFns01.test4 (Step 0; Original)
+  (\f@v0 -> 
+    (Effect.Uncurried.runEffectFn3 f@v0)
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test4 (Step 1; Final)
+  (\f@v0 -> 
+    (Effect.Uncurried.runEffectFn3 f@v0)
+  )
+
+===============
+
+Snapshot.UncurriedEffectFns01.test5 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    ((Snapshot.UncurriedEffectFns01.discard ((((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2) 3)) (\$__unused@v2 -> 
+      ((((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2) 3)
+    ))
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test5 (Step 1)
+  (\f@v0 -> \g@v1 -> 
+    [[ LetAssoc
+      let v2 =
+        (g@v1 1);
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            2;
+          {#- Rewrite - Inline -#}
+          let v4 =
+            3;
+          (#f@v0 v2 v3 v4#);
+        v3;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        letEffect $__unused@v3 =
+          v2;
+        let v4 =
+          (g@v1 1);
+        {#- Rewrite - Inline -#}
+        let v5 =
+          {#- Rewrite - Inline -#}
+          let v5 =
+            2;
+          {#- Rewrite - Inline -#}
+          let v6 =
+            3;
+          (#f@v0 v4 v5 v6#);
+        v5;
+      v3
+    ]]
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test5 (Step 2)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (#f@v0 v2 2 3#);
+    letEffect $__unused@v4 =
+      v3;
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (g@v1 1);
+    (#f@v0 v5 2 3#)
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test5 (Step 3; Final)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    letEffect $__unused@v3 =
+      (#f@v0 v2 2 3#);
+    (#f@v0 (g@v1 1) 2 3#)
+  )
+
+===============
+
+Snapshot.UncurriedEffectFns01.test6 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    ((Snapshot.UncurriedEffectFns01.discard ((((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2) 3)) (\$__unused@v2 -> 
+      ((Snapshot.UncurriedEffectFns01.discard ((((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2) 3)) (\$__unused@v3 -> 
+        ((((Effect.Uncurried.runEffectFn3 f@v0) (g@v1 1)) 2) 3)
+      ))
+    ))
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test6 (Step 1)
+  (\f@v0 -> \g@v1 -> 
+    [[ LetAssoc
+      let v2 =
+        (g@v1 1);
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            2;
+          {#- Rewrite - Inline -#}
+          let v4 =
+            3;
+          (#f@v0 v2 v3 v4#);
+        v3;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        letEffect $__unused@v3 =
+          v2;
+        [[ LetAssoc
+          let v4 =
+            (g@v1 1);
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let v5 =
+              {#- Rewrite - Inline -#}
+              let v5 =
+                2;
+              {#- Rewrite - Inline -#}
+              let v6 =
+                3;
+              (#f@v0 v4 v5 v6#);
+            v5;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            letEffect $__unused@v5 =
+              v4;
+            let v6 =
+              (g@v1 1);
+            {#- Rewrite - Inline -#}
+            let v7 =
+              {#- Rewrite - Inline -#}
+              let v7 =
+                2;
+              {#- Rewrite - Inline -#}
+              let v8 =
+                3;
+              (#f@v0 v6 v7 v8#);
+            v7;
+          v5
+        ]];
+      v3
+    ]]
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test6 (Step 2)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (#f@v0 v2 2 3#);
+    letEffect $__unused@v4 =
+      v3;
+    let v5 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (#f@v0 v5 2 3#);
+    letEffect $__unused@v7 =
+      v6;
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (g@v1 1);
+    (#f@v0 v8 2 3#)
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test6 (Step 3)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    letEffect $__unused@v3 =
+      (#f@v0 v2 2 3#);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (g@v1 1);
+    letEffect $__unused@v5 =
+      (#f@v0 v4 2 3#);
+    (#f@v0 (g@v1 1) 2 3#)
+  )
+---------------
+Snapshot.UncurriedEffectFns01.test6 (Step 4; Final)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    letEffect $__unused@v3 =
+      (#f@v0 v2 2 3#);
+    letEffect $__unused@v4 =
+      (#f@v0 (g@v1 1) 2 3#);
+    (#f@v0 (g@v1 1) 2 3#)
+  )

@@ -1,0 +1,195 @@
+Snapshot.PrimOpString03.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupString)
+---------------
+Snapshot.PrimOpString03.append (Step 1; Final)
+  Data.Semigroup.concatString
+
+===============
+
+Snapshot.PrimOpString03.test1 (Step 0; Original)
+  (\a@v0 -> 
+    ((Snapshot.PrimOpString03.append "a") ((Snapshot.PrimOpString03.append "b") ((Snapshot.PrimOpString03.append a@v0) ((Snapshot.PrimOpString03.append "c") "d"))))
+  )
+---------------
+Snapshot.PrimOpString03.test1 (Step 1)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      "a";
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (stringAppend v1 v2)
+      );
+    (v2 {#- Rewrite - Inline -#}
+    let v3 =
+      "b";
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\v4 -> 
+        (stringAppend v3 v4)
+      );
+    (v4 {#- Rewrite - Inline -#}
+    let v5 =
+      {#- Rewrite - Inline -#}
+      let v5 =
+        "c";
+      {#- Rewrite - Inline -#}
+      let v6 =
+        (\v6 -> 
+          (stringAppend v5 v6)
+        );
+      (v6 "d");
+    (stringAppend a@v0 v5)))
+  )
+---------------
+Snapshot.PrimOpString03.test1 (Step 2)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          "d";
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (stringAppend "c" v1);
+        (stringAppend a@v0 v2);
+      (stringAppend "b" v1);
+    (stringAppend "a" v1)
+  )
+---------------
+Snapshot.PrimOpString03.test1 (Step 3; Final)
+  (\a@v0 -> 
+    (stringAppend "ab" (stringAppend a@v0 "cd"))
+  )
+
+===============
+
+Snapshot.PrimOpString03.test2 (Step 0; Original)
+  (\a@v0 -> 
+    ((Snapshot.PrimOpString03.append "a") ((Snapshot.PrimOpString03.append ((Snapshot.PrimOpString03.append ((Snapshot.PrimOpString03.append "b") a@v0)) "c")) "d"))
+  )
+---------------
+Snapshot.PrimOpString03.test2 (Step 1)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      "a";
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (stringAppend v1 v2)
+      );
+    (v2 [[ LetAssoc
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          "b";
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\v4 -> 
+            (stringAppend v3 v4)
+          );
+        (v4 a@v0);
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\v4 -> 
+            (stringAppend v3 v4)
+          );
+        (v4 "c");
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\v4 -> 
+          (stringAppend v3 v4)
+        );
+      (v4 "d")
+    ]])
+  )
+---------------
+Snapshot.PrimOpString03.test2 (Step 2)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (stringAppend "b" a@v0);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          "c";
+        (stringAppend v1 v2);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        "d";
+      (stringAppend v2 v3);
+    (stringAppend "a" v1)
+  )
+---------------
+Snapshot.PrimOpString03.test2 (Step 3; Final)
+  (\a@v0 -> 
+    (stringAppend (stringAppend "ab" a@v0) "cd")
+  )
+
+===============
+
+Snapshot.PrimOpString03.test3 (Step 0; Original)
+  (\a@v0 -> 
+    ((Snapshot.PrimOpString03.append "a") ((Snapshot.PrimOpString03.append ((Snapshot.PrimOpString03.append "b") ((Snapshot.PrimOpString03.append a@v0) "c"))) "d"))
+  )
+---------------
+Snapshot.PrimOpString03.test3 (Step 1)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      "a";
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (stringAppend v1 v2)
+      );
+    (v2 let v3 =
+      {#- Rewrite - Inline -#}
+      let v3 =
+        "b";
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\v4 -> 
+          (stringAppend v3 v4)
+        );
+      (v4 {#- Rewrite - Inline -#}
+      let v5 =
+        "c";
+      (stringAppend a@v0 v5));
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\v4 -> 
+        (stringAppend v3 v4)
+      );
+    (v4 "d"))
+  )
+---------------
+Snapshot.PrimOpString03.test3 (Step 2)
+  (\a@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v1 =
+          (stringAppend a@v0 "c");
+        (stringAppend "b" v1);
+      {#- Rewrite - Inline -#}
+      let v2 =
+        "d";
+      (stringAppend v1 v2);
+    (stringAppend "a" v1)
+  )
+---------------
+Snapshot.PrimOpString03.test3 (Step 3; Final)
+  (\a@v0 -> 
+    (stringAppend (stringAppend "ab" a@v0) "cd")
+  )

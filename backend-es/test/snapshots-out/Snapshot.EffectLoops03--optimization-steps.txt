@@ -1,0 +1,487 @@
+Snapshot.EffectLoops03.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.EffectLoops03.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectLoops03.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Effect.bindEffect)
+---------------
+Snapshot.EffectLoops03.discard (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectLoops03.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordInt)
+---------------
+Snapshot.EffectLoops03.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.EffectLoops03.log (Step 0; Original)
+  (Effect.Class.Console.log Effect.Class.monadEffectEffect)
+---------------
+Snapshot.EffectLoops03.log (Step 1; Final)
+  (Effect.Class.Console.log Effect.Class.monadEffectEffect)
+
+===============
+
+Snapshot.EffectLoops03.test1 (Step 0; Original)
+  (\cond@v0 -> 
+    ((Effect.whileE (Effect.Ref.read cond@v0)) ((Snapshot.EffectLoops03.discard (Snapshot.EffectLoops03.log "foo")) (\$__unused@v1 -> 
+      (Snapshot.EffectLoops03.log "bar")
+    )))
+  )
+---------------
+Snapshot.EffectLoops03.test1 (Step 1)
+  (\cond@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (refRead cond@v0);
+    [[ LetAssoc
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          "foo";
+        {#- Rewrite - Inline -#}
+        let v3 =
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (Effect.Console.log v2);
+          v3;
+        v3;
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          letEffect $__unused@v3 =
+            v2;
+          {#- Rewrite - Inline -#}
+          let v4 =
+            "bar";
+          {#- Rewrite - Inline -#}
+          let v5 =
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (Effect.Console.log v4);
+            v5;
+          v5;
+        v3;
+      let v2 =
+        (effectDefer (([[ Stop
+          Effect.whileE
+        ]] v1) (effectDefer v2)));
+      v2
+    ]]
+  )
+---------------
+Snapshot.EffectLoops03.test1 (Step 2)
+  (\cond@v0 -> 
+    let v1 =
+      (Effect.Console.log "foo");
+    {#- Rewrite - Inline -#}
+    let v2 =
+      letEffect $__unused@v2 =
+        v1;
+      (Effect.Console.log "bar");
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (effectDefer (([[ Stop
+        Effect.whileE
+      ]] (refRead cond@v0)) (effectDefer v2)));
+    v3
+  )
+---------------
+Snapshot.EffectLoops03.test1 (Step 3; Final)
+  (\cond@v0 -> 
+    let v1 =
+      (Effect.Console.log "foo");
+    (effectDefer (([[ Stop
+      Effect.whileE
+    ]] (refRead cond@v0)) (effectDefer letEffect $__unused@v2 =
+      v1;
+    (Effect.Console.log "bar"))))
+  )
+
+===============
+
+Snapshot.EffectLoops03.test2 (Step 0; Original)
+  (\cond@v0 -> 
+    ((Snapshot.EffectLoops03.discard ((Effect.whileE (Effect.Ref.read cond@v0)) (Snapshot.EffectLoops03.log "foo"))) (\$__unused@v1 -> 
+      ((Effect.whileE (Effect.Ref.read cond@v0)) (Snapshot.EffectLoops03.log "bar"))
+    ))
+  )
+---------------
+Snapshot.EffectLoops03.test2 (Step 1)
+  (\cond@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (refRead cond@v0);
+      [[ LetAssoc
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            "foo";
+          {#- Rewrite - Inline -#}
+          let v3 =
+            {#- Rewrite - Inline -#}
+            let v3 =
+              (Effect.Console.log v2);
+            v3;
+          v3;
+        let v2 =
+          (effectDefer (([[ Stop
+            Effect.whileE
+          ]] v1) (effectDefer v2)));
+        v2
+      ]];
+    {#- Rewrite - Inline -#}
+    let v2 =
+      letEffect $__unused@v2 =
+        v1;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (refRead cond@v0);
+      [[ LetAssoc
+        let v4 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            "bar";
+          {#- Rewrite - Inline -#}
+          let v5 =
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (Effect.Console.log v4);
+            v5;
+          v5;
+        let v4 =
+          (effectDefer (([[ Stop
+            Effect.whileE
+          ]] v3) (effectDefer v4)));
+        v4
+      ]];
+    v2
+  )
+---------------
+Snapshot.EffectLoops03.test2 (Step 2)
+  (\cond@v0 -> 
+    [[ LetAssoc
+      let v1 =
+        (Effect.Console.log "foo");
+      let v1 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (effectDefer (([[ Stop
+            Effect.whileE
+          ]] (refRead cond@v0)) (effectDefer v1)));
+        v2;
+      letEffect $__unused@v2 =
+        v1;
+      let v3 =
+        (Effect.Console.log "bar");
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (effectDefer (([[ Stop
+          Effect.whileE
+        ]] (refRead cond@v0)) (effectDefer v3)));
+      v4
+    ]]
+  )
+---------------
+Snapshot.EffectLoops03.test2 (Step 3)
+  (\cond@v0 -> 
+    let v1 =
+      (Effect.Console.log "foo");
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (effectDefer (([[ Stop
+        Effect.whileE
+      ]] (refRead cond@v0)) (effectDefer v1)));
+    letEffect $__unused@v3 =
+      v2;
+    let v4 =
+      (Effect.Console.log "bar");
+    (effectDefer (([[ Stop
+      Effect.whileE
+    ]] (refRead cond@v0)) (effectDefer v4)))
+  )
+---------------
+Snapshot.EffectLoops03.test2 (Step 4; Final)
+  (\cond@v0 -> 
+    let v1 =
+      (Effect.Console.log "foo");
+    letEffect $__unused@v2 =
+      (([[ Stop
+        Effect.whileE
+      ]] (refRead cond@v0)) (effectDefer v1));
+    let v3 =
+      (Effect.Console.log "bar");
+    (effectDefer (([[ Stop
+      Effect.whileE
+    ]] (refRead cond@v0)) (effectDefer v3)))
+  )
+
+===============
+
+Snapshot.EffectLoops03.test3 (Step 0; Original)
+  (\cond@v0 -> \ref@v1 -> 
+    ((Effect.whileE (Effect.Ref.read cond@v0)) ((Snapshot.EffectLoops03.bind (Effect.Ref.read ref@v1)) (\a@v2 -> 
+      ((Snapshot.EffectLoops03.when ((Snapshot.EffectLoops03.lessThan a@v2) 10)) (Snapshot.EffectLoops03.log "foo"))
+    )))
+  )
+---------------
+Snapshot.EffectLoops03.test3 (Step 1)
+  (\cond@v0 -> \ref@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (refRead cond@v0);
+    [[ LetAssoc
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (refRead ref@v1);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          letEffect a@v4 =
+            v3;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            {#- Rewrite - Inline -#}
+            let v5 =
+              10;
+            (< a@v4 v5);
+          let v6 =
+            {#- Rewrite - Inline -#}
+            let v6 =
+              "foo";
+            {#- Rewrite - Inline -#}
+            let v7 =
+              {#- Rewrite - Inline -#}
+              let v7 =
+                (Effect.Console.log v6);
+              v7;
+            v7;
+          if v5 then
+            v6
+          else
+            (effectPure <PrimUndefined>);
+        v4;
+      let v3 =
+        (effectDefer (([[ Stop
+          Effect.whileE
+        ]] v2) (effectDefer v3)));
+      v3
+    ]]
+  )
+---------------
+Snapshot.EffectLoops03.test3 (Step 2)
+  (\cond@v0 -> \ref@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      letEffect a@v2 =
+        (refRead ref@v1);
+      let v3 =
+        (Effect.Console.log "foo");
+      if (< a@v2 10) then
+        v3
+      else
+        (effectPure <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (effectDefer (([[ Stop
+        Effect.whileE
+      ]] (refRead cond@v0)) (effectDefer v2)));
+    v3
+  )
+---------------
+Snapshot.EffectLoops03.test3 (Step 3; Final)
+  (\cond@v0 -> \ref@v1 -> 
+    (effectDefer (([[ Stop
+      Effect.whileE
+    ]] (refRead cond@v0)) (effectDefer letEffect a@v2 =
+      (refRead ref@v1);
+    let v3 =
+      (Effect.Console.log "foo");
+    if (< a@v2 10) then
+      v3
+    else
+      (effectPure <PrimUndefined>))))
+  )
+
+===============
+
+Snapshot.EffectLoops03.test4 (Step 0; Original)
+  (\cond@v0 -> \ref@v1 -> 
+    ((Effect.whileE (Effect.Ref.read cond@v0)) ((Snapshot.EffectLoops03.bind (Effect.Ref.read ref@v1)) (\a@v2 -> 
+      (Snapshot.EffectLoops03.void {#- Rewrite - Inline -#}
+      let v3 =
+        ((Snapshot.EffectLoops03.lessThan a@v2) 10);
+      {#- Rewrite - Inline -#}
+      let v4 =
+        (\ ->
+          (Snapshot.EffectLoops03.log "foo")
+        );
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\ ->
+          (Snapshot.EffectLoops03.log "wat")
+        );
+      if (== v3 true) then
+        (v4)
+      else
+        (v5))
+    )))
+  )
+---------------
+Snapshot.EffectLoops03.test4 (Step 1)
+  (\cond@v0 -> \ref@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (refRead cond@v0);
+    [[ LetAssoc
+      let v3 =
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (refRead ref@v1);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          letEffect a@v4 =
+            v3;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            if {#- Rewrite - Inline -#}
+              let v5 =
+                10;
+              (< a@v4 v5) then
+              {#- Rewrite - Inline -#}
+              let v5 =
+                "foo";
+              {#- Rewrite - Inline -#}
+              let v6 =
+                {#- Rewrite - Inline -#}
+                let v6 =
+                  (Effect.Console.log v5);
+                v6;
+              v6
+            else
+              {#- Rewrite - Inline -#}
+              let v5 =
+                "wat";
+              {#- Rewrite - Inline -#}
+              let v6 =
+                {#- Rewrite - Inline -#}
+                let v6 =
+                  (Effect.Console.log v5);
+                v6;
+              v6;
+          (effectDefer letEffect a'@v6 =
+            v5;
+          (effectPure <PrimUndefined>));
+        v4;
+      let v3 =
+        (effectDefer (([[ Stop
+          Effect.whileE
+        ]] v2) (effectDefer v3)));
+      v3
+    ]]
+  )
+---------------
+Snapshot.EffectLoops03.test4 (Step 2)
+  (\cond@v0 -> \ref@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      letEffect a@v2 =
+        (refRead ref@v1);
+      letEffect a'@v3 =
+        if (< a@v2 10) then
+          (Effect.Console.log "foo")
+        else
+          (Effect.Console.log "wat");
+      (effectPure <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (effectDefer (([[ Stop
+        Effect.whileE
+      ]] (refRead cond@v0)) (effectDefer v2)));
+    v3
+  )
+---------------
+Snapshot.EffectLoops03.test4 (Step 3; Final)
+  (\cond@v0 -> \ref@v1 -> 
+    (effectDefer (([[ Stop
+      Effect.whileE
+    ]] (refRead cond@v0)) (effectDefer letEffect a@v2 =
+      (refRead ref@v1);
+    letEffect a'@v3 =
+      if (< a@v2 10) then
+        (Effect.Console.log "foo")
+      else
+        (Effect.Console.log "wat");
+    (effectPure <PrimUndefined>))))
+  )
+
+===============
+
+Snapshot.EffectLoops03.void (Step 0; Original)
+  (Data.Functor.void Effect.functorEffect)
+---------------
+Snapshot.EffectLoops03.void (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    (\v@v0 -> 
+      <PrimUndefined>
+    );
+  {#- Rewrite - Inline -#}
+  let v1 =
+    {#- Rewrite - Inline -#}
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (\a@v1 -> 
+          (effectDefer letEffect a'@v2 =
+            a@v1;
+          (effectPure (v0 a'@v2)))
+        );
+      v1;
+    v1;
+  v1
+---------------
+Snapshot.EffectLoops03.void (Step 2; Final)
+  (\a@v0 -> 
+    (effectDefer letEffect a'@v1 =
+      a@v0;
+    (effectPure <PrimUndefined>))
+  )
+
+===============
+
+Snapshot.EffectLoops03.when (Step 0; Original)
+  (Control.Applicative.when Effect.applicativeEffect)
+---------------
+Snapshot.EffectLoops03.when (Step 1)
+  (\v@v0 -> \v1@v1 -> 
+    if v@v0 then
+      v1@v1
+    else
+      {#- Rewrite - Inline -#}
+      let v2 =
+        <PrimUndefined>;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (effectPure v2);
+      v3
+  )
+---------------
+Snapshot.EffectLoops03.when (Step 2; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if v@v0 then
+      v1@v1
+    else
+      (effectPure <PrimUndefined>)
+  )

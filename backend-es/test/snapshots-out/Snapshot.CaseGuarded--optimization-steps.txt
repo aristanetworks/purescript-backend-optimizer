@@ -1,0 +1,1939 @@
+Snapshot.CaseGuarded.NInt (Step 0; Original)
+  (\x@v0 -> 
+    x@v0
+  )
+---------------
+Snapshot.CaseGuarded.NInt (Step 1; Final)
+  (\x@v0 -> 
+    x@v0
+  )
+
+===============
+
+Snapshot.CaseGuarded.Product3 (Step 0; Original)
+  let Product3 =
+    (\ value0 value1 value2 ->
+      { tag =
+          "Product3"
+      , value0 =
+          value0
+      , value1 =
+          value1
+      , value2 =
+          value2
+      }
+    );
+---------------
+Snapshot.CaseGuarded.Product3 (Step 1; Final)
+  let Product3 =
+    (\ value0 value1 value2 ->
+      { tag =
+          "Product3"
+      , value0 =
+          value0
+      , value1 =
+          value1
+      , value2 =
+          value2
+      }
+    );
+
+===============
+
+Snapshot.CaseGuarded.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.CaseGuarded.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.CaseGuarded.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupString)
+---------------
+Snapshot.CaseGuarded.append (Step 1; Final)
+  Data.Semigroup.concatString
+
+===============
+
+Snapshot.CaseGuarded.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqInt)
+---------------
+Snapshot.CaseGuarded.eq (Step 1; Final)
+  Data.Eq.eqIntImpl
+
+===============
+
+Snapshot.CaseGuarded.greaterThan (Step 0; Original)
+  (Data.Ord.greaterThan Data.Ord.ordInt)
+---------------
+Snapshot.CaseGuarded.greaterThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (> a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.CaseGuarded.lessThan (Step 0; Original)
+  (Data.Ord.lessThan Data.Ord.ordInt)
+---------------
+Snapshot.CaseGuarded.lessThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> 
+    (< a1@v0 a2@v1)
+  )
+
+===============
+
+Snapshot.CaseGuarded.show (Step 0; Original)
+  (Data.Show.show Data.Show.showInt)
+---------------
+Snapshot.CaseGuarded.show (Step 1; Final)
+  Data.Show.showIntImpl
+
+===============
+
+Snapshot.CaseGuarded.test1 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\n@v2 ->
+        ((Snapshot.CaseGuarded.append "n: ") (Snapshot.CaseGuarded.show n@v2))
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\ ->
+        {#- Rewrite - Uncurry -#}
+        let v1@v3 =
+          \v2@v3->
+            {#- Rewrite - Inline -#}
+            let v3@v4 =
+              (\v4@v4 -> 
+                {#- Rewrite - Inline -#}
+                let v5 =
+                  v@v0;
+                {#- Rewrite - Inline -#}
+                let v6 =
+                  (\x@v6 ->
+                    "catch"
+                  );
+                {#- Rewrite - Inline -#}
+                let x@v7 =
+                  v5;
+                if Data.Boolean.otherwise then
+                  (v6 x@v7)
+                else
+                  <PatternMatchFailure>
+              );
+            {#- Rewrite - Inline -#}
+            let v5 =
+              v@v0;
+            {#- Rewrite - Inline -#}
+            let v6 =
+              (\x@v6 ->
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  ((Snapshot.CaseGuarded.greaterThan x@v6) 1);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\ ->
+                    {#- Rewrite - Inline -#}
+                    let v8 =
+                      ((Snapshot.CaseGuarded.lessThan x@v6) 50);
+                    {#- Rewrite - Inline -#}
+                    let v9 =
+                      (\ ->
+                        ((Snapshot.CaseGuarded.append "1 < x < 50: ") (Snapshot.CaseGuarded.show x@v6))
+                      );
+                    {#- Rewrite - Inline -#}
+                    let v10 =
+                      (\ ->
+                        (v3@v4 true)
+                      );
+                    if (== v8 true) then
+                      (v9)
+                    else
+                      (v10)
+                  );
+                {#- Rewrite - Inline -#}
+                let v9 =
+                  (\ ->
+                    (v3@v4 true)
+                  );
+                if (== v7 true) then
+                  (v8)
+                else
+                  (v9)
+              );
+            (v6 x@v5);
+        {#- Rewrite - Inline -#}
+        let v4 =
+          v@v0;
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\x@v5 ->
+            {#- Rewrite - Inline -#}
+            let v6 =
+              ((Snapshot.CaseGuarded.greaterThan x@v5) 1);
+            {#- Rewrite - Inline -#}
+            let v7 =
+              (\ ->
+                {#- Rewrite - Inline -#}
+                let v7 =
+                  ((Snapshot.CaseGuarded.lessThan x@v5) 100);
+                {#- Rewrite - Inline -#}
+                let v8 =
+                  (\ ->
+                    ((Snapshot.CaseGuarded.append "1 < x < 100: ") (Snapshot.CaseGuarded.show x@v5))
+                  );
+                {#- Rewrite - Inline -#}
+                let v9 =
+                  (\ ->
+                    (v1@v3 true)
+                  );
+                if (== v7 true) then
+                  (v8)
+                else
+                  (v9)
+              );
+            {#- Rewrite - Inline -#}
+            let v8 =
+              (\ ->
+                (v1@v3 true)
+              );
+            if (== v6 true) then
+              (v7)
+            else
+              (v8)
+          );
+        (v5 x@v4)
+      );
+    {#- Rewrite - Inline -#}
+    let n@v4 =
+      v1;
+    if ((Snapshot.CaseGuarded.lessThan n@v4) 1) then
+      (v2 n@v4)
+    else
+      (v3)
+  )
+---------------
+Snapshot.CaseGuarded.test1 (Step 1)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      (< v@v0 v1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        "n: ";
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (stringAppend v1 v2)
+        );
+      (v2 (Data.Show.showIntImpl v@v0))
+    else
+      let v1@v1 =
+        (\v2@v1 ->
+          if {#- Rewrite - Inline -#}
+            let v2 =
+              1;
+            (> v@v0 v2) then
+            if {#- Rewrite - Inline -#}
+              let v2 =
+                50;
+              (< v@v0 v2) then
+              {#- Rewrite - Inline -#}
+              let v2 =
+                "1 < x < 50: ";
+              {#- Rewrite - Inline -#}
+              let v3 =
+                (\v3 -> 
+                  (stringAppend v2 v3)
+                );
+              (v3 (Data.Show.showIntImpl v@v0))
+            else
+              {#- Rewrite - Inline -#}
+              let v2 =
+                true;
+              "catch"
+          else
+            {#- Rewrite - Inline -#}
+            let v2 =
+              true;
+            "catch"
+        );
+      if {#- Rewrite - Inline -#}
+        let v2 =
+          1;
+        (> v@v0 v2) then
+        if {#- Rewrite - Inline -#}
+          let v2 =
+            100;
+          (< v@v0 v2) then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            "1 < x < 100: ";
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\v3 -> 
+              (stringAppend v2 v3)
+            );
+          (v3 (Data.Show.showIntImpl v@v0))
+        else
+          {#- Rewrite - Inline -#}
+          let v2 =
+            true;
+          (v1@v1 v2)
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          true;
+        (v1@v1 v2)
+  )
+---------------
+Snapshot.CaseGuarded.test1 (Step 2)
+  (\v@v0 -> 
+    if (< v@v0 1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (Data.Show.showIntImpl v@v0);
+      (stringAppend "n: " v1)
+    else
+      let v1@v1 =
+        (\v2@v1 ->
+          if (> v@v0 1) then
+            if (< v@v0 50) then
+              {#- Rewrite - Inline -#}
+              let v2 =
+                (Data.Show.showIntImpl v@v0);
+              (stringAppend "1 < x < 50: " v2)
+            else
+              "catch"
+          else
+            "catch"
+        );
+      if (> v@v0 1) then
+        if (< v@v0 100) then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (Data.Show.showIntImpl v@v0);
+          (stringAppend "1 < x < 100: " v2)
+        else
+          (v1@v1 true)
+      else
+        (v1@v1 true)
+  )
+---------------
+Snapshot.CaseGuarded.test1 (Step 3)
+  (\v@v0 -> 
+    if (< v@v0 1) then
+      (stringAppend "n: " (Data.Show.showIntImpl v@v0))
+    else
+      {#- Rewrite - Inline -#}
+      let v1@v1 =
+        (\v2@v1 ->
+          if (> v@v0 1) then
+            if (< v@v0 50) then
+              (stringAppend "1 < x < 50: " (Data.Show.showIntImpl v@v0))
+            else
+              "catch"
+          else
+            "catch"
+        );
+      if (> v@v0 1) then
+        if (< v@v0 100) then
+          (stringAppend "1 < x < 100: " (Data.Show.showIntImpl v@v0))
+        else
+          (v1@v1 true)
+      else
+        (v1@v1 true)
+  )
+---------------
+Snapshot.CaseGuarded.test1 (Step 4)
+  (\v@v0 -> 
+    if (< v@v0 1) then
+      (stringAppend "n: " (Data.Show.showIntImpl v@v0))
+    else if (> v@v0 1) then
+      if (< v@v0 100) then
+        (stringAppend "1 < x < 100: " (Data.Show.showIntImpl v@v0))
+      else
+        {#- Rewrite - Inline -#}
+        let v1 =
+          true;
+        if (> v@v0 1) then
+          if (< v@v0 50) then
+            (stringAppend "1 < x < 50: " (Data.Show.showIntImpl v@v0))
+          else
+            "catch"
+        else
+          "catch"
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        true;
+      if (> v@v0 1) then
+        if (< v@v0 50) then
+          (stringAppend "1 < x < 50: " (Data.Show.showIntImpl v@v0))
+        else
+          "catch"
+      else
+        "catch"
+  )
+---------------
+Snapshot.CaseGuarded.test1 (Step 5; Final)
+  (\v@v0 -> 
+    if (< v@v0 1) then
+      (stringAppend "n: " (Data.Show.showIntImpl v@v0))
+    else if (> v@v0 1) then
+      if (< v@v0 100) then
+        (stringAppend "1 < x < 100: " (Data.Show.showIntImpl v@v0))
+      else if (> v@v0 1) then
+        if (< v@v0 50) then
+          (stringAppend "1 < x < 50: " (Data.Show.showIntImpl v@v0))
+        else
+          "catch"
+      else
+        "catch"
+    else if (> v@v0 1) then
+      if (< v@v0 50) then
+        (stringAppend "1 < x < 50: " (Data.Show.showIntImpl v@v0))
+      else
+        "catch"
+    else
+      "catch"
+  )
+
+===============
+
+Snapshot.CaseGuarded.test2 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\i@v2 ->
+        i@v2
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\i@v3 ->
+        i@v3
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\i@v4 ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        0
+      );
+    {#- Rewrite - Inline -#}
+    let i@v6 =
+      v1;
+    if ((Snapshot.CaseGuarded.lessThan i@v6) 1) then
+      (v2 i@v6)
+    else
+      {#- Rewrite - Inline -#}
+      let i@v7 =
+        v1;
+      if ((Snapshot.CaseGuarded.greaterThan i@v7) 1) then
+        (v3 i@v7)
+      else
+        {#- Rewrite - Inline -#}
+        let i@v8 =
+          v1;
+        if ((Snapshot.CaseGuarded.eq i@v8) 1) then
+          (v4 i@v8)
+        else
+          (v5)
+  )
+---------------
+Snapshot.CaseGuarded.test2 (Step 1)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      (< v@v0 v1) then
+      v@v0
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      (> v@v0 v1) then
+      v@v0
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      (== v@v0 v1) then
+      1
+    else
+      0
+  )
+---------------
+Snapshot.CaseGuarded.test2 (Step 2; Final)
+  (\v@v0 -> 
+    if (< v@v0 1) then
+      v@v0
+    else if (> v@v0 1) then
+      v@v0
+    else if (== v@v0 1) then
+      1
+    else
+      0
+  )
+
+===============
+
+Snapshot.CaseGuarded.test3 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\a@v2 b@v3 ->
+        a@v2
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\a@v3 b@v4 c@v5 ->
+        a@v3
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\a@v4 c@v5 ->
+        c@v5
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\b@v5 ->
+        b@v5
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (
+        v1
+      )#value0;
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (
+        v1
+      )#value1;
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (
+        v1
+      )#value2;
+    {#- Rewrite - Inline -#}
+    let a@v9 =
+      v6;
+    {#- Rewrite - Inline -#}
+    let b@v10 =
+      v7;
+    if ((Snapshot.CaseGuarded.eq a@v9) b@v10) then
+      (v2 a@v9 b@v10)
+    else
+      {#- Rewrite - Inline -#}
+      let a@v11 =
+        v6;
+      {#- Rewrite - Inline -#}
+      let b@v12 =
+        v7;
+      {#- Rewrite - Inline -#}
+      let c@v13 =
+        v8;
+      if ((Snapshot.CaseGuarded.eq c@v13) b@v12) then
+        (v3 a@v11 b@v12 c@v13)
+      else
+        {#- Rewrite - Inline -#}
+        let a@v14 =
+          v6;
+        {#- Rewrite - Inline -#}
+        let c@v15 =
+          v8;
+        if ((Snapshot.CaseGuarded.eq a@v14) c@v15) then
+          (v4 a@v14 c@v15)
+        else
+          (v5 b@v7)
+  )
+---------------
+Snapshot.CaseGuarded.test3 (Step 1)
+  (\v@v0 -> 
+    if let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (== v1 v2)
+        );
+      (v2 (
+        v@v0
+      )#value1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value1;
+      v1
+    else if let v1 =
+        (
+          v@v0
+        )#value2;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (== v1 v2)
+        );
+      (v2 (
+        v@v0
+      )#value1) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value1;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v@v0
+        )#value2;
+      v1
+    else if let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (== v1 v2)
+        );
+      (v2 (
+        v@v0
+      )#value2) then
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value2;
+      v2
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value1;
+      v1
+  )
+---------------
+Snapshot.CaseGuarded.test3 (Step 2)
+  (\v@v0 -> 
+    if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value1;
+      (== v1 v2) then
+      (
+        v@v0
+      )#value0
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value2;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value1;
+      (== v1 v2) then
+      (
+        v@v0
+      )#value0
+    else if {#- Rewrite - Inline -#}
+      let v1 =
+        (
+          v@v0
+        )#value0;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value2;
+      (== v1 v2) then
+      (
+        v@v0
+      )#value2
+    else
+      (
+        v@v0
+      )#value1
+  )
+---------------
+Snapshot.CaseGuarded.test3 (Step 3; Final)
+  (\v@v0 -> 
+    if (== (
+        v@v0
+      )#value0 (
+        v@v0
+      )#value1) then
+      (
+        v@v0
+      )#value0
+    else if (== (
+        v@v0
+      )#value2 (
+        v@v0
+      )#value1) then
+      (
+        v@v0
+      )#value0
+    else if (== (
+        v@v0
+      )#value0 (
+        v@v0
+      )#value2) then
+      (
+        v@v0
+      )#value2
+    else
+      (
+        v@v0
+      )#value1
+  )
+
+===============
+
+Snapshot.CaseGuarded.test4 (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v1@v1;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v5 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\ ->
+        4
+      );
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (\ ->
+        5
+      );
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (\ ->
+        6
+      );
+    {#- Rewrite - Inline -#}
+    let v10 =
+      (\c@v10 e@v11 ->
+        7
+      );
+    {#- Rewrite - Inline -#}
+    let v11 =
+      (\c@v11 e@v12 ->
+        8
+      );
+    {#- Rewrite - Inline -#}
+    let v12 =
+      (\c@v12 e@v13 ->
+        9
+      );
+    {#- Rewrite - Inline -#}
+    let v13 =
+      (\ ->
+        10
+      );
+    {#- Rewrite - Inline -#}
+    let v14 =
+      (\c@v14 f@v15 ->
+        ((Snapshot.CaseGuarded.add ((Snapshot.CaseGuarded.add 11) c@v14)) f@v15)
+      );
+    {#- Rewrite - Inline -#}
+    let v15 =
+      (
+        v2
+      ).a;
+    {#- Rewrite - Inline -#}
+    let v16 =
+      (
+        v2
+      ).b;
+    {#- Rewrite - Inline -#}
+    let v17 =
+      (
+        v2
+      ).c;
+    {#- Rewrite - Inline -#}
+    let v18 =
+      (
+        v3
+      ).d;
+    {#- Rewrite - Inline -#}
+    let v19 =
+      (
+        v3
+      ).e;
+    {#- Rewrite - Inline -#}
+    let v20 =
+      (
+        v3
+      ).f;
+    if (== v15 1) then
+      if (== v18 1) then
+        (v4)
+      else if (== v18 2) then
+        (v5)
+      else if (== v18 3) then
+        (v6)
+      else if (== v18 4) then
+        (v7)
+      else if (== v18 5) then
+        (v8)
+      else
+        (v14 c@v17 f@v20)
+    else if (== v18 2) then
+      (v5)
+    else if (== v18 3) then
+      (v6)
+    else if (== v15 2) then
+      if (== v18 1) then
+        (v9)
+      else if (== v18 4) then
+        {#- Rewrite - Inline -#}
+        let c@v21 =
+          v17;
+        {#- Rewrite - Inline -#}
+        let e@v22 =
+          v19;
+        if ((Snapshot.CaseGuarded.eq c@v21) e@v22) then
+          (v10 c@v21 e@v22)
+        else if ((Snapshot.CaseGuarded.lessThan c@v21) e@v22) then
+          (v11 c@v21 e@v22)
+        else if ((Snapshot.CaseGuarded.greaterThan c@v21) e@v22) then
+          (v12 c@v21 e@v22)
+        else
+          (v14 c@v17 f@v20)
+      else
+        (v14 c@v17 f@v20)
+    else if (== v18 4) then
+      {#- Rewrite - Inline -#}
+      let c@v21 =
+        v17;
+      {#- Rewrite - Inline -#}
+      let e@v22 =
+        v19;
+      if ((Snapshot.CaseGuarded.eq c@v21) e@v22) then
+        (v10 c@v21 e@v22)
+      else if ((Snapshot.CaseGuarded.lessThan c@v21) e@v22) then
+        (v11 c@v21 e@v22)
+      else if ((Snapshot.CaseGuarded.greaterThan c@v21) e@v22) then
+        (v12 c@v21 e@v22)
+      else
+        (v14 c@v17 f@v20)
+    else if (== v16 2) then
+      if (== v18 1) then
+        if (== v20 10) then
+          (v13)
+        else
+          (v14 c@v17 f@v20)
+      else
+        (v14 c@v17 f@v20)
+    else
+      (v14 c@v17 f@v20)
+  )
+---------------
+Snapshot.CaseGuarded.test4 (Step 1)
+  (\v@v0 -> \v1@v1 -> 
+    if (== (
+        v@v0
+      ).a 1) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        1
+      else if (== (
+          v1@v1
+        ).d 2) then
+        2
+      else if (== (
+          v1@v1
+        ).d 3) then
+        3
+      else if (== (
+          v1@v1
+        ).d 4) then
+        4
+      else if (== (
+          v1@v1
+        ).d 5) then
+        5
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        let v4 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            11;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\v5 -> 
+              (add v4 v5)
+            );
+          (v5 v2);
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\v5 -> 
+            (add v4 v5)
+          );
+        (v5 v3)
+    else if (== (
+        v1@v1
+      ).d 2) then
+      2
+    else if (== (
+        v1@v1
+      ).d 3) then
+      3
+    else if (== (
+        v@v0
+      ).a 2) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        6
+      else if (== (
+          v1@v1
+        ).d 4) then
+        if let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\v3 -> 
+              (== v2 v3)
+            );
+          (v3 (
+            v1@v1
+          ).e) then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).e;
+          7
+        else if let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\a2@v3 -> 
+              (< v2 a2@v3)
+            );
+          (v3 (
+            v1@v1
+          ).e) then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).e;
+          8
+        else if let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (\a2@v3 -> 
+              (> v2 a2@v3)
+            );
+          (v3 (
+            v1@v1
+          ).e) then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).e;
+          9
+        else
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).f;
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let v4 =
+              11;
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (\v5 -> 
+                (add v4 v5)
+              );
+            (v5 v2);
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\v5 -> 
+              (add v4 v5)
+            );
+          (v5 v3)
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        let v4 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            11;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\v5 -> 
+              (add v4 v5)
+            );
+          (v5 v2);
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\v5 -> 
+            (add v4 v5)
+          );
+        (v5 v3)
+    else if (== (
+        v1@v1
+      ).d 4) then
+      if let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\v3 -> 
+            (== v2 v3)
+          );
+        (v3 (
+          v1@v1
+        ).e) then
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).e;
+        7
+      else if let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\a2@v3 -> 
+            (< v2 a2@v3)
+          );
+        (v3 (
+          v1@v1
+        ).e) then
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).e;
+        8
+      else if let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\a2@v3 -> 
+            (> v2 a2@v3)
+          );
+        (v3 (
+          v1@v1
+        ).e) then
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).e;
+        9
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        let v4 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            11;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\v5 -> 
+              (add v4 v5)
+            );
+          (v5 v2);
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\v5 -> 
+            (add v4 v5)
+          );
+        (v5 v3)
+    else if (== (
+        v@v0
+      ).b 2) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        if (== (
+            v1@v1
+          ).f 10) then
+          10
+        else
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).f;
+          let v4 =
+            {#- Rewrite - Inline -#}
+            let v4 =
+              11;
+            {#- Rewrite - Inline -#}
+            let v5 =
+              (\v5 -> 
+                (add v4 v5)
+              );
+            (v5 v2);
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\v5 -> 
+              (add v4 v5)
+            );
+          (v5 v3)
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        let v4 =
+          {#- Rewrite - Inline -#}
+          let v4 =
+            11;
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (\v5 -> 
+              (add v4 v5)
+            );
+          (v5 v2);
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\v5 -> 
+            (add v4 v5)
+          );
+        (v5 v3)
+    else
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        ).c;
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v1@v1
+        ).f;
+      let v4 =
+        {#- Rewrite - Inline -#}
+        let v4 =
+          11;
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\v5 -> 
+            (add v4 v5)
+          );
+        (v5 v2);
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (\v5 -> 
+          (add v4 v5)
+        );
+      (v5 v3)
+  )
+---------------
+Snapshot.CaseGuarded.test4 (Step 2)
+  (\v@v0 -> \v1@v1 -> 
+    if (== (
+        v@v0
+      ).a 1) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        1
+      else if (== (
+          v1@v1
+        ).d 2) then
+        2
+      else if (== (
+          v1@v1
+        ).d 3) then
+        3
+      else if (== (
+          v1@v1
+        ).d 4) then
+        4
+      else if (== (
+          v1@v1
+        ).d 5) then
+        5
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          (add 11 v2);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        (add v2 v3)
+    else if (== (
+        v1@v1
+      ).d 2) then
+      2
+    else if (== (
+        v1@v1
+      ).d 3) then
+      3
+    else if (== (
+        v@v0
+      ).a 2) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        6
+      else if (== (
+          v1@v1
+        ).d 4) then
+        if {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).e;
+          (== v2 v3) then
+          7
+        else if {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).e;
+          (< v2 v3) then
+          8
+        else if {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).e;
+          (> v2 v3) then
+          9
+        else
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              (
+                v@v0
+              ).c;
+            (add 11 v2);
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).f;
+          (add v2 v3)
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          (add 11 v2);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        (add v2 v3)
+    else if (== (
+        v1@v1
+      ).d 4) then
+      if {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).e;
+        (== v2 v3) then
+        7
+      else if {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).e;
+        (< v2 v3) then
+        8
+      else if {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).e;
+        (> v2 v3) then
+        9
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          (add 11 v2);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        (add v2 v3)
+    else if (== (
+        v@v0
+      ).b 2) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        if (== (
+            v1@v1
+          ).f 10) then
+          10
+        else
+          {#- Rewrite - Inline -#}
+          let v2 =
+            {#- Rewrite - Inline -#}
+            let v2 =
+              (
+                v@v0
+              ).c;
+            (add 11 v2);
+          {#- Rewrite - Inline -#}
+          let v3 =
+            (
+              v1@v1
+            ).f;
+          (add v2 v3)
+      else
+        {#- Rewrite - Inline -#}
+        let v2 =
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            ).c;
+          (add 11 v2);
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v1@v1
+          ).f;
+        (add v2 v3)
+    else
+      {#- Rewrite - Inline -#}
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          (
+            v@v0
+          ).c;
+        (add 11 v2);
+      {#- Rewrite - Inline -#}
+      let v3 =
+        (
+          v1@v1
+        ).f;
+      (add v2 v3)
+  )
+---------------
+Snapshot.CaseGuarded.test4 (Step 3; Final)
+  (\v@v0 -> \v1@v1 -> 
+    if (== (
+        v@v0
+      ).a 1) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        1
+      else if (== (
+          v1@v1
+        ).d 2) then
+        2
+      else if (== (
+          v1@v1
+        ).d 3) then
+        3
+      else if (== (
+          v1@v1
+        ).d 4) then
+        4
+      else if (== (
+          v1@v1
+        ).d 5) then
+        5
+      else
+        (add (add 11 (
+          v@v0
+        ).c) (
+          v1@v1
+        ).f)
+    else if (== (
+        v1@v1
+      ).d 2) then
+      2
+    else if (== (
+        v1@v1
+      ).d 3) then
+      3
+    else if (== (
+        v@v0
+      ).a 2) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        6
+      else if (== (
+          v1@v1
+        ).d 4) then
+        if (== (
+            v@v0
+          ).c (
+            v1@v1
+          ).e) then
+          7
+        else if (< (
+            v@v0
+          ).c (
+            v1@v1
+          ).e) then
+          8
+        else if (> (
+            v@v0
+          ).c (
+            v1@v1
+          ).e) then
+          9
+        else
+          (add (add 11 (
+            v@v0
+          ).c) (
+            v1@v1
+          ).f)
+      else
+        (add (add 11 (
+          v@v0
+        ).c) (
+          v1@v1
+        ).f)
+    else if (== (
+        v1@v1
+      ).d 4) then
+      if (== (
+          v@v0
+        ).c (
+          v1@v1
+        ).e) then
+        7
+      else if (< (
+          v@v0
+        ).c (
+          v1@v1
+        ).e) then
+        8
+      else if (> (
+          v@v0
+        ).c (
+          v1@v1
+        ).e) then
+        9
+      else
+        (add (add 11 (
+          v@v0
+        ).c) (
+          v1@v1
+        ).f)
+    else if (== (
+        v@v0
+      ).b 2) then
+      if (== (
+          v1@v1
+        ).d 1) then
+        if (== (
+            v1@v1
+          ).f 10) then
+          10
+        else
+          (add (add 11 (
+            v@v0
+          ).c) (
+            v1@v1
+          ).f)
+      else
+        (add (add 11 (
+          v@v0
+        ).c) (
+          v1@v1
+        ).f)
+    else
+      (add (add 11 (
+        v@v0
+      ).c) (
+        v1@v1
+      ).f)
+  )
+
+===============
+
+Snapshot.CaseGuarded.test5 (Step 0; Original)
+  (\v@v0 -> 
+    {#- Rewrite - Uncurry -#}
+    let v1@v1 =
+      \v2@v1->
+        {#- Rewrite - Inline -#}
+        let v3@v2 =
+          (\v4@v2 -> 
+            5
+          );
+        {#- Rewrite - Inline -#}
+        let v3 =
+          v@v0;
+        {#- Rewrite - Inline -#}
+        let v4 =
+          (\x@v4 ->
+            {#- Rewrite - Inline -#}
+            let v5 =
+              x@v4;
+            {#- Rewrite - Inline -#}
+            let v6 =
+              (\ ->
+                4
+              );
+            {#- Rewrite - Inline -#}
+            let v7 =
+              (\ ->
+                (v3@v2 true)
+              );
+            if (isTag Data.Either.Left v5) then
+              {#- Rewrite - Inline -#}
+              let v8 =
+                (
+                  v5
+                )#value0;
+              if (== v8 2) then
+                (v6)
+              else
+                (v7)
+            else
+              (v7)
+          );
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\ ->
+            (v3@v2 true)
+          );
+        if (isTag Data.Maybe.Just v3) then
+          {#- Rewrite - Inline -#}
+          let v6 =
+            (
+              v3
+            )#value0;
+          (v4 x@v6)
+        else
+          (v5);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\x@v3 ->
+        {#- Rewrite - Inline -#}
+        let v4 =
+          x@v3;
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (\y@v5 ->
+            y@v5
+          );
+        {#- Rewrite - Inline -#}
+        let v6 =
+          (\ ->
+            (v1@v1 true)
+          );
+        if (isTag Data.Either.Right v4) then
+          {#- Rewrite - Inline -#}
+          let v7 =
+            (
+              v4
+            )#value0;
+          (v5 y@v7)
+        else
+          (v6)
+      );
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\ ->
+        (v1@v1 true)
+      );
+    if (isTag Data.Maybe.Just v2) then
+      {#- Rewrite - Inline -#}
+      let v5 =
+        (
+          v2
+        )#value0;
+      (v3 x@v5)
+    else
+      (v4)
+  )
+---------------
+Snapshot.CaseGuarded.test5 (Step 1)
+  (\v@v0 -> 
+    let v1@v1 =
+      (\v2@v1 ->
+        if (isTag Data.Maybe.Just v@v0) then
+          {#- Rewrite - Inline -#}
+          let v2 =
+            (
+              v@v0
+            )#value0;
+          if (isTag Data.Either.Left v2) then
+            if (== (
+                v2
+              )#value0 2) then
+              4
+            else
+              {#- Rewrite - Inline -#}
+              let v3 =
+                true;
+              5
+          else
+            {#- Rewrite - Inline -#}
+            let v3 =
+              true;
+            5
+        else
+          {#- Rewrite - Inline -#}
+          let v2 =
+            true;
+          5
+      );
+    if (isTag Data.Maybe.Just v@v0) then
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v@v0
+        )#value0;
+      if (isTag Data.Either.Right v2) then
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v2
+          )#value0;
+        v3
+      else
+        {#- Rewrite - Inline -#}
+        let v3 =
+          true;
+        (v1@v1 v3)
+    else
+      {#- Rewrite - Inline -#}
+      let v2 =
+        true;
+      (v1@v1 v2)
+  )
+---------------
+Snapshot.CaseGuarded.test5 (Step 2)
+  (\v@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1@v1 =
+      (\v2@v1 ->
+        if (isTag Data.Maybe.Just v@v0) then
+          if (isTag Data.Either.Left (
+              v@v0
+            )#value0) then
+            if (== (
+                (
+                  v@v0
+                )#value0
+              )#value0 2) then
+              4
+            else
+              5
+          else
+            5
+        else
+          5
+      );
+    if (isTag Data.Maybe.Just v@v0) then
+      if (isTag Data.Either.Right (
+          v@v0
+        )#value0) then
+        (
+          (
+            v@v0
+          )#value0
+        )#value0
+      else
+        (v1@v1 true)
+    else
+      (v1@v1 true)
+  )
+---------------
+Snapshot.CaseGuarded.test5 (Step 3)
+  (\v@v0 -> 
+    if (isTag Data.Maybe.Just v@v0) then
+      if (isTag Data.Either.Right (
+          v@v0
+        )#value0) then
+        (
+          (
+            v@v0
+          )#value0
+        )#value0
+      else
+        {#- Rewrite - Inline -#}
+        let v1 =
+          true;
+        if (isTag Data.Maybe.Just v@v0) then
+          if (isTag Data.Either.Left (
+              v@v0
+            )#value0) then
+            if (== (
+                (
+                  v@v0
+                )#value0
+              )#value0 2) then
+              4
+            else
+              5
+          else
+            5
+        else
+          5
+    else
+      {#- Rewrite - Inline -#}
+      let v1 =
+        true;
+      if (isTag Data.Maybe.Just v@v0) then
+        if (isTag Data.Either.Left (
+            v@v0
+          )#value0) then
+          if (== (
+              (
+                v@v0
+              )#value0
+            )#value0 2) then
+            4
+          else
+            5
+        else
+          5
+      else
+        5
+  )
+---------------
+Snapshot.CaseGuarded.test5 (Step 4; Final)
+  (\v@v0 -> 
+    if (isTag Data.Maybe.Just v@v0) then
+      if (isTag Data.Either.Right (
+          v@v0
+        )#value0) then
+        (
+          (
+            v@v0
+          )#value0
+        )#value0
+      else if (isTag Data.Maybe.Just v@v0) then
+        if (isTag Data.Either.Left (
+            v@v0
+          )#value0) then
+          if (== (
+              (
+                v@v0
+              )#value0
+            )#value0 2) then
+            4
+          else
+            5
+        else
+          5
+      else
+        5
+    else if (isTag Data.Maybe.Just v@v0) then
+      if (isTag Data.Either.Left (
+          v@v0
+        )#value0) then
+        if (== (
+            (
+              v@v0
+            )#value0
+          )#value0 2) then
+          4
+        else
+          5
+      else
+        5
+    else
+      5
+  )

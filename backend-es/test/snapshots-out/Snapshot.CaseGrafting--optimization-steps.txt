@@ -1,0 +1,78 @@
+Snapshot.CaseGrafting.test1 (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> \v2@v2 -> 
+    {#- Rewrite - Inline -#}
+    let v3 =
+      v@v0;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      v1@v1;
+    {#- Rewrite - Inline -#}
+    let v5 =
+      v2@v2;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        1
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\ ->
+        2
+      );
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (\ ->
+        3
+      );
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (\ ->
+        4
+      );
+    if (== v4 false) then
+      if (== v5 true) then
+        (v6)
+      else if (== v5 false) then
+        (v8)
+      else
+        <PatternMatchFailure>
+    else if (== v3 false) then
+      if (== v4 true) then
+        (v7)
+      else if (== v5 false) then
+        (v8)
+      else if (== v5 true) then
+        (v9)
+      else
+        <PatternMatchFailure>
+    else if (== v5 false) then
+      (v8)
+    else if (== v5 true) then
+      (v9)
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.CaseGrafting.test1 (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> \v2@v2 -> 
+    if (not v1@v1) then
+      if v2@v2 then
+        1
+      else
+        3
+    else if (not v@v0) then
+      if v1@v1 then
+        2
+      else if (not v2@v2) then
+        3
+      else if v2@v2 then
+        4
+      else
+        <PatternMatchFailure>
+    else if (not v2@v2) then
+      3
+    else if v2@v2 then
+      4
+    else
+      <PatternMatchFailure>
+  )

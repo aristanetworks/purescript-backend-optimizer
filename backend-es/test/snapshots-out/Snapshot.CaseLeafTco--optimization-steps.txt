@@ -1,0 +1,304 @@
+Snapshot.CaseLeafTco.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupArray)
+---------------
+Snapshot.CaseLeafTco.append (Step 1; Final)
+  Data.Semigroup.concatArray
+
+===============
+
+Snapshot.CaseLeafTco.test1 (Step 0; Original)
+  (\b@v0 -> \arr@v1 -> 
+    let v@v2 =
+      (Data.Array.last arr@v1);
+    let v1@v3 =
+      (Data.Array.head arr@v1);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      v1@v3;
+    {#- Rewrite - Inline -#}
+    let v5 =
+      v@v2;
+    {#- Rewrite - Inline -#}
+    let v6 =
+      (\ ->
+        arr@v1
+      );
+    {#- Rewrite - Inline -#}
+    let v7 =
+      (\y@v7 ->
+        ((Snapshot.CaseLeafTco.append arr@v1) [
+          y@v7,
+        ])
+      );
+    {#- Rewrite - Inline -#}
+    let v8 =
+      (\ ->
+        arr@v1
+      );
+    {#- Rewrite - Inline -#}
+    let v9 =
+      (\x@v9 ->
+        ((Snapshot.CaseLeafTco.append arr@v1) [
+          x@v9,
+        ])
+      );
+    let v10 =
+      (\x@v10 y@v11 ->
+        {#- Rewrite - Inline -#}
+        let v12 =
+          b@v0;
+        {#- Rewrite - Inline -#}
+        let v13 =
+          (\ ->
+            ]
+          );
+        {#- Rewrite - Inline -#}
+        let v14 =
+          (\ ->
+            ((Snapshot.CaseLeafTco.test1 b@v0) ((Snapshot.CaseLeafTco.append [
+              y@v11,
+              x@v10,
+              3,
+              y@v11,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              x@v10,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+            ]) arr@v1))
+          );
+        if (== v12 true) then
+          (v13)
+        else
+          (v14)
+      );
+    if (isTag Data.Maybe.Just v5) then
+      {#- Rewrite - Inline -#}
+      let v11 =
+        (
+          v5
+        )#value0;
+      if (== v11 2) then
+        if (isTag Data.Maybe.Just v4) then
+          {#- Rewrite - Inline -#}
+          let v12 =
+            (
+              v4
+            )#value0;
+          if (== v12 1) then
+            (v6)
+          else
+            (v10 x@v12 y@v11)
+        else if (isTag Data.Maybe.Nothing v4) then
+          (v7 y@v11)
+        else
+          <PatternMatchFailure>
+      else if (isTag Data.Maybe.Nothing v4) then
+        (v7 y@v11)
+      else if (isTag Data.Maybe.Just v4) then
+        {#- Rewrite - Inline -#}
+        let v12 =
+          (
+            v4
+          )#value0;
+        (v10 x@v12 y@v11)
+      else
+        <PatternMatchFailure>
+    else if (isTag Data.Maybe.Nothing v5) then
+      if (isTag Data.Maybe.Nothing v4) then
+        (v8)
+      else if (isTag Data.Maybe.Just v4) then
+        {#- Rewrite - Inline -#}
+        let v11 =
+          (
+            v4
+          )#value0;
+        (v9 x@v11)
+      else
+        <PatternMatchFailure>
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.CaseLeafTco.test1 (Step 1)
+  (\b@v0 -> \arr@v1 -> 
+    let v@v2 =
+      ((Data.Array.index arr@v1) (subtract (arrayLength arr@v1) 1));
+    let v1@v3 =
+      ((Data.Array.index arr@v1) 0);
+    let v4 =
+      (\x@v4 y@v5 ->
+        if b@v0 then
+          ]
+        else
+          ((Snapshot.CaseLeafTco.test1 b@v0) ((Data.Semigroup.concatArray [
+            y@v5,
+            x@v4,
+            3,
+            y@v5,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            x@v4,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+          ]) arr@v1))
+      );
+    if (isTag Data.Maybe.Just v@v2) then
+      if (== (
+          v@v2
+        )#value0 2) then
+        if (isTag Data.Maybe.Just v1@v3) then
+          if (== (
+              v1@v3
+            )#value0 1) then
+            arr@v1
+          else
+            (v4 (
+              v1@v3
+            )#value0 (
+              v@v2
+            )#value0)
+        else if (isTag Data.Maybe.Nothing v1@v3) then
+          {#- Rewrite - Inline -#}
+          let v5 =
+            (
+              v@v2
+            )#value0;
+          ((Data.Semigroup.concatArray arr@v1) [
+            v5,
+          ])
+        else
+          <PatternMatchFailure>
+      else if (isTag Data.Maybe.Nothing v1@v3) then
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (
+            v@v2
+          )#value0;
+        ((Data.Semigroup.concatArray arr@v1) [
+          v5,
+        ])
+      else if (isTag Data.Maybe.Just v1@v3) then
+        (v4 (
+          v1@v3
+        )#value0 (
+          v@v2
+        )#value0)
+      else
+        <PatternMatchFailure>
+    else if (isTag Data.Maybe.Nothing v@v2) then
+      if (isTag Data.Maybe.Nothing v1@v3) then
+        arr@v1
+      else if (isTag Data.Maybe.Just v1@v3) then
+        {#- Rewrite - Inline -#}
+        let v5 =
+          (
+            v1@v3
+          )#value0;
+        ((Data.Semigroup.concatArray arr@v1) [
+          v5,
+        ])
+      else
+        <PatternMatchFailure>
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.CaseLeafTco.test1 (Step 2; Final)
+  (\b@v0 -> \arr@v1 -> 
+    let v@v2 =
+      ((Data.Array.index arr@v1) (subtract (arrayLength arr@v1) 1));
+    let v1@v3 =
+      ((Data.Array.index arr@v1) 0);
+    let v4 =
+      (\x@v4 y@v5 ->
+        if b@v0 then
+          ]
+        else
+          ((Snapshot.CaseLeafTco.test1 b@v0) ((Data.Semigroup.concatArray [
+            y@v5,
+            x@v4,
+            3,
+            y@v5,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            x@v4,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+          ]) arr@v1))
+      );
+    if (isTag Data.Maybe.Just v@v2) then
+      if (== (
+          v@v2
+        )#value0 2) then
+        if (isTag Data.Maybe.Just v1@v3) then
+          if (== (
+              v1@v3
+            )#value0 1) then
+            arr@v1
+          else
+            (v4 (
+              v1@v3
+            )#value0 (
+              v@v2
+            )#value0)
+        else if (isTag Data.Maybe.Nothing v1@v3) then
+          ((Data.Semigroup.concatArray arr@v1) [
+            (
+              v@v2
+            )#value0,
+          ])
+        else
+          <PatternMatchFailure>
+      else if (isTag Data.Maybe.Nothing v1@v3) then
+        ((Data.Semigroup.concatArray arr@v1) [
+          (
+            v@v2
+          )#value0,
+        ])
+      else if (isTag Data.Maybe.Just v1@v3) then
+        (v4 (
+          v1@v3
+        )#value0 (
+          v@v2
+        )#value0)
+      else
+        <PatternMatchFailure>
+    else if (isTag Data.Maybe.Nothing v@v2) then
+      if (isTag Data.Maybe.Nothing v1@v3) then
+        arr@v1
+      else if (isTag Data.Maybe.Just v1@v3) then
+        ((Data.Semigroup.concatArray arr@v1) [
+          (
+            v1@v3
+          )#value0,
+        ])
+      else
+        <PatternMatchFailure>
+    else
+      <PatternMatchFailure>
+  )

@@ -1,0 +1,366 @@
+Snapshot.InlineCase01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.InlineCase01.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.InlineCase01.test1 (Step 0; Original)
+  (\f@v0 -> 
+    ((Data.Maybe.maybe (f@v0 Data.Unit.unit)) (Snapshot.InlineCase01.add 1))
+  )
+---------------
+Snapshot.InlineCase01.test1 (Step 1)
+  (\f@v0 -> 
+    let v1 =
+      (f@v0 <PrimUndefined>);
+    [[ LetAssoc
+      let v2 =
+        {#- Rewrite - Inline -#}
+        let v2 =
+          1;
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (\v3 -> 
+            (add v2 v3)
+          );
+        v3;
+      let v2 =
+        (\v2@v3 -> 
+          if (isTag Data.Maybe.Nothing v2@v3) then
+            v1
+          else if (isTag Data.Maybe.Just v2@v3) then
+            (v2 (
+              v2@v3
+            )#value0)
+          else
+            <PatternMatchFailure>
+        );
+      v2
+    ]]
+  )
+---------------
+Snapshot.InlineCase01.test1 (Step 2)
+  (\f@v0 -> 
+    let v1 =
+      (f@v0 <PrimUndefined>);
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2 -> 
+        (add 1 v2)
+      );
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\v2@v3 -> 
+        if (isTag Data.Maybe.Nothing v2@v3) then
+          v1
+        else if (isTag Data.Maybe.Just v2@v3) then
+          (v2 (
+            v2@v3
+          )#value0)
+        else
+          <PatternMatchFailure>
+      );
+    v3
+  )
+---------------
+Snapshot.InlineCase01.test1 (Step 3)
+  (\f@v0 -> 
+    let v1 =
+      (f@v0 <PrimUndefined>);
+    (\v2@v2 -> 
+      if (isTag Data.Maybe.Nothing v2@v2) then
+        v1
+      else if (isTag Data.Maybe.Just v2@v2) then
+        {#- Rewrite - Inline -#}
+        let v3 =
+          (
+            v2@v2
+          )#value0;
+        (add 1 v3)
+      else
+        <PatternMatchFailure>
+    )
+  )
+---------------
+Snapshot.InlineCase01.test1 (Step 4; Final)
+  (\f@v0 -> 
+    let v1 =
+      (f@v0 <PrimUndefined>);
+    (\v2@v2 -> 
+      if (isTag Data.Maybe.Nothing v2@v2) then
+        v1
+      else if (isTag Data.Maybe.Just v2@v2) then
+        (add 1 (
+          v2@v2
+        )#value0)
+      else
+        <PatternMatchFailure>
+    )
+  )
+
+===============
+
+Snapshot.InlineCase01.test2 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    ((Data.Maybe.maybe (f@v0 Data.Unit.unit)) (g@v1 1))
+  )
+---------------
+Snapshot.InlineCase01.test2 (Step 1)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (f@v0 <PrimUndefined>);
+    [[ LetAssoc
+      let v3 =
+        (g@v1 1);
+      let v3 =
+        (\v2@v4 -> 
+          if (isTag Data.Maybe.Nothing v2@v4) then
+            v2
+          else if (isTag Data.Maybe.Just v2@v4) then
+            (v3 (
+              v2@v4
+            )#value0)
+          else
+            <PatternMatchFailure>
+        );
+      v3
+    ]]
+  )
+---------------
+Snapshot.InlineCase01.test2 (Step 2)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (f@v0 <PrimUndefined>);
+    let v3 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v4 =
+      (\v2@v4 -> 
+        if (isTag Data.Maybe.Nothing v2@v4) then
+          v2
+        else if (isTag Data.Maybe.Just v2@v4) then
+          (v3 (
+            v2@v4
+          )#value0)
+        else
+          <PatternMatchFailure>
+      );
+    v4
+  )
+---------------
+Snapshot.InlineCase01.test2 (Step 3; Final)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (f@v0 <PrimUndefined>);
+    let v3 =
+      (g@v1 1);
+    (\v2@v4 -> 
+      if (isTag Data.Maybe.Nothing v2@v4) then
+        v2
+      else if (isTag Data.Maybe.Just v2@v4) then
+        (v3 (
+          v2@v4
+        )#value0)
+      else
+        <PatternMatchFailure>
+    )
+  )
+
+===============
+
+Snapshot.InlineCase01.test3 (Step 0; Original)
+  (\f@v0 -> 
+    ((Data.Maybe.maybe' f@v0) (Snapshot.InlineCase01.add 1))
+  )
+---------------
+Snapshot.InlineCase01.test3 (Step 1)
+  (\f@v0 -> 
+    let v1 =
+      {#- Rewrite - Inline -#}
+      let v1 =
+        1;
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (\v2 -> 
+          (add v1 v2)
+        );
+      v2;
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v2@v2 -> 
+        if (isTag Data.Maybe.Nothing v2@v2) then
+          (f@v0 <PrimUndefined>)
+        else if (isTag Data.Maybe.Just v2@v2) then
+          (v1 (
+            v2@v2
+          )#value0)
+        else
+          <PatternMatchFailure>
+      );
+    v2
+  )
+---------------
+Snapshot.InlineCase01.test3 (Step 2)
+  (\f@v0 -> 
+    {#- Rewrite - Inline -#}
+    let v1 =
+      (\v1 -> 
+        (add 1 v1)
+      );
+    (\v2@v2 -> 
+      if (isTag Data.Maybe.Nothing v2@v2) then
+        (f@v0 <PrimUndefined>)
+      else if (isTag Data.Maybe.Just v2@v2) then
+        (v1 (
+          v2@v2
+        )#value0)
+      else
+        <PatternMatchFailure>
+    )
+  )
+---------------
+Snapshot.InlineCase01.test3 (Step 3)
+  (\f@v0 -> \v2@v1 -> 
+    if (isTag Data.Maybe.Nothing v2@v1) then
+      (f@v0 <PrimUndefined>)
+    else if (isTag Data.Maybe.Just v2@v1) then
+      {#- Rewrite - Inline -#}
+      let v2 =
+        (
+          v2@v1
+        )#value0;
+      (add 1 v2)
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.InlineCase01.test3 (Step 4; Final)
+  (\f@v0 -> \v2@v1 -> 
+    if (isTag Data.Maybe.Nothing v2@v1) then
+      (f@v0 <PrimUndefined>)
+    else if (isTag Data.Maybe.Just v2@v1) then
+      (add 1 (
+        v2@v1
+      )#value0)
+    else
+      <PatternMatchFailure>
+  )
+
+===============
+
+Snapshot.InlineCase01.test4 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> 
+    ((Data.Maybe.maybe' f@v0) (g@v1 1))
+  )
+---------------
+Snapshot.InlineCase01.test4 (Step 1)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\v2@v3 -> 
+        if (isTag Data.Maybe.Nothing v2@v3) then
+          (f@v0 <PrimUndefined>)
+        else if (isTag Data.Maybe.Just v2@v3) then
+          (v2 (
+            v2@v3
+          )#value0)
+        else
+          <PatternMatchFailure>
+      );
+    v3
+  )
+---------------
+Snapshot.InlineCase01.test4 (Step 2; Final)
+  (\f@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    (\v2@v3 -> 
+      if (isTag Data.Maybe.Nothing v2@v3) then
+        (f@v0 <PrimUndefined>)
+      else if (isTag Data.Maybe.Just v2@v3) then
+        (v2 (
+          v2@v3
+        )#value0)
+      else
+        <PatternMatchFailure>
+    )
+  )
+
+===============
+
+Snapshot.InlineCase01.test5 (Step 0; Original)
+  (\a@v0 -> \g@v1 -> 
+    ((Data.Maybe.maybe' (\v@v2 -> 
+      ((Snapshot.InlineCase01.add a@v0) 1)
+    )) (g@v1 1))
+  )
+---------------
+Snapshot.InlineCase01.test5 (Step 1)
+  (\a@v0 -> \g@v1 -> 
+    {#- Rewrite - Inline -#}
+    let v2 =
+      (\v@v2 -> 
+        {#- Rewrite - Inline -#}
+        let v3 =
+          1;
+        (add a@v0 v3)
+      );
+    [[ LetAssoc
+      let v3 =
+        (g@v1 1);
+      let v3 =
+        (\v2@v4 -> 
+          if (isTag Data.Maybe.Nothing v2@v4) then
+            (v2 <PrimUndefined>)
+          else if (isTag Data.Maybe.Just v2@v4) then
+            (v3 (
+              v2@v4
+            )#value0)
+          else
+            <PatternMatchFailure>
+        );
+      v3
+    ]]
+  )
+---------------
+Snapshot.InlineCase01.test5 (Step 2)
+  (\a@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    {#- Rewrite - Inline -#}
+    let v3 =
+      (\v2@v3 -> 
+        if (isTag Data.Maybe.Nothing v2@v3) then
+          {#- Rewrite - Inline -#}
+          let v4 =
+            <PrimUndefined>;
+          (add a@v0 1)
+        else if (isTag Data.Maybe.Just v2@v3) then
+          (v2 (
+            v2@v3
+          )#value0)
+        else
+          <PatternMatchFailure>
+      );
+    v3
+  )
+---------------
+Snapshot.InlineCase01.test5 (Step 3; Final)
+  (\a@v0 -> \g@v1 -> 
+    let v2 =
+      (g@v1 1);
+    (\v2@v3 -> 
+      if (isTag Data.Maybe.Nothing v2@v3) then
+        (add a@v0 1)
+      else if (isTag Data.Maybe.Just v2@v3) then
+        (v2 (
+          v2@v3
+        )#value0)
+      else
+        <PatternMatchFailure>
+    )
+  )

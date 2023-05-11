@@ -1,0 +1,92 @@
+Snapshot.DefaultRulesFunction01.test1 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> \a@v2 -> 
+    ((f@v0 1) ((g@v1 "foo") a@v2))
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test1 (Step 1; Final)
+  (\f@v0 -> \g@v1 -> \a@v2 -> 
+    ((f@v0 1) ((g@v1 "foo") a@v2))
+  )
+
+===============
+
+Snapshot.DefaultRulesFunction01.test2 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> \a@v2 -> 
+    ((f@v0 1) ((g@v1 "foo") a@v2))
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test2 (Step 1; Final)
+  (\f@v0 -> \g@v1 -> \a@v2 -> 
+    ((f@v0 1) ((g@v1 "foo") a@v2))
+  )
+
+===============
+
+Snapshot.DefaultRulesFunction01.test3 (Step 0; Original)
+  (\f@v0 -> \g@v1 -> \v@v2 -> 
+    (((Data.Function.flip f@v0) 3) (((Data.Function.flip g@v1) 2) 1))
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test3 (Step 1)
+  (\f@v0 -> \g@v1 -> \v@v2 -> 
+    {#- Rewrite - Inline -#}
+    let v3 =
+      3;
+    {#- Rewrite - Inline -#}
+    let v4 =
+      {#- Rewrite - Inline -#}
+      let v4 =
+        2;
+      {#- Rewrite - Inline -#}
+      let v5 =
+        1;
+      ((g@v1 v5) v4);
+    ((f@v0 v4) v3)
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test3 (Step 2; Final)
+  (\f@v0 -> \g@v1 -> \v@v2 -> 
+    ((f@v0 ((g@v1 1) 2)) 3)
+  )
+
+===============
+
+Snapshot.DefaultRulesFunction01.test4 (Step 0; Original)
+  (\f@v0 -> 
+    (Data.Function.flip f@v0)
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test4 (Step 1; Final)
+  (\f@v0 -> \b@v1 -> \a@v2 -> 
+    ((f@v0 a@v2) b@v1)
+  )
+
+===============
+
+Snapshot.DefaultRulesFunction01.test5 (Step 0; Original)
+  (\a@v0 -> 
+    (Data.Function.const a@v0)
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test5 (Step 1; Final)
+  (\a@v0 -> \v@v1 -> 
+    a@v0
+  )
+
+===============
+
+Snapshot.DefaultRulesFunction01.test6 (Step 0; Original)
+  ((Data.Function.flip Data.Function.const) 42)
+---------------
+Snapshot.DefaultRulesFunction01.test6 (Step 1)
+  {#- Rewrite - Inline -#}
+  let v0 =
+    42;
+  (\a@v1 -> 
+    a@v1
+  )
+---------------
+Snapshot.DefaultRulesFunction01.test6 (Step 2; Final)
+  (\a@v0 -> 
+    a@v0
+  )
