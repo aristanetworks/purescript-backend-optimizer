@@ -144,9 +144,7 @@ runSnapshotTests { accept, filter, shouldTrace } = do
               TraceToStdOut ->
                 Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
               TraceToSnapshotsOut -> do
-                let modPath = Path.concat [ snapshotsOut, name ]
-                mkdirp modPath
-                FS.writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
+                FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
                   $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
         }
       outputModules <- liftEffect $ Ref.read outputRef
