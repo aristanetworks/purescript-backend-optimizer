@@ -12,7 +12,6 @@ import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
-import Data.List.NonEmpty as NonEmptyList
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -1500,27 +1499,28 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified mn (Ident id)) initN = go initN
+optimize :: Boolean -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Maybe (NonEmptyArray BackendExpr)) BackendExpr
+optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
+  if traceSteps then goWithSteps (pure originalExpr) initN originalExpr
+  else goNoSteps initN originalExpr
   where
-  go n expr1
-    | n == 0 = do
-        -- expr1
-        let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
-        unsafeCrashWith $ name <> ": Possible infinite optimization loop."
-    | otherwise = do
-        let expr2 = quote ctx (eval env expr1)
-        let BackendAnalysis { rewrite } = analysisOf expr2
-        if rewrite then
-          go (n - 1) expr2
-        else
-          expr2
+  goNoSteps n expr1 = do
+    let Tuple rewrite expr2 = optimizationStep n expr1
+    if rewrite then
+      goNoSteps (n - 1) expr2
+    else
+      Tuple Nothing expr2
 
-optimizeWithSteps :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (NonEmptyArray BackendExpr) BackendExpr
-optimizeWithSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
-  go (pure originalExpr) initN originalExpr
-  where
-  go steps n expr1
+  goWithSteps steps n expr1 = do
+    let Tuple rewrite expr2 = optimizationStep n expr1
+    let updatedSteps = NonEmptyArray.snoc steps expr2
+    if rewrite then
+      goWithSteps updatedSteps (n - 1) expr2
+    else
+      Tuple (Just updatedSteps) expr2
+
+  optimizationStep :: Int -> BackendExpr -> Tuple Boolean BackendExpr
+  optimizationStep n expr1
     | n == 0 = do
         -- expr1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
@@ -1528,11 +1528,7 @@ optimizeWithSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        let updatedSteps = NonEmptyList.cons expr2 steps
-        if rewrite then
-          go updatedSteps (n - 1) expr2
-        else
-          Tuple (NonEmptyArray.reverse $ NonEmptyArray.fromFoldable1 updatedSteps) expr2
+        Tuple rewrite expr2
 
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) (go init)

@@ -52,7 +52,6 @@ import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Bifunctor (lmap)
 import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
@@ -74,7 +73,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize, optimizeWithSteps)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -247,12 +246,8 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives }
   let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
-  let
-    Tuple mbSteps optimizedExpr =
-      if env.traceOptimization env.currentModule ident then do
-        lmap Just $ optimizeWithSteps (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr
-      else do
-        Tuple Nothing $ optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr
+  let enableTracing = env.traceOptimization env.currentModule ident
+  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr
   let Tuple impl expr' = toExternImpl env group optimizedExpr
   { accum: env
       { implementations = Map.insert qualifiedIdent impl env.implementations
