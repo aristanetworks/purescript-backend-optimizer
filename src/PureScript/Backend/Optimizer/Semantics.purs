@@ -1531,19 +1531,22 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
         Tuple rewrite expr2
 
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
-freeze init = Tuple (analysisOf init) (go init)
+freeze init = Tuple (analysisOf init) $ foldBackendExpr NeutralExpr (\_ neutExpr -> neutExpr) init
+
+foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite -> a -> a) -> BackendExpr -> a
+foldBackendExpr foldSyntax foldRewrite = go
   where
   go = case _ of
     ExprSyntax _ expr ->
-      NeutralExpr $ go <$> expr
-    ExprRewrite _ rewrite ->
+      foldSyntax $ go <$> expr
+    ExprRewrite _ rewrite -> foldRewrite rewrite
       case rewrite of
         RewriteInline ident level binding body ->
-          NeutralExpr $ Let ident level (go binding) (go body)
+          foldSyntax $ Let ident level (go binding) (go body)
         RewriteUncurry ident level args binding body ->
-          NeutralExpr $ Let ident level (NeutralExpr (Abs args (go binding))) (go body)
+          foldSyntax $ Let ident level (foldSyntax (Abs args (go binding))) (go body)
         RewriteStop qual ->
-          NeutralExpr $ Var qual
+          foldSyntax $ Var qual
         RewriteLetAssoc bindings body ->
           case NonEmptyArray.fromArray bindings of
             Just bindings' -> do
@@ -1551,12 +1554,12 @@ freeze init = Tuple (analysisOf init) (go init)
                 { ident, level, binding } = foldl1Array
                   ( \inner outer -> outer
                       { binding =
-                          NeutralExpr $ Let inner.ident inner.level inner.binding (go outer.binding)
+                          foldSyntax $ Let inner.ident inner.level inner.binding (go outer.binding)
                       }
                   )
                   (\outer -> outer { binding = go outer.binding })
                   bindings'
-              NeutralExpr $ Let ident level binding (go body)
+              foldSyntax $ Let ident level binding (go body)
             Nothing ->
               go body
         RewriteEffectBindAssoc bindings body ->
@@ -1567,41 +1570,41 @@ freeze init = Tuple (analysisOf init) (go init)
                   ( \inner outer -> outer
                       { binding =
                           if inner.pure then
-                            NeutralExpr $ Let inner.ident inner.level inner.binding (go outer.binding)
+                            foldSyntax $ Let inner.ident inner.level inner.binding (go outer.binding)
                           else
-                            NeutralExpr $ EffectBind inner.ident inner.level inner.binding (go outer.binding)
+                            foldSyntax $ EffectBind inner.ident inner.level inner.binding (go outer.binding)
                       }
                   )
                   (\outer -> outer { binding = go outer.binding })
                   bindings'
-              NeutralExpr $ Let ident level binding (go body)
+              foldSyntax $ Let ident level binding (go body)
             Nothing ->
               go body
         RewriteUnpackOp ident level op body ->
           case op of
             UnpackRecord props ->
-              NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
+              foldSyntax $ Let ident level (foldSyntax (Lit (LitRecord (map go <$> props)))) (go body)
             UnpackUpdate hd props ->
-              NeutralExpr $ Let ident level (NeutralExpr (Update (go hd) (map go <$> props))) (go body)
+              foldSyntax $ Let ident level (foldSyntax (Update (go hd) (map go <$> props))) (go body)
             UnpackData qual ct ty tag values ->
-              NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
+              foldSyntax $ Let ident level (foldSyntax (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
         RewriteDistBranchesLet ident level branches def body ->
-          NeutralExpr $ Let ident level (NeutralExpr (Branch (map go <$> branches) (go def))) (go body)
+          foldSyntax $ Let ident level (foldSyntax (Branch (map go <$> branches) (go def))) (go body)
         RewriteDistBranchesOp branches def op -> do
-          let branches' = NeutralExpr $ Branch (map go <$> branches) (go def)
+          let branches' = foldSyntax $ Branch (map go <$> branches) (go def)
           case op of
             DistApp spine ->
-              NeutralExpr $ App branches' (go <$> spine)
+              foldSyntax $ App branches' (go <$> spine)
             DistUncurriedApp spine ->
-              NeutralExpr $ UncurriedApp branches' (go <$> spine)
+              foldSyntax $ UncurriedApp branches' (go <$> spine)
             DistAccessor acc ->
-              NeutralExpr $ Accessor branches' acc
+              foldSyntax $ Accessor branches' acc
             DistPrimOp1 op1 ->
-              NeutralExpr $ PrimOp $ Op1 op1 branches'
+              foldSyntax $ PrimOp $ Op1 op1 branches'
             DistPrimOp2L op2 rhs ->
-              NeutralExpr $ PrimOp $ Op2 op2 branches' (go rhs)
+              foldSyntax $ PrimOp $ Op2 op2 branches' (go rhs)
             DistPrimOp2R lhs op2 ->
-              NeutralExpr $ PrimOp $ Op2 op2 (go lhs) branches'
+              foldSyntax $ PrimOp $ Op2 op2 (go lhs) branches'
 
 evalMkFn :: Env -> Int -> BackendSemantics -> MkFn BackendSemantics
 evalMkFn env n sem
