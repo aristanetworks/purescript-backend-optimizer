@@ -4,9 +4,9 @@ import Prelude
 
 import Data.Array (fold)
 import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray, foldMap1)
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.FoldableWithIndex (foldlWithIndex)
+import Data.FoldableWithIndex (foldlWithIndex, foldrWithIndex)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (guard, power)
 import Data.Tuple (Tuple(..), snd, uncurry)
@@ -14,12 +14,14 @@ import Dodo (Doc)
 import Dodo as D
 import PureScript.Backend.Optimizer.Convert (OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendRewrite(..), DistOp(..), UnpackOp(..), foldBackendExpr)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr, BackendRewrite(..), DistOp(..), UnpackOp(..), foldBackendExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 
 printSteps :: ModuleName -> OptimizationSteps -> Doc Void
 printSteps modName allSteps = do
   let
+    singleDashSeparator = D.text $ power "-" 15
+    doubleDashSeparator = D.text $ power "=" 15
     renderSingleStep ident lastIdx idx step = do
       D.lines
         [ D.words
@@ -40,7 +42,7 @@ printSteps modName allSteps = do
         ]
     foldStep ident lastIdx idx acc step
       | idx == 0 = renderSingleStep ident lastIdx idx step
-      | otherwise = D.lines [ acc, D.text $ power "-" 15, renderSingleStep ident lastIdx idx step ]
+      | otherwise = D.lines [ acc, singleDashSeparator, renderSingleStep ident lastIdx idx step ]
 
     foldIdent ident acc steps
       | acc.idx == 0 =
@@ -51,7 +53,7 @@ printSteps modName allSteps = do
       | otherwise =
           { idx: acc.idx + 1
           , value:
-              D.foldWithSeparator (D.break <> D.break <> (D.text $ power "=" 15) <> D.break <> D.break)
+              D.foldWithSeparator (D.break <> D.break <> doubleDashSeparator <> D.break <> D.break)
                 [ acc.value
                 , foldlWithIndex (foldStep ident (NonEmptyArray.length steps - 1)) mempty $ NonEmptyArray.toArray steps
                 ]
@@ -80,29 +82,61 @@ printLocal mbIdent lvl = do
 printProperName :: ProperName -> Doc Void
 printProperName (ProperName s) = D.text s
 
-printCurriedApp :: Doc Void -> Doc Void -> Doc Void
-printCurriedApp fn arg =
-  D.text "(" <> D.words [ fn, arg ] <> D.text ")"
-
-printIndentedParens :: Doc Void -> Doc Void
-printIndentedParens = printIndentedParens' mempty
-
-printIndentedParens' :: Doc Void -> Doc Void -> Doc Void
-printIndentedParens' header body =
-  D.lines
-    [ D.text "(" <> header
-    , D.indent body
-    , D.text ")"
+printCurriedApp :: Doc Void -> Array (Doc Void) -> Doc Void
+printCurriedApp fn args = args # flip Array.foldl fn \acc next ->
+  D.flexGroup $ D.paragraph
+    [ D.text "(" <> acc
+    , D.indent $ next <> D.text ")"
     ]
 
+printCurriedAbs :: Array (Doc Void) -> Doc Void -> Doc Void
+printCurriedAbs args body = do
+  let
+    printArg idx arg = do
+      let prefix = if idx == 0 then mempty else D.space
+      D.indent $ D.words
+        [ prefix <> D.text "\\" <> arg
+        , D.text "->"
+        ]
+  D.flexGroup $ D.paragraph
+    [ D.text "(" <> (D.paragraph $ Array.mapWithIndex printArg args)
+    , D.indent $ body <> D.text ")"
+    ]
+
+printUncurriedApp :: Boolean -> Doc Void -> Array (Doc Void) -> Doc Void
+printUncurriedApp isEffectful fn args = do
+  let effectfulChar = D.text "#" # guard isEffectful
+  D.flexGroup $ D.paragraph
+    [ D.text "(" <> effectfulChar <> fn
+    , D.indent $ D.paragraph args
+    , effectfulChar <> D.text ")"
+    ]
+
+printUncurriedAbs :: Boolean -> Array (Doc Void) -> Doc Void -> Doc Void
+printUncurriedAbs isEffectful args body = do
+  let effectfulChar = D.text "#" # guard isEffectful
+  D.flexGroup $ D.paragraph
+    [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
+    , D.indent $ body <> effectfulChar <> D.text ")"
+    ]
+
+wrapIn :: String -> Doc Void -> Doc Void
+wrapIn sep = wrapIn' sep sep
+
+wrapIn' :: String -> String -> Doc Void -> Doc Void
+wrapIn' l r = append (D.text l) <<< flip append (D.text r)
+
 wrapInParens :: Doc Void -> Doc Void
-wrapInParens = append (D.text "(") <<< flip append (D.text ")")
+wrapInParens = wrapIn' "(" ")"
 
 printLet :: String -> Doc Void -> Doc Void -> Doc Void
-printLet letKeyword identifier binding =
-  D.lines
+printLet letKeyword = printLet' (D.text letKeyword)
+
+printLet' :: Doc Void -> Doc Void -> Doc Void -> Doc Void
+printLet' letKeyword identifier binding = D.flexGroup $
+  D.paragraph
     [ D.words
-        [ D.text letKeyword
+        [ letKeyword
         , identifier
         , D.text "="
         ]
@@ -110,204 +144,208 @@ printLet letKeyword identifier binding =
     ]
 
 printArray :: Array (Doc Void) -> Doc Void
-printArray = finish <<< start
+printArray arr = D.flexGroup $ D.flexAlt (singleLine arr) (multiLine arr)
   where
-  finish topPart = D.lines [ topPart, D.text "]" ]
-  start = flip foldlWithIndex mempty \idx acc expr ->
-    if idx == 0 then
-      D.lines
-        [ D.text "["
-        , D.indent $ expr <> D.text ","
-        ]
-    else
-      D.lines
-        [ acc
-        , D.indent $ expr <> D.text ","
-        ]
+  singleLine = flip foldrWithIndex (D.text "]") \idx expr acc -> do
+    let prefix = if idx == 0 then "[" else ","
+    D.words [ D.text prefix, expr, acc ]
+  multiLine = flip foldrWithIndex (D.text "]") \idx expr acc -> do
+    let prefix = if idx == 0 then D.text "[" else D.text ","
+    D.lines [ D.words [ prefix, expr ], acc ]
 
-printProp :: forall a. (a -> Doc Void) -> Prop a -> Doc Void
-printProp printExpr (Prop lbl expr) = D.words [ D.text lbl, D.text "=", printExpr expr ]
+printProp :: String -> Prop (Doc Void) -> Doc Void
+printProp labelValueSep (Prop lbl expr) =
+  D.words [ D.text lbl <> D.text labelValueSep, expr ]
 
-printRecord :: Array (Prop (Doc Void)) -> Doc Void
-printRecord = finish <<< start
+printRecord :: String -> Array (Prop (Doc Void)) -> Doc Void
+printRecord labelValueSep arr = D.flexGroup $
+  D.flexAlt (singleLine arr) (D.flexAlt (multiLine arr) (multiLineIdentValues arr))
   where
-  finish topPart = D.lines [ topPart, D.text "}" ]
-  start = flip foldlWithIndex mempty \idx acc (Prop label expr) ->
-    if idx == 0 then
-      D.lines
-        [ D.words [ D.text "{", D.text label, D.text "=" ]
-        , D.indent $ D.indent expr
-        ]
-    else
-      D.lines
-        [ acc
-        , D.words [ D.text ",", D.text label, D.text "=" ]
-        , D.indent $ D.indent expr
-        ]
+  singleLine = flip foldrWithIndex (D.text "}") \idx prop acc -> do
+    let prefix = if idx == 0 then "{" else ","
+    D.words
+      [ D.text prefix
+      , printProp labelValueSep prop
+      , acc
+      ]
+
+  multiLine = flip foldrWithIndex (D.text "}") \idx prop acc -> do
+    let prefix = if idx == 0 then "{" else ","
+    D.lines
+      [ D.words [ D.text prefix, printProp labelValueSep prop ]
+      , acc
+      ]
+
+  multiLineIdentValues = flip foldrWithIndex (D.text "}") \idx (Prop lbl expr) acc -> do
+    let prefix = if idx == 0 then "{" else ","
+    D.lines
+      [ D.words [ D.text prefix, D.text lbl <> D.text labelValueSep ]
+      , D.indent $ D.indent expr
+      , acc
+      ]
 
 printBranch :: NonEmptyArray (Pair (Doc Void)) -> Doc Void -> Doc Void
-printBranch conds fallback = do
-  let
-    printCond idx (Pair cond expr) =
-      D.lines
-        [ D.words
-            [ D.text $ if idx == 0 then "if" else "else if"
-            , D.indent cond
-            , D.text "then"
-            ]
-        , D.indent expr
-        ]
-  D.lines
-    [ D.lines $ Array.mapWithIndex printCond (NonEmptyArray.toArray conds)
-    , D.text "else"
-    , D.indent fallback
-    ]
+printBranch conds fallback =
+  if NonEmptyArray.length conds == 1 then
+    D.flexGroup $ D.flexAlt printSingleLine printMultiLine
+  else
+    printMultiLine
+  where
+  printCondHead ifKeyword cond = D.words [ D.text ifKeyword, cond, D.text "then" ]
+
+  printSingleLine = do
+    let Pair cond expr = NonEmptyArray.head conds
+    D.words [ printCondHead "if" cond, expr, D.text "else", fallback ]
+
+  printMultiLine = do
+    let
+      printCond idx (Pair cond expr) =
+        D.lines
+          [ printCondHead (if idx == 0 then "if" else "else if") cond
+          , D.indent expr
+          ]
+    D.lines
+      [ D.lines $ Array.mapWithIndex printCond (NonEmptyArray.toArray conds)
+      , D.text "else"
+      , D.indent fallback
+      ]
 
 printBackendExpr :: BackendExpr -> Doc Void
 printBackendExpr =
   foldBackendExpr
     printBackendSyntax
-    ( \rewrite rest ->
+    ( \rewrite expr ->
         D.lines
           [ printBackendRewriteCase rewrite
-          , rest
+          , expr
           ]
     )
-  where
-  printBackendSyntax :: BackendSyntax (Doc Void) -> Doc Void
-  printBackendSyntax = case _ of
-    Var qi ->
-      printQualifiedIdent qi
-    Local mbIdent lvl ->
-      printLocal mbIdent lvl
-    Lit lit ->
-      printLiteral lit
-    App fn args ->
-      (NonEmptyArray.toArray args) # flip Array.foldl fn \acc next ->
-        printCurriedApp acc next
-    Abs args body -> do
-      let
-        printArg arg =
-          D.words
-            [ D.text "\\" <> uncurry printLocal arg
-            , D.text "->" <> D.space
-            ]
-      printIndentedParens' (foldMap1 printArg args) body
-    UncurriedApp fn args ->
-      wrapInParens $ D.words $ Array.cons fn args
-    UncurriedAbs args body ->
-      printIndentedParens'
-        (D.text "\\" <> (D.words $ map (uncurry printLocal) args) <> D.space <> D.text "->")
-        body
-    UncurriedEffectApp fn args ->
-      D.text "(#" <> (D.words $ Array.cons fn args) <> D.text "#)"
-    UncurriedEffectAbs args body ->
-      D.lines
-        [ D.text "(#\\" <> (D.words $ map (uncurry printLocal) args) <> D.space <> D.text "->"
-        , D.indent body
-        , D.text "#)"
-        ]
-    Accessor expr accessor ->
-      printIndentedParens expr <> printBackendAccessor accessor
-    Update expr propArr -> do
-      let sep = D.break <> D.text ", "
-      printIndentedParens $
-        D.lines
-          [ expr
-          , D.indent $ D.lines
-              [ D.text "{"
-              , D.foldWithSeparator sep $ map (printProp identity) propArr
-              , D.text "}"
-              ]
+
+printBackendSyntax :: BackendSyntax (Doc Void) -> Doc Void
+printBackendSyntax = case _ of
+  Var qi ->
+    printQualifiedIdent qi
+  Local mbIdent lvl ->
+    printLocal mbIdent lvl
+  Lit lit ->
+    printLiteral lit
+  App fn args ->
+    printCurriedApp fn $ NonEmptyArray.toArray args
+  Abs args body -> do
+    printCurriedAbs (map (uncurry printLocal) $ NonEmptyArray.toArray args) body
+  UncurriedApp fn args -> do
+    printUncurriedApp false fn args
+
+  UncurriedAbs args body ->
+    printUncurriedAbs false (map (uncurry printLocal) args) body
+  UncurriedEffectApp fn args -> do
+    printUncurriedApp true fn args
+
+  UncurriedEffectAbs args body ->
+    printUncurriedAbs true (map (uncurry printLocal) args) body
+  Accessor expr accessor ->
+    D.flexGroup $ D.flexAlt
+      (wrapInParens expr <> printBackendAccessor accessor)
+      ( D.lines
+          [ D.text "("
+          , D.indent expr
+          , D.text ")" <> printBackendAccessor accessor
           ]
-
-    CtorSaturated qi _ ctorName _ values ->
-      wrapInParens $
-        D.words
-          [ printQualifiedIdent qi <> D.text "." <> printProperName ctorName
-          , D.words $ map snd values
+      )
+  Update expr propArr -> do
+    D.flexGroup $ D.flexAlt
+      ( D.words
+          [ wrapInParens expr
+          , printRecord "=" propArr
           ]
+      )
+      ( D.lines
+          [ D.text "(" <> expr
+          , D.indent $ D.text ")" <> printRecord "=" propArr
+          ]
+      )
 
-    CtorDef _ _ ctorName [] ->
-      printLet "let" (printIdent ctorName)
-        $ printRecord
-            [ (Prop "tag" $ printLiteral $ LitString $ (\(Ident i) -> i) ctorName) ]
+  CtorSaturated qi _ ctorName _ values ->
+    printUncurriedApp false
+      (printQualifiedIdent qi <> D.text "." <> printProperName ctorName)
+      (map snd values)
 
-    CtorDef _ _ ctorName args ->
-      printLet "let" (printIdent ctorName)
-        $ printIndentedParens'
-            (guard (not $ Array.null args) $ D.words [ D.text "\\", D.words $ map D.text args, D.text "->" ])
-        $ printRecord
-        $ Array.cons (Prop "tag" $ printLiteral $ LitString $ (\(Ident i) -> i) ctorName)
-        $ args <#> \arg -> Prop arg $ printBackendExpr $ ExprSyntax mempty $ Var $ Qualified Nothing $ Ident arg
+  CtorDef _ _ ctorName [] -> do
+    printLet "letCtor" (printIdent ctorName)
+      $ printRecord ":" [ Prop "tag" $ wrapIn "\"" $ printIdent ctorName ]
 
-    LetRec lvl bindings body ->
-      D.lines
-        [ D.text "letrec"
-        , D.indent
-            $ D.lines
-            $ bindings <#>
-                ( \(Tuple ident binding) ->
-                    printLet "let" (printLocal (Just ident) lvl) binding
-                )
-        , body
-        ]
+  CtorDef _ _ ctorName args -> do
+    printLet "letCtor" (printIdent ctorName)
+      $ printUncurriedAbs false (map D.text args)
+      $ printRecord ":"
+      $ Array.cons (Prop "tag" $ wrapIn "\"" $ printIdent ctorName)
+      $ args <#> \arg -> Prop arg $ D.text arg
 
-    Let mbIdent lvl binding body ->
-      D.lines
-        [ printLet "let" (printLocal mbIdent lvl) binding
-        , body
-        ]
+  LetRec lvl bindings body ->
+    D.lines
+      [ D.lines
+          $ bindings <#>
+              ( \(Tuple ident binding) ->
+                  printLet' (D.text "letRec-" <> printLevel lvl) (printLocal (Just ident) lvl) binding
+              )
+      , body
+      ]
 
-    EffectBind mbIdent lvl binding body ->
-      D.lines
-        [ printLet "letEffect" (printLocal mbIdent lvl) binding
-        , body
-        ]
-    EffectPure a ->
-      wrapInParens $ D.words [ D.text "effectPure", a ]
+  Let mbIdent lvl binding body ->
+    D.lines
+      [ printLet "let" (printLocal mbIdent lvl) binding
+      , body
+      ]
 
-    EffectDefer a ->
-      wrapInParens $ D.words [ D.text "effectDefer", a ]
+  EffectBind mbIdent lvl binding body ->
+    D.lines
+      [ printLet "letEffect" (printLocal mbIdent lvl) binding
+      , body
+      ]
+  EffectPure a ->
+    printUncurriedApp true (D.text "effectPure") [ a ]
 
-    Branch conds fallback ->
-      printBranch conds fallback
+  EffectDefer a ->
+    printUncurriedApp true (D.text "effectDefer") [ a ]
 
-    PrimOp op -> printBackendOperator op
+  Branch conds fallback ->
+    printBranch conds fallback
 
-    PrimEffect backendEffect -> printBackendEffect backendEffect
+  PrimOp op -> printBackendOperator op
 
-    PrimUndefined ->
-      D.text "<PrimUndefined>"
+  PrimEffect backendEffect -> printBackendEffect backendEffect
 
-    Fail _ ->
-      D.text "<PatternMatchFailure>"
+  PrimUndefined ->
+    D.text "<PrimUndefined>"
 
-  printBackendRewriteCase :: BackendRewrite -> Doc Void
-  printBackendRewriteCase = case _ of
-    RewriteInline mbIdent lvl _ _ ->
-      D.text "{#- Inline " <> (printLocal mbIdent lvl) <> D.text " -#}"
+  Fail _ ->
+    D.text "<PatternMatchFailure>"
 
-    RewriteUncurry mbIdent lvl _ _ _ ->
-      D.text "{#- Uncurry " <> (printLocal mbIdent lvl) <> D.text " -#}"
+printBackendRewriteCase :: BackendRewrite -> Doc Void
+printBackendRewriteCase = case _ of
+  RewriteInline mbIdent lvl _ _ ->
+    D.text "{#- Inline " <> (printLocal mbIdent lvl) <> D.text " -#}"
 
-    RewriteLetAssoc _ _ ->
-      D.text "{#- LetAssoc -#}"
+  RewriteUncurry mbIdent lvl _ _ _ ->
+    D.text "{#- Uncurry " <> (printLocal mbIdent lvl) <> D.text " -#}"
 
-    RewriteEffectBindAssoc _ _ ->
-      D.text "{#- EffectBindAssoc -#}"
+  RewriteLetAssoc _ _ ->
+    D.text "{#- LetAssoc -#}"
 
-    RewriteStop _ ->
-      D.text "{#- Stop -#}"
+  RewriteEffectBindAssoc _ _ ->
+    D.text "{#- EffectBindAssoc -#}"
 
-    RewriteUnpackOp mbIdent lvl unpackOp _ ->
-      D.text "{#- UnpackOp " <> (printLocal mbIdent lvl) <> D.space <> printUnpackOpCase unpackOp <> D.text " -#}"
+  RewriteStop _ ->
+    D.text "{#- Stop -#}"
 
-    RewriteDistBranchesLet mbIdent lvl _ _ _ ->
-      D.text "{#- DistBranchesLet " <> (printLocal mbIdent lvl) <> D.text " -#}"
+  RewriteUnpackOp mbIdent lvl unpackOp _ ->
+    D.text "{#- UnpackOp " <> (printLocal mbIdent lvl) <> D.space <> printUnpackOpCase unpackOp <> D.text " -#}"
 
-    RewriteDistBranchesOp _ _ distOp ->
-      D.text "{#- DistBranchesOp " <> printDistOpCase distOp <> D.text " -#}"
+  RewriteDistBranchesLet mbIdent lvl _ _ _ ->
+    D.text "{#- DistBranchesLet " <> (printLocal mbIdent lvl) <> D.text " -#}"
+
+  RewriteDistBranchesOp _ _ distOp ->
+    D.text "{#- DistBranchesOp " <> printDistOpCase distOp <> D.text " -#}"
 
 printUnpackOpCase :: UnpackOp -> Doc Void
 printUnpackOpCase = case _ of
@@ -321,37 +359,40 @@ printUnpackOpCase = case _ of
 printDistOpCase :: DistOp -> Doc Void
 printDistOpCase = case _ of
   DistApp _ ->
-    D.text "DistApp"
+    D.text "App"
   DistUncurriedApp _ ->
-    D.text "DistUncurriedApp"
+    D.text "UncurriedApp"
 
   DistAccessor accessor ->
-    D.words [ D.text "DistAccessor", printBackendAccessor accessor ]
+    D.words [ D.text "Accessor", printBackendAccessor accessor ]
 
   DistPrimOp1 op1 ->
-    D.words [ D.text "DistPrimOp1", printBackendOperator1 op1 ]
+    D.words [ D.text "PrimOp1", printBackendOperator1 op1 ]
 
   DistPrimOp2L op2 _ ->
-    D.words [ D.text "DistPrimOp2L", printBackendOperator2 op2 ]
+    D.words [ D.text "PrimOp2 Left", printBackendOperator2 op2 ]
 
   DistPrimOp2R _ op2 ->
-    D.words [ D.text "DistPrimOp2R", printBackendOperator2 op2 ]
+    D.words [ D.text "PrimOp2 Right", printBackendOperator2 op2 ]
 
 printBackendEffect :: BackendEffect (Doc Void) -> Doc Void
 printBackendEffect = case _ of
   EffectRefNew a ->
-    wrapInParens $ D.words [ D.text "refNew", a ]
+    printUncurriedApp true (D.text "refNew") [ a ]
   EffectRefRead a ->
-    wrapInParens $ D.words [ D.text "refRead", a ]
+    printUncurriedApp true (D.text "refRead") [ a ]
   EffectRefWrite a b ->
-    wrapInParens $ D.words [ D.text "refWrite", a, b ]
+    printUncurriedApp true (D.text "refWrite") [ a, b ]
 
 printBackendOperator :: BackendOperator (Doc Void) -> Doc Void
 printBackendOperator = case _ of
   Op1 op1 a ->
     wrapInParens $ D.words [ printBackendOperator1 op1, a ]
   Op2 op2 l r ->
-    wrapInParens $ D.words [ printBackendOperator2 op2, l, r ]
+    wrapInParens $ D.words [ l, printBackendOperator2 op2, r ]
+
+wrapInBackticks :: Doc Void -> Doc Void
+wrapInBackticks = wrapIn "`"
 
 printBackendOperator1 :: BackendOperator1 -> Doc Void
 printBackendOperator1 = case _ of
@@ -364,30 +405,30 @@ printBackendOperator1 = case _ of
 
 printBackendOperator2 :: BackendOperator2 -> Doc Void
 printBackendOperator2 = case _ of
-  OpArrayIndex -> D.text "arrayIndex"
-  OpBooleanAnd -> D.text "booleanAnd"
-  OpBooleanOr -> D.text "booleanOr"
+  OpArrayIndex -> wrapInBackticks $ D.text "arrayIndex"
+  OpBooleanAnd -> wrapInBackticks $ D.text "booleanAnd"
+  OpBooleanOr -> wrapInBackticks $ D.text "booleanOr"
   OpBooleanOrd ord -> printBackendOperatorOrd ord
   OpCharOrd ord -> printBackendOperatorOrd ord
-  OpIntBitAnd -> D.text "intBitAnd"
-  OpIntBitOr -> D.text "intBitOr"
-  OpIntBitShiftLeft -> D.text "intBitShiftLeft"
-  OpIntBitShiftRight -> D.text "intBitShiftRight"
-  OpIntBitXor -> D.text "intBitXor"
-  OpIntBitZeroFillShiftRight -> D.text "intBitZeroFillShiftRight"
+  OpIntBitAnd -> wrapInBackticks $ D.text "intBitAnd"
+  OpIntBitOr -> wrapInBackticks $ D.text "intBitOr"
+  OpIntBitShiftLeft -> wrapInBackticks $ D.text "intBitShiftLeft"
+  OpIntBitShiftRight -> wrapInBackticks $ D.text "intBitShiftRight"
+  OpIntBitXor -> wrapInBackticks $ D.text "intBitXor"
+  OpIntBitZeroFillShiftRight -> wrapInBackticks $ D.text "intBitZeroFillShiftRight"
   OpIntNum num -> printBackendOperatorNum num
   OpIntOrd ord -> printBackendOperatorOrd ord
   OpNumberNum num -> printBackendOperatorNum num
   OpNumberOrd ord -> printBackendOperatorOrd ord
-  OpStringAppend -> D.text "stringAppend"
+  OpStringAppend -> D.text "++"
   OpStringOrd ord -> printBackendOperatorOrd ord
 
 printBackendOperatorNum :: BackendOperatorNum -> Doc Void
 printBackendOperatorNum = case _ of
-  OpAdd -> D.text "add"
-  OpDivide -> D.text "divide"
-  OpMultiply -> D.text "multiply"
-  OpSubtract -> D.text "subtract"
+  OpAdd -> D.text "+"
+  OpDivide -> D.text "/"
+  OpMultiply -> D.text "*"
+  OpSubtract -> D.text "-"
 
 printBackendOperatorOrd :: BackendOperatorOrd -> Doc Void
 printBackendOperatorOrd = case _ of
@@ -416,10 +457,10 @@ printLiteral = case _ of
   LitString s ->
     D.text "\"" <> (D.text s) <> D.text "\""
   LitChar c ->
-    D.text "'" <> (D.text $ show c) <> D.text "'"
+    D.text $ show c
   LitBoolean b ->
     D.text $ show b
   LitArray arr -> do
     printArray arr
   LitRecord propArr ->
-    printRecord propArr
+    printRecord ":" propArr
