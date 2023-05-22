@@ -60,7 +60,7 @@ printSteps modName allSteps = do
   _.value $ foldlWithIndex foldIdent { idx: 0, value: mempty } allSteps
 
 printQualifiedIdent :: Qualified Ident -> Doc Void
-printQualifiedIdent = printQualified \(Ident a) -> D.text a
+printQualifiedIdent = printQualified printIdent
 
 printQualified :: forall a. (a -> Doc Void) -> Qualified a -> Doc Void
 printQualified printA (Qualified mbMod a) =
