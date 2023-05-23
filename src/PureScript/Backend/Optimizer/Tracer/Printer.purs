@@ -83,42 +83,67 @@ printProperName :: ProperName -> Doc Void
 printProperName (ProperName s) = D.text s
 
 printCurriedApp :: Doc Void -> Array (Doc Void) -> Doc Void
-printCurriedApp fn args = args # flip Array.foldl fn \acc next ->
-  D.flexGroup $ D.paragraph
-    [ D.text "(" <> acc
-    , D.indent $ next <> D.text ")"
-    ]
+printCurriedApp fn args = D.flexAlt singleLine multiLine
+  where
+  singleLine = args # flip Array.foldl fn \acc next ->
+    wrapInParens $ D.words [ acc, next ]
+
+  multiLine =
+    D.lines
+      [ D.text "(" <> fn
+      , D.indent $ D.lines args
+      , D.text ")"
+      ]
 
 printCurriedAbs :: Array (Doc Void) -> Doc Void -> Doc Void
-printCurriedAbs args body = do
-  let
-    printArg idx arg = do
-      let prefix = if idx == 0 then mempty else D.space
-      D.indent $ D.words
-        [ prefix <> D.text "\\" <> arg
-        , D.text "->"
-        ]
-  D.flexGroup $ D.paragraph
-    [ D.text "(" <> (D.paragraph $ Array.mapWithIndex printArg args)
-    , D.indent $ body <> D.text ")"
+printCurriedAbs args body = D.flexAlt singleLine multiLine
+  where
+  printArg arg = do
+    D.words
+      [ D.text "\\" <> arg
+      , D.text "->"
+      ]
+  singleLine = D.words
+    [ D.text "(" <> (D.words $ map printArg args)
+    , body <> D.text ")"
+    ]
+  multiLine = D.lines
+    [ D.text "(" <> (D.words $ map printArg args)
+    , D.indent body
+    , D.text ")"
     ]
 
 printUncurriedApp :: Boolean -> Doc Void -> Array (Doc Void) -> Doc Void
 printUncurriedApp isEffectful fn args = do
   let effectfulChar = D.text "#" # guard isEffectful
-  D.flexGroup $ D.paragraph
-    [ D.text "(" <> effectfulChar <> fn
-    , D.indent $ D.paragraph args
-    , effectfulChar <> D.text ")"
-    ]
+  D.flexAlt
+    ( D.words
+        [ D.text "(" <> effectfulChar <> fn
+        , D.words args <> effectfulChar <> D.text ")"
+        ]
+    )
+    ( D.lines
+        [ D.text "(" <> effectfulChar <> fn
+        , D.indent $ D.lines args
+        , effectfulChar <> D.text ")"
+        ]
+    )
 
 printUncurriedAbs :: Boolean -> Array (Doc Void) -> Doc Void -> Doc Void
 printUncurriedAbs isEffectful args body = do
   let effectfulChar = D.text "#" # guard isEffectful
-  D.flexGroup $ D.paragraph
-    [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
-    , D.indent $ body <> effectfulChar <> D.text ")"
-    ]
+  D.flexAlt
+    ( D.words
+        [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
+        , body <> effectfulChar <> D.text ")"
+        ]
+    )
+    ( D.lines
+        [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
+        , D.indent body
+        , effectfulChar <> D.text ")"
+        ]
+    )
 
 wrapIn :: String -> Doc Void -> Doc Void
 wrapIn sep = wrapIn' sep sep
@@ -146,9 +171,9 @@ printLet' letKeyword identifier binding = D.flexGroup $
 printArray :: Array (Doc Void) -> Doc Void
 printArray arr = D.flexGroup $ D.flexAlt (singleLine arr) (multiLine arr)
   where
-  singleLine = flip foldrWithIndex (D.text "]") \idx expr acc -> do
-    let prefix = if idx == 0 then "[" else ","
-    D.words [ D.text prefix, expr, acc ]
+  singleLine = flip foldrWithIndex (D.text " ]") \idx expr acc -> do
+    let prefix = if idx == 0 then "[ " else ", "
+    fold [ D.text prefix, expr, acc ]
   multiLine = flip foldrWithIndex (D.text "]") \idx expr acc -> do
     let prefix = if idx == 0 then D.text "[" else D.text ","
     D.lines [ D.words [ prefix, expr ], acc ]
@@ -162,8 +187,8 @@ printRecord labelValueSep arr = D.flexGroup $
   D.flexAlt (singleLine arr) (D.flexAlt (multiLine arr) (multiLineIdentValues arr))
   where
   singleLine = flip foldrWithIndex (D.text "}") \idx prop acc -> do
-    let prefix = if idx == 0 then "{" else ","
-    D.words
+    let prefix = if idx == 0 then "{ " else ", "
+    fold
       [ D.text prefix
       , printProp labelValueSep prop
       , acc
