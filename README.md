@@ -229,6 +229,30 @@ Precedence applies in the following order (most specific to least specific):
 | Module A's header, `@inline export` module A directive | Module A's usages in all modules |
 | Default heuristics | All modules |
 
+## Tracing Optimization Steps
+
+`purs-backend-es` can also trace the steps taken when optimizing an expression via the `--trace` CLI arg. This can be used to see which optimizations were triggered and which were not. It can also help clarify where an inline directive still needs to be added to trigger more optimizations.
+
+A user can use two ways to specify which top-level identifiers should have their optimization steps traced. Each way is similiar to what one does for adding inline directives and is described further below.
+
+1. via module comments
+
+    ```purs
+    -- @trace topLevelIdentifier
+    module Module.Path.To.MyModule where
+
+    topLevelIdentifier :: Int
+    topLevelIdentifier = 1 + 2
+    ```
+
+2. via a tracer file
+
+    ```purs
+    Module.Path.To.MyModule.topLevelIdentifier
+    ```
+
+Identifiers from the module comments and tracer file (if any) are `union`ed together. Specifying the same identifier twice does not cause it to be printed twice.
+
 ## Semantics
 
 `purescript-backend-optimizer` consumes the PureScript compiler's high-level

@@ -9,7 +9,7 @@ import Data.Array as Array
 import Data.Either (Either(..), isRight)
 import Data.Foldable (foldMap, for_, oneOf)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Monoid (guard, power)
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(..))
@@ -46,6 +46,13 @@ import PureScript.CST.Types (Token(..))
 import Unsafe.Coerce (unsafeCoerce)
 import Version as Version
 
+data TraceLocation
+  = ToOutputFile
+  | ToStdOut
+  | ToStdErr
+
+derive instance Eq TraceLocation
+
 type BuildArgs =
   { coreFnDir :: FilePath
   , outputDir :: FilePath
@@ -53,7 +60,7 @@ type BuildArgs =
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
   , tracerFile :: Maybe FilePath
-  , traceOptimization :: Boolean
+  , traceOptimization :: Maybe TraceLocation
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -87,9 +94,16 @@ buildArgsParser =
           "Path to file that lists additional identifiers to trace besides those specified in module comments (optional)."
           # ArgParser.optional
     , traceOptimization:
-        ArgParser.flag [ "--trace" ]
-          "Trace optimization steps and output them."
-          # ArgParser.boolean
+        ArgParser.argument [ "--trace" ]
+          "Enables optimization steps tracing and outputs the result based on the location: `output` = a file in the `output` dir; `stdout`; or `stderr` (optional)."
+          # ArgParser.unformat "LOCATION"
+              ( case _ of
+                  "output" -> Right ToOutputFile
+                  "stdout" -> Right ToStdOut
+                  "stderr" -> Right ToStdErr
+                  s -> Left $ "Expected either 'output', 'stdout', or `stderr`, but got " <> show s <> "."
+              )
+          # ArgParser.optional
     }
 
 data TargetPlatform = Browser | Node
@@ -228,9 +242,15 @@ main cliRoot =
           unless (isRight res) do
             Console.log $ "  Foreign implementation missing."
         for_ mbOptimizationSteps \optimizationSteps -> do
-          writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
-            $ Dodo.print Dodo.plainText Dodo.twoSpaces
-            $ printSteps backendMod.name optimizationSteps
+          for_ args.traceOptimization \loc -> do
+            let tracedContent = Dodo.print Dodo.plainText Dodo.twoSpaces $ printSteps backendMod.name optimizationSteps
+            case loc of
+              ToOutputFile ->
+                writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ]) tracedContent
+              ToStdOut ->
+                Console.log tracedContent
+              ToStdErr ->
+                Console.error tracedContent
 
     , onPrepareModule: \build coreFnMod@(Module { name }) -> do
         let total = show build.moduleCount
@@ -238,7 +258,7 @@ main cliRoot =
         let padding = power " " (SCU.length total - SCU.length index)
         Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
         pure coreFnMod
-    , traceOptimization: args.traceOptimization
+    , traceOptimization: isJust args.traceOptimization
     }
 
   bundleCmd :: Boolean -> BundleArgs -> BuildArgs -> Aff Unit

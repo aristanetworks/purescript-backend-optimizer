@@ -53,7 +53,7 @@ type TestArgs =
   }
 
 data TraceChoice
-  = TraceToSnapshotsOut
+  = TraceToOutput
   | TraceToStdOut
 
 derive instance Eq TraceChoice
@@ -77,8 +77,8 @@ argParser =
           # ArgParser.unformat "OPTION"
               ( case _ of
                   "stdout" -> Right TraceToStdOut
-                  "snapshots" -> Right TraceToSnapshotsOut
-                  x -> Left $ "Expected 'stdout' or 'snapshots' but got '" <> x <> "'"
+                  "output" -> Right TraceToOutput
+                  x -> Left $ "Expected 'stdout' or 'output' but got '" <> x <> "'"
               )
           # ArgParser.optional
     }
@@ -137,7 +137,7 @@ runSnapshotTests { accept, filter, shouldTrace } = do
                 case traceChoice of
                   TraceToStdOut ->
                     Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
-                  TraceToSnapshotsOut -> do
+                  TraceToOutput -> do
                     FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
                       $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
