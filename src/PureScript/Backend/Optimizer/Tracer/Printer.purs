@@ -9,8 +9,8 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (foldl)
 import Data.FoldableWithIndex (foldlWithIndex, foldrWithIndex)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Monoid (guard, power)
-import Data.Tuple (Tuple(..), snd, uncurry)
+import Data.Monoid (power)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo (Doc)
 import Dodo as D
 import PureScript.Backend.Optimizer.Convert (OptimizationSteps)
@@ -39,7 +39,7 @@ printSteps modName allSteps = do
                     _, _ -> mempty
                 ]
             ]
-        , D.indent $ printBackendExpr step
+        , D.indent $ snd $ printBackendExpr step
         ]
     foldStep ident lastIdx idx acc step
       | idx == 0 = renderSingleStep ident lastIdx idx step
@@ -83,8 +83,8 @@ printLocal mbIdent lvl = do
 printProperName :: ProperName -> Doc Void
 printProperName (ProperName s) = D.text s
 
-printCurriedApp :: Doc Void -> NonEmptyArray (Doc Void) -> Doc Void
-printCurriedApp fn args = D.flexGroup $ D.flexAlt singleLine multiLine
+printCurriedApp :: Doc Void -> NonEmptyArray (Doc Void) -> Tuple Boolean (Doc Void)
+printCurriedApp fn args = Tuple false $ D.flexGroup $ D.flexAlt singleLine multiLine
   where
   singleLine = args # flip foldl fn \acc next ->
     wrapInParens $ D.words [ acc, next ]
@@ -96,8 +96,8 @@ printCurriedApp fn args = D.flexGroup $ D.flexAlt singleLine multiLine
       , D.text ")"
       ]
 
-printCurriedAbs :: NonEmptyArray (Doc Void) -> Doc Void -> Doc Void
-printCurriedAbs args body = D.flexGroup $ D.flexAlt singleLine multiLine
+printCurriedAbs :: NonEmptyArray (Doc Void) -> Doc Void -> Tuple Boolean (Doc Void)
+printCurriedAbs args body = Tuple false $ D.flexGroup $ D.flexAlt singleLine multiLine
   where
   printArg arg = do
     D.words
@@ -114,56 +114,73 @@ printCurriedAbs args body = D.flexGroup $ D.flexAlt singleLine multiLine
     , D.text ")"
     ]
 
-printUncurriedApp :: Boolean -> Doc Void -> Array (Doc Void) -> Doc Void
-printUncurriedApp isEffectful fn args = do
-  let effectfulChar = D.text "#" # guard isEffectful
-  if Array.length args == 0 then
-    wrapInParens $ effectfulChar <> fn <> D.text "!" <> effectfulChar
+printUncurriedApp :: Boolean -> Doc Void -> Array (Doc Void) -> Tuple Boolean (Doc Void)
+printUncurriedApp isEffectful fn args = Tuple false $ do
+  if Array.length args == 0 then do
+    fold
+      [ if isEffectful then D.text "(# " else D.text "("
+      , fn
+      , D.text "!"
+      , if isEffectful then D.text " #)" else D.text ")"
+      ]
   else do
     D.flexGroup $ D.flexAlt
       ( D.words
-          [ D.text "(" <> effectfulChar
-          , fn
-          , D.words args
-          , effectfulChar <> D.text ")"
+          [ fold
+              [ if isEffectful then D.text "(# " else D.text "("
+              , fn
+              ]
+          , fold
+              [ D.words args
+              , if isEffectful then D.text " #)" else D.text ")"
+              ]
           ]
       )
       ( D.lines
-          [ D.text "(" <> effectfulChar <> D.space <> fn
+          [ fold
+              [ if isEffectful then D.text "(# " else D.text "("
+              , fn
+              ]
           , D.indent $ D.lines args
-          , effectfulChar <> D.text ")"
+          , if isEffectful then D.text "#)" else D.text ")"
           ]
       )
 
-printUncurriedAbs :: Boolean -> Array (Doc Void) -> Doc Void -> Doc Void
-printUncurriedAbs isEffectful args body = do
-  let effectfulChar = D.text "#" # guard isEffectful
-  if Array.length args == 0 then
+printUncurriedAbs :: Boolean -> Array (Doc Void) -> Doc Void -> Tuple Boolean (Doc Void)
+printUncurriedAbs isEffectful args body = Tuple false $ do
+  if Array.length args == 0 then do
     D.flexGroup $ D.flexAlt
       ( D.words
-          [ D.text "(" <> effectfulChar
-          , D.text "\\->"
-          , body
-          , effectfulChar <> D.text ")"
+          [ (if isEffectful then D.text "(# " else D.text "(") <> D.text "\\->"
+          , body <> (if isEffectful then D.text " #)" else D.text ")")
           ]
       )
       ( D.lines
-          [ D.text "(" <> effectfulChar <> D.space <> D.text "\\->"
+          [ (if isEffectful then D.text "(# " else D.text "(") <> D.text "\\->"
           , D.indent body
-          , effectfulChar <> D.text ")"
+          , if isEffectful then D.text "#)" else D.text ")"
           ]
       )
   else do
     D.flexGroup $ D.flexAlt
       ( D.words
-          [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
-          , body <> effectfulChar <> D.text ")"
+          [ fold
+              [ if isEffectful then D.text "(# " else D.text "("
+              , D.words [ D.text "\\" <> D.words args, D.text "->" ]
+              ]
+          , fold
+              [ body
+              , if isEffectful then D.text " #)" else D.text ")"
+              ]
           ]
       )
       ( D.lines
-          [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
+          [ fold
+              [ if isEffectful then D.text "(# " else D.text "("
+              , D.words [ D.text "\\" <> D.words args, D.text "->" ]
+              ]
           , D.indent body
-          , effectfulChar <> D.text ")"
+          , if isEffectful then D.text "#)" else D.text ")"
           ]
       )
 
@@ -176,11 +193,11 @@ wrapIn' l r = append (D.text l) <<< flip append (D.text r)
 wrapInParens :: Doc Void -> Doc Void
 wrapInParens = wrapIn' "(" ")"
 
-printLet :: String -> Doc Void -> Doc Void -> Doc Void
+printLet :: String -> Doc Void -> Doc Void -> Tuple Boolean (Doc Void)
 printLet letKeyword = printLet' (D.text letKeyword)
 
-printLet' :: Doc Void -> Doc Void -> Doc Void -> Doc Void
-printLet' letKeyword identifier binding = D.flexGroup $
+printLet' :: Doc Void -> Doc Void -> Doc Void -> Tuple Boolean (Doc Void)
+printLet' letKeyword identifier binding = Tuple true $ D.flexGroup $
   D.paragraph
     [ D.words
         [ letKeyword
@@ -266,65 +283,89 @@ printBranch conds fallback =
       , D.indent fallback
       ]
 
-printBackendExpr :: BackendExpr -> Doc Void
+printBackendExpr :: BackendExpr -> Tuple Boolean (Doc Void)
 printBackendExpr =
   foldBackendExpr
     printBackendSyntax
     ( \rewrite expr ->
-        D.lines
+        Tuple (fst expr) $ D.lines
           [ printBackendRewriteCase rewrite
-          , expr
+          , snd expr
           ]
     )
 
-printBackendSyntax :: BackendSyntax (Doc Void) -> Doc Void
+printBackendSyntax :: BackendSyntax (Tuple Boolean (Doc Void)) -> Tuple Boolean (Doc Void)
 printBackendSyntax = case _ of
   Var qi ->
-    printQualifiedIdent qi
+    Tuple false $ printQualifiedIdent qi
   Local mbIdent lvl ->
-    printLocal mbIdent lvl
+    Tuple false $ printLocal mbIdent lvl
   Lit lit ->
     printLiteral lit
   App fn args ->
-    printCurriedApp fn args
+    printCurriedApp (snd fn) (map snd args)
   Abs args body -> do
-    printCurriedAbs (map (uncurry printLocal) args) body
+    printCurriedAbs (map (uncurry printLocal) args) $ snd body
   UncurriedApp fn args -> do
-    printUncurriedApp false fn args
+    printUncurriedApp false (snd fn) (map snd args)
 
   UncurriedAbs args body ->
-    printUncurriedAbs false (map (uncurry printLocal) args) body
+    printUncurriedAbs false (map (uncurry printLocal) args) $ snd body
   UncurriedEffectApp fn args -> do
-    printUncurriedApp true fn args
+    printUncurriedApp true (snd fn) (map snd args)
 
   UncurriedEffectAbs args body ->
-    printUncurriedAbs true (map (uncurry printLocal) args) body
-  Accessor expr accessor ->
-    D.flexGroup $ D.flexAlt
-      (wrapInParens expr <> printBackendAccessor accessor)
-      ( D.lines
-          [ D.text "("
-          , D.indent expr
-          , D.text ")" <> printBackendAccessor accessor
-          ]
-      )
+    printUncurriedAbs true (map (uncurry printLocal) args) $ snd body
+  Accessor expr accessor -> do
+    let Tuple shouldWrap expr' = expr
+    if shouldWrap then
+      Tuple false $ D.flexGroup $ D.flexAlt
+        (wrapInParens expr' <> printBackendAccessor accessor)
+        ( D.lines
+            [ D.text "("
+            , D.indent expr'
+            , D.text ")" <> printBackendAccessor accessor
+            ]
+        )
+    else
+      Tuple false $ expr' <> printBackendAccessor accessor
   Update expr propArr -> do
-    D.flexGroup $ D.flexAlt
-      ( D.words
-          [ wrapInParens expr
-          , printRecord "=" propArr
-          ]
-      )
-      ( D.lines
-          [ D.text "(" <> expr
-          , D.indent $ D.text ")" <> printRecord "=" propArr
-          ]
-      )
+    let Tuple shouldWrap expr' = expr
+    if shouldWrap then
+      Tuple false $ D.flexGroup $ D.flexAlt
+        ( wrapInParens $ D.words
+            [ wrapInParens expr'
+            , printRecord "=" $ map (map snd) propArr
+            ]
+        )
+        ( D.lines
+            [ D.text "("
+            , D.indent $ D.lines
+                [ D.text "("
+                , D.indent expr'
+                , D.text ")" <> (printRecord "=" $ map (map snd) propArr)
+                ]
+            , D.text ")"
+            ]
+        )
+    else
+      Tuple false $ D.flexGroup $ D.flexAlt
+        ( wrapInParens $ D.words
+            [ expr'
+            , printRecord "=" $ map (map snd) propArr
+            ]
+        )
+        ( D.lines
+            [ D.text "(" <> expr'
+            , D.indent $ printRecord "=" $ map (map snd) propArr
+            , D.text ")"
+            ]
+        )
 
   CtorSaturated qi _ ctorName _ values ->
     printUncurriedApp false
       (printQualifiedIdent qi <> D.text "." <> printProperName ctorName)
-      (map snd values)
+      (map (snd <<< snd) values)
 
   CtorDef _ _ ctorName [] -> do
     printLet "letCtor" (printIdent ctorName)
@@ -332,50 +373,51 @@ printBackendSyntax = case _ of
 
   CtorDef _ _ ctorName args -> do
     printLet "letCtor" (printIdent ctorName)
+      $ snd
       $ printUncurriedAbs false (map D.text args)
       $ printRecord ":"
       $ Array.cons (Prop "tag" $ wrapIn "\"" $ printIdent ctorName)
-      $ args <#> \arg -> Prop arg $ D.text arg
+      $ args <#> (\arg -> Prop arg $ D.text arg)
 
   LetRec lvl bindings body ->
-    D.lines
+    Tuple true $ D.lines
       [ D.lines
           $ bindings <#>
               ( \(Tuple ident binding) ->
-                  printLet' (D.text "letRec-" <> printLevel lvl) (printLocal (Just ident) lvl) binding
+                  snd $ printLet' (D.text "letRec-" <> printLevel lvl) (printLocal (Just ident) lvl) $ snd binding
               )
-      , body
+      , snd body
       ]
 
   Let mbIdent lvl binding body ->
-    D.lines
-      [ printLet "let" (printLocal mbIdent lvl) binding
-      , body
+    Tuple true $ D.lines
+      [ snd $ printLet "let" (printLocal mbIdent lvl) $ snd binding
+      , snd body
       ]
 
   EffectBind mbIdent lvl binding body ->
-    D.lines
-      [ printLet "letEffect" (printLocal mbIdent lvl) binding
-      , body
+    Tuple true $ D.lines
+      [ snd $ printLet "letEffect" (printLocal mbIdent lvl) $ snd binding
+      , snd body
       ]
   EffectPure a ->
-    printUncurriedApp true (D.text "effectPure") [ a ]
+    printUncurriedApp true (D.text "effectPure") [ snd a ]
 
   EffectDefer a ->
-    printUncurriedApp true (D.text "effectDefer") [ a ]
+    printUncurriedApp true (D.text "effectDefer") [ snd a ]
 
   Branch conds fallback ->
-    printBranch conds fallback
+    Tuple true $ printBranch (map (map snd) conds) $ snd fallback
 
   PrimOp op -> printBackendOperator op
 
   PrimEffect backendEffect -> printBackendEffect backendEffect
 
   PrimUndefined ->
-    D.text "<PrimUndefined>"
+    Tuple false $ D.text "<PrimUndefined>"
 
   Fail _ ->
-    D.text "<PatternMatchFailure>"
+    Tuple false $ D.text "<PatternMatchFailure>"
 
 printBackendRewriteCase :: BackendRewrite -> Doc Void
 printBackendRewriteCase = case _ of
@@ -431,21 +473,26 @@ printDistOpCase = case _ of
   DistPrimOp2R _ op2 ->
     D.words [ D.text "PrimOp2 Right", printBackendOperator2 op2 ]
 
-printBackendEffect :: BackendEffect (Doc Void) -> Doc Void
+printBackendEffect :: BackendEffect (Tuple Boolean (Doc Void)) -> Tuple Boolean (Doc Void)
 printBackendEffect = case _ of
   EffectRefNew a ->
-    printUncurriedApp true (D.text "refNew") [ a ]
+    printUncurriedApp true (D.text "refNew") [ snd a ]
   EffectRefRead a ->
-    printUncurriedApp true (D.text "refRead") [ a ]
+    printUncurriedApp true (D.text "refRead") [ snd a ]
   EffectRefWrite a b ->
-    printUncurriedApp true (D.text "refWrite") [ a, b ]
+    printUncurriedApp true (D.text "refWrite") [ snd a, snd b ]
 
-printBackendOperator :: BackendOperator (Doc Void) -> Doc Void
+condWrapParens :: Tuple Boolean (Doc Void) -> Doc Void
+condWrapParens (Tuple wrapWithParens d)
+  | wrapWithParens = wrapInParens d
+  | otherwise = d
+
+printBackendOperator :: BackendOperator (Tuple Boolean (Doc Void)) -> Tuple Boolean (Doc Void)
 printBackendOperator = case _ of
   Op1 op1 a ->
-    printCurriedApp (printBackendOperator1 op1) $ pure a
+    printCurriedApp (printBackendOperator1 op1) $ pure $ condWrapParens a
   Op2 op2 l r ->
-    printCurriedApp (printBackendOperator2 op2) $ NonEmptyArray.cons' l [ r ]
+    printCurriedApp (printBackendOperator2 op2) $ NonEmptyArray.cons' (condWrapParens l) [ condWrapParens r ]
 
 printBackendOperator1 :: BackendOperator1 -> Doc Void
 printBackendOperator1 = case _ of
@@ -501,8 +548,8 @@ printBackendAccessor = case _ of
   GetCtorField _ _ _ _ valueX _ ->
     D.text $ "#" <> valueX
 
-printLiteral :: Literal (Doc Void) -> Doc Void
-printLiteral = case _ of
+printLiteral :: Literal (Tuple Boolean (Doc Void)) -> Tuple Boolean (Doc Void)
+printLiteral = Tuple false <<< case _ of
   LitInt i ->
     D.text $ show i
   LitNumber n ->
@@ -514,6 +561,6 @@ printLiteral = case _ of
   LitBoolean b ->
     D.text $ show b
   LitArray arr -> do
-    printArray arr
+    printArray $ map snd arr
   LitRecord propArr ->
-    printRecord ":" propArr
+    printRecord ":" $ map (map snd) propArr
