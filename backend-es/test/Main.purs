@@ -110,12 +110,12 @@ runSnapshotTests { accept, filter, shouldTrace } = do
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      let tracingEnabled = isJust shouldTrace
+      let traceOptimization = isJust shouldTrace
       copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       coreFnModules # buildModules
         { directives
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
-        , onCodegenModule: \build (Module { name: modName@(ModuleName name), path }) backend optimizationSteps -> do
+        , onCodegenModule: \build (Module { name: modName@(ModuleName name), path }) backend mbOptimizationSteps -> do
             let
               formatted =
                 Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
@@ -131,22 +131,23 @@ runSnapshotTests { accept, filter, shouldTrace } = do
             when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
               void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backend))) outputRef
 
-            for_ shouldTrace \traceChoice -> do
-              let doc = printSteps modName optimizationSteps
-              case traceChoice of
-                TraceToStdOut ->
-                  Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
-                TraceToSnapshotsOut -> do
-                  FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
-                    $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
+            for_ mbOptimizationSteps \optimizationSteps -> do
+              for_ shouldTrace \traceChoice -> do
+                let doc = printSteps modName optimizationSteps
+                case traceChoice of
+                  TraceToStdOut ->
+                    Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
+                  TraceToSnapshotsOut -> do
+                    FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
+                      $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
             let total = show build.moduleCount
             let index = show (build.moduleIndex + 1)
             let padding = power " " (SCU.length total - SCU.length index)
             Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
             pure coreFnMod
-        , traceOptimization: \filePath _ _ -> do
-            tracingEnabled && (isJust $ String.stripPrefix (String.Pattern "./Snapshot") filePath)
+        , traceableIdents: Set.empty
+        , traceOptimization
         }
       outputModules <- liftEffect $ Ref.read outputRef
       results <- forWithIndex outputModules \name (Tuple output failsWith) -> do

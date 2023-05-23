@@ -11,10 +11,12 @@ import Data.List (List, foldM)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Maybe (Maybe(..))
+import Data.Set (Set)
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
-import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), ModuleName, Qualified)
+import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
 import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
@@ -27,9 +29,10 @@ type BuildEnv =
 type BuildOptions m =
   { directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
+  , traceableIdents :: Set (Qualified Ident)
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
-  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
-  , traceOptimization :: String -> ModuleName -> Ident -> Boolean
+  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Maybe OptimizationSteps -> m Unit
+  , traceOptimization :: Boolean
   }
 
 -- | Builds modules given a _sorted_ list of modules.
@@ -41,7 +44,7 @@ buildModules options coreFnModules =
   moduleCount = List.length coreFnModules
   go { directives, implementations, moduleIndex } coreFnModule = do
     let buildEnv = { implementations, moduleCount, moduleIndex }
-    coreFnModule'@(Module { name, path }) <- options.onPrepareModule buildEnv coreFnModule
+    coreFnModule'@(Module { name }) <- options.onPrepareModule buildEnv coreFnModule
     let
       Tuple optimizationSteps backendMod = toBackendModule coreFnModule'
         { currentModule: name
@@ -53,12 +56,14 @@ buildModules options coreFnModules =
         , dataTypes: Map.empty
         , foreignSemantics: options.foreignSemantics
         , rewriteLimit: 10_000
-        , traceOptimization: options.traceOptimization path
+        , traceableIdents: options.traceableIdents
+        , traceOptimization: options.traceOptimization
         , optimizationSteps: Map.empty
         }
       newImplementations =
         foldrWithIndex Map.insert implementations backendMod.implementations
-    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps
+      optimizationSteps' = if Map.isEmpty optimizationSteps then Nothing else Just optimizationSteps
+    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps'
     pure
       { directives: foldrWithIndex Map.insert directives backendMod.directives
       , implementations: newImplementations

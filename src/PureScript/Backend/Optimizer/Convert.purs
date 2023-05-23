@@ -76,6 +76,7 @@ import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDire
 import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Optimizer.Tracer (TracedIdentifierHeaderResult, parseTracedIdentifiersHeader)
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
 import Safe.Coerce (coerce)
 
@@ -107,7 +108,8 @@ type ConvertEnv =
   , implementations :: BackendImplementations
   , moduleImplementations :: BackendImplementations
   , optimizationSteps :: OptimizationSteps
-  , traceOptimization :: ModuleName -> Ident -> Boolean
+  , traceableIdents :: Set (Qualified Ident)
+  , traceOptimization :: Boolean
   , directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , rewriteLimit :: Int
@@ -120,6 +122,9 @@ toBackendModule (Module mod) env = do
   let
     directives :: DirectiveHeaderResult
     directives = parseDirectiveHeader mod.name mod.comments
+
+    traceableIdents :: TracedIdentifierHeaderResult
+    traceableIdents = parseTracedIdentifiersHeader mod.name mod.comments
 
     ctors :: Array (Tuple ProperName (Tuple Ident (Array String)))
     ctors = do
@@ -154,6 +159,7 @@ toBackendModule (Module mod) env = do
             (Map.union directives.locals env.directives)
             directives.exports
       , moduleImplementations = Map.empty
+      , traceableIdents = Set.union env.traceableIdents traceableIdents.idents
       }
 
     localExports :: Set Ident
@@ -246,8 +252,8 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives }
   let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
-  let enableTracing = env.traceOptimization env.currentModule ident
-  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr
+  let enableTracing = env.traceOptimization && Set.member qualifiedIdent env.traceableIdents
+  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv qualifiedIdent env.rewriteLimit backendExpr
   let Tuple impl expr' = toExternImpl env group optimizedExpr
   { accum: env
       { implementations = Map.insert qualifiedIdent impl env.implementations

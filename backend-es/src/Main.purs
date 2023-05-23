@@ -14,8 +14,6 @@ import Data.Monoid (guard, power)
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(..))
 import Data.Set as Set
-import Data.Set.NonEmpty (NonEmptySet)
-import Data.Set.NonEmpty as NonEmptySet
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
@@ -38,10 +36,10 @@ import Node.Path as Path
 import Node.Process as Process
 import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile, externalTracedIdentifiersFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
-import PureScript.Backend.Optimizer.CoreFn (Ident, Module(..), ModuleName(..), Qualified(..))
-import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics, qualified)
+import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printSteps)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))
@@ -54,7 +52,8 @@ type BuildArgs =
   , foreignDir :: Maybe FilePath
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
-  , traceIdentifiers :: Maybe (NonEmptySet (Qualified Ident))
+  , tracerFile :: Maybe FilePath
+  , traceOptimization :: Boolean
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -83,17 +82,14 @@ buildArgsParser =
           "Use integers for tags in codegen instead of strings."
           # ArgParser.boolean
           # ArgParser.default false
-    , traceIdentifiers:
-        ArgParser.argument [ "--trace" ]
-          "Trace the optimizations done for a single top-level identifier (e.g. Module.identifier) (optional)."
-          # ArgParser.unformat "Path.To.Module.identifier"
-              ( \s -> do
-                  case Array.unsnoc $ String.split (Pattern ".") s of
-                    Nothing -> Left $ "Module name not specified: " <> s
-                    Just { init, last } -> Right $ qualified (String.joinWith "." init) last
-              )
-          # ArgParser.many
-          <#> NonEmptySet.fromFoldable
+    , tracerFile:
+        ArgParser.argument [ "--tracer-file" ]
+          "Path to file that lists additional identifiers to trace besides those specified in module comments (optional)."
+          # ArgParser.optional
+    , traceOptimization:
+        ArgParser.flag [ "--trace" ]
+          "Trace optimization steps and output them."
+          # ArgParser.boolean
     }
 
 data TargetPlatform = Browser | Node
@@ -209,13 +205,14 @@ main cliRoot =
   buildCmd args = basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
+    , resolveExternalTracedIdentifiers: map (fromMaybe Set.empty) $ traverse externalTracedIdentifiersFromFile args.tracerFile
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
         mkdirp args.outputDir
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
     , onCodegenAfter: mempty
-    , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } optimizationSteps -> do
+    , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } mbOptimizationSteps -> do
         let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
@@ -230,7 +227,7 @@ main cliRoot =
             ]
           unless (isRight res) do
             Console.log $ "  Foreign implementation missing."
-        unless (Map.isEmpty optimizationSteps) do
+        for_ mbOptimizationSteps \optimizationSteps -> do
           writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
             $ Dodo.print Dodo.plainText Dodo.twoSpaces
             $ printSteps backendMod.name optimizationSteps
@@ -241,9 +238,7 @@ main cliRoot =
         let padding = power " " (SCU.length total - SCU.length index)
         Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
         pure coreFnMod
-    , traceOptimization: case args.traceIdentifiers of
-        Nothing -> \_ _ _ -> false
-        Just idents -> \_ modName ident -> NonEmptySet.member (Qualified (Just modName) ident) idents
+    , traceOptimization: args.traceOptimization
     }
 
   bundleCmd :: Boolean -> BundleArgs -> BuildArgs -> Aff Unit

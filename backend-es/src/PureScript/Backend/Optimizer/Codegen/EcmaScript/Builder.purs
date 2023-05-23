@@ -15,7 +15,8 @@ import Data.Lazy as Lazy
 import Data.List (List)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (maybe)
+import Data.Maybe (Maybe, maybe)
+import Data.Set (Set)
 import Data.Set as Set
 import Data.Set.NonEmpty as NonEmptySet
 import Data.Tuple (Tuple(..))
@@ -36,6 +37,7 @@ import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
 import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
+import PureScript.Backend.Optimizer.Tracer (parseTracedIdentifiersFile)
 import PureScript.CST.Errors (printParseError)
 
 coreFnModulesFromOutput :: String -> NonEmptyArray String -> Aff (Either (NonEmptyArray (Tuple FilePath String)) (List (Module Ann)))
@@ -79,22 +81,34 @@ externalDirectivesFromFile filePath = do
     Console.warn $ "  " <> printParseError error
   pure directives
 
+externalTracedIdentifiersFromFile :: FilePath -> Aff (Set (Qualified Ident))
+externalTracedIdentifiersFromFile filePath = do
+  fileContent <- FS.readTextFile UTF8 filePath
+  let { errors, idents } = parseTracedIdentifiersFile fileContent
+  for_ errors \(Tuple ident { position, error }) -> do
+    Console.warn $ "Invalid identifier [" <> show (position.line + 1) <> ":" <> show (position.column + 1) <> "]"
+    Console.warn $ "  " <> ident
+    Console.warn $ "  " <> printParseError error
+  pure idents
+
 basicBuildMain
   :: { resolveCoreFnDirectory :: Aff FilePath
      , resolveExternalDirectives :: Aff InlineDirectiveMap
+     , resolveExternalTracedIdentifiers :: Aff (Set (Qualified Ident))
      , foreignSemantics :: Map (Qualified Ident) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit
-     , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> Aff Unit
+     , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Maybe OptimizationSteps -> Aff Unit
      , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
-     , traceOptimization :: String -> ModuleName -> Ident -> Boolean
+     , traceOptimization :: Boolean
      }
   -> Aff Unit
 basicBuildMain options = do
-  { coreFnDir, externalDirectives } <- sequential do
-    { coreFnDir: _, externalDirectives: _ }
+  { coreFnDir, externalDirectives, traceableIdents } <- sequential do
+    { coreFnDir: _, externalDirectives: _, traceableIdents: _ }
       <$> parallel options.resolveCoreFnDirectory
       <*> parallel options.resolveExternalDirectives
+      <*> parallel options.resolveExternalTracedIdentifiers
   let defaultDirectives = (parseDirectiveFile Defaults.defaultDirectives).directives
   let allDirectives = Map.union externalDirectives defaultDirectives
   coreFnModulesFromOutput coreFnDir (pure "**") >>= case _ of
@@ -106,6 +120,7 @@ basicBuildMain options = do
       options.onCodegenBefore
       coreFnModules # buildModules
         { directives: allDirectives
+        , traceableIdents
         , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule
