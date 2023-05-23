@@ -349,28 +349,28 @@ printBackendSyntax = case _ of
 printBackendRewriteCase :: BackendRewrite -> Doc Void
 printBackendRewriteCase = case _ of
   RewriteInline mbIdent lvl _ _ ->
-    D.text "{#- Inline " <> (printLocal mbIdent lvl) <> D.text " -#}"
+    D.text "-- Inline " <> (printLocal mbIdent lvl)
 
   RewriteUncurry mbIdent lvl _ _ _ ->
-    D.text "{#- Uncurry " <> (printLocal mbIdent lvl) <> D.text " -#}"
+    D.text "-- Uncurry " <> (printLocal mbIdent lvl)
 
   RewriteLetAssoc _ _ ->
-    D.text "{#- LetAssoc -#}"
+    D.text "-- LetAssoc"
 
   RewriteEffectBindAssoc _ _ ->
-    D.text "{#- EffectBindAssoc -#}"
+    D.text "-- EffectBindAssoc"
 
   RewriteStop _ ->
-    D.text "{#- Stop -#}"
+    D.text "-- Stop"
 
   RewriteUnpackOp mbIdent lvl unpackOp _ ->
-    D.text "{#- UnpackOp " <> (printLocal mbIdent lvl) <> D.space <> printUnpackOpCase unpackOp <> D.text " -#}"
+    D.text "-- UnpackOp " <> (printLocal mbIdent lvl) <> D.space <> printUnpackOpCase unpackOp
 
   RewriteDistBranchesLet mbIdent lvl _ _ _ ->
-    D.text "{#- DistBranchesLet " <> (printLocal mbIdent lvl) <> D.text " -#}"
+    D.text "-- DistBranchesLet " <> (printLocal mbIdent lvl)
 
   RewriteDistBranchesOp _ _ distOp ->
-    D.text "{#- DistBranchesOp " <> printDistOpCase distOp <> D.text " -#}"
+    D.text "-- DistBranchesOp " <> printDistOpCase distOp
 
 printUnpackOpCase :: UnpackOp -> Doc Void
 printUnpackOpCase = case _ of
