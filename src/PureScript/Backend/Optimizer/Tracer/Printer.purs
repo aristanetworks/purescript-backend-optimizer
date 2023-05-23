@@ -6,6 +6,7 @@ import Data.Array (fold)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Foldable (foldl)
 import Data.FoldableWithIndex (foldlWithIndex, foldrWithIndex)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (guard, power)
@@ -82,10 +83,10 @@ printLocal mbIdent lvl = do
 printProperName :: ProperName -> Doc Void
 printProperName (ProperName s) = D.text s
 
-printCurriedApp :: Doc Void -> Array (Doc Void) -> Doc Void
+printCurriedApp :: Doc Void -> NonEmptyArray (Doc Void) -> Doc Void
 printCurriedApp fn args = D.flexGroup $ D.flexAlt singleLine multiLine
   where
-  singleLine = args # flip Array.foldl fn \acc next ->
+  singleLine = args # flip foldl fn \acc next ->
     wrapInParens $ D.words [ acc, next ]
 
   multiLine =
@@ -95,7 +96,7 @@ printCurriedApp fn args = D.flexGroup $ D.flexAlt singleLine multiLine
       , D.text ")"
       ]
 
-printCurriedAbs :: Array (Doc Void) -> Doc Void -> Doc Void
+printCurriedAbs :: NonEmptyArray (Doc Void) -> Doc Void -> Doc Void
 printCurriedAbs args body = D.flexGroup $ D.flexAlt singleLine multiLine
   where
   printArg arg = do
@@ -285,9 +286,9 @@ printBackendSyntax = case _ of
   Lit lit ->
     printLiteral lit
   App fn args ->
-    printCurriedApp fn $ NonEmptyArray.toArray args
+    printCurriedApp fn args
   Abs args body -> do
-    printCurriedAbs (map (uncurry printLocal) $ NonEmptyArray.toArray args) body
+    printCurriedAbs (map (uncurry printLocal) args) body
   UncurriedApp fn args -> do
     printUncurriedApp false fn args
 
