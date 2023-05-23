@@ -1,0 +1,171 @@
+Snapshot.EsPrecedence02.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringNumber)
+---------------
+Snapshot.EsPrecedence02.add (Step 1; Final)
+  Data.Semiring.numAdd
+
+===============
+
+Snapshot.EsPrecedence02.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringNumber)
+---------------
+Snapshot.EsPrecedence02.sub (Step 1; Final)
+  Data.Ring.numSub
+
+===============
+
+Snapshot.EsPrecedence02.test1 (Step 0; Original)
+  (\a@v0 ->
+    (Snapshot.EsPrecedence02.add
+      a@v0
+      (Snapshot.EsPrecedence02.add
+        a@v0
+        ((Snapshot.EsPrecedence02.add a@v0) a@v0)
+      )
+    )
+  )
+---------------
+Snapshot.EsPrecedence02.test1 (Step 1)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 = ((add a@v0) a@v0);
+      ((add a@v0) v1);
+    ((add a@v0) v1)
+  )
+---------------
+Snapshot.EsPrecedence02.test1 (Step 2; Final)
+  (\a@v0 -> ((add a@v0) ((add a@v0) ((add a@v0) a@v0))))
+
+===============
+
+Snapshot.EsPrecedence02.test2 (Step 0; Original)
+  (\a@v0 ->
+    (Snapshot.EsPrecedence02.add
+      (Snapshot.EsPrecedence02.add
+        ((Snapshot.EsPrecedence02.add a@v0) a@v0)
+        a@v0
+      )
+      a@v0
+    )
+  )
+---------------
+Snapshot.EsPrecedence02.test2 (Step 1)
+  (\a@v0 ->
+    -- LetAssoc
+    let v1 =
+      let v1 = ((add a@v0) a@v0);
+      -- Inline v2
+      let v2 = (\v2 -> ((add v1) v2));
+      (v2 a@v0);
+    -- Inline v2
+    let v2 = (\v2 -> ((add v1) v2));
+    (v2 a@v0)
+  )
+---------------
+Snapshot.EsPrecedence02.test2 (Step 2)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 = ((add a@v0) a@v0);
+    -- Inline v2
+    let v2 = ((add v1) a@v0);
+    ((add v2) a@v0)
+  )
+---------------
+Snapshot.EsPrecedence02.test2 (Step 3; Final)
+  (\a@v0 -> ((add ((add ((add a@v0) a@v0)) a@v0)) a@v0))
+
+===============
+
+Snapshot.EsPrecedence02.test3 (Step 0; Original)
+  (\a@v0 ->
+    (Snapshot.EsPrecedence02.add
+      a@v0
+      (Snapshot.EsPrecedence02.add
+        a@v0
+        ((Snapshot.EsPrecedence02.sub a@v0) a@v0)
+      )
+    )
+  )
+---------------
+Snapshot.EsPrecedence02.test3 (Step 1)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 = ((subtract a@v0) a@v0);
+      ((add a@v0) v1);
+    ((add a@v0) v1)
+  )
+---------------
+Snapshot.EsPrecedence02.test3 (Step 2; Final)
+  (\a@v0 -> ((add a@v0) ((add a@v0) ((subtract a@v0) a@v0))))
+
+===============
+
+Snapshot.EsPrecedence02.test4 (Step 0; Original)
+  (\a@v0 ->
+    (Snapshot.EsPrecedence02.add
+      (Snapshot.EsPrecedence02.add
+        ((Snapshot.EsPrecedence02.sub a@v0) a@v0)
+        a@v0
+      )
+      a@v0
+    )
+  )
+---------------
+Snapshot.EsPrecedence02.test4 (Step 1)
+  (\a@v0 ->
+    -- LetAssoc
+    let v1 =
+      let v1 = ((subtract a@v0) a@v0);
+      -- Inline v2
+      let v2 = (\v2 -> ((add v1) v2));
+      (v2 a@v0);
+    -- Inline v2
+    let v2 = (\v2 -> ((add v1) v2));
+    (v2 a@v0)
+  )
+---------------
+Snapshot.EsPrecedence02.test4 (Step 2)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 = ((subtract a@v0) a@v0);
+    -- Inline v2
+    let v2 = ((add v1) a@v0);
+    ((add v2) a@v0)
+  )
+---------------
+Snapshot.EsPrecedence02.test4 (Step 3; Final)
+  (\a@v0 -> ((add ((add ((subtract a@v0) a@v0)) a@v0)) a@v0))
+
+===============
+
+Snapshot.EsPrecedence02.test5 (Step 0; Original)
+  (\a@v0 ->
+    (Snapshot.EsPrecedence02.add
+      ((Snapshot.EsPrecedence02.sub a@v0) a@v0)
+      ((Snapshot.EsPrecedence02.add a@v0) a@v0)
+    )
+  )
+---------------
+Snapshot.EsPrecedence02.test5 (Step 1)
+  (\a@v0 ->
+    let v1 = ((subtract a@v0) a@v0);
+    -- Inline v2
+    let v2 = (\v2 -> ((add v1) v2));
+    (v2 ((add a@v0) a@v0))
+  )
+---------------
+Snapshot.EsPrecedence02.test5 (Step 2)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 = ((subtract a@v0) a@v0);
+    -- Inline v2
+    let v2 = ((add a@v0) a@v0);
+    ((add v1) v2)
+  )
+---------------
+Snapshot.EsPrecedence02.test5 (Step 3; Final)
+  (\a@v0 -> ((add ((subtract a@v0) a@v0)) ((add a@v0) a@v0)))

@@ -1,0 +1,302 @@
+Snapshot.EffectBind03.MyEffect (Step 0; Original)
+  (\x@v0 -> x@v0)
+---------------
+Snapshot.EffectBind03.MyEffect (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.EffectBind03.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.EffectBind03.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.EffectBind03.applicativeMyEffect (Step 0; Original)
+  { pure:
+      (Control.Semigroupoid.compose
+        Control.Semigroupoid.semigroupoidFn
+        Snapshot.EffectBind03.MyEffect
+        (Control.Applicative.pure Effect.applicativeEffect)
+      )
+  , Apply0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applyMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.applicativeMyEffect (Step 1)
+  { pure:
+      (\x@v0 ->
+        -- Inline v1
+        let v1 = (# effectPure x@v0 #);
+        v1
+      )
+  , Apply0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applyMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.applicativeMyEffect (Step 2; Final)
+  { pure:
+      (\x@v0 -> (# effectPure x@v0 #))
+  , Apply0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applyMyEffect)
+  }
+
+===============
+
+Snapshot.EffectBind03.applyMyEffect (Step 0; Original)
+  { apply:
+      (Control.Monad.ap Snapshot.EffectBind03.monadMyEffect)
+  , Functor0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.functorMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.applyMyEffect (Step 1)
+  { apply:
+      -- Inline bind@v0
+      let bind@v0 =
+        -- Inline v0
+        let v0 = <PrimUndefined>;
+        Snapshot.EffectBind03.bindMyEffect.bind;
+      -- Inline v1
+      let v1 =
+        -- Inline v1
+        let v1 =
+          -- Inline pure@v1
+          let pure@v1 =
+            -- Inline v1
+            let v1 = <PrimUndefined>;
+            Snapshot.EffectBind03.applicativeMyEffect.pure;
+          (\f@v2 -> \a@v3 ->
+            (bind@v0
+              f@v2
+              (\f'@v4 -> ((bind@v0 a@v3) (\a'@v5 -> (pure@v1 (f'@v4 a'@v5)))))
+            )
+          );
+        v1;
+      v1
+  , Functor0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.functorMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.applyMyEffect (Step 2)
+  { apply:
+      (\f@v0 -> \a@v1 ->
+        -- Inline v2
+        let v2 =
+          (\f'@v2 ->
+            -- Inline v3
+            let v3 =
+              (\a'@v3 ->
+                (Snapshot.EffectBind03.applicativeMyEffect.pure (f'@v2 a'@v3))
+              );
+            letEffect a'@v4 = a@v1;
+            (v3 a'@v4)
+          );
+        letEffect a'@v3 = f@v0;
+        (v2 a'@v3)
+      )
+  , Functor0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.functorMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.applyMyEffect (Step 3; Final)
+  { apply:
+      (\f@v0 -> \a@v1 ->
+        letEffect a'@v2 = f@v0;
+        letEffect a'@v3 = a@v1;
+        (Snapshot.EffectBind03.applicativeMyEffect.pure (a'@v2 a'@v3))
+      )
+  , Functor0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.functorMyEffect)
+  }
+
+===============
+
+Snapshot.EffectBind03.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.EffectBind03.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectBind03.bind1 (Step 0; Original)
+  (Control.Bind.bind Snapshot.EffectBind03.bindMyEffect)
+---------------
+Snapshot.EffectBind03.bind1 (Step 1; Final)
+  Snapshot.EffectBind03.bindMyEffect.bind
+
+===============
+
+Snapshot.EffectBind03.bindMyEffect (Step 0; Original)
+  { bind:
+      (\v@v0 -> \k@v1 ->
+        -- Inline v2
+        let v2 = v@v0;
+        -- Inline v3
+        let v3 = k@v1;
+        -- Inline v4
+        let v4 =
+          (\a@v4 k1@v5 ->
+            (Snapshot.EffectBind03.bind
+              a@v4
+              (\a'@v6 ->
+                -- Inline v1@v7
+                let v1@v7 = (k1@v5 a'@v6);
+                -- Inline v8
+                let v8 = v1@v7;
+                -- Inline v9
+                let v9 = (\k'@v9 -> k'@v9);
+                (v9 k'@v8)
+              )
+            )
+          );
+        (v4 a@v2 k1@v3)
+      )
+  , Apply0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applyMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.bindMyEffect (Step 1)
+  { bind:
+      (\v@v0 -> \k@v1 ->
+        letEffect a'@v2 = v@v0;
+        -- Inline v3
+        let v3 = (k@v1 a'@v2);
+        v3
+      )
+  , Apply0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applyMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.bindMyEffect (Step 2; Final)
+  { bind:
+      (\v@v0 -> \k@v1 ->
+        letEffect a'@v2 = v@v0;
+        (k@v1 a'@v2)
+      )
+  , Apply0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applyMyEffect)
+  }
+
+===============
+
+Snapshot.EffectBind03.functorMyEffect (Step 0; Original)
+  { map:
+      (\f@v0 -> \v@v1 ->
+        -- Inline v2
+        let v2 = f@v0;
+        -- Inline v3
+        let v3 = v@v1;
+        -- Inline v4
+        let v4 = (\a@v4 f1@v5 -> ((Snapshot.EffectBind03.map f1@v5) a@v4));
+        (v4 a@v3 f1@v2)
+      )
+  }
+---------------
+Snapshot.EffectBind03.functorMyEffect (Step 1; Final)
+  { map:
+      (\f@v0 -> \v@v1 ->
+        (# effectDefer
+          letEffect a'@v2 = v@v1;
+          (# effectPure (f@v0 a'@v2) #)
+        #)
+      )
+  }
+
+===============
+
+Snapshot.EffectBind03.map (Step 0; Original)
+  (Data.Functor.map Effect.functorEffect)
+---------------
+Snapshot.EffectBind03.map (Step 1; Final)
+  Effect.functorEffect.map
+
+===============
+
+Snapshot.EffectBind03.monadMyEffect (Step 0; Original)
+  { Applicative0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applicativeMyEffect)
+  , Bind1:
+      (\$__unused@v0 -> Snapshot.EffectBind03.bindMyEffect)
+  }
+---------------
+Snapshot.EffectBind03.monadMyEffect (Step 1; Final)
+  { Applicative0:
+      (\$__unused@v0 -> Snapshot.EffectBind03.applicativeMyEffect)
+  , Bind1:
+      (\$__unused@v0 -> Snapshot.EffectBind03.bindMyEffect)
+  }
+
+===============
+
+Snapshot.EffectBind03.pure (Step 0; Original)
+  (Control.Applicative.pure Snapshot.EffectBind03.applicativeMyEffect)
+---------------
+Snapshot.EffectBind03.pure (Step 1; Final)
+  Snapshot.EffectBind03.applicativeMyEffect.pure
+
+===============
+
+Snapshot.EffectBind03.test (Step 0; Original)
+  (\random@v0 ->
+    (Snapshot.EffectBind03.bind1
+      random@v0
+      (\a@v1 ->
+        (Snapshot.EffectBind03.bind1
+          random@v0
+          (\b@v2 ->
+            (Snapshot.EffectBind03.pure ((Snapshot.EffectBind03.add a@v1) b@v2))
+          )
+        )
+      )
+    )
+  )
+---------------
+Snapshot.EffectBind03.test (Step 1)
+  (\random@v0 ->
+    -- Inline v1
+    let v1 =
+      (\a@v1 ->
+        -- Inline v2
+        let v2 =
+          (\b@v2 ->
+            let v3 = ((add a@v1) b@v2);
+            -- Inline v4
+            let v4 = (# effectPure v3 #);
+            v4
+          );
+        letEffect a'@v3 = random@v0;
+        (v2 a'@v3)
+      );
+    letEffect a'@v2 = random@v0;
+    (v1 a'@v2)
+  )
+---------------
+Snapshot.EffectBind03.test (Step 2)
+  (\random@v0 ->
+    letEffect a'@v1 = random@v0;
+    letEffect a'@v2 = random@v0;
+    let v3 = ((add a'@v1) a'@v2);
+    -- Inline v4
+    let v4 = (# effectPure v3 #);
+    v4
+  )
+---------------
+Snapshot.EffectBind03.test (Step 3)
+  (\random@v0 ->
+    letEffect a'@v1 = random@v0;
+    letEffect a'@v2 = random@v0;
+    -- Inline v3
+    let v3 = ((add a'@v1) a'@v2);
+    (# effectPure v3 #)
+  )
+---------------
+Snapshot.EffectBind03.test (Step 4; Final)
+  (\random@v0 ->
+    letEffect a'@v1 = random@v0;
+    letEffect a'@v2 = random@v0;
+    (# effectPure ((add a'@v1) a'@v2) #)
+  )

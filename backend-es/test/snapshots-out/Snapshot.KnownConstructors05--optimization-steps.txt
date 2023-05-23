@@ -1,0 +1,152 @@
+Snapshot.KnownConstructors05.Bar (Step 0; Original)
+  letCtor Bar = { tag: "Bar" };
+---------------
+Snapshot.KnownConstructors05.Bar (Step 1; Final)
+  letCtor Bar = { tag: "Bar" };
+
+===============
+
+Snapshot.KnownConstructors05.Baz (Step 0; Original)
+  letCtor Baz = { tag: "Baz" };
+---------------
+Snapshot.KnownConstructors05.Baz (Step 1; Final)
+  letCtor Baz = { tag: "Baz" };
+
+===============
+
+Snapshot.KnownConstructors05.Foo (Step 0; Original)
+  letCtor Foo = { tag: "Foo" };
+---------------
+Snapshot.KnownConstructors05.Foo (Step 1; Final)
+  letCtor Foo = { tag: "Foo" };
+
+===============
+
+Snapshot.KnownConstructors05.Qux (Step 0; Original)
+  letCtor Qux = { tag: "Qux" };
+---------------
+Snapshot.KnownConstructors05.Qux (Step 1; Final)
+  letCtor Qux = { tag: "Qux" };
+
+===============
+
+Snapshot.KnownConstructors05.fromString (Step 0; Original)
+  (\v@v0 ->
+    -- Inline v1
+    let v1 = v@v0;
+    -- Inline v2
+    let v2 = (\-> (Data.Maybe.Just Snapshot.KnownConstructors05.Foo));
+    -- Inline v3
+    let v3 = (\-> (Data.Maybe.Just Snapshot.KnownConstructors05.Bar));
+    -- Inline v4
+    let v4 = (\-> (Data.Maybe.Just Snapshot.KnownConstructors05.Baz));
+    -- Inline v5
+    let v5 = (\-> (Data.Maybe.Just Snapshot.KnownConstructors05.Qux));
+    -- Inline v6
+    let v6 = (\-> Data.Maybe.Nothing);
+    if ((eq v1) "foo") then
+      (v2!)
+    else if ((eq v1) "bar") then
+      (v3!)
+    else if ((eq v1) "baz") then
+      (v4!)
+    else if ((eq v1) "qux") then
+      (v5!)
+    else
+      (v6!)
+  )
+---------------
+Snapshot.KnownConstructors05.fromString (Step 1; Final)
+  (\v@v0 ->
+    if ((eq v@v0) "foo") then
+      (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Foo)
+    else if ((eq v@v0) "bar") then
+      (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Bar)
+    else if ((eq v@v0) "baz") then
+      (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Baz)
+    else if ((eq v@v0) "qux") then
+      (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Qux)
+    else
+      Data.Maybe.Nothing
+  )
+
+===============
+
+Snapshot.KnownConstructors05.test (Step 0; Original)
+  (\a@v0 ->
+    let v@v1 = (Snapshot.KnownConstructors05.fromString a@v0);
+    -- Inline v2
+    let v2 = v@v1;
+    -- Inline v3
+    let v3 = (\-> 1);
+    -- Inline v4
+    let v4 = (\-> 2);
+    -- Inline v5
+    let v5 = (\-> 3);
+    -- Inline v6
+    let v6 = (\-> 4);
+    -- Inline v7
+    let v7 = (\-> 0);
+    if (isTag Data.Maybe.Just v2) then
+      -- Inline v8
+      let v8 = v2#value0;
+      if (isTag Snapshot.KnownConstructors05.Foo v8) then
+        (v3!)
+      else if (isTag Snapshot.KnownConstructors05.Bar v8) then
+        (v4!)
+      else if (isTag Snapshot.KnownConstructors05.Baz v8) then
+        (v5!)
+      else if (isTag Snapshot.KnownConstructors05.Qux v8) then
+        (v6!)
+      else
+        <PatternMatchFailure>
+    else if (isTag Data.Maybe.Nothing v2) then
+      (v7!)
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.KnownConstructors05.test (Step 1)
+  (\a@v0 ->
+    -- DistBranchesLet v@v1
+    let v@v1 =
+      if ((eq a@v0) "foo") then
+        (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Foo)
+      else if ((eq a@v0) "bar") then
+        (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Bar)
+      else if ((eq a@v0) "baz") then
+        (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Baz)
+      else if ((eq a@v0) "qux") then
+        (Data.Maybe.Just.Maybe Snapshot.KnownConstructors05.Qux)
+      else
+        Data.Maybe.Nothing;
+    if (isTag Data.Maybe.Just v@v1) then
+      if (isTag Snapshot.KnownConstructors05.Foo v@v1#value0) then
+        1
+      else if (isTag Snapshot.KnownConstructors05.Bar v@v1#value0) then
+        2
+      else if (isTag Snapshot.KnownConstructors05.Baz v@v1#value0) then
+        3
+      else if (isTag Snapshot.KnownConstructors05.Qux v@v1#value0) then
+        4
+      else
+        <PatternMatchFailure>
+    else if (isTag Data.Maybe.Nothing v@v1) then
+      0
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.KnownConstructors05.test (Step 2; Final)
+  (\a@v0 ->
+    if ((eq a@v0) "foo") then
+      1
+    else if ((eq a@v0) "bar") then
+      2
+    else if ((eq a@v0) "baz") then
+      3
+    else if ((eq a@v0) "qux") then
+      4
+    else
+      0
+  )

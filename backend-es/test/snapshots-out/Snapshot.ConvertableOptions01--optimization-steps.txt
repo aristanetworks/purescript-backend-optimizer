@@ -1,0 +1,2120 @@
+Snapshot.ConvertableOptions01.Flub (Step 0; Original)
+  letCtor Flub = { tag: "Flub" };
+---------------
+Snapshot.ConvertableOptions01.Flub (Step 1; Final)
+  letCtor Flub = { tag: "Flub" };
+
+===============
+
+Snapshot.ConvertableOptions01.barIsSymbol (Step 0; Original)
+  { reflectSymbol: (\$__unused@v0 -> "bar") }
+---------------
+Snapshot.ConvertableOptions01.barIsSymbol (Step 1; Final)
+  { reflectSymbol: (\$__unused@v0 -> "bar") }
+
+===============
+
+Snapshot.ConvertableOptions01.bazIsSymbol (Step 0; Original)
+  { reflectSymbol: (\$__unused@v0 -> "baz") }
+---------------
+Snapshot.ConvertableOptions01.bazIsSymbol (Step 1; Final)
+  { reflectSymbol: (\$__unused@v0 -> "baz") }
+
+===============
+
+Snapshot.ConvertableOptions01.convertFlubBar1 (Step 0; Original)
+  { convertOption:
+      (\v@v0 -> \v1@v1 -> \int@v2 ->
+        (Snapshot.ConvertableOptions01.show int@v2)
+      )
+  }
+---------------
+Snapshot.ConvertableOptions01.convertFlubBar1 (Step 1; Final)
+  { convertOption:
+      (\v@v0 -> \v1@v1 -> \int@v2 -> (Data.Show.showIntImpl int@v2))
+  }
+
+===============
+
+Snapshot.ConvertableOptions01.convertFlubBar2 (Step 0; Original)
+  { convertOption: (\v@v0 -> \v1@v1 -> \str@v2 -> str@v2) }
+---------------
+Snapshot.ConvertableOptions01.convertFlubBar2 (Step 1; Final)
+  { convertOption: (\v@v0 -> \v1@v1 -> \str@v2 -> str@v2) }
+
+===============
+
+Snapshot.ConvertableOptions01.convertFlubBaz1 (Step 0; Original)
+  { convertOption: (\v@v0 -> \v1@v1 -> \bool@v2 -> (Data.Maybe.Just bool@v2)) }
+---------------
+Snapshot.ConvertableOptions01.convertFlubBaz1 (Step 1; Final)
+  { convertOption:
+      (\v@v0 -> \v1@v1 -> \bool@v2 -> (Data.Maybe.Just.Maybe bool@v2))
+  }
+
+===============
+
+Snapshot.ConvertableOptions01.convertFlubBaz2 (Step 0; Original)
+  { convertOption: (\v@v0 -> \v1@v1 -> \mb@v2 -> mb@v2) }
+---------------
+Snapshot.ConvertableOptions01.convertFlubBaz2 (Step 1; Final)
+  { convertOption: (\v@v0 -> \v1@v1 -> \mb@v2 -> mb@v2) }
+
+===============
+
+Snapshot.ConvertableOptions01.convertFlubDefault (Step 0; Original)
+  { convertOption: (\v@v0 -> \v1@v1 -> \a@v2 -> a@v2) }
+---------------
+Snapshot.ConvertableOptions01.convertFlubDefault (Step 1; Final)
+  { convertOption: (\v@v0 -> \v1@v1 -> \a@v2 -> a@v2) }
+
+===============
+
+Snapshot.ConvertableOptions01.convertOptionsRecord (Step 0; Original)
+  (ConvertableOptions.convertOptionsRecord <PrimUndefined>)
+---------------
+Snapshot.ConvertableOptions01.convertOptionsRecord (Step 1; Final)
+  (ConvertableOptions.convertOptionsRecord <PrimUndefined>)
+
+===============
+
+Snapshot.ConvertableOptions01.convertRecordOptionsCons (Step 0; Original)
+  (ConvertableOptions.convertRecordOptionsCons
+    ConvertableOptions.convertRecordOptionsNil
+  )
+---------------
+Snapshot.ConvertableOptions01.convertRecordOptionsCons (Step 1; Final)
+  (ConvertableOptions.convertRecordOptionsCons
+    ConvertableOptions.convertRecordOptionsNil
+  )
+
+===============
+
+Snapshot.ConvertableOptions01.convertRecordOptionsCons1 (Step 0; Original)
+  (ConvertableOptions.convertRecordOptionsCons
+    (Snapshot.ConvertableOptions01.convertRecordOptionsCons
+      Snapshot.ConvertableOptions01.convertFlubDefault
+      <PrimUndefined>
+      <PrimUndefined>
+      <PrimUndefined>
+      { reflectSymbol: (\$__unused@v0 -> "foo") }
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.convertRecordOptionsCons1 (Step 1)
+  (ConvertableOptions.convertRecordOptionsCons
+    -- Inline v0
+    let v0 = <PrimUndefined>;
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 =
+        -- Inline v1
+        let v1 = <PrimUndefined>;
+        -- Inline v2
+        let v2 = <PrimUndefined>;
+        let v3 = { reflectSymbol: (\$__unused@v3 -> "foo") };
+        { convertRecordOptions:
+            (\t@v4 -> \v@v5 -> \r@v6 ->
+              let v7 =
+                (Record.Builder.insert
+                  <PrimUndefined>
+                  <PrimUndefined>
+                  v3
+                  Type.Proxy.Proxy
+                  -- Inline v7
+                  let v7 = Type.Proxy.Proxy;
+                  -- Inline v8
+                  let v8 =
+                    (Record.Unsafe.unsafeGet
+                      (v3.reflectSymbol Type.Proxy.Proxy)
+                      r@v6
+                    );
+                  v8
+                );
+              -- Inline v8
+              let v8 =
+                (ConvertableOptions.convertRecordOptionsNil.convertRecordOptions
+                  t@v4
+                  Type.Proxy.Proxy
+                  r@v6
+                );
+              (\x@v9 -> (v7 (v8 x@v9)))
+            )
+        };
+      v1;
+    v1
+  )
+---------------
+Snapshot.ConvertableOptions01.convertRecordOptionsCons1 (Step 2)
+  (ConvertableOptions.convertRecordOptionsCons
+    let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+    { convertRecordOptions:
+        (\t@v1 -> \v@v2 -> \r@v3 ->
+          let v4 =
+            (Record.Builder.insert
+              <PrimUndefined>
+              <PrimUndefined>
+              v0
+              Type.Proxy.Proxy
+              (Record.Unsafe.unsafeGet
+                (v0.reflectSymbol Type.Proxy.Proxy)
+                r@v3
+              )
+            );
+          (\x@v5 ->
+            (v4
+              -- Inline v6
+              let v6 = Type.Proxy.Proxy;
+              x@v5
+            )
+          )
+        )
+    }
+  )
+---------------
+Snapshot.ConvertableOptions01.convertRecordOptionsCons1 (Step 3; Final)
+  (ConvertableOptions.convertRecordOptionsCons
+    let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+    { convertRecordOptions:
+        (\t@v1 -> \v@v2 -> \r@v3 ->
+          (Record.Builder.insert
+            <PrimUndefined>
+            <PrimUndefined>
+            v0
+            Type.Proxy.Proxy
+            ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) r@v3)
+          )
+        )
+    }
+  )
+
+===============
+
+Snapshot.ConvertableOptions01.defaultOptions (Step 0; Original)
+  { foo: 42, baz: Data.Maybe.Nothing }
+---------------
+Snapshot.ConvertableOptions01.defaultOptions (Step 1; Final)
+  { foo: 42, baz: Data.Maybe.Nothing }
+
+===============
+
+Snapshot.ConvertableOptions01.defaultsRecord (Step 0; Original)
+  ((ConvertableOptions.defaultsRecord <PrimUndefined>) <PrimUndefined>)
+---------------
+Snapshot.ConvertableOptions01.defaultsRecord (Step 1)
+  -- Inline v0
+  let v0 = <PrimUndefined>;
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = <PrimUndefined>;
+    { defaults:
+        (\b@v2 -> \a@v3 -> (Record.Unsafe.Union.unsafeUnionFn a@v3 b@v2))
+    };
+  v1
+---------------
+Snapshot.ConvertableOptions01.defaultsRecord (Step 2; Final)
+  { defaults:
+      (\b@v0 -> \a@v1 -> (Record.Unsafe.Union.unsafeUnionFn a@v1 b@v0))
+  }
+
+===============
+
+Snapshot.ConvertableOptions01.flub (Step 0; Original)
+  (\dictConvertOptionsWithDefaults@v0 ->
+    let convertOptionsWithDefaults@v1 =
+      (ConvertableOptions.convertOptionsWithDefaults
+        dictConvertOptionsWithDefaults@v0
+      );
+    (\provided@v2 ->
+      -- Inline all@v3
+      let all@v3 =
+        (convertOptionsWithDefaults@v1
+          Snapshot.ConvertableOptions01.Flub
+          Snapshot.ConvertableOptions01.defaultOptions
+          provided@v2
+        );
+      (Snapshot.ConvertableOptions01.flubImpl all@v3)
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.flub (Step 1)
+  (\dictConvertOptionsWithDefaults@v0 ->
+    -- Inline convertOptionsWithDefaults@v1
+    let convertOptionsWithDefaults@v1 =
+      dictConvertOptionsWithDefaults@v0.convertOptionsWithDefaults;
+    (\provided@v2 ->
+      (-- Stop
+      Snapshot.ConvertableOptions01.flubImpl
+        (convertOptionsWithDefaults@v1
+          Snapshot.ConvertableOptions01.Flub
+          Snapshot.ConvertableOptions01.defaultOptions
+          provided@v2
+        )
+      )
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.flub (Step 2; Final)
+  (\dictConvertOptionsWithDefaults@v0 -> \provided@v1 ->
+    (-- Stop
+    Snapshot.ConvertableOptions01.flubImpl
+      (dictConvertOptionsWithDefaults@v0.convertOptionsWithDefaults
+        Snapshot.ConvertableOptions01.Flub
+        Snapshot.ConvertableOptions01.defaultOptions
+        provided@v1
+      )
+    )
+  )
+
+===============
+
+Snapshot.ConvertableOptions01.flubImpl (Step 0; Original)
+  (\v@v0 -> "???")
+---------------
+Snapshot.ConvertableOptions01.flubImpl (Step 1; Final)
+  (\v@v0 -> "???")
+
+===============
+
+Snapshot.ConvertableOptions01.show (Step 0; Original)
+  (Data.Show.show Data.Show.showInt)
+---------------
+Snapshot.ConvertableOptions01.show (Step 1; Final)
+  Data.Show.showIntImpl
+
+===============
+
+Snapshot.ConvertableOptions01.test1 (Step 0; Original)
+  (Snapshot.ConvertableOptions01.flub
+    (ConvertableOptions.convertOptionsWithDefaultsRecord
+      (Snapshot.ConvertableOptions01.convertOptionsRecord
+        (Snapshot.ConvertableOptions01.convertRecordOptionsCons
+          Snapshot.ConvertableOptions01.convertFlubBar2
+          <PrimUndefined>
+          <PrimUndefined>
+          <PrimUndefined>
+          Snapshot.ConvertableOptions01.barIsSymbol
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultsRecord
+    )
+    { bar: "Hello" }
+  )
+---------------
+Snapshot.ConvertableOptions01.test1 (Step 1)
+  -- LetAssoc
+  let v0 =
+    let v0 =
+      -- Inline v0
+      let v0 = <PrimUndefined>;
+      -- LetAssoc
+      let v1 =
+        let v1 =
+          -- Inline v1
+          let v1 = <PrimUndefined>;
+          -- Inline v2
+          let v2 =
+            -- Inline v2
+            let v2 =
+              -- Inline v2
+              let v2 = <PrimUndefined>;
+              -- Inline v3
+              let v3 = <PrimUndefined>;
+              { convertRecordOptions:
+                  (\t@v4 -> \v@v5 -> \r@v6 ->
+                    let v7 =
+                      (Record.Builder.insert
+                        <PrimUndefined>
+                        <PrimUndefined>
+                        Snapshot.ConvertableOptions01.barIsSymbol
+                        Type.Proxy.Proxy
+                        -- Inline v7
+                        let v7 = Type.Proxy.Proxy;
+                        -- Inline v8
+                        let v8 =
+                          (Record.Unsafe.unsafeGet
+                            -- Inline v8
+                            let v8 = Type.Proxy.Proxy;
+                            -- Inline v9
+                            let v9 = "bar";
+                            v9
+                            r@v6
+                          );
+                        v8
+                      );
+                    -- Inline v8
+                    let v8 =
+                      (ConvertableOptions.convertRecordOptionsNil.convertRecordOptions
+                        t@v4
+                        Type.Proxy.Proxy
+                        r@v6
+                      );
+                    (\x@v9 -> (v7 (v8 x@v9)))
+                  )
+              };
+            v2;
+          v2;
+        { convertOptions:
+            (\t@v2 -> \i@v3 ->
+              ((((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) i@v3) {})
+            )
+        };
+      v1;
+    -- Inline v1
+    let v1 =
+      (\dictDefaults@v1 ->
+        { convertOptionsWithDefaults:
+            (\t@v2 -> \def@v3 ->
+              let v4 = (dictDefaults@v1.defaults def@v3);
+              let v5 = (v0.convertOptions t@v2);
+              (\x@v6 -> (v4 (v5 x@v6)))
+            )
+        }
+      );
+    (v1 Snapshot.ConvertableOptions01.defaultsRecord);
+  -- Inline v1
+  let v1 = { bar: "Hello" };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v0.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      v1
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test1 (Step 2)
+  let v0 =
+    -- UnpackOp v0 Record ["convertRecordOptions"]
+    let v0 =
+      { convertRecordOptions:
+          (\t@v0 -> \v@v1 -> \r@v2 ->
+            -- Inline v3
+            let v3 =
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                Snapshot.ConvertableOptions01.barIsSymbol
+                Type.Proxy.Proxy
+                r@v2.bar
+              );
+            (\x@v4 ->
+              (v3
+                -- Inline v5
+                let v5 = Type.Proxy.Proxy;
+                x@v4
+              )
+            )
+          )
+      };
+    -- Inline v1
+    let v1 =
+      { convertOptions:
+          (\t@v1 -> \i@v2 ->
+            ((((v0.convertRecordOptions t@v1) Type.Proxy.Proxy) i@v2) {})
+          )
+      };
+    v1;
+  -- Inline v1
+  let v1 =
+    { convertOptionsWithDefaults:
+        (\t@v1 -> \def@v2 ->
+          -- Inline v3
+          let v3 =
+            (Snapshot.ConvertableOptions01.defaultsRecord.defaults def@v2);
+          let v4 = (v0.convertOptions t@v1);
+          (\x@v5 -> (v3 (v4 x@v5)))
+        )
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v1.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      { bar: "Hello" }
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test1 (Step 3)
+  -- Inline v0
+  let v0 =
+    -- Inline v0
+    let v0 =
+      (\t@v0 -> \v@v1 -> \r@v2 -> \x@v3 ->
+        -- Inline v4
+        let v4 = <PrimUndefined>;
+        -- Inline v5
+        let v5 =
+          -- Inline v5
+          let v5 = <PrimUndefined>;
+          -- Inline v6
+          let v6 = Type.Proxy.Proxy;
+          -- Inline v7
+          let v7 = r@v2.bar;
+          (((Record.Builder.unsafeInsert "bar") v7) x@v3);
+        v5
+      );
+    { convertOptions:
+        (\t@v1 -> \i@v2 -> ((((v0 t@v1) Type.Proxy.Proxy) i@v2) {}))
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v1
+    let v1 = Snapshot.ConvertableOptions01.Flub;
+    let v2 = (v0.convertOptions v1);
+    -- Inline v3
+    let v3 =
+      (\x@v3 ->
+        -- Inline v4
+        let v4 = (v2 x@v3);
+        -- Inline v5
+        let v5 =
+          (Record.Unsafe.Union.unsafeUnionFn
+            v4
+            Snapshot.ConvertableOptions01.defaultOptions
+          );
+        v5
+      );
+    (v3 { bar: "Hello" })
+  )
+---------------
+Snapshot.ConvertableOptions01.test1 (Step 4)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v0
+    let v0 =
+      -- Inline v0
+      let v0 = Snapshot.ConvertableOptions01.Flub;
+      (\i@v1 ->
+        -- Inline v2
+        let v2 = Type.Proxy.Proxy;
+        -- Inline v3
+        let v3 = {};
+        (((Record.Builder.unsafeInsert "bar") i@v1.bar) v3)
+      );
+    -- Inline v1
+    let v1 = { bar: "Hello" };
+    (Record.Unsafe.Union.unsafeUnionFn
+      (v0 v1)
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test1 (Step 5)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- Inline v0
+      let v0 = { bar: "Hello" };
+      { bar: v0.bar }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test1 (Step 6; Final)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      { bar: "Hello" }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+
+===============
+
+Snapshot.ConvertableOptions01.test2 (Step 0; Original)
+  (Snapshot.ConvertableOptions01.flub
+    (ConvertableOptions.convertOptionsWithDefaultsRecord
+      (Snapshot.ConvertableOptions01.convertOptionsRecord
+        (Snapshot.ConvertableOptions01.convertRecordOptionsCons1
+          Snapshot.ConvertableOptions01.convertFlubBar2
+          <PrimUndefined>
+          <PrimUndefined>
+          <PrimUndefined>
+          Snapshot.ConvertableOptions01.barIsSymbol
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultsRecord
+    )
+    { foo: 99, bar: "Hello" }
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 1)
+  -- LetAssoc
+  let v0 =
+    let v0 =
+      -- Inline v0
+      let v0 = <PrimUndefined>;
+      -- LetAssoc
+      let v1 =
+        let v1 =
+          let v1 =
+            let v1 = { reflectSymbol: (\$__unused@v1 -> "foo") };
+            { convertRecordOptions:
+                (\t@v2 -> \v@v3 -> \r@v4 ->
+                  (Record.Builder.insert
+                    <PrimUndefined>
+                    <PrimUndefined>
+                    v1
+                    Type.Proxy.Proxy
+                    (Record.Unsafe.unsafeGet
+                      (v1.reflectSymbol Type.Proxy.Proxy)
+                      r@v4
+                    )
+                  )
+                )
+            };
+          -- Inline v2
+          let v2 =
+            -- Inline v2
+            let v2 =
+              -- Inline v2
+              let v2 = <PrimUndefined>;
+              -- Inline v3
+              let v3 = <PrimUndefined>;
+              -- Inline v4
+              let v4 = <PrimUndefined>;
+              { convertRecordOptions:
+                  (\t@v5 -> \v@v6 -> \r@v7 ->
+                    let v8 =
+                      (Record.Builder.insert
+                        <PrimUndefined>
+                        <PrimUndefined>
+                        Snapshot.ConvertableOptions01.barIsSymbol
+                        Type.Proxy.Proxy
+                        -- Inline v8
+                        let v8 = Type.Proxy.Proxy;
+                        -- Inline v9
+                        let v9 =
+                          (Record.Unsafe.unsafeGet
+                            -- Inline v9
+                            let v9 = Type.Proxy.Proxy;
+                            -- Inline v10
+                            let v10 = "bar";
+                            v10
+                            r@v7
+                          );
+                        v9
+                      );
+                    let v9 =
+                      (((v1.convertRecordOptions t@v5) Type.Proxy.Proxy) r@v7);
+                    (\x@v10 -> (v8 (v9 x@v10)))
+                  )
+              };
+            v2;
+          v2;
+        { convertOptions:
+            (\t@v2 -> \i@v3 ->
+              ((((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) i@v3) {})
+            )
+        };
+      v1;
+    -- Inline v1
+    let v1 =
+      (\dictDefaults@v1 ->
+        { convertOptionsWithDefaults:
+            (\t@v2 -> \def@v3 ->
+              let v4 = (dictDefaults@v1.defaults def@v3);
+              let v5 = (v0.convertOptions t@v2);
+              (\x@v6 -> (v4 (v5 x@v6)))
+            )
+        }
+      );
+    (v1 Snapshot.ConvertableOptions01.defaultsRecord);
+  -- Inline v1
+  let v1 = { foo: 99, bar: "Hello" };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v0.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      v1
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 2)
+  -- LetAssoc
+  let v0 =
+    let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+    -- UnpackOp v1 Record ["convertRecordOptions"]
+    let v1 =
+      { convertRecordOptions:
+          (\t@v1 -> \v@v2 -> \r@v3 ->
+            (Record.Builder.insert
+              <PrimUndefined>
+              <PrimUndefined>
+              v0
+              Type.Proxy.Proxy
+              (Record.Unsafe.unsafeGet
+                (v0.reflectSymbol Type.Proxy.Proxy)
+                r@v3
+              )
+            )
+          )
+      };
+    -- UnpackOp v2 Record ["convertRecordOptions"]
+    let v2 =
+      { convertRecordOptions:
+          (\t@v2 -> \v@v3 -> \r@v4 ->
+            -- Inline v5
+            let v5 =
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                Snapshot.ConvertableOptions01.barIsSymbol
+                Type.Proxy.Proxy
+                r@v4.bar
+              );
+            let v6 = (((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) r@v4);
+            (\x@v7 -> (v5 (v6 x@v7)))
+          )
+      };
+    -- Inline v3
+    let v3 =
+      { convertOptions:
+          (\t@v3 -> \i@v4 ->
+            ((((v2.convertRecordOptions t@v3) Type.Proxy.Proxy) i@v4) {})
+          )
+      };
+    v3;
+  -- Inline v1
+  let v1 =
+    { convertOptionsWithDefaults:
+        (\t@v1 -> \def@v2 ->
+          -- Inline v3
+          let v3 =
+            (Snapshot.ConvertableOptions01.defaultsRecord.defaults def@v2);
+          let v4 = (v0.convertOptions t@v1);
+          (\x@v5 -> (v3 (v4 x@v5)))
+        )
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v1.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      { foo: 99, bar: "Hello" }
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 3)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      (\t@v1 -> \v@v2 -> \r@v3 ->
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) r@v3)
+        )
+      );
+    -- Inline v2
+    let v2 =
+      (\t@v2 -> \v@v3 -> \r@v4 ->
+        let v5 = (((v1 t@v2) Type.Proxy.Proxy) r@v4);
+        (\x@v6 ->
+          -- Inline v7
+          let v7 = <PrimUndefined>;
+          -- Inline v8
+          let v8 =
+            -- Inline v8
+            let v8 = <PrimUndefined>;
+            -- Inline v9
+            let v9 = Type.Proxy.Proxy;
+            -- Inline v10
+            let v10 = r@v4.bar;
+            -- Inline v11
+            let v11 = (v5 x@v6);
+            (((Record.Builder.unsafeInsert "bar") v10) v11);
+          v8
+        )
+      );
+    { convertOptions:
+        (\t@v3 -> \i@v4 -> ((((v2 t@v3) Type.Proxy.Proxy) i@v4) {}))
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v2
+    let v2 = Snapshot.ConvertableOptions01.Flub;
+    let v3 = (v1.convertOptions v2);
+    -- Inline v4
+    let v4 =
+      (\x@v4 ->
+        -- Inline v5
+        let v5 = (v3 x@v4);
+        -- Inline v6
+        let v6 =
+          (Record.Unsafe.Union.unsafeUnionFn
+            v5
+            Snapshot.ConvertableOptions01.defaultOptions
+          );
+        v6
+      );
+    (v4 { foo: 99, bar: "Hello" })
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 4)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 = Snapshot.ConvertableOptions01.Flub;
+      (\i@v2 ->
+        -- Inline v3
+        let v3 = Type.Proxy.Proxy;
+        let v4 =
+          -- Inline v4
+          let v4 = Type.Proxy.Proxy;
+          (Record.Builder.insert
+            <PrimUndefined>
+            <PrimUndefined>
+            v0
+            Type.Proxy.Proxy
+            ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) i@v2)
+          );
+        -- Inline v5
+        let v5 =
+          (\x@v5 -> (((Record.Builder.unsafeInsert "bar") i@v2.bar) (v4 x@v5)));
+        (v5 {})
+      );
+    -- Inline v2
+    let v2 = { foo: 99, bar: "Hello" };
+    (Record.Unsafe.Union.unsafeUnionFn
+      (v1 v2)
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 5)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello" };
+      -- Inline v2
+      let v2 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+        );
+      -- Inline v3
+      let v3 =
+        -- Inline v3
+        let v3 = {};
+        (((Record.Builder.unsafeInsert "bar") v1.bar) (v2 v3));
+      v3
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 6)
+  -- UnpackOp v0 Record ["reflectSymbol"]
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello" };
+      (Record.Builder.unsafeInsert
+        "bar"
+        v1.bar
+        -- Inline v2
+        let v2 = <PrimUndefined>;
+        -- Inline v3
+        let v3 =
+          -- Inline v3
+          let v3 = <PrimUndefined>;
+          -- Inline v4
+          let v4 = Type.Proxy.Proxy;
+          -- Inline v5
+          let v5 =
+            ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1);
+          -- Inline v6
+          let v6 = {};
+          (((Record.Builder.unsafeInsert (v0.reflectSymbol v4)) v5) v6);
+        v3
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 7)
+  -- Inline v0
+  let v0 = (\$__unused@v0 -> "foo");
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello" };
+      (Record.Builder.unsafeInsert
+        "bar"
+        v1.bar
+        (Record.Builder.unsafeInsert
+          (v0 Type.Proxy.Proxy)
+          ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) v1)
+          {}
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 8)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v0 = { foo: 99, bar: "Hello" };
+      (Record.Builder.unsafeInsert
+        "bar"
+        v0.bar
+        (Record.Builder.unsafeInsert
+          -- Inline v1
+          let v1 = Type.Proxy.Proxy;
+          "foo"
+          (Record.Unsafe.unsafeGet
+            -- Inline v1
+            let v1 = Type.Proxy.Proxy;
+            "foo"
+            v0
+          )
+          {}
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 9)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- UnpackOp v0 Record ["foo","bar"]
+      let v0 = { foo: 99, bar: "Hello" };
+      { foo: v0.foo, bar: v0.bar }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 10)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- Inline v0
+      let v0 = 99;
+      -- Inline v1
+      let v1 = "Hello";
+      { foo: v0, bar: v1 }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test2 (Step 11; Final)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      { foo: 99, bar: "Hello" }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+
+===============
+
+Snapshot.ConvertableOptions01.test3 (Step 0; Original)
+  (Snapshot.ConvertableOptions01.flub
+    (ConvertableOptions.convertOptionsWithDefaultsRecord
+      (Snapshot.ConvertableOptions01.convertOptionsRecord
+        (ConvertableOptions.convertRecordOptionsCons
+          (Snapshot.ConvertableOptions01.convertRecordOptionsCons1
+            Snapshot.ConvertableOptions01.convertFlubBaz2
+            <PrimUndefined>
+            <PrimUndefined>
+            <PrimUndefined>
+            Snapshot.ConvertableOptions01.bazIsSymbol
+          )
+          Snapshot.ConvertableOptions01.convertFlubBar2
+          <PrimUndefined>
+          <PrimUndefined>
+          <PrimUndefined>
+          Snapshot.ConvertableOptions01.barIsSymbol
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultsRecord
+    )
+    { foo: 99, bar: "Hello", baz: (Data.Maybe.Just true) }
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 1)
+  -- LetAssoc
+  let v0 =
+    let v0 =
+      -- Inline v0
+      let v0 = <PrimUndefined>;
+      -- LetAssoc
+      let v1 =
+        let v1 =
+          let v1 =
+            let v1 =
+              let v1 = { reflectSymbol: (\$__unused@v1 -> "foo") };
+              { convertRecordOptions:
+                  (\t@v2 -> \v@v3 -> \r@v4 ->
+                    (Record.Builder.insert
+                      <PrimUndefined>
+                      <PrimUndefined>
+                      v1
+                      Type.Proxy.Proxy
+                      (Record.Unsafe.unsafeGet
+                        (v1.reflectSymbol Type.Proxy.Proxy)
+                        r@v4
+                      )
+                    )
+                  )
+              };
+            -- Inline v2
+            let v2 =
+              -- Inline v2
+              let v2 =
+                -- Inline v2
+                let v2 = <PrimUndefined>;
+                -- Inline v3
+                let v3 = <PrimUndefined>;
+                -- Inline v4
+                let v4 = <PrimUndefined>;
+                { convertRecordOptions:
+                    (\t@v5 -> \v@v6 -> \r@v7 ->
+                      let v8 =
+                        (Record.Builder.insert
+                          <PrimUndefined>
+                          <PrimUndefined>
+                          Snapshot.ConvertableOptions01.bazIsSymbol
+                          Type.Proxy.Proxy
+                          -- Inline v8
+                          let v8 = Type.Proxy.Proxy;
+                          -- Inline v9
+                          let v9 =
+                            (Record.Unsafe.unsafeGet
+                              -- Inline v9
+                              let v9 = Type.Proxy.Proxy;
+                              -- Inline v10
+                              let v10 = "baz";
+                              v10
+                              r@v7
+                            );
+                          v9
+                        );
+                      let v9 =
+                        (((v1.convertRecordOptions t@v5) Type.Proxy.Proxy) r@v7);
+                      (\x@v10 -> (v8 (v9 x@v10)))
+                    )
+                };
+              v2;
+            v2;
+          -- Inline v2
+          let v2 =
+            -- Inline v2
+            let v2 = <PrimUndefined>;
+            -- Inline v3
+            let v3 = <PrimUndefined>;
+            -- Inline v4
+            let v4 = <PrimUndefined>;
+            { convertRecordOptions:
+                (\t@v5 -> \v@v6 -> \r@v7 ->
+                  let v8 =
+                    (Record.Builder.insert
+                      <PrimUndefined>
+                      <PrimUndefined>
+                      Snapshot.ConvertableOptions01.barIsSymbol
+                      Type.Proxy.Proxy
+                      -- Inline v8
+                      let v8 = Type.Proxy.Proxy;
+                      -- Inline v9
+                      let v9 =
+                        (Record.Unsafe.unsafeGet
+                          -- Inline v9
+                          let v9 = Type.Proxy.Proxy;
+                          -- Inline v10
+                          let v10 = "bar";
+                          v10
+                          r@v7
+                        );
+                      v9
+                    );
+                  let v9 =
+                    (((v1.convertRecordOptions t@v5) Type.Proxy.Proxy) r@v7);
+                  (\x@v10 -> (v8 (v9 x@v10)))
+                )
+            };
+          v2;
+        { convertOptions:
+            (\t@v2 -> \i@v3 ->
+              ((((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) i@v3) {})
+            )
+        };
+      v1;
+    -- Inline v1
+    let v1 =
+      (\dictDefaults@v1 ->
+        { convertOptionsWithDefaults:
+            (\t@v2 -> \def@v3 ->
+              let v4 = (dictDefaults@v1.defaults def@v3);
+              let v5 = (v0.convertOptions t@v2);
+              (\x@v6 -> (v4 (v5 x@v6)))
+            )
+        }
+      );
+    (v1 Snapshot.ConvertableOptions01.defaultsRecord);
+  -- Inline v1
+  let v1 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v0.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      v1
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 2)
+  -- LetAssoc
+  let v0 =
+    let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+    -- UnpackOp v1 Record ["convertRecordOptions"]
+    let v1 =
+      { convertRecordOptions:
+          (\t@v1 -> \v@v2 -> \r@v3 ->
+            (Record.Builder.insert
+              <PrimUndefined>
+              <PrimUndefined>
+              v0
+              Type.Proxy.Proxy
+              (Record.Unsafe.unsafeGet
+                (v0.reflectSymbol Type.Proxy.Proxy)
+                r@v3
+              )
+            )
+          )
+      };
+    -- UnpackOp v2 Record ["convertRecordOptions"]
+    let v2 =
+      { convertRecordOptions:
+          (\t@v2 -> \v@v3 -> \r@v4 ->
+            -- Inline v5
+            let v5 =
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                Snapshot.ConvertableOptions01.bazIsSymbol
+                Type.Proxy.Proxy
+                r@v4.baz
+              );
+            let v6 = (((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) r@v4);
+            (\x@v7 -> (v5 (v6 x@v7)))
+          )
+      };
+    -- UnpackOp v3 Record ["convertRecordOptions"]
+    let v3 =
+      { convertRecordOptions:
+          (\t@v3 -> \v@v4 -> \r@v5 ->
+            -- Inline v6
+            let v6 =
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                Snapshot.ConvertableOptions01.barIsSymbol
+                Type.Proxy.Proxy
+                r@v5.bar
+              );
+            let v7 = (((v2.convertRecordOptions t@v3) Type.Proxy.Proxy) r@v5);
+            (\x@v8 -> (v6 (v7 x@v8)))
+          )
+      };
+    -- Inline v4
+    let v4 =
+      { convertOptions:
+          (\t@v4 -> \i@v5 ->
+            ((((v3.convertRecordOptions t@v4) Type.Proxy.Proxy) i@v5) {})
+          )
+      };
+    v4;
+  -- Inline v1
+  let v1 =
+    { convertOptionsWithDefaults:
+        (\t@v1 -> \def@v2 ->
+          -- Inline v3
+          let v3 =
+            (Snapshot.ConvertableOptions01.defaultsRecord.defaults def@v2);
+          let v4 = (v0.convertOptions t@v1);
+          (\x@v5 -> (v3 (v4 x@v5)))
+        )
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v1.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) }
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 3)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      (\t@v1 -> \v@v2 -> \r@v3 ->
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) r@v3)
+        )
+      );
+    -- Inline v2
+    let v2 =
+      (\t@v2 -> \v@v3 -> \r@v4 ->
+        let v5 = (((v1 t@v2) Type.Proxy.Proxy) r@v4);
+        (\x@v6 ->
+          -- Inline v7
+          let v7 = <PrimUndefined>;
+          -- Inline v8
+          let v8 =
+            -- Inline v8
+            let v8 = <PrimUndefined>;
+            -- Inline v9
+            let v9 = Type.Proxy.Proxy;
+            -- Inline v10
+            let v10 = r@v4.baz;
+            -- Inline v11
+            let v11 = (v5 x@v6);
+            (((Record.Builder.unsafeInsert "baz") v10) v11);
+          v8
+        )
+      );
+    -- Inline v3
+    let v3 =
+      (\t@v3 -> \v@v4 -> \r@v5 ->
+        let v6 = (((v2 t@v3) Type.Proxy.Proxy) r@v5);
+        (\x@v7 ->
+          -- Inline v8
+          let v8 = <PrimUndefined>;
+          -- Inline v9
+          let v9 =
+            -- Inline v9
+            let v9 = <PrimUndefined>;
+            -- Inline v10
+            let v10 = Type.Proxy.Proxy;
+            -- Inline v11
+            let v11 = r@v5.bar;
+            -- Inline v12
+            let v12 = (v6 x@v7);
+            (((Record.Builder.unsafeInsert "bar") v11) v12);
+          v9
+        )
+      );
+    { convertOptions:
+        (\t@v4 -> \i@v5 -> ((((v3 t@v4) Type.Proxy.Proxy) i@v5) {}))
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v2
+    let v2 = Snapshot.ConvertableOptions01.Flub;
+    let v3 = (v1.convertOptions v2);
+    -- Inline v4
+    let v4 =
+      (\x@v4 ->
+        -- Inline v5
+        let v5 = (v3 x@v4);
+        -- Inline v6
+        let v6 =
+          (Record.Unsafe.Union.unsafeUnionFn
+            v5
+            Snapshot.ConvertableOptions01.defaultOptions
+          );
+        v6
+      );
+    (v4 { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) })
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 4)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 = Snapshot.ConvertableOptions01.Flub;
+      (\i@v2 ->
+        -- Inline v3
+        let v3 = Type.Proxy.Proxy;
+        let v4 =
+          -- Inline v4
+          let v4 = Type.Proxy.Proxy;
+          let v5 =
+            -- Inline v5
+            let v5 = Type.Proxy.Proxy;
+            (Record.Builder.insert
+              <PrimUndefined>
+              <PrimUndefined>
+              v0
+              Type.Proxy.Proxy
+              (Record.Unsafe.unsafeGet
+                (v0.reflectSymbol Type.Proxy.Proxy)
+                i@v2
+              )
+            );
+          -- Inline v6
+          let v6 =
+            (\x@v6 ->
+              (((Record.Builder.unsafeInsert "baz") i@v2.baz) (v5 x@v6))
+            );
+          v6;
+        -- Inline v5
+        let v5 =
+          (\x@v5 -> (((Record.Builder.unsafeInsert "bar") i@v2.bar) (v4 x@v5)));
+        (v5 {})
+      );
+    -- Inline v2
+    let v2 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+    (Record.Unsafe.Union.unsafeUnionFn
+      (v1 v2)
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 5)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      -- LetAssoc
+      let v2 =
+        let v2 =
+          (Record.Builder.insert
+            <PrimUndefined>
+            <PrimUndefined>
+            v0
+            Type.Proxy.Proxy
+            ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+          );
+        (\x@v3 -> (((Record.Builder.unsafeInsert "baz") v1.baz) (v2 x@v3)));
+      -- Inline v3
+      let v3 =
+        -- Inline v3
+        let v3 = {};
+        (((Record.Builder.unsafeInsert "bar") v1.bar) (v2 v3));
+      v3
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 6)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      let v2 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+        );
+      -- Inline v3
+      let v3 =
+        (\x@v3 -> (((Record.Builder.unsafeInsert "baz") v1.baz) (v2 x@v3)));
+      (((Record.Builder.unsafeInsert "bar") v1.bar) (v3 {}))
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 7)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      -- Inline v2
+      let v2 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+        );
+      (Record.Builder.unsafeInsert
+        "bar"
+        v1.bar
+        -- Inline v3
+        let v3 = {};
+        (((Record.Builder.unsafeInsert "baz") v1.baz) (v2 v3))
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 8)
+  -- UnpackOp v0 Record ["reflectSymbol"]
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      (Record.Builder.unsafeInsert
+        "bar"
+        v1.bar
+        (Record.Builder.unsafeInsert
+          "baz"
+          v1.baz
+          -- Inline v2
+          let v2 = <PrimUndefined>;
+          -- Inline v3
+          let v3 =
+            -- Inline v3
+            let v3 = <PrimUndefined>;
+            -- Inline v4
+            let v4 = Type.Proxy.Proxy;
+            -- Inline v5
+            let v5 =
+              ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1);
+            -- Inline v6
+            let v6 = {};
+            (((Record.Builder.unsafeInsert (v0.reflectSymbol v4)) v5) v6);
+          v3
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 9)
+  -- Inline v0
+  let v0 = (\$__unused@v0 -> "foo");
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      (Record.Builder.unsafeInsert
+        "bar"
+        v1.bar
+        (Record.Builder.unsafeInsert
+          "baz"
+          v1.baz
+          (Record.Builder.unsafeInsert
+            (v0 Type.Proxy.Proxy)
+            ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) v1)
+            {}
+          )
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 10)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v0 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      (Record.Builder.unsafeInsert
+        "bar"
+        v0.bar
+        (Record.Builder.unsafeInsert
+          "baz"
+          v0.baz
+          (Record.Builder.unsafeInsert
+            -- Inline v1
+            let v1 = Type.Proxy.Proxy;
+            "foo"
+            (Record.Unsafe.unsafeGet
+              -- Inline v1
+              let v1 = Type.Proxy.Proxy;
+              "foo"
+              v0
+            )
+            {}
+          )
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 11)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- UnpackOp v0 Record ["foo","bar","baz"]
+      let v0 = { foo: 99, bar: "Hello", baz: (Data.Maybe.Just.Maybe true) };
+      { foo: v0.foo, baz: v0.baz, bar: v0.bar }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 12)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- Inline v0
+      let v0 = 99;
+      -- Inline v1
+      let v1 = "Hello";
+      -- Inline v2
+      let v2 = (Data.Maybe.Just.Maybe true);
+      { foo: v0, baz: v2, bar: v1 }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test3 (Step 13; Final)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      { foo: 99, baz: (Data.Maybe.Just.Maybe true), bar: "Hello" }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+
+===============
+
+Snapshot.ConvertableOptions01.test4 (Step 0; Original)
+  (Snapshot.ConvertableOptions01.flub
+    (ConvertableOptions.convertOptionsWithDefaultsRecord
+      (Snapshot.ConvertableOptions01.convertOptionsRecord
+        (ConvertableOptions.convertRecordOptionsCons
+          (Snapshot.ConvertableOptions01.convertRecordOptionsCons1
+            Snapshot.ConvertableOptions01.convertFlubBaz1
+            <PrimUndefined>
+            <PrimUndefined>
+            <PrimUndefined>
+            Snapshot.ConvertableOptions01.bazIsSymbol
+          )
+          Snapshot.ConvertableOptions01.convertFlubBar1
+          <PrimUndefined>
+          <PrimUndefined>
+          <PrimUndefined>
+          Snapshot.ConvertableOptions01.barIsSymbol
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultsRecord
+    )
+    { foo: 99, bar: 42, baz: true }
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 1)
+  -- LetAssoc
+  let v0 =
+    let v0 =
+      -- Inline v0
+      let v0 = <PrimUndefined>;
+      -- LetAssoc
+      let v1 =
+        let v1 =
+          let v1 =
+            let v1 =
+              let v1 = { reflectSymbol: (\$__unused@v1 -> "foo") };
+              { convertRecordOptions:
+                  (\t@v2 -> \v@v3 -> \r@v4 ->
+                    (Record.Builder.insert
+                      <PrimUndefined>
+                      <PrimUndefined>
+                      v1
+                      Type.Proxy.Proxy
+                      (Record.Unsafe.unsafeGet
+                        (v1.reflectSymbol Type.Proxy.Proxy)
+                        r@v4
+                      )
+                    )
+                  )
+              };
+            -- Inline v2
+            let v2 =
+              -- Inline v2
+              let v2 =
+                -- Inline v2
+                let v2 = <PrimUndefined>;
+                -- Inline v3
+                let v3 = <PrimUndefined>;
+                -- Inline v4
+                let v4 = <PrimUndefined>;
+                { convertRecordOptions:
+                    (\t@v5 -> \v@v6 -> \r@v7 ->
+                      let v8 =
+                        (Record.Builder.insert
+                          <PrimUndefined>
+                          <PrimUndefined>
+                          Snapshot.ConvertableOptions01.bazIsSymbol
+                          Type.Proxy.Proxy
+                          -- Inline v8
+                          let v8 = Type.Proxy.Proxy;
+                          -- Inline v9
+                          let v9 =
+                            -- Inline v9
+                            let v9 =
+                              (Record.Unsafe.unsafeGet
+                                -- Inline v9
+                                let v9 = Type.Proxy.Proxy;
+                                -- Inline v10
+                                let v10 = "baz";
+                                v10
+                                r@v7
+                              );
+                            (Data.Maybe.Just.Maybe v9);
+                          v9
+                        );
+                      let v9 =
+                        (((v1.convertRecordOptions t@v5) Type.Proxy.Proxy) r@v7);
+                      (\x@v10 -> (v8 (v9 x@v10)))
+                    )
+                };
+              v2;
+            v2;
+          -- Inline v2
+          let v2 =
+            -- Inline v2
+            let v2 = <PrimUndefined>;
+            -- Inline v3
+            let v3 = <PrimUndefined>;
+            -- Inline v4
+            let v4 = <PrimUndefined>;
+            { convertRecordOptions:
+                (\t@v5 -> \v@v6 -> \r@v7 ->
+                  let v8 =
+                    (Record.Builder.insert
+                      <PrimUndefined>
+                      <PrimUndefined>
+                      Snapshot.ConvertableOptions01.barIsSymbol
+                      Type.Proxy.Proxy
+                      -- Inline v8
+                      let v8 = Type.Proxy.Proxy;
+                      -- Inline v9
+                      let v9 =
+                        -- Inline v9
+                        let v9 =
+                          (Record.Unsafe.unsafeGet
+                            -- Inline v9
+                            let v9 = Type.Proxy.Proxy;
+                            -- Inline v10
+                            let v10 = "bar";
+                            v10
+                            r@v7
+                          );
+                        (Data.Show.showIntImpl v9);
+                      v9
+                    );
+                  let v9 =
+                    (((v1.convertRecordOptions t@v5) Type.Proxy.Proxy) r@v7);
+                  (\x@v10 -> (v8 (v9 x@v10)))
+                )
+            };
+          v2;
+        { convertOptions:
+            (\t@v2 -> \i@v3 ->
+              ((((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) i@v3) {})
+            )
+        };
+      v1;
+    -- Inline v1
+    let v1 =
+      (\dictDefaults@v1 ->
+        { convertOptionsWithDefaults:
+            (\t@v2 -> \def@v3 ->
+              let v4 = (dictDefaults@v1.defaults def@v3);
+              let v5 = (v0.convertOptions t@v2);
+              (\x@v6 -> (v4 (v5 x@v6)))
+            )
+        }
+      );
+    (v1 Snapshot.ConvertableOptions01.defaultsRecord);
+  -- Inline v1
+  let v1 = { foo: 99, bar: 42, baz: true };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v0.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      v1
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 2)
+  -- LetAssoc
+  let v0 =
+    let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+    -- UnpackOp v1 Record ["convertRecordOptions"]
+    let v1 =
+      { convertRecordOptions:
+          (\t@v1 -> \v@v2 -> \r@v3 ->
+            (Record.Builder.insert
+              <PrimUndefined>
+              <PrimUndefined>
+              v0
+              Type.Proxy.Proxy
+              (Record.Unsafe.unsafeGet
+                (v0.reflectSymbol Type.Proxy.Proxy)
+                r@v3
+              )
+            )
+          )
+      };
+    -- UnpackOp v2 Record ["convertRecordOptions"]
+    let v2 =
+      { convertRecordOptions:
+          (\t@v2 -> \v@v3 -> \r@v4 ->
+            -- Inline v5
+            let v5 =
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                Snapshot.ConvertableOptions01.bazIsSymbol
+                Type.Proxy.Proxy
+                (Data.Maybe.Just.Maybe r@v4.baz)
+              );
+            let v6 = (((v1.convertRecordOptions t@v2) Type.Proxy.Proxy) r@v4);
+            (\x@v7 -> (v5 (v6 x@v7)))
+          )
+      };
+    -- UnpackOp v3 Record ["convertRecordOptions"]
+    let v3 =
+      { convertRecordOptions:
+          (\t@v3 -> \v@v4 -> \r@v5 ->
+            let v6 =
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                Snapshot.ConvertableOptions01.barIsSymbol
+                Type.Proxy.Proxy
+                (Data.Show.showIntImpl r@v5.bar)
+              );
+            let v7 = (((v2.convertRecordOptions t@v3) Type.Proxy.Proxy) r@v5);
+            (\x@v8 -> (v6 (v7 x@v8)))
+          )
+      };
+    -- Inline v4
+    let v4 =
+      { convertOptions:
+          (\t@v4 -> \i@v5 ->
+            ((((v3.convertRecordOptions t@v4) Type.Proxy.Proxy) i@v5) {})
+          )
+      };
+    v4;
+  -- Inline v1
+  let v1 =
+    { convertOptionsWithDefaults:
+        (\t@v1 -> \def@v2 ->
+          -- Inline v3
+          let v3 =
+            (Snapshot.ConvertableOptions01.defaultsRecord.defaults def@v2);
+          let v4 = (v0.convertOptions t@v1);
+          (\x@v5 -> (v3 (v4 x@v5)))
+        )
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (v1.convertOptionsWithDefaults
+      Snapshot.ConvertableOptions01.Flub
+      Snapshot.ConvertableOptions01.defaultOptions
+      { foo: 99, bar: 42, baz: true }
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 3)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      (\t@v1 -> \v@v2 -> \r@v3 ->
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) r@v3)
+        )
+      );
+    -- Inline v2
+    let v2 =
+      (\t@v2 -> \v@v3 -> \r@v4 ->
+        let v5 = (((v1 t@v2) Type.Proxy.Proxy) r@v4);
+        (\x@v6 ->
+          -- Inline v7
+          let v7 = <PrimUndefined>;
+          -- Inline v8
+          let v8 =
+            -- Inline v8
+            let v8 = <PrimUndefined>;
+            -- Inline v9
+            let v9 = Type.Proxy.Proxy;
+            -- Inline v10
+            let v10 = (Data.Maybe.Just.Maybe r@v4.baz);
+            -- Inline v11
+            let v11 = (v5 x@v6);
+            (((Record.Builder.unsafeInsert "baz") v10) v11);
+          v8
+        )
+      );
+    -- Inline v3
+    let v3 =
+      (\t@v3 -> \v@v4 -> \r@v5 ->
+        let v6 =
+          (Record.Builder.insert
+            <PrimUndefined>
+            <PrimUndefined>
+            Snapshot.ConvertableOptions01.barIsSymbol
+            Type.Proxy.Proxy
+            (Data.Show.showIntImpl r@v5.bar)
+          );
+        let v7 = (((v2 t@v3) Type.Proxy.Proxy) r@v5);
+        (\x@v8 -> (v6 (v7 x@v8)))
+      );
+    { convertOptions:
+        (\t@v4 -> \i@v5 -> ((((v3 t@v4) Type.Proxy.Proxy) i@v5) {}))
+    };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v2
+    let v2 = Snapshot.ConvertableOptions01.Flub;
+    let v3 = (v1.convertOptions v2);
+    -- Inline v4
+    let v4 =
+      (\x@v4 ->
+        -- Inline v5
+        let v5 = (v3 x@v4);
+        -- Inline v6
+        let v6 =
+          (Record.Unsafe.Union.unsafeUnionFn
+            v5
+            Snapshot.ConvertableOptions01.defaultOptions
+          );
+        v6
+      );
+    (v4 { foo: 99, bar: 42, baz: true })
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 4)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 = Snapshot.ConvertableOptions01.Flub;
+      (\i@v2 ->
+        -- Inline v3
+        let v3 = Type.Proxy.Proxy;
+        let v4 =
+          (Record.Builder.insert
+            <PrimUndefined>
+            <PrimUndefined>
+            Snapshot.ConvertableOptions01.barIsSymbol
+            Type.Proxy.Proxy
+            (Data.Show.showIntImpl i@v2.bar)
+          );
+        -- LetAssoc
+        let v5 =
+          let v5 =
+            -- Inline v5
+            let v5 = Type.Proxy.Proxy;
+            let v6 =
+              -- Inline v6
+              let v6 = Type.Proxy.Proxy;
+              (Record.Builder.insert
+                <PrimUndefined>
+                <PrimUndefined>
+                v0
+                Type.Proxy.Proxy
+                (Record.Unsafe.unsafeGet
+                  (v0.reflectSymbol Type.Proxy.Proxy)
+                  i@v2
+                )
+              );
+            -- Inline v7
+            let v7 =
+              (\x@v7 ->
+                (Record.Builder.unsafeInsert
+                  "baz"
+                  (Data.Maybe.Just.Maybe i@v2.baz)
+                  (v6 x@v7)
+                )
+              );
+            v7;
+          (\x@v6 -> (v4 (v5 x@v6)));
+        (v5 {})
+      );
+    -- Inline v2
+    let v2 = { foo: 99, bar: 42, baz: true };
+    (Record.Unsafe.Union.unsafeUnionFn
+      (v1 v2)
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 5)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: 42, baz: true };
+      let v2 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          Snapshot.ConvertableOptions01.barIsSymbol
+          Type.Proxy.Proxy
+          (Data.Show.showIntImpl v1.bar)
+        );
+      -- LetAssoc
+      let v3 =
+        let v3 =
+          let v3 =
+            (Record.Builder.insert
+              <PrimUndefined>
+              <PrimUndefined>
+              v0
+              Type.Proxy.Proxy
+              ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+            );
+          (\x@v4 ->
+            (Record.Builder.unsafeInsert
+              "baz"
+              (Data.Maybe.Just.Maybe v1.baz)
+              (v3 x@v4)
+            )
+          );
+        -- Inline v4
+        let v4 = (\x@v4 -> (v2 (v3 x@v4)));
+        (v4 {});
+      v3
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 6)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: 42, baz: true };
+      -- Inline v2
+      let v2 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          Snapshot.ConvertableOptions01.barIsSymbol
+          Type.Proxy.Proxy
+          (Data.Show.showIntImpl v1.bar)
+        );
+      let v3 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+        );
+      -- Inline v4
+      let v4 =
+        (\x@v4 ->
+          (Record.Builder.unsafeInsert
+            "baz"
+            (Data.Maybe.Just.Maybe v1.baz)
+            (v3 x@v4)
+          )
+        );
+      -- Inline v5
+      let v5 =
+        -- Inline v5
+        let v5 = {};
+        (v2 (v4 v5));
+      v5
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 7)
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: 42, baz: true };
+      -- Inline v2
+      let v2 =
+        (Record.Builder.insert
+          <PrimUndefined>
+          <PrimUndefined>
+          v0
+          Type.Proxy.Proxy
+          ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1)
+        );
+      -- Inline v3
+      let v3 = <PrimUndefined>;
+      -- Inline v4
+      let v4 =
+        -- Inline v4
+        let v4 = <PrimUndefined>;
+        -- Inline v5
+        let v5 = Type.Proxy.Proxy;
+        -- Inline v6
+        let v6 = (Data.Show.showIntImpl v1.bar);
+        -- Inline v7
+        let v7 =
+          -- Inline v7
+          let v7 = {};
+          (Record.Builder.unsafeInsert
+            "baz"
+            (Data.Maybe.Just.Maybe v1.baz)
+            (v2 v7)
+          );
+        (((Record.Builder.unsafeInsert "bar") v6) v7);
+      v4
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 8)
+  -- UnpackOp v0 Record ["reflectSymbol"]
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "foo") };
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: 42, baz: true };
+      (Record.Builder.unsafeInsert
+        "bar"
+        (Data.Show.showIntImpl v1.bar)
+        (Record.Builder.unsafeInsert
+          "baz"
+          (Data.Maybe.Just.Maybe v1.baz)
+          -- Inline v2
+          let v2 = <PrimUndefined>;
+          -- Inline v3
+          let v3 =
+            -- Inline v3
+            let v3 = <PrimUndefined>;
+            -- Inline v4
+            let v4 = Type.Proxy.Proxy;
+            -- Inline v5
+            let v5 =
+              ((Record.Unsafe.unsafeGet (v0.reflectSymbol Type.Proxy.Proxy)) v1);
+            -- Inline v6
+            let v6 = {};
+            (((Record.Builder.unsafeInsert (v0.reflectSymbol v4)) v5) v6);
+          v3
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 9)
+  -- Inline v0
+  let v0 = (\$__unused@v0 -> "foo");
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v1 = { foo: 99, bar: 42, baz: true };
+      (Record.Builder.unsafeInsert
+        "bar"
+        (Data.Show.showIntImpl v1.bar)
+        (Record.Builder.unsafeInsert
+          "baz"
+          (Data.Maybe.Just.Maybe v1.baz)
+          (Record.Builder.unsafeInsert
+            (v0 Type.Proxy.Proxy)
+            ((Record.Unsafe.unsafeGet (v0 Type.Proxy.Proxy)) v1)
+            {}
+          )
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 10)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      let v0 = { foo: 99, bar: 42, baz: true };
+      (Record.Builder.unsafeInsert
+        "bar"
+        (Data.Show.showIntImpl v0.bar)
+        (Record.Builder.unsafeInsert
+          "baz"
+          (Data.Maybe.Just.Maybe v0.baz)
+          (Record.Builder.unsafeInsert
+            -- Inline v1
+            let v1 = Type.Proxy.Proxy;
+            "foo"
+            (Record.Unsafe.unsafeGet
+              -- Inline v1
+              let v1 = Type.Proxy.Proxy;
+              "foo"
+              v0
+            )
+            {}
+          )
+        )
+      )
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 11)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- UnpackOp v0 Record ["foo","bar","baz"]
+      let v0 = { foo: 99, bar: 42, baz: true };
+      { foo:
+          v0.foo
+      , baz:
+          (Data.Maybe.Just.Maybe v0.baz)
+      , bar:
+          (Data.Show.showIntImpl v0.bar)
+      }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 12)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      -- Inline v0
+      let v0 = 99;
+      -- Inline v1
+      let v1 = 42;
+      -- Inline v2
+      let v2 = true;
+      { foo:
+          v0
+      , baz:
+          (Data.Maybe.Just.Maybe v2)
+      , bar:
+          (Data.Show.showIntImpl v1)
+      }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )
+---------------
+Snapshot.ConvertableOptions01.test4 (Step 13; Final)
+  (-- Stop
+  Snapshot.ConvertableOptions01.flubImpl
+    (Record.Unsafe.Union.unsafeUnionFn
+      { foo: 99, baz: (Data.Maybe.Just.Maybe true), bar: "42" }
+      Snapshot.ConvertableOptions01.defaultOptions
+    )
+  )

@@ -1,0 +1,172 @@
+Snapshot.STArray04.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.STArray04.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.STArray04.liftST (Step 0; Original)
+  (Control.Monad.ST.Class.liftST Control.Monad.ST.Class.monadSTEffect)
+---------------
+Snapshot.STArray04.liftST (Step 1; Final)
+  Unsafe.Coerce.unsafeCoerce
+
+===============
+
+Snapshot.STArray04.test1 (Step 0; Original)
+  (\f@v0 -> \as@v1 ->
+    (Snapshot.STArray04.bind
+      (Snapshot.STArray04.liftST Data.Array.ST.new)
+      (\bs@v2 ->
+        (Effect.foreachE
+          as@v1
+          (\a@v3 ->
+            (Snapshot.STArray04.void
+              (Snapshot.STArray04.liftST
+                ((Data.Array.ST.push (f@v0 a@v3)) bs@v2)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+---------------
+Snapshot.STArray04.test1 (Step 1)
+  (\f@v0 -> \as@v1 ->
+    letEffect bs@v2 = Data.Array.ST.new;
+    (-- Stop
+    Effect.foreachE
+      as@v1
+      (\a@v3 ->
+        (# effectDefer
+          -- LetAssoc
+          let v4 =
+            let v4 = (f@v0 a@v3);
+            -- Inline v5
+            let v5 =
+              -- Inline v5
+              let v5 =
+                (\v5 ->
+                  (# effectDefer
+                    (-- Stop
+                    Data.Array.ST.pushAll
+                      [ v4 ]
+                      v5
+                    )
+                  #)
+                );
+              (v5 bs@v2);
+            v5;
+          (# effectDefer
+            letEffect a'@v5 = v4;
+            (# effectPure <PrimUndefined> #)
+          #)
+        #)
+      )
+    )
+  )
+---------------
+Snapshot.STArray04.test1 (Step 2)
+  (\f@v0 -> \as@v1 ->
+    letEffect bs@v2 = Data.Array.ST.new;
+    (-- Stop
+    Effect.foreachE
+      as@v1
+      (\a@v3 ->
+        (# effectDefer
+          let v4 = (f@v0 a@v3);
+          -- Inline v5
+          let v5 =
+            (# effectDefer
+              (-- Stop
+              Data.Array.ST.pushAll
+                [ v4 ]
+                bs@v2
+              )
+            #);
+          (# effectDefer
+            letEffect a'@v6 = v5;
+            (# effectPure <PrimUndefined> #)
+          #)
+        #)
+      )
+    )
+  )
+---------------
+Snapshot.STArray04.test1 (Step 3)
+  (\f@v0 -> \as@v1 ->
+    letEffect bs@v2 = Data.Array.ST.new;
+    (-- Stop
+    Effect.foreachE
+      as@v1
+      (\a@v3 ->
+        (# effectDefer
+          -- Inline v4
+          let v4 = (f@v0 a@v3);
+          (# effectDefer
+            letEffect a'@v5 =
+              (-- Stop
+              Data.Array.ST.pushAll
+                [ v4 ]
+                bs@v2
+              );
+            (# effectPure <PrimUndefined> #)
+          #)
+        #)
+      )
+    )
+  )
+---------------
+Snapshot.STArray04.test1 (Step 4; Final)
+  (\f@v0 -> \as@v1 ->
+    letEffect bs@v2 = Data.Array.ST.new;
+    (-- Stop
+    Effect.foreachE
+      as@v1
+      (\a@v3 ->
+        (# effectDefer
+          letEffect a'@v4 =
+            (-- Stop
+            Data.Array.ST.pushAll
+              [ (f@v0 a@v3) ]
+              bs@v2
+            );
+          (# effectPure <PrimUndefined> #)
+        #)
+      )
+    )
+  )
+
+===============
+
+Snapshot.STArray04.void (Step 0; Original)
+  (Data.Functor.void Effect.functorEffect)
+---------------
+Snapshot.STArray04.void (Step 1)
+  -- Inline v0
+  let v0 = (\v@v0 -> <PrimUndefined>);
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 =
+        (\a@v1 ->
+          (# effectDefer
+            letEffect a'@v2 = a@v1;
+            (# effectPure (v0 a'@v2) #)
+          #)
+        );
+      v1;
+    v1;
+  v1
+---------------
+Snapshot.STArray04.void (Step 2; Final)
+  (\a@v0 ->
+    (# effectDefer
+      letEffect a'@v1 = a@v0;
+      (# effectPure <PrimUndefined> #)
+    #)
+  )

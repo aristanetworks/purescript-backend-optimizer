@@ -1,0 +1,171 @@
+Snapshot.PrimOpIntBit02.negate (Step 0; Original)
+  (Data.Ring.negate Data.Ring.ringInt)
+---------------
+Snapshot.PrimOpIntBit02.negate (Step 1)
+  -- Inline zero@v0
+  let zero@v0 =
+    -- Inline v0
+    let v0 = <PrimUndefined>;
+    0;
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\a@v1 -> ((subtract zero@v0) a@v1));
+    v1;
+  v1
+---------------
+Snapshot.PrimOpIntBit02.negate (Step 2; Final)
+  (\a@v0 -> (intNegate a@v0))
+
+===============
+
+Snapshot.PrimOpIntBit02.test1 (Step 0; Original)
+  ((Data.Int.Bits.and 1023) 8)
+---------------
+Snapshot.PrimOpIntBit02.test1 (Step 1)
+  -- Inline v0
+  let v0 = 1023;
+  -- Inline v1
+  let v1 = (\v1 -> ((intBitAnd v0) v1));
+  (v1 8)
+---------------
+Snapshot.PrimOpIntBit02.test1 (Step 2)
+  -- Inline v0
+  let v0 = 8;
+  ((intBitAnd 1023) v0)
+---------------
+Snapshot.PrimOpIntBit02.test1 (Step 3; Final)
+  8
+
+===============
+
+Snapshot.PrimOpIntBit02.test2 (Step 0; Original)
+  ((Data.Int.Bits.or 16) 15)
+---------------
+Snapshot.PrimOpIntBit02.test2 (Step 1)
+  -- Inline v0
+  let v0 = 16;
+  -- Inline v1
+  let v1 = (\v1 -> ((intBitOr v0) v1));
+  (v1 15)
+---------------
+Snapshot.PrimOpIntBit02.test2 (Step 2)
+  -- Inline v0
+  let v0 = 15;
+  ((intBitOr 16) v0)
+---------------
+Snapshot.PrimOpIntBit02.test2 (Step 3; Final)
+  31
+
+===============
+
+Snapshot.PrimOpIntBit02.test3 (Step 0; Original)
+  ((Data.Int.Bits.shl 1023) 2)
+---------------
+Snapshot.PrimOpIntBit02.test3 (Step 1)
+  -- Inline v0
+  let v0 = 1023;
+  -- Inline v1
+  let v1 = (\v1 -> ((intBitShiftLeft v0) v1));
+  (v1 2)
+---------------
+Snapshot.PrimOpIntBit02.test3 (Step 2)
+  -- Inline v0
+  let v0 = 2;
+  ((intBitShiftLeft 1023) v0)
+---------------
+Snapshot.PrimOpIntBit02.test3 (Step 3; Final)
+  4092
+
+===============
+
+Snapshot.PrimOpIntBit02.test4 (Step 0; Original)
+  ((Data.Int.Bits.shr (Snapshot.PrimOpIntBit02.negate 1023)) 2)
+---------------
+Snapshot.PrimOpIntBit02.test4 (Step 1)
+  let v0 =
+    -- Inline v0
+    let v0 = 1023;
+    -- Inline v1
+    let v1 = (intNegate v0);
+    v1;
+  -- Inline v1
+  let v1 = (\v1 -> ((intBitShiftRight v0) v1));
+  (v1 2)
+---------------
+Snapshot.PrimOpIntBit02.test4 (Step 2)
+  -- Inline v0
+  let v0 = -1023;
+  -- Inline v1
+  let v1 = 2;
+  ((intBitShiftRight v0) v1)
+---------------
+Snapshot.PrimOpIntBit02.test4 (Step 3; Final)
+  -256
+
+===============
+
+Snapshot.PrimOpIntBit02.test5 (Step 0; Original)
+  ((Data.Int.Bits.xor 15) 12)
+---------------
+Snapshot.PrimOpIntBit02.test5 (Step 1)
+  -- Inline v0
+  let v0 = 15;
+  -- Inline v1
+  let v1 = (\v1 -> ((intBitXor v0) v1));
+  (v1 12)
+---------------
+Snapshot.PrimOpIntBit02.test5 (Step 2)
+  -- Inline v0
+  let v0 = 12;
+  ((intBitXor 15) v0)
+---------------
+Snapshot.PrimOpIntBit02.test5 (Step 3; Final)
+  3
+
+===============
+
+Snapshot.PrimOpIntBit02.test6 (Step 0; Original)
+  ((Data.Int.Bits.zshr (Snapshot.PrimOpIntBit02.negate 1023)) 2)
+---------------
+Snapshot.PrimOpIntBit02.test6 (Step 1)
+  let v0 =
+    -- Inline v0
+    let v0 = 1023;
+    -- Inline v1
+    let v1 = (intNegate v0);
+    v1;
+  -- Inline v1
+  let v1 = (\v1 -> ((intBitZeroFillShiftRight v0) v1));
+  (v1 2)
+---------------
+Snapshot.PrimOpIntBit02.test6 (Step 2)
+  -- Inline v0
+  let v0 = -1023;
+  -- Inline v1
+  let v1 = 2;
+  ((intBitZeroFillShiftRight v0) v1)
+---------------
+Snapshot.PrimOpIntBit02.test6 (Step 3; Final)
+  1073741568
+
+===============
+
+Snapshot.PrimOpIntBit02.test7 (Step 0; Original)
+  (Data.Int.Bits.complement (Snapshot.PrimOpIntBit02.negate 3))
+---------------
+Snapshot.PrimOpIntBit02.test7 (Step 1)
+  -- Inline v0
+  let v0 = 3;
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 = (intNegate v0);
+      v1;
+    (bitNot v1);
+  v1
+---------------
+Snapshot.PrimOpIntBit02.test7 (Step 2; Final)
+  2

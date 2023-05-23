@@ -1,0 +1,1088 @@
+Snapshot.Fusion01.Fold (Step 0; Original)
+  (\x@v0 -> x@v0)
+---------------
+Snapshot.Fusion01.Fold (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.Fusion01.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupString)
+---------------
+Snapshot.Fusion01.append (Step 1; Final)
+  Data.Semigroup.concatString
+
+===============
+
+Snapshot.Fusion01.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.Fusion01.compose (Step 1; Final)
+  Control.Semigroupoid.semigroupoidFn.compose
+
+===============
+
+Snapshot.Fusion01.composeFlipped (Step 0; Original)
+  (Control.Semigroupoid.composeFlipped Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.Fusion01.composeFlipped (Step 1; Final)
+  (\f@v0 -> \g@v1 -> \x@v2 -> (g@v1 (f@v0 x@v2)))
+
+===============
+
+Snapshot.Fusion01.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqInt)
+---------------
+Snapshot.Fusion01.eq (Step 1; Final)
+  Data.Eq.eqIntImpl
+
+===============
+
+Snapshot.Fusion01.filterF (Step 0; Original)
+  (\p@v0 ->
+    (Snapshot.Fusion01.filterMapF
+      (\a@v1 ->
+        -- Inline v2
+        let v2 = (p@v0 a@v1);
+        -- Inline v3
+        let v3 = (\-> (Data.Maybe.Just a@v1));
+        -- Inline v4
+        let v4 = (\-> Data.Maybe.Nothing);
+        if ((eq v2) true) then (v3!) else (v4!)
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.filterF (Step 1)
+  (\p@v0 ->
+    -- Inline v1
+    let v1 =
+      (\a@v1 ->
+        if (p@v0 a@v1) then (Data.Maybe.Just.Maybe a@v1) else Data.Maybe.Nothing
+      );
+    -- Inline v2
+    let v2 =
+      (\v@v2 -> \cons@v3 -> \nil@v4 ->
+        (v@v2
+          (\a@v5 -> \as@v6 ->
+            let v1@v7 = (v1 a@v5);
+            if (isTag Data.Maybe.Just v1@v7) then
+              ((cons@v3 v1@v7#value0) as@v6)
+            else if (isTag Data.Maybe.Nothing v1@v7) then
+              as@v6
+            else
+              <PatternMatchFailure>
+          )
+          nil@v4
+        )
+      );
+    v2
+  )
+---------------
+Snapshot.Fusion01.filterF (Step 2)
+  (\p@v0 -> \v@v1 -> \cons@v2 -> \nil@v3 ->
+    (v@v1
+      (\a@v4 -> \as@v5 ->
+        -- DistBranchesLet v1@v6
+        let v1@v6 =
+          if (p@v0 a@v4) then
+            (Data.Maybe.Just.Maybe a@v4)
+          else
+            Data.Maybe.Nothing;
+        if (isTag Data.Maybe.Just v1@v6) then
+          ((cons@v2 v1@v6#value0) as@v5)
+        else if (isTag Data.Maybe.Nothing v1@v6) then
+          as@v5
+        else
+          <PatternMatchFailure>
+      )
+      nil@v3
+    )
+  )
+---------------
+Snapshot.Fusion01.filterF (Step 3; Final)
+  (\p@v0 -> \v@v1 -> \cons@v2 -> \nil@v3 ->
+    (v@v1
+      (\a@v4 -> \as@v5 -> if (p@v0 a@v4) then ((cons@v2 a@v4) as@v5) else as@v5)
+      nil@v3
+    )
+  )
+
+===============
+
+Snapshot.Fusion01.filterMapF (Step 0; Original)
+  (\f@v0 -> \v@v1 ->
+    -- Inline v2
+    let v2 = f@v0;
+    -- Inline v3
+    let v3 = v@v1;
+    -- Inline v4
+    let v4 =
+      (\f1@v4 next@v5 ->
+        (\cons@v6 -> \nil@v7 ->
+          (next@v5
+            (\a@v8 -> \as@v9 ->
+              let v1@v10 = (f1@v4 a@v8);
+              -- Inline v11
+              let v11 = v1@v10;
+              -- Inline v12
+              let v12 = (\b@v12 -> ((cons@v6 b@v12) as@v9));
+              -- Inline v13
+              let v13 = (\-> as@v9);
+              if (isTag Data.Maybe.Just v11) then
+                -- Inline v14
+                let v14 = v11#value0;
+                (v12 b@v14)
+              else if (isTag Data.Maybe.Nothing v11) then
+                (v13!)
+              else
+                <PatternMatchFailure>
+            )
+            nil@v7
+          )
+        )
+      );
+    (v4 f1@v2 next@v3)
+  )
+---------------
+Snapshot.Fusion01.filterMapF (Step 1)
+  (\f@v0 -> \v@v1 -> \cons@v2 -> \nil@v3 ->
+    (v@v1
+      (\a@v4 -> \as@v5 ->
+        let v1@v6 = (f@v0 a@v4);
+        if (isTag Data.Maybe.Just v1@v6) then
+          -- Inline v7
+          let v7 = v1@v6#value0;
+          ((cons@v2 v7) as@v5)
+        else if (isTag Data.Maybe.Nothing v1@v6) then
+          as@v5
+        else
+          <PatternMatchFailure>
+      )
+      nil@v3
+    )
+  )
+---------------
+Snapshot.Fusion01.filterMapF (Step 2; Final)
+  (\f@v0 -> \v@v1 -> \cons@v2 -> \nil@v3 ->
+    (v@v1
+      (\a@v4 -> \as@v5 ->
+        let v1@v6 = (f@v0 a@v4);
+        if (isTag Data.Maybe.Just v1@v6) then
+          ((cons@v2 v1@v6#value0) as@v5)
+        else if (isTag Data.Maybe.Nothing v1@v6) then
+          as@v5
+        else
+          <PatternMatchFailure>
+      )
+      nil@v3
+    )
+  )
+
+===============
+
+Snapshot.Fusion01.fromArray (Step 0; Original)
+  (\arr@v0 -> \cons@v1 -> \nil@v2 ->
+    letRec-3 loop@v3 =
+      (\n@v4 -> \acc@v5 ->
+        -- Inline v6
+        let v6 = n@v4;
+        -- Inline v7
+        let v7 = acc@v5;
+        -- Inline v8
+        let v8 = (\acc1@v8 n1@v9 -> acc1@v8);
+        -- Inline v9
+        let v9 =
+          (\acc1@v9 n1@v10 ->
+            (loop@v3
+              ((Snapshot.Fusion01.sub n1@v10) 1)
+              (cons@v1
+                (Partial.Unsafe.unsafePartial
+                  (\$__unused@v11 ->
+                    ((Snapshot.Fusion01.unsafeIndex arr@v0) n1@v10)
+                  )
+                )
+                acc1@v9
+              )
+            )
+          );
+        -- Inline acc1@v10
+        let acc1@v10 = v7;
+        -- Inline n1@v11
+        let n1@v11 = v6;
+        if ((Snapshot.Fusion01.eq n1@v11) 0) then
+          (v8 acc1@v10 n1@v11)
+        else if Data.Boolean.otherwise then
+          (v9 acc1@v10 n1@v11)
+        else
+          <PatternMatchFailure>
+      );
+    ((loop@v3 ((Snapshot.Fusion01.sub (Data.Array.length arr@v0)) 1)) nil@v2)
+  )
+---------------
+Snapshot.Fusion01.fromArray (Step 1)
+  (\arr@v0 -> \cons@v1 -> \nil@v2 ->
+    letRec-3 loop@v3 =
+      (\n@v4 -> \acc@v5 ->
+        if -- Inline v6
+        let v6 = 0;
+        ((eq n@v4) v6) then
+          acc@v5
+        else
+          (loop@v3
+            -- Inline v6
+            let v6 = 1;
+            ((subtract n@v4) v6)
+            ((cons@v1 ((arrayIndex arr@v0) n@v4)) acc@v5)
+          )
+      );
+    (loop@v3
+      let v4 = (arrayLength arr@v0);
+      -- Inline v5
+      let v5 = (\v5 -> ((subtract v4) v5));
+      (v5 1)
+      nil@v2
+    )
+  )
+---------------
+Snapshot.Fusion01.fromArray (Step 2)
+  (\arr@v0 -> \cons@v1 -> \nil@v2 ->
+    letRec-3 loop@v3 =
+      (\n@v4 -> \acc@v5 ->
+        if ((eq n@v4) 0) then
+          acc@v5
+        else
+          (loop@v3
+            ((subtract n@v4) 1)
+            ((cons@v1 ((arrayIndex arr@v0) n@v4)) acc@v5)
+          )
+      );
+    (loop@v3
+      -- Inline v4
+      let v4 = (arrayLength arr@v0);
+      -- Inline v5
+      let v5 = 1;
+      ((subtract v4) v5)
+      nil@v2
+    )
+  )
+---------------
+Snapshot.Fusion01.fromArray (Step 3; Final)
+  (\arr@v0 -> \cons@v1 -> \nil@v2 ->
+    letRec-3 loop@v3 =
+      (\n@v4 -> \acc@v5 ->
+        if ((eq n@v4) 0) then
+          acc@v5
+        else
+          (loop@v3
+            ((subtract n@v4) 1)
+            ((cons@v1 ((arrayIndex arr@v0) n@v4)) acc@v5)
+          )
+      );
+    ((loop@v3 ((subtract (arrayLength arr@v0)) 1)) nil@v2)
+  )
+
+===============
+
+Snapshot.Fusion01.mapF (Step 0; Original)
+  (\f@v0 -> \v@v1 ->
+    -- Inline v2
+    let v2 = f@v0;
+    -- Inline v3
+    let v3 = v@v1;
+    -- Inline v4
+    let v4 =
+      (\f1@v4 next@v5 ->
+        (\cons@v6 -> \nil@v7 ->
+          ((next@v5 ((Snapshot.Fusion01.compose cons@v6) f1@v4)) nil@v7)
+        )
+      );
+    (v4 f1@v2 next@v3)
+  )
+---------------
+Snapshot.Fusion01.mapF (Step 1; Final)
+  (\f@v0 -> \v@v1 -> \cons@v2 -> \nil@v3 ->
+    ((v@v1 (\x@v4 -> (cons@v2 (f@v0 x@v4)))) nil@v3)
+  )
+
+===============
+
+Snapshot.Fusion01.notEq (Step 0; Original)
+  (Data.Eq.notEq Data.Eq.eqString)
+---------------
+Snapshot.Fusion01.notEq (Step 1; Final)
+  (\x@v0 -> \y@v1 -> ((notEq x@v0) y@v1))
+
+===============
+
+Snapshot.Fusion01.overArray (Step 0; Original)
+  (\fold@v0 ->
+    (Snapshot.Fusion01.compose
+      Snapshot.Fusion01.toArray
+      ((Snapshot.Fusion01.compose fold@v0) Snapshot.Fusion01.fromArray)
+    )
+  )
+---------------
+Snapshot.Fusion01.overArray (Step 1)
+  (\fold@v0 ->
+    -- Inline v1
+    let v1 =
+      (\x@v1 ->
+        (fold@v0
+          (\cons@v2 -> \nil@v3 ->
+            letRec-4 loop@v4 =
+              (\n@v5 -> \acc@v6 ->
+                if ((eq n@v5) 0) then
+                  acc@v6
+                else
+                  (loop@v4
+                    ((subtract n@v5) 1)
+                    ((cons@v2 ((arrayIndex x@v1) n@v5)) acc@v6)
+                  )
+              );
+            ((loop@v4 ((subtract (arrayLength x@v1)) 1)) nil@v3)
+          )
+        )
+      );
+    -- Inline v2
+    let v2 =
+      (\x@v2 ->
+        -- Inline v3
+        let v3 = (v1 x@v2);
+        -- Inline v4
+        let v4 =
+          (Data.Array.reverse
+            (Snapshot.Fusion01.toUnfoldable
+              ((v3 Data.List.Types.Cons) Data.List.Types.Nil)
+            )
+          );
+        v4
+      );
+    v2
+  )
+---------------
+Snapshot.Fusion01.overArray (Step 2; Final)
+  (\fold@v0 -> \x@v1 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        (fold@v0
+          (\cons@v2 -> \nil@v3 ->
+            letRec-4 loop@v4 =
+              (\n@v5 -> \acc@v6 ->
+                if ((eq n@v5) 0) then
+                  acc@v6
+                else
+                  (loop@v4
+                    ((subtract n@v5) 1)
+                    ((cons@v2 ((arrayIndex x@v1) n@v5)) acc@v6)
+                  )
+              );
+            ((loop@v4 ((subtract (arrayLength x@v1)) 1)) nil@v3)
+          )
+          Data.List.Types.Cons
+          Data.List.Types.Nil
+        )
+      )
+    )
+  )
+
+===============
+
+Snapshot.Fusion01.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringInt)
+---------------
+Snapshot.Fusion01.sub (Step 1; Final)
+  Data.Ring.intSub
+
+===============
+
+Snapshot.Fusion01.test (Step 0; Original)
+  (Snapshot.Fusion01.overArray
+    (Snapshot.Fusion01.composeFlipped
+      (Snapshot.Fusion01.mapF ((Data.Semiring.add Data.Semiring.semiringInt) 1))
+      (Snapshot.Fusion01.composeFlipped
+        (Snapshot.Fusion01.mapF (Data.Show.show Data.Show.showInt))
+        (Snapshot.Fusion01.composeFlipped
+          (Snapshot.Fusion01.filterMapF (Data.String.CodeUnits.stripPrefix "1"))
+          (Snapshot.Fusion01.composeFlipped
+            (Snapshot.Fusion01.mapF (Snapshot.Fusion01.append "2"))
+            (Snapshot.Fusion01.composeFlipped
+              (Snapshot.Fusion01.filterF
+                (\v@v0 -> ((Snapshot.Fusion01.notEq v@v0) "wat"))
+              )
+              (Snapshot.Fusion01.mapF
+                ((Data.Function.flip Snapshot.Fusion01.append) "1")
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 1)
+  -- LetAssoc
+  let v0 =
+    let v0 =
+      let v0 =
+        -- Inline v0
+        let v0 = 1;
+        -- Inline v1
+        let v1 = (\v1 -> ((add v0) v1));
+        v1;
+      -- Inline v1
+      let v1 =
+        (\v@v1 -> \cons@v2 -> \nil@v3 ->
+          ((v@v1 (\x@v4 -> (cons@v2 (v0 x@v4)))) nil@v3)
+        );
+      v1;
+    let v1 =
+      -- Inline v1
+      let v1 =
+        (\v@v1 -> \cons@v2 -> \nil@v3 ->
+          ((v@v1 (\x@v4 -> (cons@v2 (Data.Show.showIntImpl x@v4)))) nil@v3)
+        );
+      -- LetAssoc
+      let v2 =
+        let v2 =
+          -- Inline v2
+          let v2 = (Data.String.CodeUnits.stripPrefix "1");
+          -- Inline v3
+          let v3 =
+            (\v@v3 -> \cons@v4 -> \nil@v5 ->
+              (v@v3
+                (\a@v6 -> \as@v7 ->
+                  let v1@v8 = (v2 a@v6);
+                  if (isTag Data.Maybe.Just v1@v8) then
+                    ((cons@v4 v1@v8#value0) as@v7)
+                  else if (isTag Data.Maybe.Nothing v1@v8) then
+                    as@v7
+                  else
+                    <PatternMatchFailure>
+                )
+                nil@v5
+              )
+            );
+          v3;
+        -- LetAssoc
+        let v3 =
+          let v3 =
+            let v3 =
+              -- Inline v3
+              let v3 = "2";
+              -- Inline v4
+              let v4 = (\v4 -> ((stringAppend v3) v4));
+              v4;
+            -- Inline v4
+            let v4 =
+              (\v@v4 -> \cons@v5 -> \nil@v6 ->
+                ((v@v4 (\x@v7 -> (cons@v5 (v3 x@v7)))) nil@v6)
+              );
+            v4;
+          -- LetAssoc
+          let v4 =
+            let v4 =
+              -- Inline v4
+              let v4 =
+                (\v@v4 ->
+                  -- Inline v5
+                  let v5 = "wat";
+                  ((notEq v@v4) v5)
+                );
+              -- Inline v5
+              let v5 =
+                (\v@v5 -> \cons@v6 -> \nil@v7 ->
+                  (v@v5
+                    (\a@v8 -> \as@v9 ->
+                      if (v4 a@v8) then ((cons@v6 a@v8) as@v9) else as@v9
+                    )
+                    nil@v7
+                  )
+                );
+              v5;
+            -- LetAssoc
+            let v5 =
+              let v5 =
+                -- Inline v5
+                let v5 = "1";
+                (\a@v6 -> ((stringAppend a@v6) v5));
+              -- Inline v6
+              let v6 =
+                (\v@v6 -> \cons@v7 -> \nil@v8 ->
+                  ((v@v6 (\x@v9 -> (cons@v7 (v5 x@v9)))) nil@v8)
+                );
+              v6;
+            (\x@v6 -> (v5 (v4 x@v6)));
+          (\x@v5 -> (v4 (v3 x@v5)));
+        (\x@v4 -> (v3 (v2 x@v4)));
+      (\x@v3 -> (v2 (v1 x@v3)));
+    (\x@v2 -> (v1 (v0 x@v2)));
+  -- Inline v1
+  let v1 =
+    (\x@v1 ->
+      (Data.Array.reverse
+        (Snapshot.Fusion01.toUnfoldable
+          (v0
+            (\cons@v2 -> \nil@v3 ->
+              letRec-4 loop@v4 =
+                (\n@v5 -> \acc@v6 ->
+                  if ((eq n@v5) 0) then
+                    acc@v6
+                  else
+                    (loop@v4
+                      ((subtract n@v5) 1)
+                      ((cons@v2 ((arrayIndex x@v1) n@v5)) acc@v6)
+                    )
+                );
+              ((loop@v4 ((subtract (arrayLength x@v1)) 1)) nil@v3)
+            )
+            Data.List.Types.Cons
+            Data.List.Types.Nil
+          )
+        )
+      )
+    );
+  v1
+---------------
+Snapshot.Fusion01.test (Step 2)
+  -- Inline v0
+  let v0 = (\v0 -> ((add 1) v0));
+  -- Inline v1
+  let v1 =
+    (\v@v1 -> \cons@v2 -> \nil@v3 ->
+      ((v@v1 (\x@v4 -> (cons@v2 (v0 x@v4)))) nil@v3)
+    );
+  -- LetAssoc
+  let v2 =
+    let v2 =
+      -- Inline v2
+      let v2 =
+        (\v@v2 -> \cons@v3 -> \nil@v4 ->
+          (v@v2
+            (\a@v5 -> \as@v6 ->
+              let v1@v7 = ((Data.String.CodeUnits.stripPrefix "1") a@v5);
+              if (isTag Data.Maybe.Just v1@v7) then
+                ((cons@v3 v1@v7#value0) as@v6)
+              else if (isTag Data.Maybe.Nothing v1@v7) then
+                as@v6
+              else
+                <PatternMatchFailure>
+            )
+            nil@v4
+          )
+        );
+      let v3 =
+        -- Inline v3
+        let v3 = (\v3 -> ((stringAppend "2") v3));
+        -- Inline v4
+        let v4 =
+          (\v@v4 -> \cons@v5 -> \nil@v6 ->
+            ((v@v4 (\x@v7 -> (cons@v5 (v3 x@v7)))) nil@v6)
+          );
+        let v5 =
+          -- Inline v5
+          let v5 =
+            (\v@v5 -> \cons@v6 -> \nil@v7 ->
+              (v@v5
+                (\a@v8 -> \as@v9 ->
+                  if ((notEq a@v8) "wat") then ((cons@v6 a@v8) as@v9) else as@v9
+                )
+                nil@v7
+              )
+            );
+          let v6 =
+            -- Inline v6
+            let v6 = (\a@v6 -> ((stringAppend a@v6) "1"));
+            -- Inline v7
+            let v7 =
+              (\v@v7 -> \cons@v8 -> \nil@v9 ->
+                ((v@v7 (\x@v10 -> (cons@v8 (v6 x@v10)))) nil@v9)
+              );
+            (\x@v8 -> (v7 (v5 x@v8)));
+          (\x@v7 -> (v6 (v4 x@v7)));
+        (\x@v6 -> (v5 (v2 x@v6)));
+      (\x@v4 ->
+        (v3
+          (\cons@v5 -> \nil@v6 ->
+            ((x@v4 (\x@v7 -> (cons@v5 (Data.Show.showIntImpl x@v7)))) nil@v6)
+          )
+        )
+      );
+    (\x@v3 -> (v2 (v1 x@v3)));
+  (\x@v3 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        (v2
+          (\cons@v4 -> \nil@v5 ->
+            letRec-6 loop@v6 =
+              (\n@v7 -> \acc@v8 ->
+                if ((eq n@v7) 0) then
+                  acc@v8
+                else
+                  (loop@v6
+                    ((subtract n@v7) 1)
+                    ((cons@v4 ((arrayIndex x@v3) n@v7)) acc@v8)
+                  )
+              );
+            ((loop@v6 ((subtract (arrayLength x@v3)) 1)) nil@v5)
+          )
+          Data.List.Types.Cons
+          Data.List.Types.Nil
+        )
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 3)
+  -- LetAssoc
+  let v0 =
+    let v0 =
+      let v0 =
+        -- Inline v0
+        let v0 =
+          (\x@v0 ->
+            -- Inline v1
+            let v1 =
+              (\cons@v1 -> \nil@v2 ->
+                (x@v0
+                  (\a@v3 -> \as@v4 ->
+                    if ((notEq a@v3) "wat") then
+                      ((cons@v1 a@v3) as@v4)
+                    else
+                      as@v4
+                  )
+                  nil@v2
+                )
+              );
+            (\cons@v2 -> \nil@v3 ->
+              ((v1 (\x@v4 -> (cons@v2 ((stringAppend x@v4) "1")))) nil@v3)
+            )
+          );
+        (\x@v1 ->
+          (v0
+            (\cons@v2 -> \nil@v3 ->
+              ((x@v1 (\x@v4 -> (cons@v2 ((stringAppend "2") x@v4)))) nil@v3)
+            )
+          )
+        );
+      (\x@v1 ->
+        (v0
+          (\cons@v2 -> \nil@v3 ->
+            (x@v1
+              (\a@v4 -> \as@v5 ->
+                let v1@v6 = ((Data.String.CodeUnits.stripPrefix "1") a@v4);
+                if (isTag Data.Maybe.Just v1@v6) then
+                  ((cons@v2 v1@v6#value0) as@v5)
+                else if (isTag Data.Maybe.Nothing v1@v6) then
+                  as@v5
+                else
+                  <PatternMatchFailure>
+              )
+              nil@v3
+            )
+          )
+        )
+      );
+    (\x@v1 ->
+      (v0
+        (\cons@v2 -> \nil@v3 ->
+          ((x@v1 (\x@v4 -> (cons@v2 (Data.Show.showIntImpl x@v4)))) nil@v3)
+        )
+      )
+    );
+  -- Inline v1
+  let v1 =
+    (\x@v1 ->
+      (v0
+        (\cons@v2 -> \nil@v3 ->
+          ((x@v1 (\x@v4 -> (cons@v2 ((add 1) x@v4)))) nil@v3)
+        )
+      )
+    );
+  (\x@v2 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        (v1
+          (\cons@v3 -> \nil@v4 ->
+            letRec-5 loop@v5 =
+              (\n@v6 -> \acc@v7 ->
+                if ((eq n@v6) 0) then
+                  acc@v7
+                else
+                  (loop@v5
+                    ((subtract n@v6) 1)
+                    ((cons@v3 ((arrayIndex x@v2) n@v6)) acc@v7)
+                  )
+              );
+            ((loop@v5 ((subtract (arrayLength x@v2)) 1)) nil@v4)
+          )
+          Data.List.Types.Cons
+          Data.List.Types.Nil
+        )
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 4)
+  -- Inline v0
+  let v0 =
+    (\x@v0 ->
+      -- Inline v1
+      let v1 =
+        (\cons@v1 -> \nil@v2 ->
+          ((x@v0 (\x@v3 -> (cons@v1 ((stringAppend "2") x@v3)))) nil@v2)
+        );
+      (\cons@v2 -> \nil@v3 ->
+        -- Inline v4
+        let v4 = (\x@v4 -> (cons@v2 ((stringAppend x@v4) "1")));
+        (v1
+          (\a@v5 -> \as@v6 ->
+            if ((notEq a@v5) "wat") then ((v4 a@v5) as@v6) else as@v6
+          )
+          nil@v3
+        )
+      )
+    );
+  -- Inline v1
+  let v1 =
+    (\x@v1 ->
+      (v0
+        (\cons@v2 -> \nil@v3 ->
+          (x@v1
+            (\a@v4 -> \as@v5 ->
+              let v1@v6 = ((Data.String.CodeUnits.stripPrefix "1") a@v4);
+              if (isTag Data.Maybe.Just v1@v6) then
+                ((cons@v2 v1@v6#value0) as@v5)
+              else if (isTag Data.Maybe.Nothing v1@v6) then
+                as@v5
+              else
+                <PatternMatchFailure>
+            )
+            nil@v3
+          )
+        )
+      )
+    );
+  -- Inline v2
+  let v2 =
+    (\x@v2 ->
+      (v1
+        (\cons@v3 -> \nil@v4 ->
+          ((x@v2 (\x@v5 -> (cons@v3 (Data.Show.showIntImpl x@v5)))) nil@v4)
+        )
+      )
+    );
+  (\x@v3 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        -- Inline v4
+        let v4 =
+          (\cons@v4 -> \nil@v5 ->
+            letRec-6 loop@v6 =
+              (\n@v7 -> \acc@v8 ->
+                if ((eq n@v7) 0) then
+                  acc@v8
+                else
+                  (loop@v6
+                    ((subtract n@v7) 1)
+                    ((cons@v4 ((arrayIndex x@v3) n@v7)) acc@v8)
+                  )
+              );
+            ((loop@v6 ((subtract (arrayLength x@v3)) 1)) nil@v5)
+          );
+        (v2
+          (\cons@v5 -> \nil@v6 ->
+            ((v4 (\x@v7 -> (cons@v5 ((add 1) x@v7)))) nil@v6)
+          )
+          Data.List.Types.Cons
+          Data.List.Types.Nil
+        )
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 5)
+  (\x@v0 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        -- Inline v1
+        let v1 =
+          (\cons@v1 -> \nil@v2 ->
+            -- Inline v3
+            let v3 = (\x@v3 -> (cons@v1 ((add 1) x@v3)));
+            letRec-4 loop@v4 =
+              (\n@v5 -> \acc@v6 ->
+                if ((eq n@v5) 0) then
+                  acc@v6
+                else
+                  (loop@v4
+                    ((subtract n@v5) 1)
+                    ((v3 ((arrayIndex x@v0) n@v5)) acc@v6)
+                  )
+              );
+            -- Inline v5
+            let v5 = ((loop@v4 ((subtract (arrayLength x@v0)) 1)) nil@v2);
+            v5
+          );
+        -- Inline v2
+        let v2 =
+          (\cons@v2 -> \nil@v3 ->
+            ((v1 (\x@v4 -> (cons@v2 (Data.Show.showIntImpl x@v4)))) nil@v3)
+          );
+        -- Inline v3
+        let v3 =
+          -- Inline v3
+          let v3 =
+            (\cons@v3 -> \nil@v4 ->
+              (v2
+                (\a@v5 -> \as@v6 ->
+                  let v1@v7 = ((Data.String.CodeUnits.stripPrefix "1") a@v5);
+                  if (isTag Data.Maybe.Just v1@v7) then
+                    ((cons@v3 v1@v7#value0) as@v6)
+                  else if (isTag Data.Maybe.Nothing v1@v7) then
+                    as@v6
+                  else
+                    <PatternMatchFailure>
+                )
+                nil@v4
+              )
+            );
+          -- Inline v4
+          let v4 =
+            (\cons@v4 -> \nil@v5 ->
+              -- Inline v6
+              let v6 =
+                (\a@v6 -> \as@v7 ->
+                  if ((notEq a@v6) "wat") then
+                    ((cons@v4 ((stringAppend a@v6) "1")) as@v7)
+                  else
+                    as@v7
+                );
+              ((v3 (\x@v7 -> (v6 ((stringAppend "2") x@v7)))) nil@v5)
+            );
+          v4;
+        ((v3 Data.List.Types.Cons) Data.List.Types.Nil)
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 6)
+  (\x@v0 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        -- Inline v1
+        let v1 = Data.List.Types.Nil;
+        -- Inline v2
+        let v2 =
+          (\x@v2 ->
+            let v3 = ((stringAppend "2") x@v2);
+            (\as@v4 ->
+              if ((notEq v3) "wat") then
+                (Data.List.Types.Cons.List ((stringAppend v3) "1") as@v4)
+              else
+                as@v4
+            )
+          );
+        -- Inline v3
+        let v3 =
+          -- Inline v3
+          let v3 =
+            (\a@v3 -> \as@v4 ->
+              let v1@v5 = ((Data.String.CodeUnits.stripPrefix "1") a@v3);
+              if (isTag Data.Maybe.Just v1@v5) then
+                ((v2 v1@v5#value0) as@v4)
+              else if (isTag Data.Maybe.Nothing v1@v5) then
+                as@v4
+              else
+                <PatternMatchFailure>
+            );
+          -- Inline v4
+          let v4 =
+            -- Inline v4
+            let v4 = (\x@v4 -> (v3 (Data.Show.showIntImpl x@v4)));
+            -- Inline v5
+            let v5 =
+              letRec-5 loop@v5 =
+                (\n@v6 -> \acc@v7 ->
+                  if ((eq n@v6) 0) then
+                    acc@v7
+                  else
+                    (loop@v5
+                      ((subtract n@v6) 1)
+                      -- Inline v8
+                      let v8 = ((arrayIndex x@v0) n@v6);
+                      ((v4 ((add 1) v8)) acc@v7)
+                    )
+                );
+              -- Inline v6
+              let v6 = ((loop@v5 ((subtract (arrayLength x@v0)) 1)) v1);
+              v6;
+            v5;
+          v4;
+        v3
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 7)
+  (\x@v0 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        letRec-1 loop@v1 =
+          (\n@v2 -> \acc@v3 ->
+            if ((eq n@v2) 0) then
+              acc@v3
+            else
+              (loop@v1
+                ((subtract n@v2) 1)
+                -- Inline v4
+                let v4 = ((add 1) ((arrayIndex x@v0) n@v2));
+                let v5 = (Data.Show.showIntImpl v4);
+                -- Inline v6
+                let v6 =
+                  (\as@v6 ->
+                    let v1@v7 = ((Data.String.CodeUnits.stripPrefix "1") v5);
+                    if (isTag Data.Maybe.Just v1@v7) then
+                      -- Inline v8
+                      let v8 = v1@v7#value0;
+                      let v9 = ((stringAppend "2") v8);
+                      -- Inline v10
+                      let v10 =
+                        (\as@v10 ->
+                          if ((notEq v9) "wat") then
+                            (Data.List.Types.Cons.List
+                              ((stringAppend v9) "1")
+                              as@v10
+                            )
+                          else
+                            as@v10
+                        );
+                      (v10 as@v6)
+                    else if (isTag Data.Maybe.Nothing v1@v7) then
+                      as@v6
+                    else
+                      <PatternMatchFailure>
+                  );
+                (v6 acc@v3)
+              )
+          );
+        ((loop@v1 ((subtract (arrayLength x@v0)) 1)) Data.List.Types.Nil)
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 8)
+  (\x@v0 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        letRec-1 loop@v1 =
+          (\n@v2 -> \acc@v3 ->
+            if ((eq n@v2) 0) then
+              acc@v3
+            else
+              (loop@v1
+                ((subtract n@v2) 1)
+                -- Inline v4
+                let v4 =
+                  (Data.Show.showIntImpl ((add 1) ((arrayIndex x@v0) n@v2)));
+                let v1@v5 = ((Data.String.CodeUnits.stripPrefix "1") v4);
+                -- Inline v6
+                let v6 =
+                  if (isTag Data.Maybe.Just v1@v5) then
+                    let v6 = ((stringAppend "2") v1@v5#value0);
+                    if ((notEq v6) "wat") then
+                      (Data.List.Types.Cons.List ((stringAppend v6) "1") acc@v3)
+                    else
+                      acc@v3
+                  else if (isTag Data.Maybe.Nothing v1@v5) then
+                    acc@v3
+                  else
+                    <PatternMatchFailure>;
+                v6
+              )
+          );
+        ((loop@v1 ((subtract (arrayLength x@v0)) 1)) Data.List.Types.Nil)
+      )
+    )
+  )
+---------------
+Snapshot.Fusion01.test (Step 9; Final)
+  (\x@v0 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        letRec-1 loop@v1 =
+          (\n@v2 -> \acc@v3 ->
+            if ((eq n@v2) 0) then
+              acc@v3
+            else
+              (loop@v1
+                ((subtract n@v2) 1)
+                let v1@v4 =
+                  (Data.String.CodeUnits.stripPrefix
+                    "1"
+                    (Data.Show.showIntImpl ((add 1) ((arrayIndex x@v0) n@v2)))
+                  );
+                if (isTag Data.Maybe.Just v1@v4) then
+                  let v5 = ((stringAppend "2") v1@v4#value0);
+                  if ((notEq v5) "wat") then
+                    (Data.List.Types.Cons.List ((stringAppend v5) "1") acc@v3)
+                  else
+                    acc@v3
+                else if (isTag Data.Maybe.Nothing v1@v4) then
+                  acc@v3
+                else
+                  <PatternMatchFailure>
+              )
+          );
+        ((loop@v1 ((subtract (arrayLength x@v0)) 1)) Data.List.Types.Nil)
+      )
+    )
+  )
+
+===============
+
+Snapshot.Fusion01.toArray (Step 0; Original)
+  (\v@v0 ->
+    -- Inline v1
+    let v1 = v@v0;
+    -- Inline v2
+    let v2 =
+      (\next@v2 ->
+        (Data.Array.reverse
+          (Snapshot.Fusion01.toUnfoldable
+            ((next@v2 Data.List.Types.Cons) Data.List.Types.Nil)
+          )
+        )
+      );
+    (v2 next@v1)
+  )
+---------------
+Snapshot.Fusion01.toArray (Step 1; Final)
+  (\v@v0 ->
+    (Data.Array.reverse
+      (Snapshot.Fusion01.toUnfoldable
+        ((v@v0 Data.List.Types.Cons) Data.List.Types.Nil)
+      )
+    )
+  )
+
+===============
+
+Snapshot.Fusion01.toUnfoldable (Step 0; Original)
+  (Data.List.toUnfoldable Data.Unfoldable.unfoldableArray)
+---------------
+Snapshot.Fusion01.toUnfoldable (Step 1; Final)
+  (Data.List.toUnfoldable Data.Unfoldable.unfoldableArray)
+
+===============
+
+Snapshot.Fusion01.unsafeIndex (Step 0; Original)
+  (Data.Array.unsafeIndex <PrimUndefined>)
+---------------
+Snapshot.Fusion01.unsafeIndex (Step 1)
+  -- Inline v0
+  let v0 = <PrimUndefined>;
+  Data.Array.unsafeIndexImpl
+---------------
+Snapshot.Fusion01.unsafeIndex (Step 2; Final)
+  Data.Array.unsafeIndexImpl

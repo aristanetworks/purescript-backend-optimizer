@@ -1,0 +1,245 @@
+Snapshot.InlineDirectivePropSpine02.Wat$Dict (Step 0; Original)
+  (\x@v0 -> x@v0)
+---------------
+Snapshot.InlineDirectivePropSpine02.Wat$Dict (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.InlineDirectivePropSpine02.compose (Step 1; Final)
+  Control.Semigroupoid.semigroupoidFn.compose
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.f (Step 0; Original)
+  (Snapshot.InlineDirectivePropSpine02.wat1
+    Snapshot.InlineDirectivePropSpine02.watUnit1
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.f (Step 1; Final)
+  Snapshot.InlineDirectivePropSpine02.watUnit1.wat1
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.g (Step 0; Original)
+  (Snapshot.InlineDirectivePropSpine02.wat2
+    Snapshot.InlineDirectivePropSpine02.watUnit1
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.g (Step 1; Final)
+  Snapshot.InlineDirectivePropSpine02.watUnit1.wat2
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.test1 (Step 0; Original)
+  (Snapshot.InlineDirectivePropSpine02.f Data.Unit.unit)
+---------------
+Snapshot.InlineDirectivePropSpine02.test1 (Step 1)
+  let to@v0 =
+    -- Inline v0
+    let v0 = (\a@v0 -> a@v0);
+    v0;
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 =
+        -- Inline v1
+        let v1 =
+          -- Inline v1
+          let v1 =
+            { wat1:
+                (\x@v1 ->
+                  (-- Stop
+                  Snapshot.InlineDirectivePropSpine02.testImpl
+                    (to@v0 x@v1)
+                  )
+                )
+            , wat2:
+                (\x@v1 ->
+                  (-- Stop
+                  Snapshot.InlineDirectivePropSpine02.testImpl
+                    (to@v0 x@v1)
+                  )
+                )
+            };
+          v1;
+        v1.wat1;
+      (v1 <PrimUndefined>);
+    v1;
+  v1
+---------------
+Snapshot.InlineDirectivePropSpine02.test1 (Step 2)
+  -- Inline to@v0
+  let to@v0 = (\a@v0 -> a@v0);
+  -- Inline v1
+  let v1 = <PrimUndefined>;
+  (-- Stop
+  Snapshot.InlineDirectivePropSpine02.testImpl
+    (to@v0 v1)
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.test1 (Step 3)
+  (-- Stop
+  Snapshot.InlineDirectivePropSpine02.testImpl
+    -- Inline v0
+    let v0 = <PrimUndefined>;
+    v0
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.test1 (Step 4; Final)
+  (-- Stop
+  Snapshot.InlineDirectivePropSpine02.testImpl
+    <PrimUndefined>
+  )
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.test2 (Step 0; Original)
+  (Snapshot.InlineDirectivePropSpine02.g Data.Unit.unit)
+---------------
+Snapshot.InlineDirectivePropSpine02.test2 (Step 1)
+  let to@v0 =
+    -- Inline v0
+    let v0 = (\a@v0 -> a@v0);
+    v0;
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 =
+        -- Inline v1
+        let v1 =
+          -- Inline v1
+          let v1 =
+            { wat1:
+                (\x@v1 ->
+                  (-- Stop
+                  Snapshot.InlineDirectivePropSpine02.testImpl
+                    (to@v0 x@v1)
+                  )
+                )
+            , wat2:
+                (\x@v1 ->
+                  (-- Stop
+                  Snapshot.InlineDirectivePropSpine02.testImpl
+                    (to@v0 x@v1)
+                  )
+                )
+            };
+          v1;
+        v1.wat2;
+      (v1 <PrimUndefined>);
+    v1;
+  v1
+---------------
+Snapshot.InlineDirectivePropSpine02.test2 (Step 2)
+  -- Inline to@v0
+  let to@v0 = (\a@v0 -> a@v0);
+  -- Inline v1
+  let v1 = <PrimUndefined>;
+  (-- Stop
+  Snapshot.InlineDirectivePropSpine02.testImpl
+    (to@v0 v1)
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.test2 (Step 3)
+  (-- Stop
+  Snapshot.InlineDirectivePropSpine02.testImpl
+    -- Inline v0
+    let v0 = <PrimUndefined>;
+    v0
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.test2 (Step 4; Final)
+  (-- Stop
+  Snapshot.InlineDirectivePropSpine02.testImpl
+    <PrimUndefined>
+  )
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.testImpl (Step 0; Original)
+  (Control.Category.identity Control.Category.categoryFn)
+---------------
+Snapshot.InlineDirectivePropSpine02.testImpl (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.wat1 (Step 0; Original)
+  (\dict@v0 ->
+    -- Inline v1
+    let v1 = dict@v0;
+    -- Inline v2
+    let v2 = (\v@v2 -> v@v2.wat1);
+    (v2 v@v1)
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.wat1 (Step 1; Final)
+  (\dict@v0 -> dict@v0.wat1)
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.wat2 (Step 0; Original)
+  (\dict@v0 ->
+    -- Inline v1
+    let v1 = dict@v0;
+    -- Inline v2
+    let v2 = (\v@v2 -> v@v2.wat2);
+    (v2 v@v1)
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.wat2 (Step 1; Final)
+  (\dict@v0 -> dict@v0.wat2)
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.watUnit (Step 0; Original)
+  (\dictTypeEquals@v0 ->
+    let to@v1 = (Type.Equality.to dictTypeEquals@v0);
+    { wat1:
+        (Snapshot.InlineDirectivePropSpine02.compose
+          Snapshot.InlineDirectivePropSpine02.testImpl
+          to@v1
+        )
+    , wat2:
+        (Snapshot.InlineDirectivePropSpine02.compose
+          Snapshot.InlineDirectivePropSpine02.testImpl
+          to@v1
+        )
+    }
+  )
+---------------
+Snapshot.InlineDirectivePropSpine02.watUnit (Step 1; Final)
+  (\dictTypeEquals@v0 ->
+    let to@v1 = (dictTypeEquals@v0.proof (\a@v1 -> a@v1));
+    { wat1:
+        (\x@v2 ->
+          (-- Stop
+          Snapshot.InlineDirectivePropSpine02.testImpl
+            (to@v1 x@v2)
+          )
+        )
+    , wat2:
+        (\x@v2 ->
+          (-- Stop
+          Snapshot.InlineDirectivePropSpine02.testImpl
+            (to@v1 x@v2)
+          )
+        )
+    }
+  )
+
+===============
+
+Snapshot.InlineDirectivePropSpine02.watUnit1 (Step 0; Original)
+  (Snapshot.InlineDirectivePropSpine02.watUnit Type.Equality.refl)
+---------------
+Snapshot.InlineDirectivePropSpine02.watUnit1 (Step 1; Final)
+  (Snapshot.InlineDirectivePropSpine02.watUnit Type.Equality.refl)

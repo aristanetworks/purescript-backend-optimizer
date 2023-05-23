@@ -1,0 +1,91 @@
+Snapshot.EffectUnsafe01.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.EffectUnsafe01.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.EffectUnsafe01.bind (Step 0; Original)
+  (Control.Bind.bind Effect.bindEffect)
+---------------
+Snapshot.EffectUnsafe01.bind (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.EffectUnsafe01.pure (Step 0; Original)
+  (Control.Applicative.pure Effect.applicativeEffect)
+---------------
+Snapshot.EffectUnsafe01.pure (Step 1; Final)
+  Effect.pureE
+
+===============
+
+Snapshot.EffectUnsafe01.test1 (Step 0; Original)
+  (Effect.Unsafe.unsafePerformEffect (Snapshot.EffectUnsafe01.pure 1))
+---------------
+Snapshot.EffectUnsafe01.test1 (Step 1)
+  (Effect.Unsafe.unsafePerformEffect
+    -- Inline v0
+    let v0 = 1;
+    -- Inline v1
+    let v1 = (# effectPure v0 #);
+    v1
+  )
+---------------
+Snapshot.EffectUnsafe01.test1 (Step 2; Final)
+  1
+
+===============
+
+Snapshot.EffectUnsafe01.test2 (Step 0; Original)
+  (\random@v0 ->
+    (Effect.Unsafe.unsafePerformEffect
+      (Snapshot.EffectUnsafe01.bind
+        random@v0
+        (\n@v1 ->
+          (Snapshot.EffectUnsafe01.bind
+            random@v0
+            (\m@v2 ->
+              (Snapshot.EffectUnsafe01.pure
+                ((Snapshot.EffectUnsafe01.add n@v1) m@v2)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+---------------
+Snapshot.EffectUnsafe01.test2 (Step 1)
+  (\random@v0 ->
+    (Effect.Unsafe.unsafePerformEffect
+      letEffect n@v1 = random@v0;
+      letEffect m@v2 = random@v0;
+      let v3 = ((add n@v1) m@v2);
+      -- Inline v4
+      let v4 = (# effectPure v3 #);
+      v4
+    )
+  )
+---------------
+Snapshot.EffectUnsafe01.test2 (Step 2)
+  (\random@v0 ->
+    (Effect.Unsafe.unsafePerformEffect
+      letEffect n@v1 = random@v0;
+      letEffect m@v2 = random@v0;
+      -- Inline v3
+      let v3 = ((add n@v1) m@v2);
+      (# effectPure v3 #)
+    )
+  )
+---------------
+Snapshot.EffectUnsafe01.test2 (Step 3; Final)
+  (\random@v0 ->
+    (Effect.Unsafe.unsafePerformEffect
+      letEffect n@v1 = random@v0;
+      letEffect m@v2 = random@v0;
+      (# effectPure ((add n@v1) m@v2) #)
+    )
+  )

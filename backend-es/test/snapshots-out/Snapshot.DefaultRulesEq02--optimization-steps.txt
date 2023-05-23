@@ -1,0 +1,342 @@
+Snapshot.DefaultRulesEq02.notEq (Step 0; Original)
+  (Data.Eq.notEq Data.Eq.eqInt)
+---------------
+Snapshot.DefaultRulesEq02.notEq (Step 1; Final)
+  (\x@v0 -> \y@v1 -> ((notEq x@v0) y@v1))
+
+===============
+
+Snapshot.DefaultRulesEq02.test1 (Step 0; Original)
+  Snapshot.DefaultRulesEq02.notEq
+---------------
+Snapshot.DefaultRulesEq02.test1 (Step 1; Final)
+  (\x@v0 -> \y@v1 -> ((notEq x@v0) y@v1))
+
+===============
+
+Snapshot.DefaultRulesEq02.test2 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Snapshot.DefaultRulesEq02.notEq a@v0) b@v1))
+---------------
+Snapshot.DefaultRulesEq02.test2 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((notEq a@v0) b@v1))
+
+===============
+
+Snapshot.DefaultRulesEq02.test3 (Step 0; Original)
+  (\a@v0 -> ((Snapshot.DefaultRulesEq02.notEq 12) a@v0))
+---------------
+Snapshot.DefaultRulesEq02.test3 (Step 1)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 = 12;
+    ((notEq v1) a@v0)
+  )
+---------------
+Snapshot.DefaultRulesEq02.test3 (Step 2; Final)
+  (\a@v0 -> ((notEq 12) a@v0))
+
+===============
+
+Snapshot.DefaultRulesEq02.test4 (Step 0; Original)
+  (\a@v0 -> ((Snapshot.DefaultRulesEq02.notEq a@v0) 12))
+---------------
+Snapshot.DefaultRulesEq02.test4 (Step 1)
+  (\a@v0 ->
+    -- Inline v1
+    let v1 = 12;
+    ((notEq a@v0) v1)
+  )
+---------------
+Snapshot.DefaultRulesEq02.test4 (Step 2; Final)
+  (\a@v0 -> ((notEq a@v0) 12))
+
+===============
+
+Snapshot.DefaultRulesEq02.test5 (Step 0; Original)
+  (Snapshot.DefaultRulesEq02.notEq 12)
+---------------
+Snapshot.DefaultRulesEq02.test5 (Step 1)
+  -- Inline v0
+  let v0 = 12;
+  (\y@v1 -> ((notEq v0) y@v1))
+---------------
+Snapshot.DefaultRulesEq02.test5 (Step 2; Final)
+  (\y@v0 -> ((notEq 12) y@v0))
+
+===============
+
+Snapshot.DefaultRulesEq02.test6 (Step 0; Original)
+  (Data.Eq.notEq
+    (Data.Eq.eqRec
+      <PrimUndefined>
+      (Data.Eq.eqRowCons
+        (Data.Eq.eqRowCons
+          (Data.Eq.eqRowCons
+            Data.Eq.eqRowNil
+            <PrimUndefined>
+            { reflectSymbol: (\$__unused@v0 -> "foo") }
+            Data.Eq.eqInt
+          )
+          <PrimUndefined>
+          { reflectSymbol: (\$__unused@v0 -> "baz") }
+          Data.Eq.eqBoolean
+        )
+        <PrimUndefined>
+        { reflectSymbol: (\$__unused@v0 -> "bar") }
+        Data.Eq.eqString
+      )
+    )
+    { foo: 42, bar: "hello", baz: false }
+  )
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 1)
+  let v0 =
+    -- Inline v0
+    let v0 = <PrimUndefined>;
+    -- LetAssoc
+    let v1 =
+      let v1 =
+        let v1 =
+          let v1 =
+            -- Inline v1
+            let v1 = <PrimUndefined>;
+            -- Inline v2
+            let v2 =
+              -- Inline v2
+              let v2 = { reflectSymbol: (\$__unused@v2 -> "foo") };
+              { eqRecord:
+                  (\v@v3 -> \ra@v4 -> \rb@v5 ->
+                    let get@v6 =
+                      (Record.Unsafe.unsafeGet
+                        (v2.reflectSymbol Type.Proxy.Proxy)
+                      );
+                    (booleanAnd
+                      (let v7 = (get@v6 ra@v4);
+                      -- Inline v8
+                      let v8 = (\v8 -> ((eq v7) v8));
+                      (v8 (get@v6 rb@v5)))
+                      (-- Inline v7
+                      let v7 = Type.Proxy.Proxy;
+                      -- Inline v8
+                      let v8 = (\v1@v8 -> \v2@v9 -> true);
+                      ((v8 ra@v4) rb@v5))
+                    )
+                  )
+              };
+            v2;
+          -- Inline v2
+          let v2 =
+            -- Inline v2
+            let v2 = <PrimUndefined>;
+            -- Inline v3
+            let v3 = { reflectSymbol: (\$__unused@v3 -> "baz") };
+            { eqRecord:
+                (\v@v4 -> \ra@v5 -> \rb@v6 ->
+                  let get@v7 =
+                    (Record.Unsafe.unsafeGet
+                      (v3.reflectSymbol Type.Proxy.Proxy)
+                    );
+                  (booleanAnd
+                    (let v8 = (get@v7 ra@v5);
+                    -- Inline v9
+                    let v9 = (\v9 -> ((eq v8) v9));
+                    (v9 (get@v7 rb@v6)))
+                    (((v1.eqRecord Type.Proxy.Proxy) ra@v5) rb@v6)
+                  )
+                )
+            };
+          v2;
+        -- Inline v2
+        let v2 =
+          -- Inline v2
+          let v2 = <PrimUndefined>;
+          -- Inline v3
+          let v3 = { reflectSymbol: (\$__unused@v3 -> "bar") };
+          { eqRecord:
+              (\v@v4 -> \ra@v5 -> \rb@v6 ->
+                let get@v7 =
+                  (Record.Unsafe.unsafeGet (v3.reflectSymbol Type.Proxy.Proxy));
+                (booleanAnd
+                  (let v8 = (get@v7 ra@v5);
+                  -- Inline v9
+                  let v9 = (\v9 -> ((eq v8) v9));
+                  (v9 (get@v7 rb@v6)))
+                  (((v1.eqRecord Type.Proxy.Proxy) ra@v5) rb@v6)
+                )
+              )
+          };
+        v2;
+      { eq: (v1.eqRecord Type.Proxy.Proxy) };
+    v1;
+  -- Inline v1
+  let v1 = (\x@v1 -> \y@v2 -> (not ((v0.eq x@v1) y@v2)));
+  (v1 { foo: 42, bar: "hello", baz: false })
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 2)
+  let v0 =
+    -- UnpackOp v0 Record ["eqRecord"]
+    let v0 =
+      { eqRecord:
+          (\v@v0 -> \ra@v1 -> \rb@v2 ->
+            let get@v3 =
+              (Record.Unsafe.unsafeGet
+                -- Inline v3
+                let v3 = Type.Proxy.Proxy;
+                "foo"
+              );
+            -- Inline v4
+            let v4 = (get@v3 ra@v1);
+            -- Inline v5
+            let v5 = (get@v3 rb@v2);
+            ((eq v4) v5)
+          )
+      };
+    -- UnpackOp v1 Record ["eqRecord"]
+    let v1 =
+      { eqRecord:
+          (\v@v1 -> \ra@v2 -> \rb@v3 ->
+            let get@v4 =
+              (Record.Unsafe.unsafeGet
+                -- Inline v4
+                let v4 = Type.Proxy.Proxy;
+                "baz"
+              );
+            (booleanAnd
+              (-- Inline v5
+              let v5 = (get@v4 ra@v2);
+              -- Inline v6
+              let v6 = (get@v4 rb@v3);
+              ((eq v5) v6))
+              (((v0.eqRecord Type.Proxy.Proxy) ra@v2) rb@v3)
+            )
+          )
+      };
+    -- Inline v2
+    let v2 =
+      { eqRecord:
+          (\v@v2 -> \ra@v3 -> \rb@v4 ->
+            let get@v5 =
+              (Record.Unsafe.unsafeGet
+                -- Inline v5
+                let v5 = Type.Proxy.Proxy;
+                "bar"
+              );
+            (booleanAnd
+              (-- Inline v6
+              let v6 = (get@v5 ra@v3);
+              -- Inline v7
+              let v7 = (get@v5 rb@v4);
+              ((eq v6) v7))
+              (((v1.eqRecord Type.Proxy.Proxy) ra@v3) rb@v4)
+            )
+          )
+      };
+    -- Inline v3
+    let v3 = { eq: (v2.eqRecord Type.Proxy.Proxy) };
+    v3;
+  -- Inline v1
+  let v1 = { foo: 42, bar: "hello", baz: false };
+  (\y@v2 -> (not ((v0.eq v1) y@v2)))
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 3)
+  let v0 =
+    -- Inline v0
+    let v0 =
+      (\v@v0 -> \ra@v1 -> \rb@v2 ->
+        -- Inline get@v3
+        let get@v3 = (\v3 -> v3.foo);
+        ((eq (get@v3 ra@v1)) (get@v3 rb@v2))
+      );
+    -- Inline v1
+    let v1 =
+      (\v@v1 -> \ra@v2 -> \rb@v3 ->
+        -- Inline get@v4
+        let get@v4 = (\v4 -> v4.baz);
+        (booleanAnd
+          ((eq (get@v4 ra@v2)) (get@v4 rb@v3))
+          (((v0 Type.Proxy.Proxy) ra@v2) rb@v3)
+        )
+      );
+    { eq:
+        -- Inline v2
+        let v2 = Type.Proxy.Proxy;
+        (\ra@v3 -> \rb@v4 ->
+          -- Inline get@v5
+          let get@v5 = (\v5 -> v5.bar);
+          (booleanAnd
+            ((eq (get@v5 ra@v3)) (get@v5 rb@v4))
+            (((v1 Type.Proxy.Proxy) ra@v3) rb@v4)
+          )
+        )
+    };
+  (\y@v1 -> (not ((v0.eq { foo: 42, bar: "hello", baz: false }) y@v1)))
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 4)
+  -- UnpackOp v0 Record ["eq"]
+  let v0 =
+    { eq:
+        (\ra@v0 -> \rb@v1 ->
+          (booleanAnd
+            ((eq ra@v0.bar) rb@v1.bar)
+            (-- Inline v2
+            let v2 = Type.Proxy.Proxy;
+            (booleanAnd
+              ((eq ra@v0.baz) rb@v1.baz)
+              (-- Inline v3
+              let v3 = Type.Proxy.Proxy;
+              ((eq ra@v0.foo) rb@v1.foo))
+            ))
+          )
+        )
+    };
+  (\y@v1 -> (not ((v0.eq { foo: 42, bar: "hello", baz: false }) y@v1)))
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 5)
+  -- Inline v0
+  let v0 =
+    (\ra@v0 -> \rb@v1 ->
+      (booleanAnd
+        ((eq ra@v0.bar) rb@v1.bar)
+        ((booleanAnd ((eq ra@v0.baz) rb@v1.baz)) ((eq ra@v0.foo) rb@v1.foo))
+      )
+    );
+  (\y@v1 -> (not ((v0 { foo: 42, bar: "hello", baz: false }) y@v1)))
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 6)
+  (\y@v0 ->
+    -- UnpackOp v1 Record ["foo","bar","baz"]
+    let v1 = { foo: 42, bar: "hello", baz: false };
+    -- Inline v2
+    let v2 =
+      (booleanAnd
+        ((eq v1.bar) y@v0.bar)
+        ((booleanAnd ((eq v1.baz) y@v0.baz)) ((eq v1.foo) y@v0.foo))
+      );
+    (not v2)
+  )
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 7)
+  (\y@v0 ->
+    -- Inline v1
+    let v1 = 42;
+    -- Inline v2
+    let v2 = "hello";
+    -- Inline v3
+    let v3 = false;
+    (not
+      (booleanAnd
+        ((eq v2) y@v0.bar)
+        ((booleanAnd ((eq v3) y@v0.baz)) ((eq v1) y@v0.foo))
+      )
+    )
+  )
+---------------
+Snapshot.DefaultRulesEq02.test6 (Step 8; Final)
+  (\y@v0 ->
+    (not
+      (booleanAnd
+        ((eq "hello") y@v0.bar)
+        ((booleanAnd (not y@v0.baz)) ((eq 42) y@v0.foo))
+      )
+    )
+  )

@@ -1,0 +1,47 @@
+Snapshot.EffectBind08.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.EffectBind08.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.EffectBind08.pure (Step 0; Original)
+  (Control.Applicative.pure Effect.applicativeEffect)
+---------------
+Snapshot.EffectBind08.pure (Step 1; Final)
+  Effect.pureE
+
+===============
+
+Snapshot.EffectBind08.test (Step 0; Original)
+  (Control.Bind.bind
+    Effect.bindEffect
+    (Unsafe.Coerce.unsafeCoerce (\v@v0 -> 12))
+    (\a@v0 -> (Snapshot.EffectBind08.pure ((Snapshot.EffectBind08.add a@v0) 1)))
+  )
+---------------
+Snapshot.EffectBind08.test (Step 1)
+  -- Inline v0
+  let v0 = (\v@v0 -> 12);
+  -- Inline v1
+  let v1 =
+    letEffect a@v1 = v0;
+    let v2 =
+      -- Inline v2
+      let v2 = 1;
+      ((add a@v1) v2);
+    -- Inline v3
+    let v3 = (# effectPure v2 #);
+    v3;
+  v1
+---------------
+Snapshot.EffectBind08.test (Step 2)
+  letEffect a@v0 = (\v@v0 -> 12);
+  -- Inline v1
+  let v1 = ((add a@v0) 1);
+  (# effectPure v1 #)
+---------------
+Snapshot.EffectBind08.test (Step 3; Final)
+  letEffect a@v0 = (\v@v0 -> 12);
+  (# effectPure ((add a@v0) 1) #)

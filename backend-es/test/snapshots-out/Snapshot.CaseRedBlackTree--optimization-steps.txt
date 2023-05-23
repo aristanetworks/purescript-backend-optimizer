@@ -1,0 +1,1672 @@
+Snapshot.CaseRedBlackTree.Black (Step 0; Original)
+  letCtor Black = { tag: "Black" };
+---------------
+Snapshot.CaseRedBlackTree.Black (Step 1; Final)
+  letCtor Black = { tag: "Black" };
+
+===============
+
+Snapshot.CaseRedBlackTree.Leaf (Step 0; Original)
+  letCtor Leaf = { tag: "Leaf" };
+---------------
+Snapshot.CaseRedBlackTree.Leaf (Step 1; Final)
+  letCtor Leaf = { tag: "Leaf" };
+
+===============
+
+Snapshot.CaseRedBlackTree.Node (Step 0; Original)
+  letCtor Node =
+    (\value0 value1 value2 value3 ->
+      { tag:
+          "Node"
+      , value0:
+          value0
+      , value1:
+          value1
+      , value2:
+          value2
+      , value3:
+          value3
+      }
+    );
+---------------
+Snapshot.CaseRedBlackTree.Node (Step 1; Final)
+  letCtor Node =
+    (\value0 value1 value2 value3 ->
+      { tag:
+          "Node"
+      , value0:
+          value0
+      , value1:
+          value1
+      , value2:
+          value2
+      , value3:
+          value3
+      }
+    );
+
+===============
+
+Snapshot.CaseRedBlackTree.Red (Step 0; Original)
+  letCtor Red = { tag: "Red" };
+---------------
+Snapshot.CaseRedBlackTree.Red (Step 1; Final)
+  letCtor Red = { tag: "Red" };
+
+===============
+
+Snapshot.CaseRedBlackTree.test1 (Step 0; Original)
+  (\$__unused@v0 -> \v@v1 ->
+    ((\$__unused@v2 ->
+      -- Inline v3
+      let v3 = v@v1;
+      -- Inline v4
+      let v4 =
+        (\a@v4 b@v5 c@v6 d@v7 x@v8 y@v9 z@v10 ->
+          { i:
+              1
+          , a:
+              a@v4
+          , x:
+              x@v8
+          , b:
+              b@v5
+          , y:
+              y@v9
+          , c:
+              c@v6
+          , z:
+              z@v10
+          , d:
+              d@v7
+          }
+        );
+      -- Inline v5
+      let v5 =
+        (\a@v5 b@v6 c@v7 d@v8 x@v9 y@v10 z@v11 ->
+          { i:
+              2
+          , a:
+              a@v5
+          , x:
+              x@v9
+          , b:
+              b@v6
+          , y:
+              y@v10
+          , c:
+              c@v7
+          , z:
+              z@v11
+          , d:
+              d@v8
+          }
+        );
+      -- Inline v6
+      let v6 =
+        (\a@v6 b@v7 c@v8 d@v9 x@v10 y@v11 z@v12 ->
+          { i:
+              3
+          , a:
+              a@v6
+          , x:
+              x@v10
+          , b:
+              b@v7
+          , y:
+              y@v11
+          , c:
+              c@v8
+          , z:
+              z@v12
+          , d:
+              d@v9
+          }
+        );
+      -- Inline v7
+      let v7 =
+        (\a@v7 b@v8 c@v9 d@v10 x@v11 y@v12 z@v13 ->
+          { i:
+              4
+          , a:
+              a@v7
+          , x:
+              x@v11
+          , b:
+              b@v8
+          , y:
+              y@v12
+          , c:
+              c@v9
+          , z:
+              z@v13
+          , d:
+              d@v10
+          }
+        );
+      if (isTag Snapshot.CaseRedBlackTree.Node v3) then
+        -- Inline v8
+        let v8 = v3#value0;
+        -- Inline v9
+        let v9 = v3#value1;
+        -- Inline v10
+        let v10 = v3#value2;
+        -- Inline v11
+        let v11 = v3#value3;
+        if (isTag Snapshot.CaseRedBlackTree.Black v8) then
+          if (isTag Snapshot.CaseRedBlackTree.Node v9) then
+            -- Inline v12
+            let v12 = v9#value0;
+            -- Inline v13
+            let v13 = v9#value1;
+            -- Inline v14
+            let v14 = v9#value2;
+            -- Inline v15
+            let v15 = v9#value3;
+            if (isTag Snapshot.CaseRedBlackTree.Red v12) then
+              if (isTag Snapshot.CaseRedBlackTree.Node v13) then
+                -- Inline v16
+                let v16 = v13#value0;
+                -- Inline v17
+                let v17 = v13#value1;
+                -- Inline v18
+                let v18 = v13#value2;
+                -- Inline v19
+                let v19 = v13#value3;
+                if (isTag Snapshot.CaseRedBlackTree.Red v16) then
+                  (v4 a@v17 b@v19 c@v15 d@v11 x@v18 y@v14 z@v10)
+                else if (isTag Snapshot.CaseRedBlackTree.Node v15) then
+                  -- Inline v20
+                  let v20 = v15#value0;
+                  -- Inline v21
+                  let v21 = v15#value1;
+                  -- Inline v22
+                  let v22 = v15#value2;
+                  -- Inline v23
+                  let v23 = v15#value3;
+                  if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                    (v5 a@v13 b@v21 c@v23 d@v11 x@v14 y@v22 z@v10)
+                  else if (isTag Snapshot.CaseRedBlackTree.Node v11) then
+                    -- Inline v24
+                    let v24 = v11#value0;
+                    -- Inline v25
+                    let v25 = v11#value1;
+                    -- Inline v26
+                    let v26 = v11#value2;
+                    -- Inline v27
+                    let v27 = v11#value3;
+                    if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                      if (isTag Snapshot.CaseRedBlackTree.Node v25) then
+                        -- Inline v28
+                        let v28 = v25#value0;
+                        -- Inline v29
+                        let v29 = v25#value1;
+                        -- Inline v30
+                        let v30 = v25#value2;
+                        -- Inline v31
+                        let v31 = v25#value3;
+                        if (isTag Snapshot.CaseRedBlackTree.Red v28) then
+                          (v6 a@v9 b@v29 c@v31 d@v27 x@v10 y@v30 z@v26)
+                        else if (isTag Snapshot.CaseRedBlackTree.Node v27) then
+                          -- Inline v32
+                          let v32 = v27#value0;
+                          -- Inline v33
+                          let v33 = v27#value1;
+                          -- Inline v34
+                          let v34 = v27#value2;
+                          -- Inline v35
+                          let v35 = v27#value3;
+                          if (isTag Snapshot.CaseRedBlackTree.Red v32) then
+                            (v7 a@v9 b@v25 c@v33 d@v35 x@v10 y@v26 z@v34)
+                          else
+                            <PatternMatchFailure>
+                        else
+                          <PatternMatchFailure>
+                      else if (isTag Snapshot.CaseRedBlackTree.Node v27) then
+                        -- Inline v28
+                        let v28 = v27#value0;
+                        -- Inline v29
+                        let v29 = v27#value1;
+                        -- Inline v30
+                        let v30 = v27#value2;
+                        -- Inline v31
+                        let v31 = v27#value3;
+                        if (isTag Snapshot.CaseRedBlackTree.Red v28) then
+                          (v7 a@v9 b@v25 c@v29 d@v31 x@v10 y@v26 z@v30)
+                        else
+                          <PatternMatchFailure>
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else if (isTag Snapshot.CaseRedBlackTree.Node v11) then
+                  -- Inline v20
+                  let v20 = v11#value0;
+                  -- Inline v21
+                  let v21 = v11#value1;
+                  -- Inline v22
+                  let v22 = v11#value2;
+                  -- Inline v23
+                  let v23 = v11#value3;
+                  if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                    if (isTag Snapshot.CaseRedBlackTree.Node v21) then
+                      -- Inline v24
+                      let v24 = v21#value0;
+                      -- Inline v25
+                      let v25 = v21#value1;
+                      -- Inline v26
+                      let v26 = v21#value2;
+                      -- Inline v27
+                      let v27 = v21#value3;
+                      if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                        (v6 a@v9 b@v25 c@v27 d@v23 x@v10 y@v26 z@v22)
+                      else if (isTag Snapshot.CaseRedBlackTree.Node v23) then
+                        -- Inline v28
+                        let v28 = v23#value0;
+                        -- Inline v29
+                        let v29 = v23#value1;
+                        -- Inline v30
+                        let v30 = v23#value2;
+                        -- Inline v31
+                        let v31 = v23#value3;
+                        if (isTag Snapshot.CaseRedBlackTree.Red v28) then
+                          (v7 a@v9 b@v21 c@v29 d@v31 x@v10 y@v22 z@v30)
+                        else
+                          <PatternMatchFailure>
+                      else
+                        <PatternMatchFailure>
+                    else if (isTag Snapshot.CaseRedBlackTree.Node v23) then
+                      -- Inline v24
+                      let v24 = v23#value0;
+                      -- Inline v25
+                      let v25 = v23#value1;
+                      -- Inline v26
+                      let v26 = v23#value2;
+                      -- Inline v27
+                      let v27 = v23#value3;
+                      if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                        (v7 a@v9 b@v21 c@v25 d@v27 x@v10 y@v22 z@v26)
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v15) then
+                -- Inline v16
+                let v16 = v15#value0;
+                -- Inline v17
+                let v17 = v15#value1;
+                -- Inline v18
+                let v18 = v15#value2;
+                -- Inline v19
+                let v19 = v15#value3;
+                if (isTag Snapshot.CaseRedBlackTree.Red v16) then
+                  (v5 a@v13 b@v17 c@v19 d@v11 x@v14 y@v18 z@v10)
+                else if (isTag Snapshot.CaseRedBlackTree.Node v11) then
+                  -- Inline v20
+                  let v20 = v11#value0;
+                  -- Inline v21
+                  let v21 = v11#value1;
+                  -- Inline v22
+                  let v22 = v11#value2;
+                  -- Inline v23
+                  let v23 = v11#value3;
+                  if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                    if (isTag Snapshot.CaseRedBlackTree.Node v21) then
+                      -- Inline v24
+                      let v24 = v21#value0;
+                      -- Inline v25
+                      let v25 = v21#value1;
+                      -- Inline v26
+                      let v26 = v21#value2;
+                      -- Inline v27
+                      let v27 = v21#value3;
+                      if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                        (v6 a@v9 b@v25 c@v27 d@v23 x@v10 y@v26 z@v22)
+                      else if (isTag Snapshot.CaseRedBlackTree.Node v23) then
+                        -- Inline v28
+                        let v28 = v23#value0;
+                        -- Inline v29
+                        let v29 = v23#value1;
+                        -- Inline v30
+                        let v30 = v23#value2;
+                        -- Inline v31
+                        let v31 = v23#value3;
+                        if (isTag Snapshot.CaseRedBlackTree.Red v28) then
+                          (v7 a@v9 b@v21 c@v29 d@v31 x@v10 y@v22 z@v30)
+                        else
+                          <PatternMatchFailure>
+                      else
+                        <PatternMatchFailure>
+                    else if (isTag Snapshot.CaseRedBlackTree.Node v23) then
+                      -- Inline v24
+                      let v24 = v23#value0;
+                      -- Inline v25
+                      let v25 = v23#value1;
+                      -- Inline v26
+                      let v26 = v23#value2;
+                      -- Inline v27
+                      let v27 = v23#value3;
+                      if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                        (v7 a@v9 b@v21 c@v25 d@v27 x@v10 y@v22 z@v26)
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v11) then
+                -- Inline v16
+                let v16 = v11#value0;
+                -- Inline v17
+                let v17 = v11#value1;
+                -- Inline v18
+                let v18 = v11#value2;
+                -- Inline v19
+                let v19 = v11#value3;
+                if (isTag Snapshot.CaseRedBlackTree.Red v16) then
+                  if (isTag Snapshot.CaseRedBlackTree.Node v17) then
+                    -- Inline v20
+                    let v20 = v17#value0;
+                    -- Inline v21
+                    let v21 = v17#value1;
+                    -- Inline v22
+                    let v22 = v17#value2;
+                    -- Inline v23
+                    let v23 = v17#value3;
+                    if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                      (v6 a@v9 b@v21 c@v23 d@v19 x@v10 y@v22 z@v18)
+                    else if (isTag Snapshot.CaseRedBlackTree.Node v19) then
+                      -- Inline v24
+                      let v24 = v19#value0;
+                      -- Inline v25
+                      let v25 = v19#value1;
+                      -- Inline v26
+                      let v26 = v19#value2;
+                      -- Inline v27
+                      let v27 = v19#value3;
+                      if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                        (v7 a@v9 b@v17 c@v25 d@v27 x@v10 y@v18 z@v26)
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else if (isTag Snapshot.CaseRedBlackTree.Node v19) then
+                    -- Inline v20
+                    let v20 = v19#value0;
+                    -- Inline v21
+                    let v21 = v19#value1;
+                    -- Inline v22
+                    let v22 = v19#value2;
+                    -- Inline v23
+                    let v23 = v19#value3;
+                    if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                      (v7 a@v9 b@v17 c@v21 d@v23 x@v10 y@v18 z@v22)
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v11) then
+              -- Inline v16
+              let v16 = v11#value0;
+              -- Inline v17
+              let v17 = v11#value1;
+              -- Inline v18
+              let v18 = v11#value2;
+              -- Inline v19
+              let v19 = v11#value3;
+              if (isTag Snapshot.CaseRedBlackTree.Red v16) then
+                if (isTag Snapshot.CaseRedBlackTree.Node v17) then
+                  -- Inline v20
+                  let v20 = v17#value0;
+                  -- Inline v21
+                  let v21 = v17#value1;
+                  -- Inline v22
+                  let v22 = v17#value2;
+                  -- Inline v23
+                  let v23 = v17#value3;
+                  if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                    (v6 a@v9 b@v21 c@v23 d@v19 x@v10 y@v22 z@v18)
+                  else if (isTag Snapshot.CaseRedBlackTree.Node v19) then
+                    -- Inline v24
+                    let v24 = v19#value0;
+                    -- Inline v25
+                    let v25 = v19#value1;
+                    -- Inline v26
+                    let v26 = v19#value2;
+                    -- Inline v27
+                    let v27 = v19#value3;
+                    if (isTag Snapshot.CaseRedBlackTree.Red v24) then
+                      (v7 a@v9 b@v17 c@v25 d@v27 x@v10 y@v18 z@v26)
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else if (isTag Snapshot.CaseRedBlackTree.Node v19) then
+                  -- Inline v20
+                  let v20 = v19#value0;
+                  -- Inline v21
+                  let v21 = v19#value1;
+                  -- Inline v22
+                  let v22 = v19#value2;
+                  -- Inline v23
+                  let v23 = v19#value3;
+                  if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                    (v7 a@v9 b@v17 c@v21 d@v23 x@v10 y@v18 z@v22)
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else if (isTag Snapshot.CaseRedBlackTree.Node v11) then
+            -- Inline v12
+            let v12 = v11#value0;
+            -- Inline v13
+            let v13 = v11#value1;
+            -- Inline v14
+            let v14 = v11#value2;
+            -- Inline v15
+            let v15 = v11#value3;
+            if (isTag Snapshot.CaseRedBlackTree.Red v12) then
+              if (isTag Snapshot.CaseRedBlackTree.Node v13) then
+                -- Inline v16
+                let v16 = v13#value0;
+                -- Inline v17
+                let v17 = v13#value1;
+                -- Inline v18
+                let v18 = v13#value2;
+                -- Inline v19
+                let v19 = v13#value3;
+                if (isTag Snapshot.CaseRedBlackTree.Red v16) then
+                  (v6 a@v9 b@v17 c@v19 d@v15 x@v10 y@v18 z@v14)
+                else if (isTag Snapshot.CaseRedBlackTree.Node v15) then
+                  -- Inline v20
+                  let v20 = v15#value0;
+                  -- Inline v21
+                  let v21 = v15#value1;
+                  -- Inline v22
+                  let v22 = v15#value2;
+                  -- Inline v23
+                  let v23 = v15#value3;
+                  if (isTag Snapshot.CaseRedBlackTree.Red v20) then
+                    (v7 a@v9 b@v13 c@v21 d@v23 x@v10 y@v14 z@v22)
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v15) then
+                -- Inline v16
+                let v16 = v15#value0;
+                -- Inline v17
+                let v17 = v15#value1;
+                -- Inline v18
+                let v18 = v15#value2;
+                -- Inline v19
+                let v19 = v15#value3;
+                if (isTag Snapshot.CaseRedBlackTree.Red v16) then
+                  (v7 a@v9 b@v13 c@v17 d@v19 x@v10 y@v14 z@v18)
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else
+          <PatternMatchFailure>
+      else
+        <PatternMatchFailure>
+    )
+      <PrimUndefined>
+    )
+  )
+---------------
+Snapshot.CaseRedBlackTree.test1 (Step 1)
+  (\$__unused@v0 -> \v@v1 ->
+    -- Inline v2
+    let v2 = <PrimUndefined>;
+    if (isTag Snapshot.CaseRedBlackTree.Node v@v1) then
+      if (isTag Snapshot.CaseRedBlackTree.Black v@v1#value0) then
+        if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1) then
+          if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value1#value0) then
+            if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1#value1) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value1#value1#value0) then
+                -- Inline v3
+                let v3 = v@v1#value1#value1#value1;
+                -- Inline v4
+                let v4 = v@v1#value1#value1#value3;
+                -- Inline v5
+                let v5 = v@v1#value1#value3;
+                -- Inline v6
+                let v6 = v@v1#value3;
+                -- Inline v7
+                let v7 = v@v1#value1#value1#value2;
+                -- Inline v8
+                let v8 = v@v1#value1#value2;
+                -- Inline v9
+                let v9 = v@v1#value2;
+                { i: 1, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value1#value3#value0
+                ) then
+                  -- Inline v3
+                  let v3 = v@v1#value1#value1;
+                  -- Inline v4
+                  let v4 = v@v1#value1#value3#value1;
+                  -- Inline v5
+                  let v5 = v@v1#value1#value3#value3;
+                  -- Inline v6
+                  let v6 = v@v1#value3;
+                  -- Inline v7
+                  let v7 = v@v1#value1#value2;
+                  -- Inline v8
+                  let v8 = v@v1#value1#value3#value2;
+                  -- Inline v9
+                  let v9 = v@v1#value2;
+                  { i: 2, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                    if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value1#value0
+                      ) then
+                        -- Inline v3
+                        let v3 = v@v1#value1;
+                        -- Inline v4
+                        let v4 = v@v1#value3#value1#value1;
+                        -- Inline v5
+                        let v5 = v@v1#value3#value1#value3;
+                        -- Inline v6
+                        let v6 = v@v1#value3#value3;
+                        -- Inline v7
+                        let v7 = v@v1#value2;
+                        -- Inline v8
+                        let v8 = v@v1#value3#value1#value2;
+                        -- Inline v9
+                        let v9 = v@v1#value3#value2;
+                        { i:
+                            3
+                        , a:
+                            v3
+                        , x:
+                            v7
+                        , b:
+                            v4
+                        , y:
+                            v8
+                        , c:
+                            v5
+                        , z:
+                            v9
+                        , d:
+                            v6
+                        }
+                      else if (isTag Snapshot.CaseRedBlackTree.Node
+                        v@v1#value3#value3
+                      ) then
+                        if (isTag Snapshot.CaseRedBlackTree.Red
+                          v@v1#value3#value3#value0
+                        ) then
+                          -- Inline v3
+                          let v3 = v@v1#value1;
+                          -- Inline v4
+                          let v4 = v@v1#value3#value1;
+                          -- Inline v5
+                          let v5 = v@v1#value3#value3#value1;
+                          -- Inline v6
+                          let v6 = v@v1#value3#value3#value3;
+                          -- Inline v7
+                          let v7 = v@v1#value2;
+                          -- Inline v8
+                          let v8 = v@v1#value3#value2;
+                          -- Inline v9
+                          let v9 = v@v1#value3#value3#value2;
+                          { i:
+                              4
+                          , a:
+                              v3
+                          , x:
+                              v7
+                          , b:
+                              v4
+                          , y:
+                              v8
+                          , c:
+                              v5
+                          , z:
+                              v9
+                          , d:
+                              v6
+                          }
+                        else
+                          <PatternMatchFailure>
+                      else
+                        <PatternMatchFailure>
+                    else if (isTag Snapshot.CaseRedBlackTree.Node
+                      v@v1#value3#value3
+                    ) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value3#value0
+                      ) then
+                        -- Inline v3
+                        let v3 = v@v1#value1;
+                        -- Inline v4
+                        let v4 = v@v1#value3#value1;
+                        -- Inline v5
+                        let v5 = v@v1#value3#value3#value1;
+                        -- Inline v6
+                        let v6 = v@v1#value3#value3#value3;
+                        -- Inline v7
+                        let v7 = v@v1#value2;
+                        -- Inline v8
+                        let v8 = v@v1#value3#value2;
+                        -- Inline v9
+                        let v9 = v@v1#value3#value3#value2;
+                        { i:
+                            4
+                        , a:
+                            v3
+                        , x:
+                            v7
+                        , b:
+                            v4
+                        , y:
+                            v8
+                        , c:
+                            v5
+                        , z:
+                            v9
+                        , d:
+                            v6
+                        }
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                  if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value1#value0
+                    ) then
+                      -- Inline v3
+                      let v3 = v@v1#value1;
+                      -- Inline v4
+                      let v4 = v@v1#value3#value1#value1;
+                      -- Inline v5
+                      let v5 = v@v1#value3#value1#value3;
+                      -- Inline v6
+                      let v6 = v@v1#value3#value3;
+                      -- Inline v7
+                      let v7 = v@v1#value2;
+                      -- Inline v8
+                      let v8 = v@v1#value3#value1#value2;
+                      -- Inline v9
+                      let v9 = v@v1#value3#value2;
+                      { i: 3, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                    else if (isTag Snapshot.CaseRedBlackTree.Node
+                      v@v1#value3#value3
+                    ) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value3#value0
+                      ) then
+                        -- Inline v3
+                        let v3 = v@v1#value1;
+                        -- Inline v4
+                        let v4 = v@v1#value3#value1;
+                        -- Inline v5
+                        let v5 = v@v1#value3#value3#value1;
+                        -- Inline v6
+                        let v6 = v@v1#value3#value3#value3;
+                        -- Inline v7
+                        let v7 = v@v1#value2;
+                        -- Inline v8
+                        let v8 = v@v1#value3#value2;
+                        -- Inline v9
+                        let v9 = v@v1#value3#value3#value2;
+                        { i:
+                            4
+                        , a:
+                            v3
+                        , x:
+                            v7
+                        , b:
+                            v4
+                        , y:
+                            v8
+                        , c:
+                            v5
+                        , z:
+                            v9
+                        , d:
+                            v6
+                        }
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else if (isTag Snapshot.CaseRedBlackTree.Node
+                    v@v1#value3#value3
+                  ) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value3#value0
+                    ) then
+                      -- Inline v3
+                      let v3 = v@v1#value1;
+                      -- Inline v4
+                      let v4 = v@v1#value3#value1;
+                      -- Inline v5
+                      let v5 = v@v1#value3#value3#value1;
+                      -- Inline v6
+                      let v6 = v@v1#value3#value3#value3;
+                      -- Inline v7
+                      let v7 = v@v1#value2;
+                      -- Inline v8
+                      let v8 = v@v1#value3#value2;
+                      -- Inline v9
+                      let v9 = v@v1#value3#value3#value2;
+                      { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1#value3) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value1#value3#value0) then
+                -- Inline v3
+                let v3 = v@v1#value1#value1;
+                -- Inline v4
+                let v4 = v@v1#value1#value3#value1;
+                -- Inline v5
+                let v5 = v@v1#value1#value3#value3;
+                -- Inline v6
+                let v6 = v@v1#value3;
+                -- Inline v7
+                let v7 = v@v1#value1#value2;
+                -- Inline v8
+                let v8 = v@v1#value1#value3#value2;
+                -- Inline v9
+                let v9 = v@v1#value2;
+                { i: 2, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                  if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value1#value0
+                    ) then
+                      -- Inline v3
+                      let v3 = v@v1#value1;
+                      -- Inline v4
+                      let v4 = v@v1#value3#value1#value1;
+                      -- Inline v5
+                      let v5 = v@v1#value3#value1#value3;
+                      -- Inline v6
+                      let v6 = v@v1#value3#value3;
+                      -- Inline v7
+                      let v7 = v@v1#value2;
+                      -- Inline v8
+                      let v8 = v@v1#value3#value1#value2;
+                      -- Inline v9
+                      let v9 = v@v1#value3#value2;
+                      { i: 3, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                    else if (isTag Snapshot.CaseRedBlackTree.Node
+                      v@v1#value3#value3
+                    ) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value3#value0
+                      ) then
+                        -- Inline v3
+                        let v3 = v@v1#value1;
+                        -- Inline v4
+                        let v4 = v@v1#value3#value1;
+                        -- Inline v5
+                        let v5 = v@v1#value3#value3#value1;
+                        -- Inline v6
+                        let v6 = v@v1#value3#value3#value3;
+                        -- Inline v7
+                        let v7 = v@v1#value2;
+                        -- Inline v8
+                        let v8 = v@v1#value3#value2;
+                        -- Inline v9
+                        let v9 = v@v1#value3#value3#value2;
+                        { i:
+                            4
+                        , a:
+                            v3
+                        , x:
+                            v7
+                        , b:
+                            v4
+                        , y:
+                            v8
+                        , c:
+                            v5
+                        , z:
+                            v9
+                        , d:
+                            v6
+                        }
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else if (isTag Snapshot.CaseRedBlackTree.Node
+                    v@v1#value3#value3
+                  ) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value3#value0
+                    ) then
+                      -- Inline v3
+                      let v3 = v@v1#value1;
+                      -- Inline v4
+                      let v4 = v@v1#value3#value1;
+                      -- Inline v5
+                      let v5 = v@v1#value3#value3#value1;
+                      -- Inline v6
+                      let v6 = v@v1#value3#value3#value3;
+                      -- Inline v7
+                      let v7 = v@v1#value2;
+                      -- Inline v8
+                      let v8 = v@v1#value3#value2;
+                      -- Inline v9
+                      let v9 = v@v1#value3#value3#value2;
+                      { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red
+                    v@v1#value3#value1#value0
+                  ) then
+                    -- Inline v3
+                    let v3 = v@v1#value1;
+                    -- Inline v4
+                    let v4 = v@v1#value3#value1#value1;
+                    -- Inline v5
+                    let v5 = v@v1#value3#value1#value3;
+                    -- Inline v6
+                    let v6 = v@v1#value3#value3;
+                    -- Inline v7
+                    let v7 = v@v1#value2;
+                    -- Inline v8
+                    let v8 = v@v1#value3#value1#value2;
+                    -- Inline v9
+                    let v9 = v@v1#value3#value2;
+                    { i: 3, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                  else if (isTag Snapshot.CaseRedBlackTree.Node
+                    v@v1#value3#value3
+                  ) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value3#value0
+                    ) then
+                      -- Inline v3
+                      let v3 = v@v1#value1;
+                      -- Inline v4
+                      let v4 = v@v1#value3#value1;
+                      -- Inline v5
+                      let v5 = v@v1#value3#value3#value1;
+                      -- Inline v6
+                      let v6 = v@v1#value3#value3#value3;
+                      -- Inline v7
+                      let v7 = v@v1#value2;
+                      -- Inline v8
+                      let v8 = v@v1#value3#value2;
+                      -- Inline v9
+                      let v9 = v@v1#value3#value3#value2;
+                      { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else if (isTag Snapshot.CaseRedBlackTree.Node
+                  v@v1#value3#value3
+                ) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red
+                    v@v1#value3#value3#value0
+                  ) then
+                    -- Inline v3
+                    let v3 = v@v1#value1;
+                    -- Inline v4
+                    let v4 = v@v1#value3#value1;
+                    -- Inline v5
+                    let v5 = v@v1#value3#value3#value1;
+                    -- Inline v6
+                    let v6 = v@v1#value3#value3#value3;
+                    -- Inline v7
+                    let v7 = v@v1#value2;
+                    -- Inline v8
+                    let v8 = v@v1#value3#value2;
+                    -- Inline v9
+                    let v9 = v@v1#value3#value3#value2;
+                    { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+            if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+              if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value3#value1#value0
+                ) then
+                  -- Inline v3
+                  let v3 = v@v1#value1;
+                  -- Inline v4
+                  let v4 = v@v1#value3#value1#value1;
+                  -- Inline v5
+                  let v5 = v@v1#value3#value1#value3;
+                  -- Inline v6
+                  let v6 = v@v1#value3#value3;
+                  -- Inline v7
+                  let v7 = v@v1#value2;
+                  -- Inline v8
+                  let v8 = v@v1#value3#value1#value2;
+                  -- Inline v9
+                  let v9 = v@v1#value3#value2;
+                  { i: 3, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                else if (isTag Snapshot.CaseRedBlackTree.Node
+                  v@v1#value3#value3
+                ) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red
+                    v@v1#value3#value3#value0
+                  ) then
+                    -- Inline v3
+                    let v3 = v@v1#value1;
+                    -- Inline v4
+                    let v4 = v@v1#value3#value1;
+                    -- Inline v5
+                    let v5 = v@v1#value3#value3#value1;
+                    -- Inline v6
+                    let v6 = v@v1#value3#value3#value3;
+                    -- Inline v7
+                    let v7 = v@v1#value2;
+                    -- Inline v8
+                    let v8 = v@v1#value3#value2;
+                    -- Inline v9
+                    let v9 = v@v1#value3#value3#value2;
+                    { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value3#value3#value0
+                ) then
+                  -- Inline v3
+                  let v3 = v@v1#value1;
+                  -- Inline v4
+                  let v4 = v@v1#value3#value1;
+                  -- Inline v5
+                  let v5 = v@v1#value3#value3#value1;
+                  -- Inline v6
+                  let v6 = v@v1#value3#value3#value3;
+                  -- Inline v7
+                  let v7 = v@v1#value2;
+                  -- Inline v8
+                  let v8 = v@v1#value3#value2;
+                  -- Inline v9
+                  let v9 = v@v1#value3#value3#value2;
+                  { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+          if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+            if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value1#value0) then
+                -- Inline v3
+                let v3 = v@v1#value1;
+                -- Inline v4
+                let v4 = v@v1#value3#value1#value1;
+                -- Inline v5
+                let v5 = v@v1#value3#value1#value3;
+                -- Inline v6
+                let v6 = v@v1#value3#value3;
+                -- Inline v7
+                let v7 = v@v1#value2;
+                -- Inline v8
+                let v8 = v@v1#value3#value1#value2;
+                -- Inline v9
+                let v9 = v@v1#value3#value2;
+                { i: 3, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value3#value3#value0
+                ) then
+                  -- Inline v3
+                  let v3 = v@v1#value1;
+                  -- Inline v4
+                  let v4 = v@v1#value3#value1;
+                  -- Inline v5
+                  let v5 = v@v1#value3#value3#value1;
+                  -- Inline v6
+                  let v6 = v@v1#value3#value3#value3;
+                  -- Inline v7
+                  let v7 = v@v1#value2;
+                  -- Inline v8
+                  let v8 = v@v1#value3#value2;
+                  -- Inline v9
+                  let v9 = v@v1#value3#value3#value2;
+                  { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value3) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value3#value0) then
+                -- Inline v3
+                let v3 = v@v1#value1;
+                -- Inline v4
+                let v4 = v@v1#value3#value1;
+                -- Inline v5
+                let v5 = v@v1#value3#value3#value1;
+                -- Inline v6
+                let v6 = v@v1#value3#value3#value3;
+                -- Inline v7
+                let v7 = v@v1#value2;
+                -- Inline v8
+                let v8 = v@v1#value3#value2;
+                -- Inline v9
+                let v9 = v@v1#value3#value3#value2;
+                { i: 4, a: v3, x: v7, b: v4, y: v8, c: v5, z: v9, d: v6 }
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else
+          <PatternMatchFailure>
+      else
+        <PatternMatchFailure>
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.CaseRedBlackTree.test1 (Step 2; Final)
+  (\$__unused@v0 -> \v@v1 ->
+    if (isTag Snapshot.CaseRedBlackTree.Node v@v1) then
+      if (isTag Snapshot.CaseRedBlackTree.Black v@v1#value0) then
+        if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1) then
+          if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value1#value0) then
+            if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1#value1) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value1#value1#value0) then
+                { i:
+                    1
+                , a:
+                    v@v1#value1#value1#value1
+                , x:
+                    v@v1#value1#value1#value2
+                , b:
+                    v@v1#value1#value1#value3
+                , y:
+                    v@v1#value1#value2
+                , c:
+                    v@v1#value1#value3
+                , z:
+                    v@v1#value2
+                , d:
+                    v@v1#value3
+                }
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value1#value3#value0
+                ) then
+                  { i:
+                      2
+                  , a:
+                      v@v1#value1#value1
+                  , x:
+                      v@v1#value1#value2
+                  , b:
+                      v@v1#value1#value3#value1
+                  , y:
+                      v@v1#value1#value3#value2
+                  , c:
+                      v@v1#value1#value3#value3
+                  , z:
+                      v@v1#value2
+                  , d:
+                      v@v1#value3
+                  }
+                else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                    if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value1#value0
+                      ) then
+                        { i:
+                            3
+                        , a:
+                            v@v1#value1
+                        , x:
+                            v@v1#value2
+                        , b:
+                            v@v1#value3#value1#value1
+                        , y:
+                            v@v1#value3#value1#value2
+                        , c:
+                            v@v1#value3#value1#value3
+                        , z:
+                            v@v1#value3#value2
+                        , d:
+                            v@v1#value3#value3
+                        }
+                      else if (isTag Snapshot.CaseRedBlackTree.Node
+                        v@v1#value3#value3
+                      ) then
+                        if (isTag Snapshot.CaseRedBlackTree.Red
+                          v@v1#value3#value3#value0
+                        ) then
+                          { i:
+                              4
+                          , a:
+                              v@v1#value1
+                          , x:
+                              v@v1#value2
+                          , b:
+                              v@v1#value3#value1
+                          , y:
+                              v@v1#value3#value2
+                          , c:
+                              v@v1#value3#value3#value1
+                          , z:
+                              v@v1#value3#value3#value2
+                          , d:
+                              v@v1#value3#value3#value3
+                          }
+                        else
+                          <PatternMatchFailure>
+                      else
+                        <PatternMatchFailure>
+                    else if (isTag Snapshot.CaseRedBlackTree.Node
+                      v@v1#value3#value3
+                    ) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value3#value0
+                      ) then
+                        { i:
+                            4
+                        , a:
+                            v@v1#value1
+                        , x:
+                            v@v1#value2
+                        , b:
+                            v@v1#value3#value1
+                        , y:
+                            v@v1#value3#value2
+                        , c:
+                            v@v1#value3#value3#value1
+                        , z:
+                            v@v1#value3#value3#value2
+                        , d:
+                            v@v1#value3#value3#value3
+                        }
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                  if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value1#value0
+                    ) then
+                      { i:
+                          3
+                      , a:
+                          v@v1#value1
+                      , x:
+                          v@v1#value2
+                      , b:
+                          v@v1#value3#value1#value1
+                      , y:
+                          v@v1#value3#value1#value2
+                      , c:
+                          v@v1#value3#value1#value3
+                      , z:
+                          v@v1#value3#value2
+                      , d:
+                          v@v1#value3#value3
+                      }
+                    else if (isTag Snapshot.CaseRedBlackTree.Node
+                      v@v1#value3#value3
+                    ) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value3#value0
+                      ) then
+                        { i:
+                            4
+                        , a:
+                            v@v1#value1
+                        , x:
+                            v@v1#value2
+                        , b:
+                            v@v1#value3#value1
+                        , y:
+                            v@v1#value3#value2
+                        , c:
+                            v@v1#value3#value3#value1
+                        , z:
+                            v@v1#value3#value3#value2
+                        , d:
+                            v@v1#value3#value3#value3
+                        }
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else if (isTag Snapshot.CaseRedBlackTree.Node
+                    v@v1#value3#value3
+                  ) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value3#value0
+                    ) then
+                      { i:
+                          4
+                      , a:
+                          v@v1#value1
+                      , x:
+                          v@v1#value2
+                      , b:
+                          v@v1#value3#value1
+                      , y:
+                          v@v1#value3#value2
+                      , c:
+                          v@v1#value3#value3#value1
+                      , z:
+                          v@v1#value3#value3#value2
+                      , d:
+                          v@v1#value3#value3#value3
+                      }
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value1#value3) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value1#value3#value0) then
+                { i:
+                    2
+                , a:
+                    v@v1#value1#value1
+                , x:
+                    v@v1#value1#value2
+                , b:
+                    v@v1#value1#value3#value1
+                , y:
+                    v@v1#value1#value3#value2
+                , c:
+                    v@v1#value1#value3#value3
+                , z:
+                    v@v1#value2
+                , d:
+                    v@v1#value3
+                }
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                  if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value1#value0
+                    ) then
+                      { i:
+                          3
+                      , a:
+                          v@v1#value1
+                      , x:
+                          v@v1#value2
+                      , b:
+                          v@v1#value3#value1#value1
+                      , y:
+                          v@v1#value3#value1#value2
+                      , c:
+                          v@v1#value3#value1#value3
+                      , z:
+                          v@v1#value3#value2
+                      , d:
+                          v@v1#value3#value3
+                      }
+                    else if (isTag Snapshot.CaseRedBlackTree.Node
+                      v@v1#value3#value3
+                    ) then
+                      if (isTag Snapshot.CaseRedBlackTree.Red
+                        v@v1#value3#value3#value0
+                      ) then
+                        { i:
+                            4
+                        , a:
+                            v@v1#value1
+                        , x:
+                            v@v1#value2
+                        , b:
+                            v@v1#value3#value1
+                        , y:
+                            v@v1#value3#value2
+                        , c:
+                            v@v1#value3#value3#value1
+                        , z:
+                            v@v1#value3#value3#value2
+                        , d:
+                            v@v1#value3#value3#value3
+                        }
+                      else
+                        <PatternMatchFailure>
+                    else
+                      <PatternMatchFailure>
+                  else if (isTag Snapshot.CaseRedBlackTree.Node
+                    v@v1#value3#value3
+                  ) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value3#value0
+                    ) then
+                      { i:
+                          4
+                      , a:
+                          v@v1#value1
+                      , x:
+                          v@v1#value2
+                      , b:
+                          v@v1#value3#value1
+                      , y:
+                          v@v1#value3#value2
+                      , c:
+                          v@v1#value3#value3#value1
+                      , z:
+                          v@v1#value3#value3#value2
+                      , d:
+                          v@v1#value3#value3#value3
+                      }
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+                if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red
+                    v@v1#value3#value1#value0
+                  ) then
+                    { i:
+                        3
+                    , a:
+                        v@v1#value1
+                    , x:
+                        v@v1#value2
+                    , b:
+                        v@v1#value3#value1#value1
+                    , y:
+                        v@v1#value3#value1#value2
+                    , c:
+                        v@v1#value3#value1#value3
+                    , z:
+                        v@v1#value3#value2
+                    , d:
+                        v@v1#value3#value3
+                    }
+                  else if (isTag Snapshot.CaseRedBlackTree.Node
+                    v@v1#value3#value3
+                  ) then
+                    if (isTag Snapshot.CaseRedBlackTree.Red
+                      v@v1#value3#value3#value0
+                    ) then
+                      { i:
+                          4
+                      , a:
+                          v@v1#value1
+                      , x:
+                          v@v1#value2
+                      , b:
+                          v@v1#value3#value1
+                      , y:
+                          v@v1#value3#value2
+                      , c:
+                          v@v1#value3#value3#value1
+                      , z:
+                          v@v1#value3#value3#value2
+                      , d:
+                          v@v1#value3#value3#value3
+                      }
+                    else
+                      <PatternMatchFailure>
+                  else
+                    <PatternMatchFailure>
+                else if (isTag Snapshot.CaseRedBlackTree.Node
+                  v@v1#value3#value3
+                ) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red
+                    v@v1#value3#value3#value0
+                  ) then
+                    { i:
+                        4
+                    , a:
+                        v@v1#value1
+                    , x:
+                        v@v1#value2
+                    , b:
+                        v@v1#value3#value1
+                    , y:
+                        v@v1#value3#value2
+                    , c:
+                        v@v1#value3#value3#value1
+                    , z:
+                        v@v1#value3#value3#value2
+                    , d:
+                        v@v1#value3#value3#value3
+                    }
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+            if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+              if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value3#value1#value0
+                ) then
+                  { i:
+                      3
+                  , a:
+                      v@v1#value1
+                  , x:
+                      v@v1#value2
+                  , b:
+                      v@v1#value3#value1#value1
+                  , y:
+                      v@v1#value3#value1#value2
+                  , c:
+                      v@v1#value3#value1#value3
+                  , z:
+                      v@v1#value3#value2
+                  , d:
+                      v@v1#value3#value3
+                  }
+                else if (isTag Snapshot.CaseRedBlackTree.Node
+                  v@v1#value3#value3
+                ) then
+                  if (isTag Snapshot.CaseRedBlackTree.Red
+                    v@v1#value3#value3#value0
+                  ) then
+                    { i:
+                        4
+                    , a:
+                        v@v1#value1
+                    , x:
+                        v@v1#value2
+                    , b:
+                        v@v1#value3#value1
+                    , y:
+                        v@v1#value3#value2
+                    , c:
+                        v@v1#value3#value3#value1
+                    , z:
+                        v@v1#value3#value3#value2
+                    , d:
+                        v@v1#value3#value3#value3
+                    }
+                  else
+                    <PatternMatchFailure>
+                else
+                  <PatternMatchFailure>
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value3#value3#value0
+                ) then
+                  { i:
+                      4
+                  , a:
+                      v@v1#value1
+                  , x:
+                      v@v1#value2
+                  , b:
+                      v@v1#value3#value1
+                  , y:
+                      v@v1#value3#value2
+                  , c:
+                      v@v1#value3#value3#value1
+                  , z:
+                      v@v1#value3#value3#value2
+                  , d:
+                      v@v1#value3#value3#value3
+                  }
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3) then
+          if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value0) then
+            if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value1) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value1#value0) then
+                { i:
+                    3
+                , a:
+                    v@v1#value1
+                , x:
+                    v@v1#value2
+                , b:
+                    v@v1#value3#value1#value1
+                , y:
+                    v@v1#value3#value1#value2
+                , c:
+                    v@v1#value3#value1#value3
+                , z:
+                    v@v1#value3#value2
+                , d:
+                    v@v1#value3#value3
+                }
+              else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value3) then
+                if (isTag Snapshot.CaseRedBlackTree.Red
+                  v@v1#value3#value3#value0
+                ) then
+                  { i:
+                      4
+                  , a:
+                      v@v1#value1
+                  , x:
+                      v@v1#value2
+                  , b:
+                      v@v1#value3#value1
+                  , y:
+                      v@v1#value3#value2
+                  , c:
+                      v@v1#value3#value3#value1
+                  , z:
+                      v@v1#value3#value3#value2
+                  , d:
+                      v@v1#value3#value3#value3
+                  }
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            else if (isTag Snapshot.CaseRedBlackTree.Node v@v1#value3#value3) then
+              if (isTag Snapshot.CaseRedBlackTree.Red v@v1#value3#value3#value0) then
+                { i:
+                    4
+                , a:
+                    v@v1#value1
+                , x:
+                    v@v1#value2
+                , b:
+                    v@v1#value3#value1
+                , y:
+                    v@v1#value3#value2
+                , c:
+                    v@v1#value3#value3#value1
+                , z:
+                    v@v1#value3#value3#value2
+                , d:
+                    v@v1#value3#value3#value3
+                }
+              else
+                <PatternMatchFailure>
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else
+          <PatternMatchFailure>
+      else
+        <PatternMatchFailure>
+    else
+      <PatternMatchFailure>
+  )

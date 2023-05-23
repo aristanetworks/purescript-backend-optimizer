@@ -1,0 +1,453 @@
+Snapshot.Variant01.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.Variant01.compose (Step 1; Final)
+  Control.Semigroupoid.semigroupoidFn.compose
+
+===============
+
+Snapshot.Variant01.fooIsSymbol (Step 0; Original)
+  { reflectSymbol: (\$__unused@v0 -> "foo") }
+---------------
+Snapshot.Variant01.fooIsSymbol (Step 1; Final)
+  { reflectSymbol: (\$__unused@v0 -> "foo") }
+
+===============
+
+Snapshot.Variant01.on (Step 0; Original)
+  (Data.Variant.on <PrimUndefined>)
+---------------
+Snapshot.Variant01.on (Step 1)
+  -- Inline v0
+  let v0 = <PrimUndefined>;
+  -- Inline v1
+  let v1 =
+    (\dictIsSymbol@v1 -> \p@v2 -> \f@v3 -> \g@v4 -> \r@v5 ->
+      if ((eq r@v5.type) (dictIsSymbol@v1.reflectSymbol p@v2)) then
+        (f@v3 r@v5.value)
+      else
+        (g@v4 r@v5)
+    );
+  v1
+---------------
+Snapshot.Variant01.on (Step 2; Final)
+  (\dictIsSymbol@v0 -> \p@v1 -> \f@v2 -> \g@v3 -> \r@v4 ->
+    if ((eq r@v4.type) (dictIsSymbol@v0.reflectSymbol p@v1)) then
+      (f@v2 r@v4.value)
+    else
+      (g@v3 r@v4)
+  )
+
+===============
+
+Snapshot.Variant01.on1 (Step 0; Original)
+  (Snapshot.Variant01.on Snapshot.Variant01.fooIsSymbol)
+---------------
+Snapshot.Variant01.on1 (Step 1; Final)
+  (\p@v0 -> \f@v1 -> \g@v2 -> \r@v3 ->
+    if ((eq r@v3.type) "foo") then (f@v1 r@v3.value) else (g@v2 r@v3)
+  )
+
+===============
+
+Snapshot.Variant01.on2 (Step 0; Original)
+  (Snapshot.Variant01.on { reflectSymbol: (\$__unused@v0 -> "bar") })
+---------------
+Snapshot.Variant01.on2 (Step 1)
+  -- Inline v0
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "bar") };
+  -- Inline v1
+  let v1 =
+    (\p@v1 -> \f@v2 -> \g@v3 -> \r@v4 ->
+      if ((eq r@v4.type) (v0.reflectSymbol p@v1)) then
+        (f@v2 r@v4.value)
+      else
+        (g@v3 r@v4)
+    );
+  v1
+---------------
+Snapshot.Variant01.on2 (Step 2; Final)
+  (\p@v0 -> \f@v1 -> \g@v2 -> \r@v3 ->
+    if ((eq r@v3.type) "bar") then (f@v1 r@v3.value) else (g@v2 r@v3)
+  )
+
+===============
+
+Snapshot.Variant01.on3 (Step 0; Original)
+  (Snapshot.Variant01.on { reflectSymbol: (\$__unused@v0 -> "baz") })
+---------------
+Snapshot.Variant01.on3 (Step 1)
+  -- Inline v0
+  let v0 = { reflectSymbol: (\$__unused@v0 -> "baz") };
+  -- Inline v1
+  let v1 =
+    (\p@v1 -> \f@v2 -> \g@v3 -> \r@v4 ->
+      if ((eq r@v4.type) (v0.reflectSymbol p@v1)) then
+        (f@v2 r@v4.value)
+      else
+        (g@v3 r@v4)
+    );
+  v1
+---------------
+Snapshot.Variant01.on3 (Step 2; Final)
+  (\p@v0 -> \f@v1 -> \g@v2 -> \r@v3 ->
+    if ((eq r@v3.type) "baz") then (f@v1 r@v3.value) else (g@v2 r@v3)
+  )
+
+===============
+
+Snapshot.Variant01.show (Step 0; Original)
+  (Data.Show.show Data.Show.showInt)
+---------------
+Snapshot.Variant01.show (Step 1; Final)
+  Data.Show.showIntImpl
+
+===============
+
+Snapshot.Variant01.show1 (Step 0; Original)
+  (Data.Show.show Data.Show.showBoolean)
+---------------
+Snapshot.Variant01.show1 (Step 1; Final)
+  Data.Show.showBoolean.show
+
+===============
+
+Snapshot.Variant01.test1 (Step 0; Original)
+  (Snapshot.Variant01.on3
+    Type.Proxy.Proxy
+    (\a@v0 -> a@v0)
+    (Snapshot.Variant01.on2
+      Type.Proxy.Proxy
+      (\a@v0 -> (Snapshot.Variant01.show1 a@v0))
+      (Snapshot.Variant01.on1
+        Type.Proxy.Proxy
+        (\a@v0 -> (Snapshot.Variant01.show a@v0))
+        Data.Variant.case_
+      )
+    )
+  )
+---------------
+Snapshot.Variant01.test1 (Step 1)
+  -- Inline v0
+  let v0 = Type.Proxy.Proxy;
+  -- Inline v1
+  let v1 =
+    (\f@v1 -> \g@v2 -> \r@v3 ->
+      if ((eq r@v3.type) "baz") then (f@v1 r@v3.value) else (g@v2 r@v3)
+    );
+  (v1
+    (\a@v2 -> a@v2)
+    -- Inline v2
+    let v2 = Type.Proxy.Proxy;
+    -- Inline v3
+    let v3 =
+      (\f@v3 -> \g@v4 -> \r@v5 ->
+        if ((eq r@v5.type) "bar") then (f@v3 r@v5.value) else (g@v4 r@v5)
+      );
+    (v3
+      (\a@v4 -> if a@v4 then "true" else "false")
+      -- Inline v4
+      let v4 = Type.Proxy.Proxy;
+      -- Inline v5
+      let v5 =
+        (\f@v5 -> \g@v6 -> \r@v7 ->
+          if ((eq r@v7.type) "foo") then (f@v5 r@v7.value) else (g@v6 r@v7)
+        );
+      ((v5 (\a@v6 -> (Data.Show.showIntImpl a@v6))) Data.Variant.case_)
+    )
+  )
+---------------
+Snapshot.Variant01.test1 (Step 2)
+  -- Inline v0
+  let v0 = (\a@v0 -> a@v0);
+  let v1 =
+    -- Inline v1
+    let v1 = (\a@v1 -> if a@v1 then "true" else "false");
+    let v2 =
+      -- Inline v2
+      let v2 = (\a@v2 -> (Data.Show.showIntImpl a@v2));
+      (\r@v3 ->
+        if ((eq r@v3.type) "foo") then
+          (v2 r@v3.value)
+        else
+          (Partial._crashWith
+            (stringAppend
+              "Data.Variant: pattern match failure ["
+              ((stringAppend r@v3.type) "]")
+            )
+          )
+      );
+    (\r@v3 -> if ((eq r@v3.type) "bar") then (v1 r@v3.value) else (v2 r@v3));
+  (\r@v2 -> if ((eq r@v2.type) "baz") then (v0 r@v2.value) else (v1 r@v2))
+---------------
+Snapshot.Variant01.test1 (Step 3)
+  let v0 =
+    -- Inline v0
+    let v0 =
+      (\r@v0 ->
+        if ((eq r@v0.type) "foo") then
+          -- Inline v1
+          let v1 = r@v0.value;
+          (Data.Show.showIntImpl v1)
+        else
+          (Partial._crashWith
+            (stringAppend
+              "Data.Variant: pattern match failure ["
+              ((stringAppend r@v0.type) "]")
+            )
+          )
+      );
+    (\r@v1 ->
+      if ((eq r@v1.type) "bar") then
+        -- Inline v2
+        let v2 = r@v1.value;
+        if v2 then "true" else "false"
+      else
+        (v0 r@v1)
+    );
+  (\r@v1 ->
+    if ((eq r@v1.type) "baz") then
+      -- Inline v2
+      let v2 = r@v1.value;
+      v2
+    else
+      (v0 r@v1)
+  )
+---------------
+Snapshot.Variant01.test1 (Step 4)
+  -- Inline v0
+  let v0 =
+    (\r@v0 ->
+      if ((eq r@v0.type) "bar") then
+        if r@v0.value then "true" else "false"
+      else if ((eq r@v0.type) "foo") then
+        (Data.Show.showIntImpl r@v0.value)
+      else
+        (Partial._crashWith
+          (stringAppend
+            "Data.Variant: pattern match failure ["
+            ((stringAppend r@v0.type) "]")
+          )
+        )
+    );
+  (\r@v1 -> if ((eq r@v1.type) "baz") then r@v1.value else (v0 r@v1))
+---------------
+Snapshot.Variant01.test1 (Step 5; Final)
+  (\r@v0 ->
+    if ((eq r@v0.type) "baz") then
+      r@v0.value
+    else if ((eq r@v0.type) "bar") then
+      if r@v0.value then "true" else "false"
+    else if ((eq r@v0.type) "foo") then
+      (Data.Show.showIntImpl r@v0.value)
+    else
+      (Partial._crashWith
+        (stringAppend
+          "Data.Variant: pattern match failure ["
+          ((stringAppend r@v0.type) "]")
+        )
+      )
+  )
+
+===============
+
+Snapshot.Variant01.test2 (Step 0; Original)
+  (Snapshot.Variant01.compose
+    (Snapshot.Variant01.on1
+      Type.Proxy.Proxy
+      (\a@v0 -> (Snapshot.Variant01.show a@v0))
+    )
+    (Snapshot.Variant01.compose
+      (Snapshot.Variant01.on2
+        Type.Proxy.Proxy
+        (\a@v0 -> (Snapshot.Variant01.show1 a@v0))
+      )
+      ((Snapshot.Variant01.on3 Type.Proxy.Proxy) (\a@v0 -> a@v0))
+    )
+  )
+---------------
+Snapshot.Variant01.test2 (Step 1)
+  let v0 =
+    -- Inline v0
+    let v0 = Type.Proxy.Proxy;
+    -- Inline v1
+    let v1 =
+      (\f@v1 -> \g@v2 -> \r@v3 ->
+        if ((eq r@v3.type) "foo") then (f@v1 r@v3.value) else (g@v2 r@v3)
+      );
+    (v1 (\a@v2 -> (Data.Show.showIntImpl a@v2)));
+  -- LetAssoc
+  let v1 =
+    let v1 =
+      let v1 =
+        -- Inline v1
+        let v1 = Type.Proxy.Proxy;
+        -- Inline v2
+        let v2 =
+          (\f@v2 -> \g@v3 -> \r@v4 ->
+            if ((eq r@v4.type) "bar") then (f@v2 r@v4.value) else (g@v3 r@v4)
+          );
+        (v2 (\a@v3 -> if a@v3 then "true" else "false"));
+      -- LetAssoc
+      let v2 =
+        let v2 =
+          -- Inline v2
+          let v2 = Type.Proxy.Proxy;
+          -- Inline v3
+          let v3 =
+            (\f@v3 -> \g@v4 -> \r@v5 ->
+              if ((eq r@v5.type) "baz") then (f@v3 r@v5.value) else (g@v4 r@v5)
+            );
+          (v3 (\a@v4 -> a@v4));
+        (\x@v3 -> (v1 (v2 x@v3)));
+      v2;
+    (\x@v2 -> (v0 (v1 x@v2)));
+  v1
+---------------
+Snapshot.Variant01.test2 (Step 2)
+  let v0 =
+    -- Inline v0
+    let v0 = (\a@v0 -> (Data.Show.showIntImpl a@v0));
+    (\g@v1 -> \r@v2 ->
+      if ((eq r@v2.type) "foo") then (v0 r@v2.value) else (g@v1 r@v2)
+    );
+  let v1 =
+    -- Inline v1
+    let v1 = (\a@v1 -> if a@v1 then "true" else "false");
+    (\g@v2 -> \r@v3 ->
+      if ((eq r@v3.type) "bar") then (v1 r@v3.value) else (g@v2 r@v3)
+    );
+  -- LetAssoc
+  let v2 =
+    let v2 =
+      -- Inline v2
+      let v2 = (\a@v2 -> a@v2);
+      (\g@v3 -> \r@v4 ->
+        if ((eq r@v4.type) "baz") then (v2 r@v4.value) else (g@v3 r@v4)
+      );
+    -- Inline v3
+    let v3 = (\x@v3 -> (v1 (v2 x@v3)));
+    v3;
+  -- Inline v3
+  let v3 = (\x@v3 -> (v0 (v2 x@v3)));
+  v3
+---------------
+Snapshot.Variant01.test2 (Step 3)
+  -- Inline v0
+  let v0 =
+    (\g@v0 -> \r@v1 ->
+      if ((eq r@v1.type) "foo") then
+        -- Inline v2
+        let v2 = r@v1.value;
+        (Data.Show.showIntImpl v2)
+      else
+        (g@v0 r@v1)
+    );
+  -- Inline v1
+  let v1 =
+    (\g@v1 -> \r@v2 ->
+      if ((eq r@v2.type) "bar") then
+        -- Inline v3
+        let v3 = r@v2.value;
+        if v3 then "true" else "false"
+      else
+        (g@v1 r@v2)
+    );
+  -- Inline v2
+  let v2 =
+    (\g@v2 -> \r@v3 ->
+      if ((eq r@v3.type) "baz") then
+        -- Inline v4
+        let v4 = r@v3.value;
+        v4
+      else
+        (g@v2 r@v3)
+    );
+  -- Inline v3
+  let v3 = (\x@v3 -> (v1 (v2 x@v3)));
+  (\x@v4 -> (v0 (v3 x@v4)))
+---------------
+Snapshot.Variant01.test2 (Step 4)
+  (\x@v0 ->
+    let v1 =
+      -- Inline v1
+      let v1 =
+        (\r@v1 -> if ((eq r@v1.type) "baz") then r@v1.value else (x@v0 r@v1));
+      -- Inline v2
+      let v2 =
+        (\r@v2 ->
+          if ((eq r@v2.type) "bar") then
+            if r@v2.value then "true" else "false"
+          else
+            (v1 r@v2)
+        );
+      v2;
+    (\r@v2 ->
+      if ((eq r@v2.type) "foo") then
+        (Data.Show.showIntImpl r@v2.value)
+      else
+        (v1 r@v2)
+    )
+  )
+---------------
+Snapshot.Variant01.test2 (Step 5)
+  (\x@v0 ->
+    -- Inline v1
+    let v1 =
+      (\r@v1 ->
+        if ((eq r@v1.type) "bar") then
+          if r@v1.value then "true" else "false"
+        else if ((eq r@v1.type) "baz") then
+          r@v1.value
+        else
+          (x@v0 r@v1)
+      );
+    (\r@v2 ->
+      if ((eq r@v2.type) "foo") then
+        (Data.Show.showIntImpl r@v2.value)
+      else
+        (v1 r@v2)
+    )
+  )
+---------------
+Snapshot.Variant01.test2 (Step 6; Final)
+  (\x@v0 -> \r@v1 ->
+    if ((eq r@v1.type) "foo") then
+      (Data.Show.showIntImpl r@v1.value)
+    else if ((eq r@v1.type) "bar") then
+      if r@v1.value then "true" else "false"
+    else if ((eq r@v1.type) "baz") then
+      r@v1.value
+    else
+      (x@v0 r@v1)
+  )
+
+===============
+
+Snapshot.Variant01.test3 (Step 0; Original)
+  (Data.Variant.inj
+    <PrimUndefined>
+    Snapshot.Variant01.fooIsSymbol
+    Type.Proxy.Proxy
+    42
+  )
+---------------
+Snapshot.Variant01.test3 (Step 1)
+  -- Inline v0
+  let v0 = <PrimUndefined>;
+  -- Inline v1
+  let v1 =
+    (\dictIsSymbol@v1 -> \p@v2 -> \value@v3 ->
+      { type: (dictIsSymbol@v1.reflectSymbol p@v2), value: value@v3 }
+    );
+  (((v1 Snapshot.Variant01.fooIsSymbol) Type.Proxy.Proxy) 42)
+---------------
+Snapshot.Variant01.test3 (Step 2)
+  -- Inline v0
+  let v0 = Type.Proxy.Proxy;
+  -- Inline v1
+  let v1 = 42;
+  { type: "foo", value: v1 }
+---------------
+Snapshot.Variant01.test3 (Step 3; Final)
+  { type: "foo", value: 42 }

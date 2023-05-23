@@ -1,0 +1,86 @@
+Snapshot.EtaReduceRegression01.fold (Step 0; Original)
+  (\dictFoldable@v0 ->
+    let foldMap@v1 = (Data.Foldable.foldMap dictFoldable@v0);
+    (\dictMonoid@v2 ->
+      ((foldMap@v1 dictMonoid@v2) Snapshot.EtaReduceRegression01.identity)
+    )
+  )
+---------------
+Snapshot.EtaReduceRegression01.fold (Step 1)
+  (\dictFoldable@v0 ->
+    -- Inline foldMap@v1
+    let foldMap@v1 = dictFoldable@v0.foldMap;
+    (\dictMonoid@v2 ->
+      ((foldMap@v1 dictMonoid@v2) Snapshot.EtaReduceRegression01.identity)
+    )
+  )
+---------------
+Snapshot.EtaReduceRegression01.fold (Step 2; Final)
+  (\dictFoldable@v0 -> \dictMonoid@v1 ->
+    (dictFoldable@v0.foldMap
+      dictMonoid@v1
+      Snapshot.EtaReduceRegression01.identity
+    )
+  )
+
+===============
+
+Snapshot.EtaReduceRegression01.identity (Step 0; Original)
+  (Control.Category.identity Control.Category.categoryFn)
+---------------
+Snapshot.EtaReduceRegression01.identity (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.EtaReduceRegression01.test (Step 0; Original)
+  (Snapshot.EtaReduceRegression01.fold
+    Data.Foldable.foldableMaybe
+    Data.Monoid.monoidString
+  )
+---------------
+Snapshot.EtaReduceRegression01.test (Step 1)
+  -- Inline mempty@v0
+  let mempty@v0 = "";
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 =
+      -- Inline v1
+      let v1 =
+        -- Inline v1
+        let v1 =
+          (\v@v1 -> \v1@v2 ->
+            if (isTag Data.Maybe.Nothing v1@v2) then
+              mempty@v0
+            else if (isTag Data.Maybe.Just v1@v2) then
+              (v@v1 v1@v2#value0)
+            else
+              <PatternMatchFailure>
+          );
+        v1;
+      (v1 Snapshot.EtaReduceRegression01.identity);
+    v1;
+  v1
+---------------
+Snapshot.EtaReduceRegression01.test (Step 2)
+  (\v1@v0 ->
+    if (isTag Data.Maybe.Nothing v1@v0) then
+      ""
+    else if (isTag Data.Maybe.Just v1@v0) then
+      -- Inline v1
+      let v1 = v1@v0#value0;
+      v1
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.EtaReduceRegression01.test (Step 3; Final)
+  (\v1@v0 ->
+    if (isTag Data.Maybe.Nothing v1@v0) then
+      ""
+    else if (isTag Data.Maybe.Just v1@v0) then
+      v1@v0#value0
+    else
+      <PatternMatchFailure>
+  )

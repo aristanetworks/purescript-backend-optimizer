@@ -1,0 +1,60 @@
+Snapshot.CaseGrafting.test1 (Step 0; Original)
+  (\v@v0 -> \v1@v1 -> \v2@v2 ->
+    -- Inline v3
+    let v3 = v@v0;
+    -- Inline v4
+    let v4 = v1@v1;
+    -- Inline v5
+    let v5 = v2@v2;
+    -- Inline v6
+    let v6 = (\-> 1);
+    -- Inline v7
+    let v7 = (\-> 2);
+    -- Inline v8
+    let v8 = (\-> 3);
+    -- Inline v9
+    let v9 = (\-> 4);
+    if ((eq v4) false) then
+      if ((eq v5) true) then
+        (v6!)
+      else if ((eq v5) false) then
+        (v8!)
+      else
+        <PatternMatchFailure>
+    else if ((eq v3) false) then
+      if ((eq v4) true) then
+        (v7!)
+      else if ((eq v5) false) then
+        (v8!)
+      else if ((eq v5) true) then
+        (v9!)
+      else
+        <PatternMatchFailure>
+    else if ((eq v5) false) then
+      (v8!)
+    else if ((eq v5) true) then
+      (v9!)
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.CaseGrafting.test1 (Step 1; Final)
+  (\v@v0 -> \v1@v1 -> \v2@v2 ->
+    if (not v1@v1) then
+      if v2@v2 then 1 else 3
+    else if (not v@v0) then
+      if v1@v1 then
+        2
+      else if (not v2@v2) then
+        3
+      else if v2@v2 then
+        4
+      else
+        <PatternMatchFailure>
+    else if (not v2@v2) then
+      3
+    else if v2@v2 then
+      4
+    else
+      <PatternMatchFailure>
+  )

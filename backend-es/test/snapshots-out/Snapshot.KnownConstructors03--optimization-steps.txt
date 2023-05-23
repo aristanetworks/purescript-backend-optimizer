@@ -1,0 +1,67 @@
+Snapshot.KnownConstructors03.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupString)
+---------------
+Snapshot.KnownConstructors03.append (Step 1; Final)
+  Data.Semigroup.concatString
+
+===============
+
+Snapshot.KnownConstructors03.greaterThan (Step 0; Original)
+  (Data.Ord.greaterThan Data.Ord.ordInt)
+---------------
+Snapshot.KnownConstructors03.greaterThan (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> ((gt a1@v0) a2@v1))
+
+===============
+
+Snapshot.KnownConstructors03.test (Step 0; Original)
+  (\x@v0 ->
+    let a@v1 =
+      -- Inline v1
+      let v1 = ((Snapshot.KnownConstructors03.greaterThan x@v0) 42);
+      -- Inline v2
+      let v2 = (\-> (Data.Maybe.Just "Hello"));
+      -- Inline v3
+      let v3 = (\-> Data.Maybe.Nothing);
+      if ((eq v1) true) then (v2!) else (v3!);
+    -- Inline v2
+    let v2 = a@v1;
+    -- Inline v3
+    let v3 =
+      (\str@v3 -> ((Snapshot.KnownConstructors03.append str@v3) ", World!"));
+    -- Inline v4
+    let v4 = (\-> "");
+    if (isTag Data.Maybe.Just v2) then
+      -- Inline v5
+      let v5 = v2#value0;
+      (v3 str@v5)
+    else if (isTag Data.Maybe.Nothing v2) then
+      (v4!)
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.KnownConstructors03.test (Step 1)
+  (\x@v0 ->
+    -- DistBranchesLet a@v1
+    let a@v1 =
+      if -- Inline v1
+      let v1 = 42;
+      ((gt x@v0) v1) then
+        (Data.Maybe.Just.Maybe "Hello")
+      else
+        Data.Maybe.Nothing;
+    if (isTag Data.Maybe.Just a@v1) then
+      -- Inline v2
+      let v2 = a@v1#value0;
+      -- Inline v3
+      let v3 = ", World!";
+      ((stringAppend v2) v3)
+    else if (isTag Data.Maybe.Nothing a@v1) then
+      ""
+    else
+      <PatternMatchFailure>
+  )
+---------------
+Snapshot.KnownConstructors03.test (Step 2; Final)
+  (\x@v0 -> if ((gt x@v0) 42) then "Hello, World!" else "")

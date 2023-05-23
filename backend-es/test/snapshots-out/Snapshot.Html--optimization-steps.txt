@@ -1,0 +1,543 @@
+Snapshot.Html.BuildArray$Dict (Step 0; Original)
+  (\x@v0 -> x@v0)
+---------------
+Snapshot.Html.BuildArray$Dict (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.Html.BuildChildren$Dict (Step 0; Original)
+  (\x@v0 -> x@v0)
+---------------
+Snapshot.Html.BuildChildren$Dict (Step 1; Final)
+  (\x@v0 -> x@v0)
+
+===============
+
+Snapshot.Html.Elem (Step 0; Original)
+  letCtor Elem =
+    (\value0 value1 -> { tag: "Elem", value0: value0, value1: value1 });
+---------------
+Snapshot.Html.Elem (Step 1; Final)
+  letCtor Elem =
+    (\value0 value1 -> { tag: "Elem", value0: value0, value1: value1 });
+
+===============
+
+Snapshot.Html.Text (Step 0; Original)
+  letCtor Text = (\value0 -> { tag: "Text", value0: value0 });
+---------------
+Snapshot.Html.Text (Step 1; Final)
+  letCtor Text = (\value0 -> { tag: "Text", value0: value0 });
+
+===============
+
+Snapshot.Html.append (Step 0; Original)
+  (Data.Semigroup.append Data.Semigroup.semigroupString)
+---------------
+Snapshot.Html.append (Step 1; Final)
+  Data.Semigroup.concatString
+
+===============
+
+Snapshot.Html.article (Step 0; Original)
+  (\dictBuildChildren@v0 ->
+    (Snapshot.Html.compose
+      (Snapshot.Html.Elem "article")
+      (Snapshot.Html.buildChildren dictBuildChildren@v0)
+    )
+  )
+---------------
+Snapshot.Html.article (Step 1)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "article");
+    -- Inline v2
+    let v2 =
+      -- Inline v2
+      let v2 = dictBuildChildren@v0.buildChildren;
+      (\x@v3 -> (v1 (v2 x@v3)));
+    v2
+  )
+---------------
+Snapshot.Html.article (Step 2; Final)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "article");
+    (\x@v2 -> (v1 (dictBuildChildren@v0.buildChildren x@v2)))
+  )
+
+===============
+
+Snapshot.Html.article1 (Step 0; Original)
+  (Snapshot.Html.article Snapshot.Html.buildChildrenArrayHtml)
+---------------
+Snapshot.Html.article1 (Step 1)
+  let v0 = (Snapshot.Html.Elem "article");
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\x@v1 -> (v0 x@v1));
+    v1;
+  v1
+---------------
+Snapshot.Html.article1 (Step 2; Final)
+  (Snapshot.Html.Elem "article")
+
+===============
+
+Snapshot.Html.buildArray (Step 0; Original)
+  (\dict@v0 ->
+    -- Inline v1
+    let v1 = dict@v0;
+    -- Inline v2
+    let v2 = (\v@v2 -> v@v2.buildArray);
+    (v2 v@v1)
+  )
+---------------
+Snapshot.Html.buildArray (Step 1; Final)
+  (\dict@v0 -> dict@v0.buildArray)
+
+===============
+
+Snapshot.Html.buildArray1 (Step 0; Original)
+  { buildArray: (\a@v0 -> \b@v1 -> [ a@v0, b@v1 ]) }
+---------------
+Snapshot.Html.buildArray1 (Step 1; Final)
+  { buildArray: (\a@v0 -> \b@v1 -> [ a@v0, b@v1 ]) }
+
+===============
+
+Snapshot.Html.buildArrayArray (Step 0; Original)
+  { buildArray: Data.Array.snoc }
+---------------
+Snapshot.Html.buildArrayArray (Step 1; Final)
+  { buildArray: Data.Array.snoc }
+
+===============
+
+Snapshot.Html.buildArrayArray1 (Step 0; Original)
+  { buildArray: Data.Array.cons }
+---------------
+Snapshot.Html.buildArrayArray1 (Step 1; Final)
+  { buildArray: Data.Array.cons }
+
+===============
+
+Snapshot.Html.buildArrayArrayArray (Step 0; Original)
+  { buildArray: (Data.Semigroup.append Data.Semigroup.semigroupArray) }
+---------------
+Snapshot.Html.buildArrayArrayArray (Step 1; Final)
+  { buildArray: Data.Semigroup.concatArray }
+
+===============
+
+Snapshot.Html.buildChildren (Step 0; Original)
+  (\dict@v0 ->
+    -- Inline v1
+    let v1 = dict@v0;
+    -- Inline v2
+    let v2 = (\v@v2 -> v@v2.buildChildren);
+    (v2 v@v1)
+  )
+---------------
+Snapshot.Html.buildChildren (Step 1; Final)
+  (\dict@v0 -> dict@v0.buildChildren)
+
+===============
+
+Snapshot.Html.buildChildrenArrayHtml (Step 0; Original)
+  { buildChildren: (Control.Category.identity Control.Category.categoryFn) }
+---------------
+Snapshot.Html.buildChildrenArrayHtml (Step 1; Final)
+  { buildChildren: (\x@v0 -> x@v0) }
+
+===============
+
+Snapshot.Html.buildChildrenHtml (Step 0; Original)
+  { buildChildren:
+      (Control.Applicative.pure Control.Applicative.applicativeArray)
+  }
+---------------
+Snapshot.Html.buildChildrenHtml (Step 1; Final)
+  { buildChildren: Control.Applicative.applicativeArray.pure }
+
+===============
+
+Snapshot.Html.compose (Step 0; Original)
+  (Control.Semigroupoid.compose Control.Semigroupoid.semigroupoidFn)
+---------------
+Snapshot.Html.compose (Step 1; Final)
+  Control.Semigroupoid.semigroupoidFn.compose
+
+===============
+
+Snapshot.Html.discard (Step 0; Original)
+  (\dictBuildArray@v0 ->
+    let buildArray2@v1 = (Snapshot.Html.buildArray dictBuildArray@v0);
+    (\a@v2 -> \k@v3 -> ((buildArray2@v1 a@v2) (k@v3 Data.Unit.unit)))
+  )
+---------------
+Snapshot.Html.discard (Step 1)
+  (\dictBuildArray@v0 ->
+    -- Inline buildArray2@v1
+    let buildArray2@v1 = dictBuildArray@v0.buildArray;
+    (\a@v2 -> \k@v3 -> ((buildArray2@v1 a@v2) (k@v3 <PrimUndefined>)))
+  )
+---------------
+Snapshot.Html.discard (Step 2; Final)
+  (\dictBuildArray@v0 -> \a@v1 -> \k@v2 ->
+    ((dictBuildArray@v0.buildArray a@v1) (k@v2 <PrimUndefined>))
+  )
+
+===============
+
+Snapshot.Html.discard1 (Step 0; Original)
+  (Snapshot.Html.discard Snapshot.Html.buildArray1)
+---------------
+Snapshot.Html.discard1 (Step 1)
+  (\a@v0 -> \k@v1 ->
+    -- Inline v2
+    let v2 = (k@v1 <PrimUndefined>);
+    [ a@v0, v2 ]
+  )
+---------------
+Snapshot.Html.discard1 (Step 2; Final)
+  (\a@v0 -> \k@v1 -> [ a@v0, (k@v1 <PrimUndefined>) ])
+
+===============
+
+Snapshot.Html.h1 (Step 0; Original)
+  (\dictBuildChildren@v0 ->
+    (Snapshot.Html.compose
+      (Snapshot.Html.Elem "h1")
+      (Snapshot.Html.buildChildren dictBuildChildren@v0)
+    )
+  )
+---------------
+Snapshot.Html.h1 (Step 1)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "h1");
+    -- Inline v2
+    let v2 =
+      -- Inline v2
+      let v2 = dictBuildChildren@v0.buildChildren;
+      (\x@v3 -> (v1 (v2 x@v3)));
+    v2
+  )
+---------------
+Snapshot.Html.h1 (Step 2; Final)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "h1");
+    (\x@v2 -> (v1 (dictBuildChildren@v0.buildChildren x@v2)))
+  )
+
+===============
+
+Snapshot.Html.h11 (Step 0; Original)
+  (Snapshot.Html.h1 Snapshot.Html.buildChildrenHtml)
+---------------
+Snapshot.Html.h11 (Step 1)
+  let v0 = (Snapshot.Html.Elem "h1");
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\x@v1 -> (v0 [ x@v1 ]));
+    v1;
+  v1
+---------------
+Snapshot.Html.h11 (Step 2; Final)
+  let v0 = (Snapshot.Html.Elem "h1");
+  (\x@v1 -> (v0 [ x@v1 ]))
+
+===============
+
+Snapshot.Html.h2 (Step 0; Original)
+  (\dictBuildChildren@v0 ->
+    (Snapshot.Html.compose
+      (Snapshot.Html.Elem "h2")
+      (Snapshot.Html.buildChildren dictBuildChildren@v0)
+    )
+  )
+---------------
+Snapshot.Html.h2 (Step 1)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "h2");
+    -- Inline v2
+    let v2 =
+      -- Inline v2
+      let v2 = dictBuildChildren@v0.buildChildren;
+      (\x@v3 -> (v1 (v2 x@v3)));
+    v2
+  )
+---------------
+Snapshot.Html.h2 (Step 2; Final)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "h2");
+    (\x@v2 -> (v1 (dictBuildChildren@v0.buildChildren x@v2)))
+  )
+
+===============
+
+Snapshot.Html.h21 (Step 0; Original)
+  (Snapshot.Html.h2 Snapshot.Html.buildChildrenHtml)
+---------------
+Snapshot.Html.h21 (Step 1)
+  let v0 = (Snapshot.Html.Elem "h2");
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\x@v1 -> (v0 [ x@v1 ]));
+    v1;
+  v1
+---------------
+Snapshot.Html.h21 (Step 2; Final)
+  let v0 = (Snapshot.Html.Elem "h2");
+  (\x@v1 -> (v0 [ x@v1 ]))
+
+===============
+
+Snapshot.Html.p (Step 0; Original)
+  (\dictBuildChildren@v0 ->
+    (Snapshot.Html.compose
+      (Snapshot.Html.Elem "p")
+      (Snapshot.Html.buildChildren dictBuildChildren@v0)
+    )
+  )
+---------------
+Snapshot.Html.p (Step 1)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "p");
+    -- Inline v2
+    let v2 =
+      -- Inline v2
+      let v2 = dictBuildChildren@v0.buildChildren;
+      (\x@v3 -> (v1 (v2 x@v3)));
+    v2
+  )
+---------------
+Snapshot.Html.p (Step 2; Final)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "p");
+    (\x@v2 -> (v1 (dictBuildChildren@v0.buildChildren x@v2)))
+  )
+
+===============
+
+Snapshot.Html.p1 (Step 0; Original)
+  (Snapshot.Html.p Snapshot.Html.buildChildrenArrayHtml)
+---------------
+Snapshot.Html.p1 (Step 1)
+  let v0 = (Snapshot.Html.Elem "p");
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\x@v1 -> (v0 x@v1));
+    v1;
+  v1
+---------------
+Snapshot.Html.p1 (Step 2; Final)
+  (Snapshot.Html.Elem "p")
+
+===============
+
+Snapshot.Html.section (Step 0; Original)
+  (\dictBuildChildren@v0 ->
+    (Snapshot.Html.compose
+      (Snapshot.Html.Elem "section")
+      (Snapshot.Html.buildChildren dictBuildChildren@v0)
+    )
+  )
+---------------
+Snapshot.Html.section (Step 1)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "section");
+    -- Inline v2
+    let v2 =
+      -- Inline v2
+      let v2 = dictBuildChildren@v0.buildChildren;
+      (\x@v3 -> (v1 (v2 x@v3)));
+    v2
+  )
+---------------
+Snapshot.Html.section (Step 2; Final)
+  (\dictBuildChildren@v0 ->
+    let v1 = (Snapshot.Html.Elem "section");
+    (\x@v2 -> (v1 (dictBuildChildren@v0.buildChildren x@v2)))
+  )
+
+===============
+
+Snapshot.Html.section1 (Step 0; Original)
+  (Snapshot.Html.section Snapshot.Html.buildChildrenArrayHtml)
+---------------
+Snapshot.Html.section1 (Step 1)
+  let v0 = (Snapshot.Html.Elem "section");
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\x@v1 -> (v0 x@v1));
+    v1;
+  v1
+---------------
+Snapshot.Html.section1 (Step 2; Final)
+  (Snapshot.Html.Elem "section")
+
+===============
+
+Snapshot.Html.test (Step 0; Original)
+  (\user@v0 ->
+    (Snapshot.Html.section1
+      (Snapshot.Html.discard1
+        (Snapshot.Html.h11
+          (Snapshot.Html.text ((Snapshot.Html.append "Posts for ") user@v0))
+        )
+        (\$__unused@v1 ->
+          (Snapshot.Html.article1
+            (Snapshot.Html.discard1
+              (Snapshot.Html.h21 (Snapshot.Html.text "The first post"))
+              (\$__unused@v2 ->
+                (Snapshot.Html.p1
+                  (Snapshot.Html.discard1
+                    (Snapshot.Html.text "This is the first post.")
+                    (\$__unused@v3 ->
+                      (Snapshot.Html.text "Not much else to say.")
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+---------------
+Snapshot.Html.test (Step 1)
+  (\user@v0 ->
+    (Snapshot.Html.section1
+      let v1 =
+        (Snapshot.Html.h11
+          (Snapshot.Html.Text.Html
+            -- Inline v1
+            let v1 = "Posts for ";
+            -- Inline v2
+            let v2 = (\v2 -> ((stringAppend v1) v2));
+            (v2 user@v0)
+          )
+        );
+      -- Inline v2
+      let v2 = (\k@v2 -> [ v1, (k@v2 <PrimUndefined>) ]);
+      (v2
+        (\$__unused@v3 ->
+          (Snapshot.Html.article1
+            let v4 =
+              (Snapshot.Html.h21 (Snapshot.Html.Text.Html "The first post"));
+            -- Inline v5
+            let v5 = (\k@v5 -> [ v4, (k@v5 <PrimUndefined>) ]);
+            (v5
+              (\$__unused@v6 ->
+                (Snapshot.Html.p1
+                  -- Inline v7
+                  let v7 = (Snapshot.Html.Text.Html "This is the first post.");
+                  -- Inline v8
+                  let v8 = (\k@v8 -> [ v7, (k@v8 <PrimUndefined>) ]);
+                  (v8
+                    (\$__unused@v9 ->
+                      (Snapshot.Html.Text.Html "Not much else to say.")
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+---------------
+Snapshot.Html.test (Step 2)
+  (\user@v0 ->
+    (Snapshot.Html.section1
+      -- Inline v1
+      let v1 =
+        (Snapshot.Html.h11
+          (Snapshot.Html.Text.Html ((stringAppend "Posts for ") user@v0))
+        );
+      -- Inline v2
+      let v2 =
+        (\$__unused@v2 ->
+          (Snapshot.Html.article1
+            -- Inline v3
+            let v3 =
+              (Snapshot.Html.h21 (Snapshot.Html.Text.Html "The first post"));
+            -- Inline v4
+            let v4 =
+              (\$__unused@v4 ->
+                (Snapshot.Html.p1
+                  -- Inline v5
+                  let v5 =
+                    (\$__unused@v5 ->
+                      (Snapshot.Html.Text.Html "Not much else to say.")
+                    );
+                  [ (Snapshot.Html.Text.Html "This is the first post.")
+                  , (v5 <PrimUndefined>)
+                  ]
+                )
+              );
+            [ v3, (v4 <PrimUndefined>) ]
+          )
+        );
+      [ v1, (v2 <PrimUndefined>) ]
+    )
+  )
+---------------
+Snapshot.Html.test (Step 3)
+  (\user@v0 ->
+    (Snapshot.Html.section1
+      [ (Snapshot.Html.h11
+        (Snapshot.Html.Text.Html ((stringAppend "Posts for ") user@v0))
+      )
+      , -- Inline v1
+      let v1 = <PrimUndefined>;
+      (Snapshot.Html.article1
+        [ (Snapshot.Html.h21 (Snapshot.Html.Text.Html "The first post"))
+        , -- Inline v2
+        let v2 = <PrimUndefined>;
+        (Snapshot.Html.p1
+          [ (Snapshot.Html.Text.Html "This is the first post.")
+          , -- Inline v3
+          let v3 = <PrimUndefined>;
+          (Snapshot.Html.Text.Html "Not much else to say.")
+          ]
+        )
+        ]
+      )
+      ]
+    )
+  )
+---------------
+Snapshot.Html.test (Step 4; Final)
+  (\user@v0 ->
+    (Snapshot.Html.section1
+      [ (Snapshot.Html.h11
+        (Snapshot.Html.Text.Html ((stringAppend "Posts for ") user@v0))
+      )
+      , (Snapshot.Html.article1
+        [ (Snapshot.Html.h21 (Snapshot.Html.Text.Html "The first post"))
+        , (Snapshot.Html.p1
+          [ (Snapshot.Html.Text.Html "This is the first post.")
+          , (Snapshot.Html.Text.Html "Not much else to say.")
+          ]
+        )
+        ]
+      )
+      ]
+    )
+  )
+
+===============
+
+Snapshot.Html.text (Step 0; Original)
+  Snapshot.Html.Text
+---------------
+Snapshot.Html.text (Step 1; Final)
+  Snapshot.Html.Text

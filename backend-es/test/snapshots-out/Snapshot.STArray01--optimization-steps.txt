@@ -1,0 +1,5 @@
+Snapshot.STArray01.test1 (Step 0; Original)
+  (Data.Array.ST.run Data.Array.ST.new)
+---------------
+Snapshot.STArray01.test1 (Step 1; Final)
+  (Control.Monad.ST.Internal.run Data.Array.ST.new)

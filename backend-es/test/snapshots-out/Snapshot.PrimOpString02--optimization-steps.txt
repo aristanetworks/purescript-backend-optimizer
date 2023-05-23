@@ -1,0 +1,254 @@
+Snapshot.PrimOpString02.stringValues (Step 0; Original)
+  (\op@v0 -> [ ((op@v0 "a") "a"), ((op@v0 "a") "b"), ((op@v0 "b") "a") ])
+---------------
+Snapshot.PrimOpString02.stringValues (Step 1; Final)
+  (\op@v0 -> [ ((op@v0 "a") "a"), ((op@v0 "a") "b"), ((op@v0 "b") "a") ])
+
+===============
+
+Snapshot.PrimOpString02.test1 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues (Data.Eq.eq Data.Eq.eqString))
+---------------
+Snapshot.PrimOpString02.test1 (Step 1)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 "a")
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 "b")
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 "a")
+  ]
+---------------
+Snapshot.PrimOpString02.test1 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  ((eq "a") v0)
+  , -- Inline v0
+  let v0 = "b";
+  ((eq "a") v0)
+  , -- Inline v0
+  let v0 = "a";
+  ((eq "b") v0)
+  ]
+---------------
+Snapshot.PrimOpString02.test1 (Step 3; Final)
+  [ true, false, false ]
+
+===============
+
+Snapshot.PrimOpString02.test2 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues (Data.Eq.notEq Data.Eq.eqString))
+---------------
+Snapshot.PrimOpString02.test2 (Step 1)
+  -- Inline v0
+  let v0 = (\x@v0 -> \y@v1 -> ((notEq x@v0) y@v1));
+  -- Inline v1
+  let v1 = [ ((v0 "a") "a"), ((v0 "a") "b"), ((v0 "b") "a") ];
+  v1
+---------------
+Snapshot.PrimOpString02.test2 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "a";
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "b";
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = "a";
+  ((notEq v0) v1)
+  ]
+---------------
+Snapshot.PrimOpString02.test2 (Step 3; Final)
+  [ false, true, true ]
+
+===============
+
+Snapshot.PrimOpString02.test3 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues (Data.Ord.lessThan Data.Ord.ordString))
+---------------
+Snapshot.PrimOpString02.test3 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((lt a1@v0) a2@v1));
+  -- Inline v1
+  let v1 = [ ((v0 "a") "a"), ((v0 "a") "b"), ((v0 "b") "a") ];
+  v1
+---------------
+Snapshot.PrimOpString02.test3 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "a";
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "b";
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = "a";
+  ((lt v0) v1)
+  ]
+---------------
+Snapshot.PrimOpString02.test3 (Step 3; Final)
+  [ false, true, false ]
+
+===============
+
+Snapshot.PrimOpString02.test4 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues
+    (Data.Ord.greaterThan Data.Ord.ordString)
+  )
+---------------
+Snapshot.PrimOpString02.test4 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((gt a1@v0) a2@v1));
+  -- Inline v1
+  let v1 = [ ((v0 "a") "a"), ((v0 "a") "b"), ((v0 "b") "a") ];
+  v1
+---------------
+Snapshot.PrimOpString02.test4 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "a";
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "b";
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = "a";
+  ((gt v0) v1)
+  ]
+---------------
+Snapshot.PrimOpString02.test4 (Step 3; Final)
+  [ false, false, true ]
+
+===============
+
+Snapshot.PrimOpString02.test5 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues
+    (Data.Ord.lessThanOrEq Data.Ord.ordString)
+  )
+---------------
+Snapshot.PrimOpString02.test5 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((lte a1@v0) a2@v1));
+  -- Inline v1
+  let v1 = [ ((v0 "a") "a"), ((v0 "a") "b"), ((v0 "b") "a") ];
+  v1
+---------------
+Snapshot.PrimOpString02.test5 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "a";
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "b";
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = "a";
+  ((lte v0) v1)
+  ]
+---------------
+Snapshot.PrimOpString02.test5 (Step 3; Final)
+  [ true, true, false ]
+
+===============
+
+Snapshot.PrimOpString02.test6 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues
+    (Data.Ord.greaterThanOrEq Data.Ord.ordString)
+  )
+---------------
+Snapshot.PrimOpString02.test6 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((gte a1@v0) a2@v1));
+  -- Inline v1
+  let v1 = [ ((v0 "a") "a"), ((v0 "a") "b"), ((v0 "b") "a") ];
+  v1
+---------------
+Snapshot.PrimOpString02.test6 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "a";
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = "b";
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = "a";
+  ((gte v0) v1)
+  ]
+---------------
+Snapshot.PrimOpString02.test6 (Step 3; Final)
+  [ true, false, true ]
+
+===============
+
+Snapshot.PrimOpString02.test7 (Step 0; Original)
+  (Snapshot.PrimOpString02.stringValues
+    (Data.Semigroup.append Data.Semigroup.semigroupString)
+  )
+---------------
+Snapshot.PrimOpString02.test7 (Step 1)
+  [ -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = (\v1 -> ((stringAppend v0) v1));
+  (v1 "a")
+  , -- Inline v0
+  let v0 = "a";
+  -- Inline v1
+  let v1 = (\v1 -> ((stringAppend v0) v1));
+  (v1 "b")
+  , -- Inline v0
+  let v0 = "b";
+  -- Inline v1
+  let v1 = (\v1 -> ((stringAppend v0) v1));
+  (v1 "a")
+  ]
+---------------
+Snapshot.PrimOpString02.test7 (Step 2)
+  [ -- Inline v0
+  let v0 = "a";
+  ((stringAppend "a") v0)
+  , -- Inline v0
+  let v0 = "b";
+  ((stringAppend "a") v0)
+  , -- Inline v0
+  let v0 = "a";
+  ((stringAppend "b") v0)
+  ]
+---------------
+Snapshot.PrimOpString02.test7 (Step 3; Final)
+  [ "aa", "ab", "ba" ]

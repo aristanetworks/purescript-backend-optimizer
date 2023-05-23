@@ -1,0 +1,800 @@
+Snapshot.KnownConstructors06.Bar (Step 0; Original)
+  letCtor Bar = { tag: "Bar" };
+---------------
+Snapshot.KnownConstructors06.Bar (Step 1; Final)
+  letCtor Bar = { tag: "Bar" };
+
+===============
+
+Snapshot.KnownConstructors06.Baz (Step 0; Original)
+  letCtor Baz = { tag: "Baz" };
+---------------
+Snapshot.KnownConstructors06.Baz (Step 1; Final)
+  letCtor Baz = { tag: "Baz" };
+
+===============
+
+Snapshot.KnownConstructors06.Foo (Step 0; Original)
+  letCtor Foo = { tag: "Foo" };
+---------------
+Snapshot.KnownConstructors06.Foo (Step 1; Final)
+  letCtor Foo = { tag: "Foo" };
+
+===============
+
+Snapshot.KnownConstructors06.Qux (Step 0; Original)
+  letCtor Qux = { tag: "Qux" };
+---------------
+Snapshot.KnownConstructors06.Qux (Step 1; Final)
+  letCtor Qux = { tag: "Qux" };
+
+===============
+
+Snapshot.KnownConstructors06.genericShowConstructor (Step 0; Original)
+  (Data.Show.Generic.genericShowConstructor
+    Data.Show.Generic.genericShowArgsNoArguments
+  )
+---------------
+Snapshot.KnownConstructors06.genericShowConstructor (Step 1; Final)
+  (Data.Show.Generic.genericShowConstructor
+    Data.Show.Generic.genericShowArgsNoArguments
+  )
+
+===============
+
+Snapshot.KnownConstructors06.genericTest (Step 0; Original)
+  { to:
+      (\x@v0 ->
+        -- Inline v1
+        let v1 = x@v0;
+        -- Inline v2
+        let v2 = (\-> Snapshot.KnownConstructors06.Foo);
+        -- Inline v3
+        let v3 = (\-> Snapshot.KnownConstructors06.Bar);
+        -- Inline v4
+        let v4 = (\-> Snapshot.KnownConstructors06.Baz);
+        -- Inline v5
+        let v5 = (\-> Snapshot.KnownConstructors06.Qux);
+        if (isTag Data.Generic.Rep.Inl v1) then
+          -- Inline v6
+          let v6 = v1#value0;
+          (v2!)
+        else if (isTag Data.Generic.Rep.Inr v1) then
+          -- Inline v6
+          let v6 = v1#value0;
+          if (isTag Data.Generic.Rep.Inl v6) then
+            -- Inline v7
+            let v7 = v6#value0;
+            (v3!)
+          else if (isTag Data.Generic.Rep.Inr v6) then
+            -- Inline v7
+            let v7 = v6#value0;
+            if (isTag Data.Generic.Rep.Inl v7) then
+              -- Inline v8
+              let v8 = v7#value0;
+              (v4!)
+            else if (isTag Data.Generic.Rep.Inr v7) then
+              -- Inline v8
+              let v8 = v7#value0;
+              (v5!)
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else
+          <PatternMatchFailure>
+      )
+  , from:
+      (\x@v0 ->
+        -- Inline v1
+        let v1 = x@v0;
+        -- Inline v2
+        let v2 = (\-> (Data.Generic.Rep.Inl Data.Generic.Rep.NoArguments));
+        -- Inline v3
+        let v3 =
+          (\->
+            (Data.Generic.Rep.Inr
+              (Data.Generic.Rep.Inl Data.Generic.Rep.NoArguments)
+            )
+          );
+        -- Inline v4
+        let v4 =
+          (\->
+            (Data.Generic.Rep.Inr
+              (Data.Generic.Rep.Inr
+                (Data.Generic.Rep.Inl Data.Generic.Rep.NoArguments)
+              )
+            )
+          );
+        -- Inline v5
+        let v5 =
+          (\->
+            (Data.Generic.Rep.Inr
+              (Data.Generic.Rep.Inr
+                (Data.Generic.Rep.Inr Data.Generic.Rep.NoArguments)
+              )
+            )
+          );
+        if (isTag Snapshot.KnownConstructors06.Foo v1) then
+          (v2!)
+        else if (isTag Snapshot.KnownConstructors06.Bar v1) then
+          (v3!)
+        else if (isTag Snapshot.KnownConstructors06.Baz v1) then
+          (v4!)
+        else if (isTag Snapshot.KnownConstructors06.Qux v1) then
+          (v5!)
+        else
+          <PatternMatchFailure>
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.genericTest (Step 1; Final)
+  { to:
+      (\x@v0 ->
+        if (isTag Data.Generic.Rep.Inl x@v0) then
+          Snapshot.KnownConstructors06.Foo
+        else if (isTag Data.Generic.Rep.Inr x@v0) then
+          if (isTag Data.Generic.Rep.Inl x@v0#value0) then
+            Snapshot.KnownConstructors06.Bar
+          else if (isTag Data.Generic.Rep.Inr x@v0#value0) then
+            if (isTag Data.Generic.Rep.Inl x@v0#value0#value0) then
+              Snapshot.KnownConstructors06.Baz
+            else if (isTag Data.Generic.Rep.Inr x@v0#value0#value0) then
+              Snapshot.KnownConstructors06.Qux
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else
+          <PatternMatchFailure>
+      )
+  , from:
+      (\x@v0 ->
+        if (isTag Snapshot.KnownConstructors06.Foo x@v0) then
+          (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+        else if (isTag Snapshot.KnownConstructors06.Bar x@v0) then
+          (Data.Generic.Rep.Inr.Sum
+            (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+          )
+        else if (isTag Snapshot.KnownConstructors06.Baz x@v0) then
+          (Data.Generic.Rep.Inr.Sum
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          )
+        else if (isTag Snapshot.KnownConstructors06.Qux x@v0) then
+          (Data.Generic.Rep.Inr.Sum
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+            )
+          )
+        else
+          <PatternMatchFailure>
+      )
+  }
+
+===============
+
+Snapshot.KnownConstructors06.showTest (Step 0; Original)
+  { show:
+      (Data.Show.Generic.genericShow
+        Snapshot.KnownConstructors06.genericTest
+        (Data.Show.Generic.genericShowSum
+          (Snapshot.KnownConstructors06.genericShowConstructor
+            { reflectSymbol: (\$__unused@v0 -> "Foo") }
+          )
+          (Data.Show.Generic.genericShowSum
+            (Snapshot.KnownConstructors06.genericShowConstructor
+              { reflectSymbol: (\$__unused@v0 -> "Bar") }
+            )
+            (Data.Show.Generic.genericShowSum
+              (Snapshot.KnownConstructors06.genericShowConstructor
+                { reflectSymbol: (\$__unused@v0 -> "Baz") }
+              )
+              (Snapshot.KnownConstructors06.genericShowConstructor
+                { reflectSymbol: (\$__unused@v0 -> "Qux") }
+              )
+            )
+          )
+        )
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 1)
+  { show:
+      -- LetAssoc
+      let v0 =
+        let v0 =
+          -- Inline v0
+          let v0 = { reflectSymbol: (\$__unused@v0 -> "Foo") };
+          -- Inline v1
+          let v1 =
+            -- Inline v1
+            let v1 =
+              { genericShow':
+                  (\v@v1 ->
+                    let ctor@v2 = (v0.reflectSymbol Type.Proxy.Proxy);
+                    -- Inline v1@v3
+                    let v1@v3 = [];
+                    if ((eq (arrayLength v1@v3)) 0) then
+                      ctor@v2
+                    else
+                      (stringAppend
+                        "("
+                        (stringAppend
+                          (Data.Show.Generic.intercalate
+                            " "
+                            ((Data.Semigroup.concatArray [ ctor@v2 ]) v1@v3)
+                          )
+                          ")"
+                        )
+                      )
+                  )
+              };
+            v1;
+          v1;
+        -- Inline v1
+        let v1 =
+          (\dictGenericShow1@v1 ->
+            { genericShow':
+                (\v@v2 ->
+                  if (isTag Data.Generic.Rep.Inl v@v2) then
+                    (v0.genericShow' v@v2#value0)
+                  else if (isTag Data.Generic.Rep.Inr v@v2) then
+                    (dictGenericShow1@v1.genericShow' v@v2#value0)
+                  else
+                    <PatternMatchFailure>
+                )
+            }
+          );
+        (v1
+          let v2 =
+            -- Inline v2
+            let v2 = { reflectSymbol: (\$__unused@v2 -> "Bar") };
+            -- Inline v3
+            let v3 =
+              -- Inline v3
+              let v3 =
+                { genericShow':
+                    (\v@v3 ->
+                      let ctor@v4 = (v2.reflectSymbol Type.Proxy.Proxy);
+                      -- Inline v1@v5
+                      let v1@v5 = [];
+                      if ((eq (arrayLength v1@v5)) 0) then
+                        ctor@v4
+                      else
+                        (stringAppend
+                          "("
+                          (stringAppend
+                            (Data.Show.Generic.intercalate
+                              " "
+                              ((Data.Semigroup.concatArray [ ctor@v4 ]) v1@v5)
+                            )
+                            ")"
+                          )
+                        )
+                    )
+                };
+              v3;
+            v3;
+          -- Inline v3
+          let v3 =
+            (\dictGenericShow1@v3 ->
+              { genericShow':
+                  (\v@v4 ->
+                    if (isTag Data.Generic.Rep.Inl v@v4) then
+                      (v2.genericShow' v@v4#value0)
+                    else if (isTag Data.Generic.Rep.Inr v@v4) then
+                      (dictGenericShow1@v3.genericShow' v@v4#value0)
+                    else
+                      <PatternMatchFailure>
+                  )
+              }
+            );
+          (v3
+            let v4 =
+              -- Inline v4
+              let v4 = { reflectSymbol: (\$__unused@v4 -> "Baz") };
+              -- Inline v5
+              let v5 =
+                -- Inline v5
+                let v5 =
+                  { genericShow':
+                      (\v@v5 ->
+                        let ctor@v6 = (v4.reflectSymbol Type.Proxy.Proxy);
+                        -- Inline v1@v7
+                        let v1@v7 = [];
+                        if ((eq (arrayLength v1@v7)) 0) then
+                          ctor@v6
+                        else
+                          (stringAppend
+                            "("
+                            (stringAppend
+                              (Data.Show.Generic.intercalate
+                                " "
+                                ((Data.Semigroup.concatArray [ ctor@v6 ]) v1@v7)
+                              )
+                              ")"
+                            )
+                          )
+                      )
+                  };
+                v5;
+              v5;
+            -- Inline v5
+            let v5 =
+              (\dictGenericShow1@v5 ->
+                { genericShow':
+                    (\v@v6 ->
+                      if (isTag Data.Generic.Rep.Inl v@v6) then
+                        (v4.genericShow' v@v6#value0)
+                      else if (isTag Data.Generic.Rep.Inr v@v6) then
+                        (dictGenericShow1@v5.genericShow' v@v6#value0)
+                      else
+                        <PatternMatchFailure>
+                    )
+                }
+              );
+            (v5
+              -- Inline v6
+              let v6 = { reflectSymbol: (\$__unused@v6 -> "Qux") };
+              -- Inline v7
+              let v7 =
+                -- Inline v7
+                let v7 =
+                  { genericShow':
+                      (\v@v7 ->
+                        let ctor@v8 = (v6.reflectSymbol Type.Proxy.Proxy);
+                        -- Inline v1@v9
+                        let v1@v9 = [];
+                        if ((eq (arrayLength v1@v9)) 0) then
+                          ctor@v8
+                        else
+                          (stringAppend
+                            "("
+                            (stringAppend
+                              (Data.Show.Generic.intercalate
+                                " "
+                                ((Data.Semigroup.concatArray [ ctor@v8 ]) v1@v9)
+                              )
+                              ")"
+                            )
+                          )
+                      )
+                  };
+                v7;
+              v7
+            )
+          )
+        );
+      (\x@v1 ->
+        (v0.genericShow'
+          if (isTag Snapshot.KnownConstructors06.Foo x@v1) then
+            (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+          else if (isTag Snapshot.KnownConstructors06.Bar x@v1) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          else if (isTag Snapshot.KnownConstructors06.Baz x@v1) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else if (isTag Snapshot.KnownConstructors06.Qux x@v1) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else
+            <PatternMatchFailure>
+        )
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 2)
+  { show:
+      -- Inline v0
+      let v0 =
+        { genericShow':
+            (\v@v0 ->
+              -- Inline ctor@v1
+              let ctor@v1 =
+                -- Inline v1
+                let v1 = Type.Proxy.Proxy;
+                "Foo";
+              ctor@v1
+            )
+        };
+      -- LetAssoc
+      let v1 =
+        let v1 =
+          -- Inline v1
+          let v1 =
+            { genericShow':
+                (\v@v1 ->
+                  -- Inline ctor@v2
+                  let ctor@v2 =
+                    -- Inline v2
+                    let v2 = Type.Proxy.Proxy;
+                    "Bar";
+                  ctor@v2
+                )
+            };
+          let v2 =
+            -- Inline v2
+            let v2 =
+              { genericShow':
+                  (\v@v2 ->
+                    -- Inline ctor@v3
+                    let ctor@v3 =
+                      -- Inline v3
+                      let v3 = Type.Proxy.Proxy;
+                      "Baz";
+                    ctor@v3
+                  )
+              };
+            -- Inline v3
+            let v3 =
+              { genericShow':
+                  (\v@v3 ->
+                    -- Inline ctor@v4
+                    let ctor@v4 =
+                      -- Inline v4
+                      let v4 = Type.Proxy.Proxy;
+                      "Qux";
+                    ctor@v4
+                  )
+              };
+            { genericShow':
+                (\v@v4 ->
+                  if (isTag Data.Generic.Rep.Inl v@v4) then
+                    (v2.genericShow' v@v4#value0)
+                  else if (isTag Data.Generic.Rep.Inr v@v4) then
+                    (v3.genericShow' v@v4#value0)
+                  else
+                    <PatternMatchFailure>
+                )
+            };
+          { genericShow':
+              (\v@v3 ->
+                if (isTag Data.Generic.Rep.Inl v@v3) then
+                  (v1.genericShow' v@v3#value0)
+                else if (isTag Data.Generic.Rep.Inr v@v3) then
+                  (v2.genericShow' v@v3#value0)
+                else
+                  <PatternMatchFailure>
+              )
+          };
+        { genericShow':
+            (\v@v2 ->
+              if (isTag Data.Generic.Rep.Inl v@v2) then
+                (v0.genericShow' v@v2#value0)
+              else if (isTag Data.Generic.Rep.Inr v@v2) then
+                (v1.genericShow' v@v2#value0)
+              else
+                <PatternMatchFailure>
+            )
+        };
+      (\x@v2 ->
+        (v1.genericShow'
+          if (isTag Snapshot.KnownConstructors06.Foo x@v2) then
+            (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+          else if (isTag Snapshot.KnownConstructors06.Bar x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          else if (isTag Snapshot.KnownConstructors06.Baz x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else if (isTag Snapshot.KnownConstructors06.Qux x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else
+            <PatternMatchFailure>
+        )
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 3)
+  { show:
+      let v0 =
+        -- UnpackOp v0 Record ["genericShow'"]
+        let v0 =
+          { genericShow':
+              (\v@v0 ->
+                if (isTag Data.Generic.Rep.Inl v@v0) then
+                  -- Inline v1
+                  let v1 = v@v0#value0;
+                  "Baz"
+                else if (isTag Data.Generic.Rep.Inr v@v0) then
+                  -- Inline v1
+                  let v1 = v@v0#value0;
+                  "Qux"
+                else
+                  <PatternMatchFailure>
+              )
+          };
+        { genericShow':
+            (\v@v1 ->
+              if (isTag Data.Generic.Rep.Inl v@v1) then
+                -- Inline v2
+                let v2 = v@v1#value0;
+                "Bar"
+              else if (isTag Data.Generic.Rep.Inr v@v1) then
+                (v0.genericShow' v@v1#value0)
+              else
+                <PatternMatchFailure>
+            )
+        };
+      -- UnpackOp v1 Record ["genericShow'"]
+      let v1 =
+        { genericShow':
+            (\v@v1 ->
+              if (isTag Data.Generic.Rep.Inl v@v1) then
+                -- Inline v2
+                let v2 = v@v1#value0;
+                "Foo"
+              else if (isTag Data.Generic.Rep.Inr v@v1) then
+                (v0.genericShow' v@v1#value0)
+              else
+                <PatternMatchFailure>
+            )
+        };
+      (\x@v2 ->
+        (v1.genericShow'
+          if (isTag Snapshot.KnownConstructors06.Foo x@v2) then
+            (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+          else if (isTag Snapshot.KnownConstructors06.Bar x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          else if (isTag Snapshot.KnownConstructors06.Baz x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else if (isTag Snapshot.KnownConstructors06.Qux x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else
+            <PatternMatchFailure>
+        )
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 4)
+  { show:
+      let v0 =
+        -- Inline v0
+        let v0 =
+          (\v@v0 ->
+            if (isTag Data.Generic.Rep.Inl v@v0) then
+              "Baz"
+            else if (isTag Data.Generic.Rep.Inr v@v0) then
+              "Qux"
+            else
+              <PatternMatchFailure>
+          );
+        { genericShow':
+            (\v@v1 ->
+              if (isTag Data.Generic.Rep.Inl v@v1) then
+                "Bar"
+              else if (isTag Data.Generic.Rep.Inr v@v1) then
+                (v0 v@v1#value0)
+              else
+                <PatternMatchFailure>
+            )
+        };
+      -- Inline v1
+      let v1 =
+        (\v@v1 ->
+          if (isTag Data.Generic.Rep.Inl v@v1) then
+            "Foo"
+          else if (isTag Data.Generic.Rep.Inr v@v1) then
+            (v0.genericShow' v@v1#value0)
+          else
+            <PatternMatchFailure>
+        );
+      (\x@v2 ->
+        (v1
+          if (isTag Snapshot.KnownConstructors06.Foo x@v2) then
+            (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+          else if (isTag Snapshot.KnownConstructors06.Bar x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          else if (isTag Snapshot.KnownConstructors06.Baz x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else if (isTag Snapshot.KnownConstructors06.Qux x@v2) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else
+            <PatternMatchFailure>
+        )
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 5)
+  { show:
+      -- UnpackOp v0 Record ["genericShow'"]
+      let v0 =
+        { genericShow':
+            (\v@v0 ->
+              if (isTag Data.Generic.Rep.Inl v@v0) then
+                "Bar"
+              else if (isTag Data.Generic.Rep.Inr v@v0) then
+                -- Inline v1
+                let v1 = v@v0#value0;
+                if (isTag Data.Generic.Rep.Inl v1) then
+                  "Baz"
+                else if (isTag Data.Generic.Rep.Inr v1) then
+                  "Qux"
+                else
+                  <PatternMatchFailure>
+              else
+                <PatternMatchFailure>
+            )
+        };
+      (\x@v1 ->
+        -- DistBranchesLet v2
+        let v2 =
+          if (isTag Snapshot.KnownConstructors06.Foo x@v1) then
+            (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+          else if (isTag Snapshot.KnownConstructors06.Bar x@v1) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          else if (isTag Snapshot.KnownConstructors06.Baz x@v1) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else if (isTag Snapshot.KnownConstructors06.Qux x@v1) then
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum
+                (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+              )
+            )
+          else
+            <PatternMatchFailure>;
+        if (isTag Data.Generic.Rep.Inl v2) then
+          "Foo"
+        else if (isTag Data.Generic.Rep.Inr v2) then
+          (v0.genericShow' v2#value0)
+        else
+          <PatternMatchFailure>
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 6)
+  { show:
+      -- Inline v0
+      let v0 =
+        (\v@v0 ->
+          if (isTag Data.Generic.Rep.Inl v@v0) then
+            "Bar"
+          else if (isTag Data.Generic.Rep.Inr v@v0) then
+            if (isTag Data.Generic.Rep.Inl v@v0#value0) then
+              "Baz"
+            else if (isTag Data.Generic.Rep.Inr v@v0#value0) then
+              "Qux"
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        );
+      (\x@v1 ->
+        if (isTag Snapshot.KnownConstructors06.Foo x@v1) then
+          "Foo"
+        else if (isTag Snapshot.KnownConstructors06.Bar x@v1) then
+          (v0 (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments))
+        else if (isTag Snapshot.KnownConstructors06.Baz x@v1) then
+          (v0
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            )
+          )
+        else if (isTag Snapshot.KnownConstructors06.Qux x@v1) then
+          (v0
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+            )
+          )
+        else
+          <PatternMatchFailure>
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 7)
+  { show:
+      (\x@v0 ->
+        if (isTag Snapshot.KnownConstructors06.Foo x@v0) then
+          "Foo"
+        else if (isTag Snapshot.KnownConstructors06.Bar x@v0) then
+          -- Inline v1
+          let v1 = (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments);
+          if (isTag Data.Generic.Rep.Inl v1) then
+            "Bar"
+          else if (isTag Data.Generic.Rep.Inr v1) then
+            if (isTag Data.Generic.Rep.Inl v1#value0) then
+              "Baz"
+            else if (isTag Data.Generic.Rep.Inr v1#value0) then
+              "Qux"
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else if (isTag Snapshot.KnownConstructors06.Baz x@v0) then
+          -- Inline v1
+          let v1 =
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inl.Sum Data.Generic.Rep.NoArguments)
+            );
+          if (isTag Data.Generic.Rep.Inl v1) then
+            "Bar"
+          else if (isTag Data.Generic.Rep.Inr v1) then
+            if (isTag Data.Generic.Rep.Inl v1#value0) then
+              "Baz"
+            else if (isTag Data.Generic.Rep.Inr v1#value0) then
+              "Qux"
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else if (isTag Snapshot.KnownConstructors06.Qux x@v0) then
+          -- Inline v1
+          let v1 =
+            (Data.Generic.Rep.Inr.Sum
+              (Data.Generic.Rep.Inr.Sum Data.Generic.Rep.NoArguments)
+            );
+          if (isTag Data.Generic.Rep.Inl v1) then
+            "Bar"
+          else if (isTag Data.Generic.Rep.Inr v1) then
+            if (isTag Data.Generic.Rep.Inl v1#value0) then
+              "Baz"
+            else if (isTag Data.Generic.Rep.Inr v1#value0) then
+              "Qux"
+            else
+              <PatternMatchFailure>
+          else
+            <PatternMatchFailure>
+        else
+          <PatternMatchFailure>
+      )
+  }
+---------------
+Snapshot.KnownConstructors06.showTest (Step 8; Final)
+  { show:
+      (\x@v0 ->
+        if (isTag Snapshot.KnownConstructors06.Foo x@v0) then
+          "Foo"
+        else if (isTag Snapshot.KnownConstructors06.Bar x@v0) then
+          "Bar"
+        else if (isTag Snapshot.KnownConstructors06.Baz x@v0) then
+          "Baz"
+        else if (isTag Snapshot.KnownConstructors06.Qux x@v0) then
+          "Qux"
+        else
+          <PatternMatchFailure>
+      )
+  }

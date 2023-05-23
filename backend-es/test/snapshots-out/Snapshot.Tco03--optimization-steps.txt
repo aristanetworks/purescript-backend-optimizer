@@ -1,0 +1,130 @@
+Snapshot.Tco03.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqInt)
+---------------
+Snapshot.Tco03.eq (Step 1; Final)
+  Data.Eq.eqIntImpl
+
+===============
+
+Snapshot.Tco03.lessThanOrEq (Step 0; Original)
+  (Data.Ord.lessThanOrEq Data.Ord.ordInt)
+---------------
+Snapshot.Tco03.lessThanOrEq (Step 1; Final)
+  (\a1@v0 -> \a2@v1 -> ((lte a1@v0) a2@v1))
+
+===============
+
+Snapshot.Tco03.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringInt)
+---------------
+Snapshot.Tco03.sub (Step 1; Final)
+  Data.Ring.intSub
+
+===============
+
+Snapshot.Tco03.test (Step 0; Original)
+  letRec-0 go@v0 =
+    (\n@v1 ->
+      letRec-2 k@v2 =
+        (\m@v3 ->
+          -- Inline v4
+          let v4 = ((Snapshot.Tco03.eq m@v3) 100);
+          -- Inline v5
+          let v5 = (\-> (go@v0 ((Snapshot.Tco03.sub m@v3) 1)));
+          -- Inline v6
+          let v6 =
+            (\->
+              -- Inline v6
+              let v6 = ((Snapshot.Tco03.eq m@v3) 900);
+              -- Inline v7
+              let v7 = (\-> 42);
+              -- Inline v8
+              let v8 = (\-> (k@v2 ((Snapshot.Tco03.sub m@v3) 1)));
+              if ((eq v6) true) then (v7!) else (v8!)
+            );
+          if ((eq v4) true) then (v5!) else (v6!)
+        );
+      -- Inline v3
+      let v3 = ((Snapshot.Tco03.eq n@v1) 0);
+      -- Inline v4
+      let v4 = (\-> n@v1);
+      -- Inline v5
+      let v5 =
+        (\->
+          -- Inline v5
+          let v5 = ((Snapshot.Tco03.lessThanOrEq n@v1) 100);
+          -- Inline v6
+          let v6 = (\-> (go@v0 ((Snapshot.Tco03.sub n@v1) 1)));
+          -- Inline v7
+          let v7 = (\-> (k@v2 ((Snapshot.Tco03.sub n@v1) 1)));
+          if ((eq v5) true) then (v6!) else (v7!)
+        );
+      if ((eq v3) true) then (v4!) else (v5!)
+    );
+  go@v0
+---------------
+Snapshot.Tco03.test (Step 1)
+  letRec-0 go@v0 =
+    (\n@v1 ->
+      letRec-2 k@v2 =
+        (\m@v3 ->
+          if -- Inline v4
+          let v4 = 100;
+          ((eq m@v3) v4) then
+            (go@v0
+              -- Inline v4
+              let v4 = 1;
+              ((subtract m@v3) v4)
+            )
+          else if -- Inline v4
+          let v4 = 900;
+          ((eq m@v3) v4) then
+            42
+          else
+            (k@v2
+              -- Inline v4
+              let v4 = 1;
+              ((subtract m@v3) v4)
+            )
+        );
+      if -- Inline v3
+      let v3 = 0;
+      ((eq n@v1) v3) then
+        n@v1
+      else if -- Inline v3
+      let v3 = 100;
+      ((lte n@v1) v3) then
+        (go@v0
+          -- Inline v3
+          let v3 = 1;
+          ((subtract n@v1) v3)
+        )
+      else
+        (k@v2
+          -- Inline v3
+          let v3 = 1;
+          ((subtract n@v1) v3)
+        )
+    );
+  go@v0
+---------------
+Snapshot.Tco03.test (Step 2; Final)
+  letRec-0 go@v0 =
+    (\n@v1 ->
+      letRec-2 k@v2 =
+        (\m@v3 ->
+          if ((eq m@v3) 100) then
+            (go@v0 ((subtract m@v3) 1))
+          else if ((eq m@v3) 900) then
+            42
+          else
+            (k@v2 ((subtract m@v3) 1))
+        );
+      if ((eq n@v1) 0) then
+        n@v1
+      else if ((lte n@v1) 100) then
+        (go@v0 ((subtract n@v1) 1))
+      else
+        (k@v2 ((subtract n@v1) 1))
+    );
+  go@v0

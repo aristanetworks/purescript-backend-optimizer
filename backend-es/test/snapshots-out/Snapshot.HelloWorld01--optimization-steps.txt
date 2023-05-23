@@ -1,0 +1,15 @@
+Snapshot.HelloWorld01.test (Step 0; Original)
+  ((Effect.Class.Console.log Effect.Class.monadEffectEffect) "Hello, World!")
+---------------
+Snapshot.HelloWorld01.test (Step 1)
+  -- Inline v0
+  let v0 = "Hello, World!";
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (Effect.Console.log v0);
+    v1;
+  v1
+---------------
+Snapshot.HelloWorld01.test (Step 2; Final)
+  (Effect.Console.log "Hello, World!")

@@ -1,0 +1,53 @@
+Snapshot.PrimOpIntBit01.test1 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Data.Int.Bits.and a@v0) b@v1))
+---------------
+Snapshot.PrimOpIntBit01.test1 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((intBitAnd a@v0) b@v1))
+
+===============
+
+Snapshot.PrimOpIntBit01.test2 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Data.Int.Bits.or a@v0) b@v1))
+---------------
+Snapshot.PrimOpIntBit01.test2 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((intBitOr a@v0) b@v1))
+
+===============
+
+Snapshot.PrimOpIntBit01.test3 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Data.Int.Bits.shl a@v0) b@v1))
+---------------
+Snapshot.PrimOpIntBit01.test3 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((intBitShiftLeft a@v0) b@v1))
+
+===============
+
+Snapshot.PrimOpIntBit01.test4 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Data.Int.Bits.shr a@v0) b@v1))
+---------------
+Snapshot.PrimOpIntBit01.test4 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((intBitShiftRight a@v0) b@v1))
+
+===============
+
+Snapshot.PrimOpIntBit01.test5 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Data.Int.Bits.xor a@v0) b@v1))
+---------------
+Snapshot.PrimOpIntBit01.test5 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((intBitXor a@v0) b@v1))
+
+===============
+
+Snapshot.PrimOpIntBit01.test6 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Data.Int.Bits.zshr a@v0) b@v1))
+---------------
+Snapshot.PrimOpIntBit01.test6 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((intBitZeroFillShiftRight a@v0) b@v1))
+
+===============
+
+Snapshot.PrimOpIntBit01.test7 (Step 0; Original)
+  (\a@v0 -> (Data.Int.Bits.complement a@v0))
+---------------
+Snapshot.PrimOpIntBit01.test7 (Step 1; Final)
+  (\a@v0 -> (bitNot a@v0))

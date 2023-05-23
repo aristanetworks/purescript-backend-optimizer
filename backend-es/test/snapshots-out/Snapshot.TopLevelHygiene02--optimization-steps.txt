@@ -1,0 +1,13 @@
+Snapshot.TopLevelHygiene02.test2 (Step 0; Original)
+  Snapshot.TopLevelHygiene01.test1
+---------------
+Snapshot.TopLevelHygiene02.test2 (Step 1; Final)
+  (\wat@v0 -> \a@v1 -> (wat@v0 a@v1))
+
+===============
+
+Snapshot.TopLevelHygiene02.wat (Step 0; Original)
+  42
+---------------
+Snapshot.TopLevelHygiene02.wat (Step 1; Final)
+  42

@@ -1,0 +1,36 @@
+Snapshot.EsPrecedence01.test1 (Step 0; Original)
+  (\f@v0 -> \a@v1 -> \b@v2 ->
+    -- Inline x@v3
+    let x@v3 =
+      -- Inline v3
+      let v3 = (f@v0 a@v1);
+      -- Inline v4
+      let v4 = (\-> (f@v0 b@v2));
+      -- Inline v5
+      let v5 = (\-> false);
+      if ((eq v3) true) then (v4!) else (v5!);
+    -- Inline y@v4
+    let y@v4 =
+      -- Inline v4
+      let v4 = x@v3;
+      -- Inline v5
+      let v5 = (\-> (f@v0 a@v1));
+      -- Inline v6
+      let v6 = (\-> true);
+      if ((eq v4) true) then (v5!) else (v6!);
+    -- Inline v5
+    let v5 = y@v4;
+    -- Inline v6
+    let v6 = (\-> (f@v0 a@v1));
+    -- Inline v7
+    let v7 = (\-> (f@v0 Data.Unit.unit));
+    if ((eq v5) true) then (v6!) else (v7!)
+  )
+---------------
+Snapshot.EsPrecedence01.test1 (Step 1; Final)
+  (\f@v0 -> \a@v1 -> \b@v2 ->
+    if if if (f@v0 a@v1) then (f@v0 b@v2) else false then (f@v0 a@v1) else true then
+      (f@v0 a@v1)
+    else
+      (f@v0 <PrimUndefined>)
+  )

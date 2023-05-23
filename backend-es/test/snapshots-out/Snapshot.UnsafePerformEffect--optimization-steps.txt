@@ -1,0 +1,170 @@
+Snapshot.UnsafePerformEffect.add (Step 0; Original)
+  (Data.Semiring.add Data.Semiring.semiringInt)
+---------------
+Snapshot.UnsafePerformEffect.add (Step 1; Final)
+  Data.Semiring.intAdd
+
+===============
+
+Snapshot.UnsafePerformEffect.discard (Step 0; Original)
+  ((Control.Bind.discard Control.Bind.discardUnit) Effect.bindEffect)
+---------------
+Snapshot.UnsafePerformEffect.discard (Step 1; Final)
+  Effect.bindE
+
+===============
+
+Snapshot.UnsafePerformEffect.test (Step 0; Original)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (Effect.Ref.new 0));
+    -- Inline wat@v2
+    let wat@v2 = (f@v0 ref@v1);
+    (Snapshot.UnsafePerformEffect.discard
+      ((Effect.Ref.modify_ (Snapshot.UnsafePerformEffect.add 1)) wat@v2)
+      (\$__unused@v3 ->
+        ((Effect.Ref.modify_ (Snapshot.UnsafePerformEffect.add 1)) ref@v1)
+      )
+    )
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 1)
+  (\f@v0 ->
+    let ref@v1 =
+      (Effect.Unsafe.unsafePerformEffect
+        -- Inline v1
+        let v1 = 0;
+        -- Inline v2
+        let v2 = (# refNew v1 #);
+        v2
+      );
+    -- LetAssoc
+    let v2 =
+      let v2 =
+        -- Inline v2
+        let v2 = 1;
+        -- Inline v3
+        let v3 = (\v3 -> ((add v2) v3));
+        v3;
+      -- Inline v3
+      let v3 =
+        (\s@v3 ->
+          (# effectDefer
+            letEffect v4 = (# refRead s@v3 #);
+            letEffect a'@v5 = (# refWrite s@v3 (v2 v4) #);
+            (# effectPure <PrimUndefined> #)
+          #)
+        );
+      (v3 (f@v0 ref@v1));
+    -- Inline v3
+    let v3 =
+      letEffect $__unused@v3 = v2;
+      let v4 =
+        -- Inline v4
+        let v4 = 1;
+        -- Inline v5
+        let v5 = (\v5 -> ((add v4) v5));
+        v5;
+      -- Inline v5
+      let v5 =
+        (\s@v5 ->
+          (# effectDefer
+            letEffect v6 = (# refRead s@v5 #);
+            letEffect a'@v7 = (# refWrite s@v5 (v4 v6) #);
+            (# effectPure <PrimUndefined> #)
+          #)
+        );
+      (v5 ref@v1);
+    v3
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 2)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (# refNew 0 #));
+    -- Inline v2
+    let v2 = (\v2 -> ((add 1) v2));
+    -- LetAssoc
+    let v3 =
+      let v3 = (f@v0 ref@v1);
+      (# effectDefer
+        letEffect v4 = (# refRead v3 #);
+        letEffect a'@v5 = (# refWrite v3 (v2 v4) #);
+        (# effectPure <PrimUndefined> #)
+      #);
+    letEffect $__unused@v4 = v3;
+    -- Inline v5
+    let v5 = (\v5 -> ((add 1) v5));
+    (# effectDefer
+      letEffect v6 = (# refRead ref@v1 #);
+      letEffect a'@v7 = (# refWrite ref@v1 (v5 v6) #);
+      (# effectPure <PrimUndefined> #)
+    #)
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 3)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (# refNew 0 #));
+    let v2 = (f@v0 ref@v1);
+    -- Inline v3
+    let v3 =
+      (# effectDefer
+        letEffect v3 = (# refRead v2 #);
+        letEffect a'@v4 = (# refWrite v2 ((add 1) v3) #);
+        (# effectPure <PrimUndefined> #)
+      #);
+    letEffect $__unused@v4 = v3;
+    letEffect v5 = (# refRead ref@v1 #);
+    letEffect a'@v6 = (# refWrite ref@v1 ((add 1) v5) #);
+    (# effectPure <PrimUndefined> #)
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 4)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (# refNew 0 #));
+    let v2 = (f@v0 ref@v1);
+    -- EffectBindAssoc
+    let $__unused@v3 =
+      letEffect v3 = (# refRead v2 #);
+      letEffect a'@v4 = (# refWrite v2 ((add 1) v3) #);
+      (# effectPure <PrimUndefined> #);
+    letEffect v4 = (# refRead ref@v1 #);
+    letEffect a'@v5 = (# refWrite ref@v1 ((add 1) v4) #);
+    (# effectPure <PrimUndefined> #)
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 5)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (# refNew 0 #));
+    let v2 = (f@v0 ref@v1);
+    letEffect v3 = (# refRead v2 #);
+    -- EffectBindAssoc
+    let $__unused@v4 =
+      letEffect a'@v4 = (# refWrite v2 ((add 1) v3) #);
+      (# effectPure <PrimUndefined> #);
+    letEffect v5 = (# refRead ref@v1 #);
+    letEffect a'@v6 = (# refWrite ref@v1 ((add 1) v5) #);
+    (# effectPure <PrimUndefined> #)
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 6)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (# refNew 0 #));
+    let v2 = (f@v0 ref@v1);
+    letEffect v3 = (# refRead v2 #);
+    letEffect a'@v4 = (# refWrite v2 ((add 1) v3) #);
+    -- Inline $__unused@v5
+    let $__unused@v5 = <PrimUndefined>;
+    letEffect v6 = (# refRead ref@v1 #);
+    letEffect a'@v7 = (# refWrite ref@v1 ((add 1) v6) #);
+    (# effectPure <PrimUndefined> #)
+  )
+---------------
+Snapshot.UnsafePerformEffect.test (Step 7; Final)
+  (\f@v0 ->
+    let ref@v1 = (Effect.Unsafe.unsafePerformEffect (# refNew 0 #));
+    let v2 = (f@v0 ref@v1);
+    letEffect v3 = (# refRead v2 #);
+    letEffect a'@v4 = (# refWrite v2 ((add 1) v3) #);
+    letEffect v5 = (# refRead ref@v1 #);
+    letEffect a'@v6 = (# refWrite ref@v1 ((add 1) v5) #);
+    (# effectPure <PrimUndefined> #)
+  )

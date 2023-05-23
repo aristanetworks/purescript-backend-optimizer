@@ -1,0 +1,84 @@
+Snapshot.Tco04.eq (Step 0; Original)
+  (Data.Eq.eq Data.Eq.eqInt)
+---------------
+Snapshot.Tco04.eq (Step 1; Final)
+  Data.Eq.eqIntImpl
+
+===============
+
+Snapshot.Tco04.sub (Step 0; Original)
+  (Data.Ring.sub Data.Ring.ringInt)
+---------------
+Snapshot.Tco04.sub (Step 1; Final)
+  Data.Ring.intSub
+
+===============
+
+Snapshot.Tco04.test1 (Step 0; Original)
+  (\n@v0 ->
+    -- Inline v1
+    let v1 = ((Snapshot.Tco04.eq n@v0) 1);
+    -- Inline v2
+    let v2 = (\-> n@v0);
+    -- Inline v3
+    let v3 = (\-> (Snapshot.Tco04.test2 ((Snapshot.Tco04.sub n@v0) 1)));
+    if ((eq v1) true) then (v2!) else (v3!)
+  )
+---------------
+Snapshot.Tco04.test1 (Step 1)
+  (\n@v0 ->
+    if -- Inline v1
+    let v1 = 1;
+    ((eq n@v0) v1) then
+      n@v0
+    else
+      let v1 =
+        -- Inline v1
+        let v1 = 1;
+        ((subtract n@v0) v1);
+      -- Inline v2
+      let v2 =
+        if ((eq v1) 2) then v1 else (Snapshot.Tco04.test1 ((subtract v1) 2));
+      v2
+  )
+---------------
+Snapshot.Tco04.test1 (Step 2; Final)
+  (\n@v0 ->
+    if ((eq n@v0) 1) then
+      n@v0
+    else
+      let v1 = ((subtract n@v0) 1);
+      if ((eq v1) 2) then v1 else (Snapshot.Tco04.test1 ((subtract v1) 2))
+  )
+
+===============
+
+Snapshot.Tco04.test2 (Step 0; Original)
+  (\m@v0 ->
+    -- Inline v1
+    let v1 = ((Snapshot.Tco04.eq m@v0) 2);
+    -- Inline v2
+    let v2 = (\-> m@v0);
+    -- Inline v3
+    let v3 = (\-> (Snapshot.Tco04.test1 ((Snapshot.Tco04.sub m@v0) 2)));
+    if ((eq v1) true) then (v2!) else (v3!)
+  )
+---------------
+Snapshot.Tco04.test2 (Step 1)
+  (\m@v0 ->
+    if -- Inline v1
+    let v1 = 2;
+    ((eq m@v0) v1) then
+      m@v0
+    else
+      (Snapshot.Tco04.test1
+        -- Inline v1
+        let v1 = 2;
+        ((subtract m@v0) v1)
+      )
+  )
+---------------
+Snapshot.Tco04.test2 (Step 2; Final)
+  (\m@v0 ->
+    if ((eq m@v0) 2) then m@v0 else (Snapshot.Tco04.test1 ((subtract m@v0) 2))
+  )

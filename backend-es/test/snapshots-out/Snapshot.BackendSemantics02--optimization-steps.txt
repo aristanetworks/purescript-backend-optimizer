@@ -1,0 +1,5 @@
+Snapshot.BackendSemantics02.test1 (Step 0; Original)
+  (Data.Char.toCharCode 'a')
+---------------
+Snapshot.BackendSemantics02.test1 (Step 1; Final)
+  97

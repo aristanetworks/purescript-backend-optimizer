@@ -1,0 +1,702 @@
+Snapshot.PrimOpNumber02.negate (Step 0; Original)
+  (Data.Ring.negate Data.Ring.ringNumber)
+---------------
+Snapshot.PrimOpNumber02.negate (Step 1)
+  -- Inline zero@v0
+  let zero@v0 =
+    -- Inline v0
+    let v0 = <PrimUndefined>;
+    0.0;
+  -- Inline v1
+  let v1 =
+    -- Inline v1
+    let v1 = (\a@v1 -> ((subtract zero@v0) a@v1));
+    v1;
+  v1
+---------------
+Snapshot.PrimOpNumber02.negate (Step 2; Final)
+  (\a@v0 -> (numNegate a@v0))
+
+===============
+
+Snapshot.PrimOpNumber02.numValues (Step 0; Original)
+  (\op@v0 ->
+    [ ((op@v0 1.5) 1.0)
+    , ((op@v0 1.5) 2.0)
+    , ((op@v0 2.5) 1.0)
+    , ((op@v0 1.5) (Snapshot.PrimOpNumber02.negate 2.0))
+    , ((op@v0 (Snapshot.PrimOpNumber02.negate 1.5)) 2.0)
+    , (op@v0
+      (Snapshot.PrimOpNumber02.negate 1.5)
+      (Snapshot.PrimOpNumber02.negate 1.0)
+    )
+    ]
+  )
+---------------
+Snapshot.PrimOpNumber02.numValues (Step 1)
+  (\op@v0 ->
+    [ ((op@v0 1.5) 1.0)
+    , ((op@v0 1.5) 2.0)
+    , ((op@v0 2.5) 1.0)
+    , (op@v0
+      1.5
+      -- Inline v1
+      let v1 = 2.0;
+      -- Inline v2
+      let v2 = (numNegate v1);
+      v2
+    )
+    , (op@v0
+      -- Inline v1
+      let v1 = 1.5;
+      -- Inline v2
+      let v2 = (numNegate v1);
+      v2
+      2.0
+    )
+    , (op@v0
+      -- Inline v1
+      let v1 = 1.5;
+      -- Inline v2
+      let v2 = (numNegate v1);
+      v2
+      -- Inline v1
+      let v1 = 1.0;
+      -- Inline v2
+      let v2 = (numNegate v1);
+      v2
+    )
+    ]
+  )
+---------------
+Snapshot.PrimOpNumber02.numValues (Step 2; Final)
+  (\op@v0 ->
+    [ ((op@v0 1.5) 1.0)
+    , ((op@v0 1.5) 2.0)
+    , ((op@v0 2.5) 1.0)
+    , ((op@v0 1.5) -2.0)
+    , ((op@v0 -1.5) 2.0)
+    , ((op@v0 -1.5) -1.0)
+    ]
+  )
+
+===============
+
+Snapshot.PrimOpNumber02.test1 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues
+    (Data.Semiring.add Data.Semiring.semiringNumber)
+  )
+---------------
+Snapshot.PrimOpNumber02.test1 (Step 1)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((add v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((add v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((add v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((add v0) v1));
+  (v1 -2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((add v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((add v0) v1));
+  (v1 -1.0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test1 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.0;
+  ((add 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((add 1.5) v0)
+  , -- Inline v0
+  let v0 = 1.0;
+  ((add 2.5) v0)
+  , -- Inline v0
+  let v0 = -2.0;
+  ((add 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((add -1.5) v0)
+  , -- Inline v0
+  let v0 = -1.0;
+  ((add -1.5) v0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test1 (Step 3; Final)
+  [ 2.5, 3.5, 3.5, -0.5, 0.5, -2.5 ]
+
+===============
+
+Snapshot.PrimOpNumber02.test10 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues
+    (Data.EuclideanRing.div Data.EuclideanRing.euclideanRingNumber)
+  )
+---------------
+Snapshot.PrimOpNumber02.test10 (Step 1)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((divide v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((divide v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((divide v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((divide v0) v1));
+  (v1 -2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((divide v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((divide v0) v1));
+  (v1 -1.0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test10 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.0;
+  ((divide 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((divide 1.5) v0)
+  , -- Inline v0
+  let v0 = 1.0;
+  ((divide 2.5) v0)
+  , -- Inline v0
+  let v0 = -2.0;
+  ((divide 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((divide -1.5) v0)
+  , -- Inline v0
+  let v0 = -1.0;
+  ((divide -1.5) v0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test10 (Step 3; Final)
+  [ 1.5, 0.75, 2.5, -0.75, -0.75, 1.5 ]
+
+===============
+
+Snapshot.PrimOpNumber02.test11 (Step 0; Original)
+  [ (Snapshot.PrimOpNumber02.negate 1.5)
+  , (Snapshot.PrimOpNumber02.negate (Snapshot.PrimOpNumber02.negate 1.5))
+  ]
+---------------
+Snapshot.PrimOpNumber02.test11 (Step 1)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (numNegate v0);
+  v1
+  , -- Inline v0
+  let v0 =
+    -- Inline v0
+    let v0 = 1.5;
+    -- Inline v1
+    let v1 = (numNegate v0);
+    v1;
+  -- Inline v1
+  let v1 = (numNegate v0);
+  v1
+  ]
+---------------
+Snapshot.PrimOpNumber02.test11 (Step 2; Final)
+  [ -1.5, 1.5 ]
+
+===============
+
+Snapshot.PrimOpNumber02.test2 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues (Data.Ring.sub Data.Ring.ringNumber))
+---------------
+Snapshot.PrimOpNumber02.test2 (Step 1)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((subtract v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((subtract v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((subtract v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((subtract v0) v1));
+  (v1 -2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((subtract v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((subtract v0) v1));
+  (v1 -1.0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test2 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.0;
+  ((subtract 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((subtract 1.5) v0)
+  , -- Inline v0
+  let v0 = 1.0;
+  ((subtract 2.5) v0)
+  , -- Inline v0
+  let v0 = -2.0;
+  ((subtract 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((subtract -1.5) v0)
+  , -- Inline v0
+  let v0 = -1.0;
+  ((subtract -1.5) v0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test2 (Step 3; Final)
+  [ 0.5, -0.5, 1.5, 3.5, -3.5, -0.5 ]
+
+===============
+
+Snapshot.PrimOpNumber02.test3 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues (Data.Eq.eq Data.Eq.eqNumber))
+---------------
+Snapshot.PrimOpNumber02.test3 (Step 1)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 -2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((eq v0) v1));
+  (v1 -1.0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test3 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.0;
+  ((eq 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((eq 1.5) v0)
+  , -- Inline v0
+  let v0 = 1.0;
+  ((eq 2.5) v0)
+  , -- Inline v0
+  let v0 = -2.0;
+  ((eq 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((eq -1.5) v0)
+  , -- Inline v0
+  let v0 = -1.0;
+  ((eq -1.5) v0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test3 (Step 3; Final)
+  [ false, false, false, false, false, false ]
+
+===============
+
+Snapshot.PrimOpNumber02.test4 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues (Data.Eq.notEq Data.Eq.eqNumber))
+---------------
+Snapshot.PrimOpNumber02.test4 (Step 1)
+  -- Inline v0
+  let v0 = (\x@v0 -> \y@v1 -> ((notEq x@v0) y@v1));
+  -- Inline v1
+  let v1 =
+    [ ((v0 1.5) 1.0)
+    , ((v0 1.5) 2.0)
+    , ((v0 2.5) 1.0)
+    , ((v0 1.5) -2.0)
+    , ((v0 -1.5) 2.0)
+    , ((v0 -1.5) -1.0)
+    ];
+  v1
+---------------
+Snapshot.PrimOpNumber02.test4 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = -2.0;
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((notEq v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = -1.0;
+  ((notEq v0) v1)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test4 (Step 3; Final)
+  [ true, true, true, true, true, true ]
+
+===============
+
+Snapshot.PrimOpNumber02.test5 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues (Data.Ord.lessThan Data.Ord.ordNumber))
+---------------
+Snapshot.PrimOpNumber02.test5 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((lt a1@v0) a2@v1));
+  -- Inline v1
+  let v1 =
+    [ ((v0 1.5) 1.0)
+    , ((v0 1.5) 2.0)
+    , ((v0 2.5) 1.0)
+    , ((v0 1.5) -2.0)
+    , ((v0 -1.5) 2.0)
+    , ((v0 -1.5) -1.0)
+    ];
+  v1
+---------------
+Snapshot.PrimOpNumber02.test5 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = -2.0;
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((lt v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = -1.0;
+  ((lt v0) v1)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test5 (Step 3; Final)
+  [ false, true, false, false, true, true ]
+
+===============
+
+Snapshot.PrimOpNumber02.test6 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues (Data.Ord.greaterThan Data.Ord.ordNumber))
+---------------
+Snapshot.PrimOpNumber02.test6 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((gt a1@v0) a2@v1));
+  -- Inline v1
+  let v1 =
+    [ ((v0 1.5) 1.0)
+    , ((v0 1.5) 2.0)
+    , ((v0 2.5) 1.0)
+    , ((v0 1.5) -2.0)
+    , ((v0 -1.5) 2.0)
+    , ((v0 -1.5) -1.0)
+    ];
+  v1
+---------------
+Snapshot.PrimOpNumber02.test6 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = -2.0;
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((gt v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = -1.0;
+  ((gt v0) v1)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test6 (Step 3; Final)
+  [ true, false, true, true, false, false ]
+
+===============
+
+Snapshot.PrimOpNumber02.test7 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues (Data.Ord.lessThanOrEq Data.Ord.ordNumber))
+---------------
+Snapshot.PrimOpNumber02.test7 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((lte a1@v0) a2@v1));
+  -- Inline v1
+  let v1 =
+    [ ((v0 1.5) 1.0)
+    , ((v0 1.5) 2.0)
+    , ((v0 2.5) 1.0)
+    , ((v0 1.5) -2.0)
+    , ((v0 -1.5) 2.0)
+    , ((v0 -1.5) -1.0)
+    ];
+  v1
+---------------
+Snapshot.PrimOpNumber02.test7 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = -2.0;
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((lte v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = -1.0;
+  ((lte v0) v1)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test7 (Step 3; Final)
+  [ false, true, false, false, true, true ]
+
+===============
+
+Snapshot.PrimOpNumber02.test8 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues
+    (Data.Ord.greaterThanOrEq Data.Ord.ordNumber)
+  )
+---------------
+Snapshot.PrimOpNumber02.test8 (Step 1)
+  -- Inline v0
+  let v0 = (\a1@v0 -> \a2@v1 -> ((gte a1@v0) a2@v1));
+  -- Inline v1
+  let v1 =
+    [ ((v0 1.5) 1.0)
+    , ((v0 1.5) 2.0)
+    , ((v0 2.5) 1.0)
+    , ((v0 1.5) -2.0)
+    , ((v0 -1.5) 2.0)
+    , ((v0 -1.5) -1.0)
+    ];
+  v1
+---------------
+Snapshot.PrimOpNumber02.test8 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = 1.0;
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = -2.0;
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = 2.0;
+  ((gte v0) v1)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = -1.0;
+  ((gte v0) v1)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test8 (Step 3; Final)
+  [ true, false, true, true, false, false ]
+
+===============
+
+Snapshot.PrimOpNumber02.test9 (Step 0; Original)
+  (Snapshot.PrimOpNumber02.numValues
+    (Data.Semiring.mul Data.Semiring.semiringNumber)
+  )
+---------------
+Snapshot.PrimOpNumber02.test9 (Step 1)
+  [ -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((multiply v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((multiply v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = 2.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((multiply v0) v1));
+  (v1 1.0)
+  , -- Inline v0
+  let v0 = 1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((multiply v0) v1));
+  (v1 -2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((multiply v0) v1));
+  (v1 2.0)
+  , -- Inline v0
+  let v0 = -1.5;
+  -- Inline v1
+  let v1 = (\v1 -> ((multiply v0) v1));
+  (v1 -1.0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test9 (Step 2)
+  [ -- Inline v0
+  let v0 = 1.0;
+  ((multiply 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((multiply 1.5) v0)
+  , -- Inline v0
+  let v0 = 1.0;
+  ((multiply 2.5) v0)
+  , -- Inline v0
+  let v0 = -2.0;
+  ((multiply 1.5) v0)
+  , -- Inline v0
+  let v0 = 2.0;
+  ((multiply -1.5) v0)
+  , -- Inline v0
+  let v0 = -1.0;
+  ((multiply -1.5) v0)
+  ]
+---------------
+Snapshot.PrimOpNumber02.test9 (Step 3; Final)
+  [ 1.5, 3.0, 2.5, -3.0, -3.0, 1.5 ]

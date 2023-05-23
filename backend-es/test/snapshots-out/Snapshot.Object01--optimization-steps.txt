@@ -1,0 +1,43 @@
+Snapshot.Object01.test1 (Step 0; Original)
+  (\a@v0 -> ((Foreign.Object.Unsafe.unsafeIndex a@v0) "foo"))
+---------------
+Snapshot.Object01.test1 (Step 1; Final)
+  (\a@v0 -> ((Foreign.Object.Unsafe.unsafeIndex a@v0) "foo"))
+
+===============
+
+Snapshot.Object01.test2 (Step 0; Original)
+  (\a@v0 -> ((Foreign.Object.Unsafe.unsafeIndex a@v0) "foo.bar"))
+---------------
+Snapshot.Object01.test2 (Step 1; Final)
+  (\a@v0 -> ((Foreign.Object.Unsafe.unsafeIndex a@v0) "foo.bar"))
+
+===============
+
+Snapshot.Object01.test3 (Step 0; Original)
+  (\a@v0 -> \b@v1 -> ((Foreign.Object.Unsafe.unsafeIndex a@v0) b@v1))
+---------------
+Snapshot.Object01.test3 (Step 1; Final)
+  (\a@v0 -> \b@v1 -> ((Foreign.Object.Unsafe.unsafeIndex a@v0) b@v1))
+
+===============
+
+Snapshot.Object01.test4 (Step 0; Original)
+  (\obj@v0 -> (Foreign.Object.keys obj@v0))
+---------------
+Snapshot.Object01.test4 (Step 1; Final)
+  (\obj@v0 -> (Foreign.Object.keys obj@v0))
+
+===============
+
+Snapshot.Object01.test5 (Step 0; Original)
+  (\obj@v0 -> ((Foreign.Object.member "wat") obj@v0))
+---------------
+Snapshot.Object01.test5 (Step 1; Final)
+  (\obj@v0 ->
+    (-- Stop
+    Foreign.Object.member
+      "wat"
+      obj@v0
+    )
+  )
