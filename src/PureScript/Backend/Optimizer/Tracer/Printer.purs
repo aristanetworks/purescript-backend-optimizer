@@ -204,8 +204,13 @@ printProp labelValueSep (Prop lbl expr) =
   D.words [ D.text lbl <> D.text labelValueSep, expr ]
 
 printRecord :: String -> Array (Prop (Doc Void)) -> Doc Void
-printRecord labelValueSep arr = D.flexGroup $
-  D.flexAlt (singleLine arr) (D.flexAlt (multiLine arr) (multiLineIdentValues arr))
+printRecord labelValueSep arr =
+  if Array.length arr == 0 then
+    D.text "{}"
+  else
+    D.flexGroup
+      $ D.flexAlt (singleLine arr)
+      $ D.flexAlt (multiLine arr) (multiLineIdentValues arr)
   where
   singleLine = flip foldrWithIndex (D.text "}") \idx prop acc -> do
     let prefix = if idx == 0 then "{ " else ", "
