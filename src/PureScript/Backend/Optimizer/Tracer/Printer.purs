@@ -190,7 +190,11 @@ printLet' letKeyword identifier binding = D.flexGroup $
     ]
 
 printArray :: Array (Doc Void) -> Doc Void
-printArray arr = D.flexGroup $ D.flexAlt (singleLine arr) (multiLine arr)
+printArray arr =
+  if Array.length arr == 0 then
+    D.text "[]"
+  else
+    D.flexGroup $ D.flexAlt (singleLine arr) (multiLine arr)
   where
   singleLine = flip foldrWithIndex (D.text " ]") \idx expr acc -> do
     let prefix = if idx == 0 then "[ " else ", "
