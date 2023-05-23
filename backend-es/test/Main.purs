@@ -115,7 +115,7 @@ runSnapshotTests { accept, filter, shouldTrace } = do
       coreFnModules # buildModules
         { directives
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
-        , onCodegenModule: \build (Module { name: ModuleName name, path }) backend -> do
+        , onCodegenModule: \build (Module { name: modName@(ModuleName name), path }) backend optimizationSteps -> do
             let
               formatted =
                 Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
@@ -130,6 +130,15 @@ runSnapshotTests { accept, filter, shouldTrace } = do
               copyFile foreignSiblingPath foreignOutputPath
             when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
               void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backend))) outputRef
+
+            for_ shouldTrace \traceChoice -> do
+              let doc = printSteps modName optimizationSteps
+              case traceChoice of
+                TraceToStdOut ->
+                  Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
+                TraceToSnapshotsOut -> do
+                  FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
+                    $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
             let total = show build.moduleCount
             let index = show (build.moduleIndex + 1)
@@ -138,14 +147,6 @@ runSnapshotTests { accept, filter, shouldTrace } = do
             pure coreFnMod
         , traceOptimization: \filePath _ _ -> do
             tracingEnabled && (isJust $ String.stripPrefix (String.Pattern "./Snapshot") filePath)
-        , onTraceSteps: \_ modName@(ModuleName name) allSteps -> for_ shouldTrace \traceChoice -> do
-            let doc = printSteps modName allSteps
-            case traceChoice of
-              TraceToStdOut ->
-                Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
-              TraceToSnapshotsOut -> do
-                FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
-                  $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
         }
       outputModules <- liftEffect $ Ref.read outputRef
       results <- forWithIndex outputModules \name (Tuple output failsWith) -> do

@@ -85,10 +85,9 @@ basicBuildMain
      , foreignSemantics :: Map (Qualified Ident) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit
-     , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
+     , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> Aff Unit
      , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
      , traceOptimization :: String -> ModuleName -> Ident -> Boolean
-     , onTraceSteps :: String -> ModuleName -> OptimizationSteps -> Aff Unit
      }
   -> Aff Unit
 basicBuildMain options = do
@@ -110,7 +109,6 @@ basicBuildMain options = do
         , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule
-        , onTraceSteps: options.onTraceSteps
         , traceOptimization: options.traceOptimization
         }
       options.onCodegenAfter

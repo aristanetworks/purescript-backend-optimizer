@@ -28,8 +28,7 @@ type BuildOptions m =
   { directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
-  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> m Unit
-  , onTraceSteps :: String -> ModuleName -> OptimizationSteps -> m Unit
+  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
   , traceOptimization :: String -> ModuleName -> Ident -> Boolean
   }
 
@@ -59,9 +58,7 @@ buildModules options coreFnModules =
         }
       newImplementations =
         foldrWithIndex Map.insert implementations backendMod.implementations
-    unless (Map.isEmpty optimizationSteps) do
-      options.onTraceSteps path name optimizationSteps
-    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod
+    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps
     pure
       { directives: foldrWithIndex Map.insert directives backendMod.directives
       , implementations: newImplementations

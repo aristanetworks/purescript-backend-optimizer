@@ -215,7 +215,7 @@ main cliRoot =
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
     , onCodegenAfter: mempty
-    , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } -> do
+    , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } optimizationSteps -> do
         let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
@@ -230,30 +230,21 @@ main cliRoot =
             ]
           unless (isRight res) do
             Console.log $ "  Foreign implementation missing."
+        unless (Map.isEmpty optimizationSteps) do
+          writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
+            $ Dodo.print Dodo.plainText Dodo.twoSpaces
+            $ printSteps backendMod.name optimizationSteps
+
     , onPrepareModule: \build coreFnMod@(Module { name }) -> do
         let total = show build.moduleCount
         let index = show (build.moduleIndex + 1)
         let padding = power " " (SCU.length total - SCU.length index)
         Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
         pure coreFnMod
-    , onTraceSteps
-    , traceOptimization
+    , traceOptimization: case args.traceIdentifiers of
+        Nothing -> \_ _ _ -> false
+        Just idents -> \_ modName ident -> NonEmptySet.member (Qualified (Just modName) ident) idents
     }
-    where
-    { onTraceSteps, traceOptimization } = case args.traceIdentifiers of
-      Nothing ->
-        { traceOptimization: \_ _ _ -> false
-        , onTraceSteps: \_ _ _ -> pure unit
-        }
-      Just idents ->
-        { traceOptimization: \_ modName ident -> NonEmptySet.member (Qualified (Just modName) ident) idents
-        , onTraceSteps: \_ modName@(ModuleName name) allSteps -> do
-            let doc = printSteps modName allSteps
-            let modPath = Path.concat [ args.outputDir, name ]
-            mkdirp modPath
-            writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ])
-              $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
-        }
 
   bundleCmd :: Boolean -> BundleArgs -> BuildArgs -> Aff Unit
   bundleCmd shouldInvokeMain bundleArgs args = do
