@@ -217,7 +217,7 @@ printRecord labelValueSep arr =
       $ D.flexAlt (singleLine arr)
       $ D.flexAlt (multiLine arr) (multiLineIdentValues arr)
   where
-  singleLine = flip foldrWithIndex (D.text "}") \idx prop acc -> do
+  singleLine = flip foldrWithIndex (D.text " }") \idx prop acc -> do
     let prefix = if idx == 0 then "{ " else ", "
     fold
       [ D.text prefix
