@@ -116,34 +116,55 @@ printCurriedAbs args body = D.flexGroup $ D.flexAlt singleLine multiLine
 printUncurriedApp :: Boolean -> Doc Void -> Array (Doc Void) -> Doc Void
 printUncurriedApp isEffectful fn args = do
   let effectfulChar = D.text "#" # guard isEffectful
-  D.flexGroup $ D.flexAlt
-    ( D.words
-        [ D.text "(" <> effectfulChar <> fn
-        , D.words args <> effectfulChar <> D.text ")"
-        ]
-    )
-    ( D.lines
-        [ D.text "(" <> effectfulChar <> fn
-        , D.indent $ D.lines args
-        , effectfulChar <> D.text ")"
-        ]
-    )
+  if Array.length args == 0 then
+    wrapInParens $ effectfulChar <> fn <> D.text "!" <> effectfulChar
+  else do
+    D.flexGroup $ D.flexAlt
+      ( D.words
+          [ D.text "(" <> effectfulChar
+          , fn
+          , D.words args
+          , effectfulChar <> D.text ")"
+          ]
+      )
+      ( D.lines
+          [ D.text "(" <> effectfulChar <> D.space <> fn
+          , D.indent $ D.lines args
+          , effectfulChar <> D.text ")"
+          ]
+      )
 
 printUncurriedAbs :: Boolean -> Array (Doc Void) -> Doc Void -> Doc Void
 printUncurriedAbs isEffectful args body = do
   let effectfulChar = D.text "#" # guard isEffectful
-  D.flexGroup $ D.flexAlt
-    ( D.words
-        [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
-        , body <> effectfulChar <> D.text ")"
-        ]
-    )
-    ( D.lines
-        [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
-        , D.indent body
-        , effectfulChar <> D.text ")"
-        ]
-    )
+  if Array.length args == 0 then
+    D.flexGroup $ D.flexAlt
+      ( D.words
+          [ D.text "(" <> effectfulChar
+          , D.text "\\->"
+          , body
+          , effectfulChar <> D.text ")"
+          ]
+      )
+      ( D.lines
+          [ D.text "(" <> effectfulChar <> D.space <> D.text "\\->"
+          , D.indent body
+          , effectfulChar <> D.text ")"
+          ]
+      )
+  else do
+    D.flexGroup $ D.flexAlt
+      ( D.words
+          [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
+          , body <> effectfulChar <> D.text ")"
+          ]
+      )
+      ( D.lines
+          [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
+          , D.indent body
+          , effectfulChar <> D.text ")"
+          ]
+      )
 
 wrapIn :: String -> Doc Void -> Doc Void
 wrapIn sep = wrapIn' sep sep
