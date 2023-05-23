@@ -83,7 +83,7 @@ printProperName :: ProperName -> Doc Void
 printProperName (ProperName s) = D.text s
 
 printCurriedApp :: Doc Void -> Array (Doc Void) -> Doc Void
-printCurriedApp fn args = D.flexAlt singleLine multiLine
+printCurriedApp fn args = D.flexGroup $ D.flexAlt singleLine multiLine
   where
   singleLine = args # flip Array.foldl fn \acc next ->
     wrapInParens $ D.words [ acc, next ]
@@ -96,7 +96,7 @@ printCurriedApp fn args = D.flexAlt singleLine multiLine
       ]
 
 printCurriedAbs :: Array (Doc Void) -> Doc Void -> Doc Void
-printCurriedAbs args body = D.flexAlt singleLine multiLine
+printCurriedAbs args body = D.flexGroup $ D.flexAlt singleLine multiLine
   where
   printArg arg = do
     D.words
@@ -116,7 +116,7 @@ printCurriedAbs args body = D.flexAlt singleLine multiLine
 printUncurriedApp :: Boolean -> Doc Void -> Array (Doc Void) -> Doc Void
 printUncurriedApp isEffectful fn args = do
   let effectfulChar = D.text "#" # guard isEffectful
-  D.flexAlt
+  D.flexGroup $ D.flexAlt
     ( D.words
         [ D.text "(" <> effectfulChar <> fn
         , D.words args <> effectfulChar <> D.text ")"
@@ -132,7 +132,7 @@ printUncurriedApp isEffectful fn args = do
 printUncurriedAbs :: Boolean -> Array (Doc Void) -> Doc Void -> Doc Void
 printUncurriedAbs isEffectful args body = do
   let effectfulChar = D.text "#" # guard isEffectful
-  D.flexAlt
+  D.flexGroup $ D.flexAlt
     ( D.words
         [ D.text "(" <> effectfulChar <> D.words [ D.text "\\" <> D.words args, D.text "->" ]
         , body <> effectfulChar <> D.text ")"
