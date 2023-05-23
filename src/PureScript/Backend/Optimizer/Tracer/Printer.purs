@@ -443,12 +443,9 @@ printBackendEffect = case _ of
 printBackendOperator :: BackendOperator (Doc Void) -> Doc Void
 printBackendOperator = case _ of
   Op1 op1 a ->
-    wrapInParens $ D.words [ printBackendOperator1 op1, a ]
+    printCurriedApp (printBackendOperator1 op1) $ pure a
   Op2 op2 l r ->
-    wrapInParens $ D.words [ l, printBackendOperator2 op2, r ]
-
-wrapInBackticks :: Doc Void -> Doc Void
-wrapInBackticks = wrapIn "`"
+    printCurriedApp (printBackendOperator2 op2) $ NonEmptyArray.cons' l [ r ]
 
 printBackendOperator1 :: BackendOperator1 -> Doc Void
 printBackendOperator1 = case _ of
@@ -461,39 +458,39 @@ printBackendOperator1 = case _ of
 
 printBackendOperator2 :: BackendOperator2 -> Doc Void
 printBackendOperator2 = case _ of
-  OpArrayIndex -> wrapInBackticks $ D.text "arrayIndex"
-  OpBooleanAnd -> wrapInBackticks $ D.text "booleanAnd"
-  OpBooleanOr -> wrapInBackticks $ D.text "booleanOr"
+  OpArrayIndex -> D.text "arrayIndex"
+  OpBooleanAnd -> D.text "booleanAnd"
+  OpBooleanOr -> D.text "booleanOr"
   OpBooleanOrd ord -> printBackendOperatorOrd ord
   OpCharOrd ord -> printBackendOperatorOrd ord
-  OpIntBitAnd -> wrapInBackticks $ D.text "intBitAnd"
-  OpIntBitOr -> wrapInBackticks $ D.text "intBitOr"
-  OpIntBitShiftLeft -> wrapInBackticks $ D.text "intBitShiftLeft"
-  OpIntBitShiftRight -> wrapInBackticks $ D.text "intBitShiftRight"
-  OpIntBitXor -> wrapInBackticks $ D.text "intBitXor"
-  OpIntBitZeroFillShiftRight -> wrapInBackticks $ D.text "intBitZeroFillShiftRight"
+  OpIntBitAnd -> D.text "intBitAnd"
+  OpIntBitOr -> D.text "intBitOr"
+  OpIntBitShiftLeft -> D.text "intBitShiftLeft"
+  OpIntBitShiftRight -> D.text "intBitShiftRight"
+  OpIntBitXor -> D.text "intBitXor"
+  OpIntBitZeroFillShiftRight -> D.text "intBitZeroFillShiftRight"
   OpIntNum num -> printBackendOperatorNum num
   OpIntOrd ord -> printBackendOperatorOrd ord
   OpNumberNum num -> printBackendOperatorNum num
   OpNumberOrd ord -> printBackendOperatorOrd ord
-  OpStringAppend -> D.text "++"
+  OpStringAppend -> D.text "stringAppend"
   OpStringOrd ord -> printBackendOperatorOrd ord
 
 printBackendOperatorNum :: BackendOperatorNum -> Doc Void
 printBackendOperatorNum = case _ of
-  OpAdd -> D.text "+"
-  OpDivide -> D.text "/"
-  OpMultiply -> D.text "*"
-  OpSubtract -> D.text "-"
+  OpAdd -> D.text "add"
+  OpDivide -> D.text "divide"
+  OpMultiply -> D.text "multiply"
+  OpSubtract -> D.text "subtract"
 
 printBackendOperatorOrd :: BackendOperatorOrd -> Doc Void
 printBackendOperatorOrd = case _ of
-  OpEq -> D.text "=="
-  OpNotEq -> D.text "/="
-  OpGt -> D.text ">"
-  OpGte -> D.text ">="
-  OpLt -> D.text "<"
-  OpLte -> D.text "<="
+  OpEq -> D.text "eq"
+  OpNotEq -> D.text "notEq"
+  OpGt -> D.text "gt"
+  OpGte -> D.text "gte"
+  OpLt -> D.text "lt"
+  OpLte -> D.text "lte"
 
 printBackendAccessor :: BackendAccessor -> Doc Void
 printBackendAccessor = case _ of
