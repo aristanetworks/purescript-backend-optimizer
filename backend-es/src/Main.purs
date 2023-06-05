@@ -36,7 +36,7 @@ import Node.Path as Path
 import Node.Process as Process
 import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile, externalTracedIdentifiersFromFile)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
@@ -219,7 +219,6 @@ main cliRoot =
   buildCmd args = basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
-    , resolveExternalTracedIdentifiers: map (fromMaybe Set.empty) $ traverse externalTracedIdentifiersFromFile args.tracerFile
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
         mkdirp args.outputDir

@@ -146,7 +146,6 @@ runSnapshotTests { accept, filter, shouldTrace } = do
             let padding = power " " (SCU.length total - SCU.length index)
             Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
             pure coreFnMod
-        , traceableIdents: Set.empty
         , traceOptimization
         }
       outputModules <- liftEffect $ Ref.read outputRef

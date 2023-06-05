@@ -12,7 +12,7 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Set (Set)
+import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
@@ -29,7 +29,6 @@ type BuildEnv =
 type BuildOptions m =
   { directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
-  , traceableIdents :: Set (Qualified Ident)
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Maybe OptimizationSteps -> m Unit
   , traceOptimization :: Boolean
@@ -56,7 +55,7 @@ buildModules options coreFnModules =
         , dataTypes: Map.empty
         , foreignSemantics: options.foreignSemantics
         , rewriteLimit: 10_000
-        , traceableIdents: options.traceableIdents
+        , traceableIdents: Set.empty
         , traceOptimization: options.traceOptimization
         , optimizationSteps: Map.empty
         }

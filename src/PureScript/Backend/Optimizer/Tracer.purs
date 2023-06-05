@@ -6,7 +6,6 @@ import Control.Alt ((<|>))
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.FoldableWithIndex (foldlWithIndex)
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
@@ -19,22 +18,6 @@ import PureScript.CST.Lexer (lex)
 import PureScript.CST.Parser.Monad (Parser, PositionedError, eof, runParser, take)
 import PureScript.CST.Types (SourceToken)
 import PureScript.CST.Types as CST
-
-type TracedIdentifierFileResult =
-  { errors :: Array (Tuple String PositionedError)
-  , idents :: Set (Qualified Ident)
-  }
-
-parseTracedIdentifiersFile :: String -> TracedIdentifierFileResult
-parseTracedIdentifiersFile = foldlWithIndex go { errors: [], idents: Set.empty } <<< String.split (Pattern "\n")
-  where
-  go line { errors, idents } str = case parseTracedIdentLine str of
-    Left err ->
-      { errors: Array.snoc errors (Tuple str (err { position { line = line } })), idents }
-    Right Nothing ->
-      { errors, idents }
-    Right (Just ident) ->
-      { errors, idents: Set.insert ident idents }
 
 type TracedIdentifierHeaderResult =
   { errors :: Array (Tuple String PositionedError)

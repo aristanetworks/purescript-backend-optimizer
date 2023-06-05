@@ -159,7 +159,7 @@ toBackendModule (Module mod) env = do
             (Map.union directives.locals env.directives)
             directives.exports
       , moduleImplementations = Map.empty
-      , traceableIdents = Set.union env.traceableIdents traceableIdents.idents
+      , traceableIdents = traceableIdents.idents
       }
 
     localExports :: Set Ident
