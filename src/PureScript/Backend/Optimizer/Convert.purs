@@ -323,8 +323,8 @@ toExternImpl env group expr = case expr of
 topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }
 
-makeExternEval :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
-makeExternEval conv env qual spine = do
+makeExternEval :: ConvertEnv -> Int -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+makeExternEval conv i env qual spine = do
   let
     result = do
       fn <- Map.lookup qual conv.foreignSemantics
@@ -332,7 +332,7 @@ makeExternEval conv env qual spine = do
   case result of
     Nothing -> do
       impl <- Map.lookup qual conv.implementations
-      evalExternFromImpl (topEnv env) qual impl spine
+      evalExternFromImpl i (topEnv env) qual impl spine
     _ ->
       result
 

@@ -228,7 +228,7 @@ data_function_uncurried_mkFn n = Tuple (qualified "Data.Function.Uncurried" ("mk
   where
   go env _ = case _ of
     [ ExternApp [ sem ] ] ->
-      Just $ SemMkFn (evalMkFn env n sem)
+      Just $ SemMkFn (evalMkFn 0 env n sem)
     _ ->
       Nothing
 
@@ -244,7 +244,7 @@ data_function_uncurried_runFn n = Tuple (qualified "Data.Function.Uncurried" ("r
 
   goRunFn env n' head tail
     | n' <= 0 =
-        evalUncurriedApp env head tail
+        evalUncurriedApp 0 env head tail
     | otherwise =
         SemLam Nothing \val ->
           goRunFn env (n' - 1) head (Array.snoc tail val)
@@ -254,7 +254,7 @@ mkEffectFn mod name n = Tuple (qualified mod (name <> show n)) go
   where
   go env _ = case _ of
     [ ExternApp [ sem ] ] ->
-      Just $ SemMkEffectFn (evalMkFn env n sem)
+      Just $ SemMkEffectFn (evalMkFn 0 env n sem)
     _ ->
       Nothing
 
@@ -335,14 +335,14 @@ primBinaryOperator op env _ = case _ of
   [ ExternApp [ a ] ] ->
     Just $ makeLet Nothing a \a' ->
       SemLam Nothing \b' ->
-        evalPrimOp env (Op2 op a' b')
+        evalPrimOp 0 env (Op2 op a' b')
   _ ->
     Nothing
 
 primUnaryOperator :: BackendOperator1 -> ForeignEval
 primUnaryOperator op env _ = case _ of
   [ ExternApp [ a ] ] ->
-    Just $ evalPrimOp env (Op1 op a)
+    Just $ evalPrimOp 0 env (Op1 op a)
   _ ->
     Nothing
 
@@ -350,11 +350,11 @@ primOrdOperator :: (BackendOperatorOrd -> BackendOperator2) -> ForeignEval
 primOrdOperator op env _ = case _ of
   [ ExternAccessor (GetProp "compare"), ExternApp [ a, b ], ExternPrimOp (OpIsTag tag) ]
     | isQualified "Data.Ordering" "LT" tag ->
-        Just $ evalPrimOp env $ Op2 (op OpLt) a b
+        Just $ evalPrimOp 0 env $ Op2 (op OpLt) a b
     | isQualified "Data.Ordering" "GT" tag ->
-        Just $ evalPrimOp env $ Op2 (op OpGt) a b
+        Just $ evalPrimOp 0 env $ Op2 (op OpGt) a b
     | isQualified "Data.Ordering" "EQ" tag ->
-        Just $ evalPrimOp env $ Op2 (op OpEq) a b
+        Just $ evalPrimOp 0 env $ Op2 (op OpEq) a b
   _ ->
     Nothing
 
@@ -367,7 +367,7 @@ effectBind env _ = case _ of
     Just $ makeLet Nothing eff \nextEff ->
       makeLet Nothing k \nextK ->
         SemEffectBind Nothing nextEff \a ->
-          evalApp env nextK [ a ]
+          evalApp 0 env nextK [ a ]
   _ -> Nothing
 
 effectMap :: ForeignEval
@@ -376,7 +376,7 @@ effectMap env _ = case _ of
     Just $ makeLet Nothing fn \fn' ->
       SemLam Nothing \val ->
         SemEffectBind Nothing val \nextVal ->
-          SemEffectPure (evalApp env fn' [ nextVal ])
+          SemEffectPure (evalApp 0 env fn' [ nextVal ])
   _ -> Nothing
 
 effectPure :: ForeignEval
@@ -413,7 +413,7 @@ effectRefModify env _ = case _ of
     Just $ makeLet Nothing fn \fn' ->
       makeLet Nothing ref \ref' ->
         SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
-          NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
+          NeutPrimEffect $ EffectRefWrite ref' (evalApp 0 env fn' [ val ])
   _ ->
     Nothing
 
@@ -567,18 +567,18 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
         props' = map
           ( \(Prop prop' value) ->
               if prop == prop' then
-                Prop prop' (evalApp env fn [ value ])
+                Prop prop' (evalApp 0 env fn [ value ])
               else
                 Prop prop' value
           )
           props
       Just $ NeutLit (LitRecord props')
     [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _) _) ] ] -> do
-      let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
+      let update = Prop prop (evalApp 0 env fn [ (evalAccessor 0 env r' (GetProp prop)) ])
       Just $ evalUpdate env r [ update ]
     [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
       Just $ makeLet Nothing r \r' -> do
-        let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
+        let update = Prop prop (evalApp 0 env fn [ (evalAccessor 0 env r' (GetProp prop)) ])
         evalUpdate env r [ update ]
     _ ->
       Nothing
@@ -614,7 +614,7 @@ record_unsafe_unsafeGet = Tuple (qualified "Record.Unsafe" "unsafeGet") go
   go env _ = case _ of
     [ ExternApp [ NeutLit (LitString prop) ] ] ->
       Just $ SemLam Nothing \r ->
-        evalAccessor env r $ GetProp prop
+        evalAccessor 0 env r $ GetProp prop
     _ ->
       Nothing
 

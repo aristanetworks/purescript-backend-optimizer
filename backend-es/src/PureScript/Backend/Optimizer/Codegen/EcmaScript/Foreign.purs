@@ -57,7 +57,7 @@ arraySTAll ident env _ = case _ of
       makeLet Nothing val \nextVal ->
         SemLam Nothing \nextRef ->
           SemEffectDefer $
-            evalApp env (NeutStop ident) [ NeutLit (LitArray [ nextVal ]), nextRef ]
+            evalApp 0 env (NeutStop ident) [ NeutLit (LitArray [ nextVal ]), nextRef ]
   _ ->
     Nothing
 
@@ -133,8 +133,8 @@ data_show_showArrayImpl = Tuple (qualified "Data.Show" "showArrayImpl") go
         Nothing ->
           litString "[]"
         Just nea -> do
-          let appendStrings l r = evalPrimOp env (Op2 OpStringAppend l r)
-          let showVal val = evalApp env showDict [ val ]
+          let appendStrings l r = evalPrimOp 0 env (Op2 OpStringAppend l r)
+          let showVal val = evalApp 0 env showDict [ val ]
           let foldFn next acc = appendStrings (showVal next) $ appendStrings (litString ",") acc
           appendStrings (litString "[") $ foldr1Array foldFn (\last -> appendStrings (showVal last) (litString "]")) nea
     _ ->
@@ -181,7 +181,7 @@ foreign_object_copyST = Tuple (qualified "Foreign.Object" "_copyST") go
     [ ExternApp [ obj ] ] ->
       Just $
         makeLet Nothing obj \nextObj ->
-          SemEffectDefer $ evalApp env (NeutStop qual) [ nextObj ]
+          SemEffectDefer $ evalApp 0 env (NeutStop qual) [ nextObj ]
     _ ->
       Nothing
 
@@ -202,7 +202,7 @@ foreign_object_st_delete = Tuple (qualified "Foreign.Object.ST" "delete") go
       Just $
         makeLet Nothing a \a' ->
           SemLam Nothing \b ->
-            SemEffectBind Nothing (evalApp env (NeutStop qual) [ a', b ]) \_ ->
+            SemEffectBind Nothing (evalApp 0 env (NeutStop qual) [ a', b ]) \_ ->
               SemEffectPure b
     _ ->
       Nothing
@@ -216,7 +216,7 @@ foreign_object_st_poke = Tuple (qualified "Foreign.Object.ST" "poke") go
         makeLet Nothing a \a' ->
           makeLet Nothing b \b' ->
             SemLam Nothing \c ->
-              SemEffectBind Nothing (evalApp env (NeutStop qual) [ a', b', c ]) \_ ->
+              SemEffectBind Nothing (evalApp 0 env (NeutStop qual) [ a', b', c ]) \_ ->
                 SemEffectPure c
     _ ->
       Nothing
@@ -230,15 +230,15 @@ forRangeLoop env qual = case _ of
     Just $
       makeLet Nothing a \a' ->
         makeLet Nothing b \b' ->
-          SemEffectDefer $ evalApp env (NeutStop qual)
+          SemEffectDefer $ evalApp 0 env (NeutStop qual)
             [ a', b', SemLam ident (SemEffectDefer <<< c) ]
   [ ExternApp [ a, b, c ] ] ->
     Just $
       makeLet Nothing a \a' ->
         makeLet Nothing b \b' ->
           makeLet Nothing c \c' ->
-            SemEffectDefer $ evalApp env (NeutStop qual)
-              [ a', b', SemLam Nothing (SemEffectDefer <<< evalApp env c' <<< pure) ]
+            SemEffectDefer $ evalApp 0 env (NeutStop qual)
+              [ a', b', SemLam Nothing (SemEffectDefer <<< evalApp 0 env c' <<< pure) ]
   _ ->
     Nothing
 
@@ -246,14 +246,14 @@ foreachLoop :: ForeignEval
 foreachLoop env qual = case _ of
   [ ExternApp [ a, SemLam ident b ] ] ->
     Just $ makeLet Nothing a \a' ->
-      SemEffectDefer $ evalApp env (NeutStop qual)
+      SemEffectDefer $ evalApp 0 env (NeutStop qual)
         [ a', SemLam ident (SemEffectDefer <<< b) ]
   [ ExternApp [ a, b ] ] ->
     Just $
       makeLet Nothing a \a' ->
         makeLet Nothing b \b' ->
-          SemEffectDefer $ evalApp env (NeutStop qual)
-            [ a', SemLam Nothing (SemEffectDefer <<< evalApp env b' <<< pure) ]
+          SemEffectDefer $ evalApp 0 env (NeutStop qual)
+            [ a', SemLam Nothing (SemEffectDefer <<< evalApp 0 env b' <<< pure) ]
   _ ->
     Nothing
 
@@ -263,7 +263,7 @@ whileLoop env qual = case _ of
     Just $
       makeLet Nothing a \a' ->
         makeLet Nothing b \b' ->
-          SemEffectDefer $ evalApp env (NeutStop qual) [ a', SemEffectDefer b' ]
+          SemEffectDefer $ evalApp 0 env (NeutStop qual) [ a', SemEffectDefer b' ]
   _ ->
     Nothing
 

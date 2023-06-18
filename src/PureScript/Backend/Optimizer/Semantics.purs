@@ -161,7 +161,7 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
-  , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+  , evalExtern :: Int -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   }
@@ -196,12 +196,12 @@ addStop (Env env) ref acc = Env env
   }
 
 class Eval f where
-  eval :: Env -> f -> BackendSemantics
+  eval :: Int -> Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env = case _ of
+  eval i env = case _ of
     Var qual ->
-      evalExtern env qual []
+      evalExtern i env qual []
     Local ident lvl ->
       case lookupLocal env lvl of
         Just (One sem) -> sem
@@ -210,25 +210,25 @@ instance Eval f => Eval (BackendSyntax f) where
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
     App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
+      evalApp i env (eval i env hd) (NonEmptyArray.toArray (eval i env <$> tl))
     UncurriedApp hd tl ->
-      evalUncurriedApp env (eval env hd) (eval env <$> tl)
+      evalUncurriedApp i env (eval i env hd) (eval i env <$> tl)
     UncurriedAbs idents body -> do
       let
         loop env' = case _ of
           List.Nil ->
-            MkFnApplied (eval env' body)
+            MkFnApplied (eval i env' body)
           List.Cons a as ->
             MkFnNext a \nextArg ->
               loop (bindLocal env' (One nextArg)) as
       SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
     UncurriedEffectApp hd tl ->
-      evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
+      evalUncurriedEffectApp env (eval i env hd) (eval i env <$> tl)
     UncurriedEffectAbs idents body -> do
       let
         loop env' = case _ of
           List.Nil ->
-            MkFnApplied (eval env' body)
+            MkFnApplied (eval i env' body)
           List.Cons a as ->
             MkFnNext a \nextArg ->
               loop (bindLocal env' (One nextArg)) as
@@ -236,74 +236,74 @@ instance Eval f => Eval (BackendSyntax f) where
     Abs idents body ->
       foldr1Array
         (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
-        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
+        (\(Tuple ident _) env' -> SemLam ident (flip (eval i) body <<< bindLocal env' <<< One))
         idents
         env
     Let ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
+      guardFail (eval i env binding) \binding' ->
+        makeLet ident binding' (flip (eval i) body <<< bindLocal env <<< One)
     LetRec _ bindings body -> do
-      let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
+      let bindGroup sem = flip (eval i) sem <<< bindLocal env <<< Group
       SemLetRec (map bindGroup <$> bindings) (bindGroup body)
     EffectBind ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
+      guardFail (eval i env binding) \binding' ->
+        SemEffectBind ident binding' (flip (eval i) body <<< bindLocal env <<< One)
     EffectPure val ->
-      guardFail (eval env val) SemEffectPure
+      guardFail (eval i env val) SemEffectPure
     EffectDefer val ->
-      guardFail (eval env val) SemEffectDefer
+      guardFail (eval i env val) SemEffectDefer
     Accessor lhs accessor ->
-      evalAccessor env (eval env lhs) accessor
+      evalAccessor i env (eval i env lhs) accessor
     Update lhs updates ->
-      evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+      evalUpdate env (eval i env lhs) (map (eval i env) <$> updates)
     Branch branches def ->
-      evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
+      evalBranches env (evalPair i env <$> branches) (defer \_ -> eval i env def)
     PrimOp op ->
-      evalPrimOp env (eval env <$> op)
+      evalPrimOp i env (eval i env <$> op)
     PrimEffect eff ->
-      guardFailOver identity (eval env <$> eff) NeutPrimEffect
+      guardFailOver identity (eval i env <$> eff) NeutPrimEffect
     PrimUndefined ->
       NeutPrimUndefined
     Lit lit ->
-      guardFailOver identity (eval env <$> lit) NeutLit
+      guardFailOver identity (eval i env <$> lit) NeutLit
     Fail err ->
       NeutFail err
     CtorDef ct ty tag fields ->
       NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
     CtorSaturated qual ct ty tag fields ->
-      guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
+      guardFailOver snd (map (eval i env) <$> fields) $ NeutData qual ct ty tag
 
 instance Eval BackendExpr where
-  eval = go
+  eval i = go
     where
     go env = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
           RewriteInline _ _ binding body ->
-            go (bindLocal env (One (eval env binding))) body
+            go (bindLocal env (One (eval i env binding))) body
           RewriteUncurry ident _ args binding body ->
-            SemLet ident (mkFnFromArgs env (NonEmptyArray.toArray args) binding) \newFn -> do
-              eval (bindLocal env (One (mkUncurriedAppRewrite env newFn (NonEmptyArray.length args)))) body
+            SemLet ident (mkFnFromArgs i env (NonEmptyArray.toArray args) binding) \newFn -> do
+              eval i (bindLocal env (One (mkUncurriedAppRewrite i env newFn (NonEmptyArray.length args)))) body
           RewriteLetAssoc bindings body -> do
             let
               goBinding env' = case _ of
                 List.Nil ->
-                  eval env' body
+                  eval i env' body
                 List.Cons b bs ->
-                  makeLet b.ident (eval env' b.binding) \nextBinding ->
+                  makeLet b.ident (eval i env' b.binding) \nextBinding ->
                     goBinding (bindLocal env (One nextBinding)) bs
             goBinding env (List.fromFoldable bindings)
           RewriteEffectBindAssoc bindings body -> do
             let
               goBinding env' = case _ of
                 List.Nil ->
-                  eval env' body
+                  eval i env' body
                 List.Cons b bs
                   | b.pure ->
-                      makeLet b.ident (eval env' b.binding) \nextBinding ->
+                      makeLet b.ident (eval i env' b.binding) \nextBinding ->
                         goBinding (bindLocal env (One nextBinding)) bs
                   | otherwise ->
-                      SemEffectBind b.ident (eval env' b.binding) \nextBinding ->
+                      SemEffectBind b.ident (eval i env' b.binding) \nextBinding ->
                         goBinding (bindLocal env (One nextBinding)) bs
             goBinding env (List.fromFoldable bindings)
           RewriteStop qual ->
@@ -313,55 +313,55 @@ instance Eval BackendExpr where
               UnpackRecord props ->
                 foldr
                   ( \(Prop prop expr) next props' ->
-                      makeLet Nothing (eval env expr) \val ->
+                      makeLet Nothing (eval i env expr) \val ->
                         next (Array.snoc props' (Prop prop val))
                   )
-                  (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitRecord)
+                  (flip (eval i) body <<< bindLocal env <<< One <<< NeutLit <<< LitRecord)
                   props
                   []
               UnpackUpdate hd props ->
-                makeLet Nothing (eval env hd) \hd' ->
+                makeLet Nothing (eval i env hd) \hd' ->
                   foldr
                     ( \(Prop prop expr) next props' ->
-                        makeLet Nothing (eval env expr) \val ->
+                        makeLet Nothing (eval i env expr) \val ->
                           next (Array.snoc props' (Prop prop val))
                     )
-                    (flip eval body <<< bindLocal env <<< One <<< NeutUpdate hd')
+                    (flip (eval i) body <<< bindLocal env <<< One <<< NeutUpdate hd')
                     props
                     []
               UnpackData qual ct ty tag fields ->
                 foldr
                   ( \(Tuple field expr) next props' ->
-                      makeLet Nothing (eval env expr) \val ->
+                      makeLet Nothing (eval i env expr) \val ->
                         next (Array.snoc props' (Tuple field val))
                   )
-                  (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
+                  (flip (eval i) body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
           RewriteDistBranchesLet _ _ branches def body ->
-            rewriteBranches (flip eval body <<< bindLocal env <<< One)
-              $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
+            rewriteBranches (flip (eval i) body <<< bindLocal env <<< One)
+              $ evalBranches env (evalPair i env <$> branches) (defer \_ -> eval i env def)
           RewriteDistBranchesOp branches def op ->
-            rewriteBranches dist $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
+            rewriteBranches dist $ evalBranches env (evalPair i env <$> branches) (defer \_ -> eval i env def)
             where
             dist = case op of
               DistApp spine ->
-                flip (evalApp env) (NonEmptyArray.toArray (eval env <$> spine))
+                flip (evalApp i env) (NonEmptyArray.toArray (eval i env <$> spine))
               DistUncurriedApp spine ->
-                flip (evalUncurriedApp env) (eval env <$> spine)
+                flip (evalUncurriedApp i env) (eval i env <$> spine)
               DistAccessor acc ->
-                flip (evalAccessor env) acc
+                flip (evalAccessor i env) acc
               DistPrimOp1 op1 ->
-                evalPrimOp env <<< Op1 op1
+                evalPrimOp i env <<< Op1 op1
               DistPrimOp2L op2 rhs ->
-                evalPrimOp env <<< flip (Op2 op2) (eval env rhs)
+                evalPrimOp i env <<< flip (Op2 op2) (eval i env rhs)
               DistPrimOp2R lhs op2 ->
-                evalPrimOp env <<< Op2 op2 (eval env lhs)
+                evalPrimOp i env <<< Op2 op2 (eval i env lhs)
       ExprSyntax _ expr ->
-        eval env expr
+        eval i env expr
 
 instance Eval NeutralExpr where
-  eval env (NeutralExpr a) = eval env a
+  eval i env (NeutralExpr a) = eval i env a
 
 snocApp :: Array ExternSpine -> BackendSemantics -> Array ExternSpine
 snocApp prev next = case Array.last prev of
@@ -370,8 +370,8 @@ snocApp prev next = case Array.last prev of
   _ ->
     Array.snoc prev (ExternApp [ next ])
 
-evalApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalApp env hd spine = go env hd (List.fromFoldable spine)
+evalApp :: Int -> Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
+evalApp i env hd spine = go env hd (List.fromFoldable spine)
   where
   go env' = case _, _ of
     _, List.Cons (NeutFail err) _ ->
@@ -382,7 +382,7 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
     SemExtern qual sp _, List.Cons arg args -> do
-      go env' (evalExtern env' qual (snocApp sp arg)) args
+      go env' (evalExtern i env' qual (snocApp sp arg)) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
@@ -396,17 +396,17 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
     fn, args ->
       NeutApp fn (List.toUnfoldable args)
 
-evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalUncurriedApp env hd spine = case hd of
+evalUncurriedApp :: Int -> Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
+evalUncurriedApp i env hd spine = case hd of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
   SemExtern qual sp _ ->
     guardFailOver identity spine \spine' ->
-      evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
+      evalExtern i env qual (Array.snoc sp (ExternUncurriedApp spine'))
   SemLet ident val k ->
     SemLet ident val \nextVal ->
       makeLet Nothing (k nextVal) \nextFn ->
-        evalUncurriedApp (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn spine
+        evalUncurriedApp i (bindLocal (bindLocal env (One nextVal)) (One nextFn)) nextFn spine
   NeutFail err ->
     NeutFail err
   _ ->
@@ -441,18 +441,18 @@ evalUncurriedBeta fn mk spine = go mk (List.fromFoldable spine)
     MkFnApplied a, args ->
       fn a (List.toUnfoldable args)
 
-evalSpine :: Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
-evalSpine env = foldl go
+evalSpine :: Int -> Env -> BackendSemantics -> Array ExternSpine -> BackendSemantics
+evalSpine i env = foldl go
   where
   go hd = case _ of
     ExternApp spine ->
-      evalApp env hd spine
+      evalApp i env hd spine
     ExternUncurriedApp spine ->
-      evalUncurriedApp env hd spine
+      evalUncurriedApp i env hd spine
     ExternAccessor accessor ->
-      evalAccessor env hd accessor
+      evalAccessor i env hd accessor
     ExternPrimOp op1 ->
-      evalPrimOp env (Op1 op1 hd)
+      evalPrimOp i env (Op1 op1 hd)
 
 neutralSpine :: BackendSemantics -> Array ExternSpine -> BackendSemantics
 neutralSpine = foldl go
@@ -477,11 +477,11 @@ neutralApp hd spine
       _ ->
         NeutApp hd spine
 
-evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
-evalAccessor initEnv initLhs accessor =
+evalAccessor :: Int -> Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
+evalAccessor i initEnv initLhs accessor =
   evalAssocLet initEnv initLhs \env lhs -> case lhs of
     SemExtern qual spine _ ->
-      evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
+      evalExtern i env qual $ Array.snoc spine (ExternAccessor accessor)
     NeutLit (LitRecord props)
       | GetProp prop <- accessor
       , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
@@ -492,7 +492,7 @@ evalAccessor initEnv initLhs accessor =
             Just sem ->
               sem
             Nothing ->
-              evalAccessor env rec accessor
+              evalAccessor i env rec accessor
     NeutLit (LitArray values)
       | GetIndex n <- accessor
       , Just sem <- Array.index values n ->
@@ -550,8 +550,8 @@ rewriteBranches k = go
     sem ->
       k sem
 
-evalPair :: forall f. Eval f => Env -> Pair f -> SemConditional BackendSemantics
-evalPair env (Pair a b) = SemConditional (defer \_ -> eval env a) (defer \_ -> eval env b)
+evalPair :: forall f. Eval f => Int -> Env -> Pair f -> SemConditional BackendSemantics
+evalPair i env (Pair a b) = SemConditional (defer \_ -> eval i env a) (defer \_ -> eval i env b)
 
 evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 evalAssocLet env sem go = case sem of
@@ -594,8 +594,8 @@ makeLet ident binding go = case binding of
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
-evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
-evalPrimOp env = case _ of
+evalPrimOp :: Int -> Env -> BackendOperator BackendSemantics -> BackendSemantics
+evalPrimOp i env = case _ of
   Op1 op1 x ->
     case op1, x of
       OpBooleanNot, NeutLit (LitBoolean bool) ->
@@ -613,7 +613,7 @@ evalPrimOp env = case _ of
       OpNumberNegate, NeutLit (LitNumber a) ->
         liftNumber (negate a)
       _, SemExtern qual spine _ ->
-        evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+        evalExtern i env qual $ Array.snoc spine (ExternPrimOp op1)
       _, NeutFail err ->
         NeutFail err
       _, _ ->
@@ -641,9 +641,9 @@ evalPrimOp env = case _ of
             y
       OpBooleanOrd OpEq
         | NeutLit (LitBoolean bool) <- x ->
-            if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
+            if bool then y else evalPrimOp i env (Op1 OpBooleanNot y)
         | NeutLit (LitBoolean bool) <- y ->
-            if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
+            if bool then x else evalPrimOp i env (Op1 OpBooleanNot x)
       OpBooleanOrd op
         | NeutLit (LitBoolean a) <- x
         , NeutLit (LitBoolean b) <- y ->
@@ -678,7 +678,7 @@ evalPrimOp env = case _ of
             liftInt (zshr a b)
       OpIntNum OpSubtract
         | NeutLit (LitInt 0) <- x ->
-            evalPrimOp env (Op1 OpIntNegate y)
+            evalPrimOp i env (Op1 OpIntNegate y)
       OpIntNum op
         | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
             result
@@ -688,7 +688,7 @@ evalPrimOp env = case _ of
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
         | NeutLit (LitNumber 0.0) <- x ->
-            evalPrimOp env (Op1 OpNumberNegate y)
+            evalPrimOp i env (Op1 OpNumberNegate y)
       OpNumberNum op
         | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
             result
@@ -826,18 +826,19 @@ primOpOrdNot = case _ of
   OpGt -> OpLte
   OpGte -> OpLt
 
-evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
-evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
+evalExtern :: Int -> Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
+evalExtern i env@(Env e) qual spine = case e.evalExtern (i + 1) env qual spine of
   Nothing -> SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
   Just sem -> sem
 
-envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
-envForGroup env ref acc group
+envForGroup :: Int -> Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
+envForGroup i env ref acc group
   | Array.null group = env
+  | i < 3 = env
   | otherwise = addStop env ref acc
 
-evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
-evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
+evalExternFromImpl :: Int -> Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
+evalExternFromImpl i env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [] ->
     case impl of
       ExternExpr group expr -> do
@@ -846,15 +847,15 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref InlineRef group) expr
+            Just $ eval i (envForGroup i env ref InlineRef group) expr
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval i (envForGroup i env ref InlineRef group) expr
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval i (envForGroup i env ref InlineRef group) expr
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
@@ -869,7 +870,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
+            Just $ evalSpine i env (eval i (envForGroup i env ref (InlineProp prop) group) expr) spine
           _ ->
             Nothing
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
@@ -878,11 +879,11 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref (InlineProp prop) group) body
+            Just $ eval i (envForGroup i env ref (InlineProp prop) group) body
           Just (InlineArity _) ->
             Nothing
           _ | shouldInlineExternAccessor qual analysis' body acc ->
-            Just $ eval (envForGroup env ref (InlineProp prop) group) body
+            Just $ eval i (envForGroup i env ref (InlineProp prop) group) body
           _ ->
             Nothing
       _ ->
@@ -895,10 +896,10 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
+            Just $ evalSpine i env (eval i (envForGroup i env ref (InlineProp prop) group) expr) spine
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
+                Just $ evalSpine i env (eval i (envForGroup i env ref (InlineProp prop) group) expr) spine
             | otherwise ->
                 Nothing
           _ ->
@@ -909,14 +910,14 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
+            Just $ evalApp i env (eval i (envForGroup i env ref (InlineProp prop) group) body) args
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
+                Just $ evalApp i env (eval i (envForGroup i env ref (InlineProp prop) group) body) args
             | otherwise ->
                 Nothing
           _ | shouldInlineExternApp qual analysis' body args ->
-            Just $ evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
+            Just $ evalApp i env (eval i (envForGroup i env ref (InlineProp prop) group) body) args
           _ ->
             Nothing
       _ ->
@@ -929,14 +930,14 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+            Just $ evalApp i env (eval i (envForGroup i env ref InlineRef group) expr) args
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+                Just $ evalApp i env (eval i (envForGroup i env ref InlineRef group) expr) args
             | otherwise ->
                 Nothing
           _ | shouldInlineExternApp qual analysis expr args ->
-            Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+            Just $ evalApp i env (eval i (envForGroup i env ref InlineRef group) expr) args
           _ ->
             Nothing
       ExternCtor _ ct ty tag fields | Array.length fields == Array.length args ->
@@ -951,7 +952,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
+            Just $ evalSpine i env (eval i (envForGroup i env ref (InlineSpineProp prop) group) fn) spine
           _ ->
             Nothing
       _ ->
@@ -964,9 +965,9 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
+            Just $ evalSpine i env (eval i (envForGroup i env ref (InlineSpineProp prop) group) fn) spine
           Just (InlineArity n) | Array.length args2 >= n ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
+            Just $ evalSpine i env (eval i (envForGroup i env ref (InlineSpineProp prop) group) fn) spine
           _ ->
             Nothing
       _ ->
@@ -1508,7 +1509,7 @@ optimize ctx env (Qualified mn (Ident id)) initN = go initN
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
-        let expr2 = quote ctx (eval env expr1)
+        let expr2 = quote ctx (eval 0 env expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
         if rewrite then
           go (n - 1) expr2
@@ -1588,34 +1589,34 @@ freeze init = Tuple (analysisOf init) (go init)
             DistPrimOp2R lhs op2 ->
               NeutralExpr $ PrimOp $ Op2 op2 (go lhs) branches'
 
-evalMkFn :: Env -> Int -> BackendSemantics -> MkFn BackendSemantics
-evalMkFn env n sem
+evalMkFn :: Int -> Env -> Int -> BackendSemantics -> MkFn BackendSemantics
+evalMkFn i env n sem
   | n == 0 = MkFnApplied sem
   | otherwise =
       case sem of
         SemLam ident k -> do
-          MkFnNext ident (evalMkFn env (n - 1) <<< k)
+          MkFnNext ident (evalMkFn i env (n - 1) <<< k)
         _ ->
           MkFnNext Nothing \nextArg -> do
             let env' = bindLocal env (One nextArg)
-            evalMkFn env' (n - 1) (evalApp env' sem [ nextArg ])
+            evalMkFn i env' (n - 1) (evalApp i env' sem [ nextArg ])
 
-mkUncurriedAppRewrite :: Env -> BackendSemantics -> Int -> BackendSemantics
-mkUncurriedAppRewrite env hd = go []
+mkUncurriedAppRewrite :: Int -> Env -> BackendSemantics -> Int -> BackendSemantics
+mkUncurriedAppRewrite i env hd = go []
   where
   go acc n
-    | n == 0 = evalUncurriedApp env hd acc
+    | n == 0 = evalUncurriedApp i env hd acc
     | otherwise =
         SemLam Nothing \arg ->
           go (Array.snoc acc arg) (n - 1)
 
-mkFnFromArgs :: forall f. Eval f => Env -> Array (Tuple (Maybe Ident) Level) -> f -> BackendSemantics
-mkFnFromArgs env args body =
+mkFnFromArgs :: forall f. Eval f => Int -> Env -> Array (Tuple (Maybe Ident) Level) -> f -> BackendSemantics
+mkFnFromArgs i env args body =
   SemMkFn $ foldr
     ( \(Tuple ident _) next env' ->
         MkFnNext ident (next <<< bindLocal env' <<< One)
     )
-    (MkFnApplied <<< flip eval body)
+    (MkFnApplied <<< flip (eval i) body)
     args
     env
 
