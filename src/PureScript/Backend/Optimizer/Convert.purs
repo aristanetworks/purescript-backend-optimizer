@@ -234,7 +234,7 @@ toBackendTopLevelBindingGroup env = case _ of
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives }
+  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], punt: Set.empty, directives: env.directives }
   let backendExpr = toBackendExpr cfn env
   let Tuple impl expr' = toExternImpl env group (optimize (getCtx env) evalEnv (Qualified (Just env.currentModule) ident) env.rewriteLimit backendExpr)
   { accum: env
