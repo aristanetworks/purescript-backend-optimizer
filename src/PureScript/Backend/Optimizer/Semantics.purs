@@ -861,9 +861,9 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval (puntMe env group) expr
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval (puntMe env group) expr
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
