@@ -242,8 +242,8 @@ instance Eval f => Eval (BackendSyntax f) where
         env
     RecAbs idents body ->
       foldr1Array
-        (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
-        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
+        (\(Tuple ident _) next env' -> SemRecLam ident (next <<< bindLocal env' <<< One))
+        (\(Tuple ident _) env' -> SemRecLam ident (flip eval body <<< bindLocal env' <<< One))
         idents
         env
     Let ident _ binding body ->
