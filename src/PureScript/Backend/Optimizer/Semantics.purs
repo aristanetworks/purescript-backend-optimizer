@@ -1077,7 +1077,7 @@ quote = go
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemRecLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+      build ctx $ RecAbs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1145,6 +1145,8 @@ build ctx = case _ of
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
     build ctx $ Abs (ids1 <> ids2) body
+  RecAbs ids1 (ExprSyntax _ (RecAbs ids2 body)) ->
+    build ctx $ RecAbs (ids1 <> ids2) body
   expr@(Let ident1 level1 (ExprSyntax _ (Let ident2 level2 binding2 body2)) body1) ->
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
       [ { ident: ident2, level: level2, binding: binding2 }
