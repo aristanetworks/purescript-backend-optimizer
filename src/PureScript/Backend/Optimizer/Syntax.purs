@@ -15,6 +15,7 @@ data BackendSyntax a
   | Lit (Literal a)
   | App a (NonEmptyArray a)
   | Abs (NonEmptyArray (Tuple (Maybe Ident) Level)) a
+  | RecAbs (NonEmptyArray (Tuple (Maybe Ident) Level)) a
   | UncurriedApp a (Array a)
   | UncurriedAbs (Array (Tuple (Maybe Ident) Level)) a
   | UncurriedEffectApp a (Array a)
@@ -133,6 +134,7 @@ instance Foldable BackendSyntax where
         _ -> mempty
     App a bs -> f a <> foldMap f bs
     Abs _ b -> f b
+    RecAbs _ b -> f b
     UncurriedApp a bs -> f a <> foldMap f bs
     UncurriedAbs _ b -> f b
     UncurriedEffectApp a bs -> f a <> foldMap f bs
@@ -172,6 +174,8 @@ instance Traversable BackendSyntax where
       App <$> f a <*> traverse f bs
     Abs as b ->
       Abs as <$> f b
+    RecAbs as b ->
+      RecAbs as <$> f b
     UncurriedApp a bs ->
       UncurriedApp <$> f a <*> traverse f bs
     UncurriedAbs as b ->

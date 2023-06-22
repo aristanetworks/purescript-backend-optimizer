@@ -256,6 +256,9 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   Abs idents body -> do
     let result = freshNames RefStrict env idents
     esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray result.value) (codegenBlockStatements pureMode result.accum body)
+  RecAbs idents body -> do
+    let result = freshNames RefStrict env idents
+    esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray result.value) (codegenBlockStatements pureMode result.accum body)
   UncurriedAbs idents body -> do
     let result = freshNames RefStrict env idents
     esArrowFunction (toEsIdent <$> result.value) (codegenBlockStatements pureMode result.accum body)
@@ -792,6 +795,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
   -- TODO: Should this be fused with the TCO pass?
   go (TcoExpr _ expr) = case expr of
     Abs _ _ ->
+      true
+    RecAbs _ _ ->
       true
     UncurriedAbs _ _ ->
       true

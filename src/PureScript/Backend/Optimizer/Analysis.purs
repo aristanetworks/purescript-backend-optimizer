@@ -238,6 +238,11 @@ analyze externAnalysis expr = case expr of
       $ complex KnownSize
       $ capture CaptureClosure
       $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+  RecAbs args _ ->
+    withResult KnownNeutral
+      $ complex KnownSize
+      $ capture CaptureClosure
+      $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedAbs args _ ->
     withResult KnownNeutral
       $ complex KnownSize

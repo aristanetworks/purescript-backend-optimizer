@@ -37,6 +37,7 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
+  | SemRecLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -234,6 +235,12 @@ instance Eval f => Eval (BackendSyntax f) where
               loop (bindLocal env' (One nextArg)) as
       SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
     Abs idents body ->
+      foldr1Array
+        (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
+        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
+        idents
+        env
+    RecAbs idents body ->
       foldr1Array
         (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
         (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
@@ -836,25 +843,32 @@ envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
 
+promoteAbsToRecAbs :: NeutralExpr -> Array (Qualified Ident) -> NeutralExpr
+promoteAbsToRecAbs (NeutralExpr (Abs a b)) group
+  | Array.null group = NeutralExpr(Abs a b)
+  | otherwise = NeutralExpr (RecAbs a b)
+promoteAbsToRecAbs expr _ = expr
+
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [] ->
     case impl of
       ExternExpr group expr -> do
         let ref = EvalExtern qual
+        let resolved _ = Just $ eval (envForGroup env ref InlineRef group) (promoteAbsToRecAbs expr group)
         case Map.lookup ref e.directives >>= Map.lookup InlineRef of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref InlineRef group) expr
+            resolved unit
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                resolved unit
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                resolved unit
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
@@ -1059,6 +1073,9 @@ quote = go
     SemExtern _ _ sem ->
       go ctx (force sem)
     SemLam ident k -> do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+    SemRecLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
