@@ -8,7 +8,7 @@ const append = v => v1 => {
   if (v.tag === "Cons") { return $List("Cons", v._1, append(v._2)(v1)); }
   $runtime.fail();
 };
-const main = /* #__PURE__ */ $List(
+const test1 = /* #__PURE__ */ $List(
   "Cons",
   "a",
   /* #__PURE__ */ $List(
@@ -21,4 +21,4 @@ const main = /* #__PURE__ */ $List(
     )
   )
 );
-export {$List, Cons, Nil, append, main};
+export {$List, Cons, Nil, append, test1};
