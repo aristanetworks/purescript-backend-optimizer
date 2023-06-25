@@ -4,11 +4,13 @@ import Prelude
 
 import Control.Alternative (guard)
 import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty (NonEmptyArray, toArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
+import Data.Hashable (hash)
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
@@ -20,10 +22,12 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple.Nested ((/\))
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Hash (Hash, mkHash, thenHash, toHash)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
 type Spine a = Array a
@@ -67,6 +71,11 @@ data SemConditional a = SemConditional (Lazy a) (Lazy a)
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
   | ExprRewrite BackendAnalysis BackendRewrite
+
+hashOf :: BackendExpr -> Hash
+hashOf = case _ of
+  ExprSyntax (BackendAnalysis s) _ -> s.hash
+  ExprRewrite (BackendAnalysis s) _ -> s.hash
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -202,6 +211,7 @@ puntMe :: Env -> Array (Qualified Ident) -> Env
 puntMe (Env env) quals = Env env
   { punt = Set.union env.punt (Set.fromFoldable quals)
   }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -1036,8 +1046,88 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
+withHash :: BackendAnalysis -> Hash -> BackendAnalysis
+withHash (BackendAnalysis a) i =
+  BackendAnalysis a
+    { hash = a.hash <> i
+    }
+
+hashMe :: BackendExpr -> BackendExpr
+hashMe = case _ of
+  ExprSyntax analysis backendSyntax -> case backendSyntax of
+    Var ident ->
+      ExprSyntax (withHash analysis $ mkHash ident) $ Var ident
+    Local mi l ->
+      ExprSyntax (withHash analysis $ mkHash (hash mi `thenHash` l)) $ Local mi l
+    Lit lit -> do
+      let
+        hashed = case lit of
+          LitInt i -> toHash $ hash i
+          LitNumber n -> toHash $ hash n
+          LitString s -> toHash $ hash s
+          LitChar c -> toHash $ hash c
+          LitBoolean b -> toHash $ hash b
+          LitArray arr -> foldMap hashOf arr
+          LitRecord propAr -> foldMap (\(Prop s x) -> mkHash s <> hashOf x) propAr
+      ExprSyntax (withHash analysis hashed) $ Lit lit
+    App a arr ->
+      ExprSyntax (withHash analysis (hashOf a <> foldMap hashOf arr)) $ App a arr
+    Abs arr a ->
+      ExprSyntax (withHash analysis (mkHash (toArray arr) <> hashOf a)) $ Abs arr a
+    UncurriedApp a arr ->
+      ExprSyntax (withHash analysis (hashOf a <> foldMap hashOf arr)) $ UncurriedApp a arr
+    UncurriedAbs arr a ->
+      ExprSyntax (withHash analysis (mkHash arr <> hashOf a)) $ UncurriedAbs arr a
+    UncurriedEffectApp a arr ->
+      ExprSyntax (withHash analysis (hashOf a <> foldMap hashOf arr)) $ UncurriedEffectApp a arr
+    UncurriedEffectAbs arr a ->
+      ExprSyntax (withHash analysis (mkHash arr <> hashOf a)) $ UncurriedEffectAbs arr a
+    Accessor a ba ->
+      ExprSyntax (withHash analysis (hashOf a <> mkHash ba)) $ Accessor a ba
+    Update a arr ->
+      ExprSyntax (withHash analysis (hashOf a <> foldMap (\(Prop s x) -> mkHash s <> hashOf x) arr)) $ Update a arr
+    CtorSaturated qi ct pn i arr ->
+      ExprSyntax (withHash analysis (mkHash qi <> mkHash ct <> mkHash pn <> mkHash i <> foldMap (\(s /\ a) -> mkHash s <> hashOf a) arr)) $ CtorSaturated qi ct pn i arr
+    CtorDef ct pn i arr ->
+      ExprSyntax (withHash analysis (mkHash ct <> mkHash pn <> mkHash i <> mkHash arr)) $ CtorDef ct pn i arr
+    LetRec l arr a ->
+      ExprSyntax (withHash analysis (mkHash l <> foldMap (\(s /\ x) -> mkHash s <> hashOf x) arr <> hashOf a)) $ LetRec l arr a
+    Let i l a1 a2 ->
+      ExprSyntax (withHash analysis (mkHash i <> mkHash l <> hashOf a1 <> hashOf a2)) $ Let i l a1 a2
+    EffectBind i l a1 a2 ->
+      ExprSyntax (withHash analysis (mkHash i <> mkHash l <> hashOf a1 <> hashOf a2)) $ EffectBind i l a1 a2
+    EffectPure a ->
+      ExprSyntax (withHash analysis (hashOf a)) $ EffectPure a
+    EffectDefer a ->
+      ExprSyntax (withHash analysis (hashOf a)) $ EffectDefer a
+    Branch arr a ->
+      ExprSyntax (withHash analysis (foldMap (\(Pair a1 a2) -> hashOf a1 <> hashOf a2) arr <> hashOf a)) $ Branch arr a
+    PrimOp bo -> do
+      let
+        hashed = case bo of
+          Op1 bo1 a -> mkHash bo1 <> hashOf a
+          Op2 bo2 a1 a2 -> mkHash bo2 <> hashOf a1 <> hashOf a2
+      ExprSyntax (withHash analysis hashed) $ PrimOp bo
+    PrimEffect be -> do
+      let
+        tag = case be of
+          EffectRefNew _ -> Left 695837938
+          EffectRefRead _ -> Right (Left 1486000276)
+          EffectRefWrite _ _ -> Right (Right 1084845220)
+        hashed = mkHash tag <>
+          case be of
+            EffectRefNew a -> hashOf a
+            EffectRefRead a -> hashOf a
+            EffectRefWrite a1 a2 -> hashOf a1 <> hashOf a2
+      ExprSyntax (withHash analysis hashed) $ PrimEffect be
+    PrimUndefined -> do
+      ExprSyntax (withHash analysis (mkHash 695837938)) $ PrimUndefined
+    Fail s -> do
+      ExprSyntax (withHash analysis (mkHash (31425678 /\ hash s))) $ Fail s
+  ExprRewrite analysis backendRewrite -> ExprRewrite analysis backendRewrite
+
 quote :: Ctx -> BackendSemantics -> BackendExpr
-quote = go
+quote c = hashMe <<< go c
   where
   go ctx = case _ of
     -- Block constructors
@@ -1510,18 +1600,18 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 derive instance Newtype NeutralExpr _
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified mn (Ident id)) initN = go initN
+optimize ctx env (Qualified mn (Ident id)) initN = go mempty initN
   where
-  go n expr1
+  go hsh n expr1
     | n == 0 = do
         -- expr1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
-        let BackendAnalysis { rewrite } = analysisOf expr2
-        if rewrite then
-          go (n - 1) expr2
+        let BackendAnalysis { rewrite, hash } = analysisOf expr2
+        if rewrite && hsh /= hash then
+          go hash (n - 1) expr2
         else
           expr2
 

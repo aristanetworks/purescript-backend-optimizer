@@ -4,32 +4,40 @@ import Prelude
 
 import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
+import Data.Hashable (class Hashable, hash)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.String.CodeUnits as SCU
 import Data.Traversable (class Traversable, sequenceDefault, traverse)
+import PureScript.Backend.Optimizer.Hash (thenHash)
 
 newtype Ident = Ident String
 
 derive newtype instance eqIdent :: Eq Ident
 derive newtype instance ordIdent :: Ord Ident
+derive newtype instance hashableIdent :: Hashable Ident
 derive instance Newtype Ident _
 
 newtype ModuleName = ModuleName String
 
 derive newtype instance eqModuleName :: Eq ModuleName
 derive newtype instance ordModuleName :: Ord ModuleName
+derive newtype instance hashableModuleName :: Hashable ModuleName
 derive instance Newtype ModuleName _
 
 newtype ProperName = ProperName String
 
 derive newtype instance eqProperName :: Eq ProperName
 derive newtype instance ordProperName :: Ord ProperName
+derive newtype instance hashableProperName :: Hashable ProperName
 
 data Qualified a = Qualified (Maybe ModuleName) a
 
 derive instance eqQualified :: Eq a => Eq (Qualified a)
 derive instance ordQualified :: Ord a => Ord (Qualified a)
+instance hashableQualified :: Hashable a => Hashable (Qualified a) where
+  hash (Qualified mn a) = hash mn `thenHash` a
+
 derive instance Functor Qualified
 
 unQualified :: forall a. Qualified a -> a
@@ -71,6 +79,10 @@ data ConstructorType
 
 derive instance eqConstructorType :: Eq ConstructorType
 derive instance ordConstructorType :: Ord ConstructorType
+instance hashableConstructorType :: Hashable ConstructorType where
+  hash ProductType = 1119464941
+  hash SumType = 1602057837
+
 
 data Comment
   = LineComment String
@@ -142,7 +154,11 @@ derive instance functorGuard :: Functor Guard
 
 data Prop a = Prop String a
 
+derive instance Eq a => Eq (Prop a)
 derive instance functorProp :: Functor Prop
+
+instance hashableProp :: Hashable a => Hashable (Prop a) where
+  hash (Prop s a) = hash s `thenHash` a
 
 instance foldableProp :: Foldable Prop where
   foldl k a (Prop _ b) = k a b

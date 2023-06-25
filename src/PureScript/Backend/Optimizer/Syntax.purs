@@ -3,10 +3,13 @@ module PureScript.Backend.Optimizer.Syntax where
 import Prelude
 
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Either (Either(..))
+import Data.Hashable (class Hashable, hash)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Traversable (class Foldable, class Traversable, foldMap, foldlDefault, foldrDefault, sequenceDefault, traverse)
 import Data.Tuple (Tuple)
+import Data.Tuple.Nested (type (/\), (/\))
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident, Literal(..), Prop, ProperName, Qualified)
 
 data BackendSyntax a
@@ -38,6 +41,7 @@ newtype Level = Level Int
 
 derive newtype instance Eq Level
 derive newtype instance Ord Level
+derive newtype instance Hashable Level
 derive instance Newtype Level _
 
 data Pair a = Pair a a
@@ -53,8 +57,20 @@ data BackendAccessor
   | GetIndex Int
   | GetCtorField (Qualified Ident) ConstructorType ProperName Ident String Int
 
+backendAccessorAsSumAndProduct
+  :: BackendAccessor
+  -> Either String
+       ( Either Int
+           ((Qualified Ident) /\ ConstructorType /\ ProperName /\ Ident /\ String /\ Int)
+       )
+backendAccessorAsSumAndProduct (GetProp s) = Left s
+backendAccessorAsSumAndProduct (GetIndex i) = Right $ Left i
+backendAccessorAsSumAndProduct (GetCtorField q c p i s i') = Right $ Right (q /\ c /\ p /\ i /\ s /\ i')
+
 derive instance Eq BackendAccessor
 derive instance Ord BackendAccessor
+instance Hashable BackendAccessor where
+  hash acc = hash (backendAccessorAsSumAndProduct acc)
 
 data BackendOperator a
   = Op1 BackendOperator1 a
@@ -67,6 +83,17 @@ data BackendOperator1
   | OpNumberNegate
   | OpArrayLength
   | OpIsTag (Qualified Ident)
+
+instance Hashable BackendOperator1 where
+  hash i = hash (go i)
+    where
+    go = case _ of
+      OpBooleanNot -> Left (-1348378543)
+      OpIntBitNot -> Right (Left (-203726350))
+      OpIntNegate -> Right (Right (Left (-934604725)))
+      OpNumberNegate -> Right (Right (Right (Left (-366645610))))
+      OpArrayLength -> Right (Right (Right (Right (Left 1505105160))))
+      OpIsTag q -> Right (Right (Right (Right (Right q))))
 
 derive instance Eq BackendOperator1
 derive instance Ord BackendOperator1
@@ -92,6 +119,27 @@ data BackendOperator2
 
 derive instance Eq BackendOperator2
 derive instance Ord BackendOperator2
+instance Hashable BackendOperator2 where
+  hash i = hash (go i)
+    where
+    go = case _ of
+      OpArrayIndex -> Left (-203726350)
+      OpBooleanAnd -> Right (Left (-1348378543))
+      OpBooleanOr -> Right (Right (Left (-934604725)))
+      OpBooleanOrd o -> Right (Right (Right (Left (hash o))))
+      OpCharOrd o -> Right (Right (Right (Right (Left (hash o)))))
+      OpIntBitAnd -> Right (Right (Right (Right (Right (Left (-366645610))))))
+      OpIntBitOr -> Right (Right (Right (Right (Right (Right (Left 1505105160))))))
+      OpIntBitShiftLeft -> Right (Right (Right (Right (Right (Right (Left (-203726350)))))))
+      OpIntBitShiftRight -> Right (Right (Right (Right (Right (Right (Right (Left (-1348378543))))))))
+      OpIntBitXor -> Right (Right (Right (Right (Right (Right (Right (Right (Left (-934604725)))))))))
+      OpIntBitZeroFillShiftRight -> Right (Right (Right (Right (Right (Right (Right (Right (Right (Left (-366645610))))))))))
+      OpIntNum o -> Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Left (hash o)))))))))))
+      OpIntOrd o -> Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Left (hash o))))))))))))
+      OpNumberNum o -> Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Left (hash o)))))))))))))
+      OpNumberOrd o -> Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Left (hash o))))))))))))))
+      OpStringAppend -> Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Left (-203726350)))))))))))))))
+      OpStringOrd o ->  Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (Right (hash o)))))))))))))))
 
 data BackendOperatorNum
   = OpAdd
@@ -101,6 +149,14 @@ data BackendOperatorNum
 
 derive instance Eq BackendOperatorNum
 derive instance Ord BackendOperatorNum
+instance Hashable BackendOperatorNum where
+  hash i = hash (go i)
+    where
+    go = case _ of
+      OpAdd -> Left (-595487215)
+      OpDivide -> Right (Left (-1929981231))
+      OpMultiply -> Right (Right (Left (1376434797)))
+      OpSubtract -> Right (Right (Right (-358541629)))
 
 data BackendOperatorOrd
   = OpEq
@@ -112,6 +168,16 @@ data BackendOperatorOrd
 
 derive instance Eq BackendOperatorOrd
 derive instance Ord BackendOperatorOrd
+instance Hashable BackendOperatorOrd where
+  hash i = hash (go i)
+    where
+    go = case _ of
+      OpEq -> Left 317135513
+      OpNotEq -> Right (Left (-1405419777))
+      OpGt -> Right (Right (Left (-1499139591)))
+      OpGte -> Right (Right (Right (Left (1274747959))))
+      OpLt -> Right (Right (Right (Right (Left 1667305919))))
+      OpLte -> Right (Right (Right (Right (Right 1957885622))))
 
 data BackendEffect a
   = EffectRefNew a

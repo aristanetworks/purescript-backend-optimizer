@@ -14,6 +14,7 @@ import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
+import PureScript.Backend.Optimizer.Hash (Hash)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
@@ -93,6 +94,7 @@ newtype BackendAnalysis = BackendAnalysis
   , rewrite :: Boolean
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
+  , hash :: Hash
   }
 
 derive instance Newtype BackendAnalysis _
@@ -106,6 +108,7 @@ instance Semigroup BackendAnalysis where
     , rewrite: a.rewrite || b.rewrite
     , deps: Set.union a.deps b.deps
     , result: a.result <> b.result
+    , hash: a.hash <> b.hash
     }
 
 instance Monoid BackendAnalysis where
@@ -117,6 +120,7 @@ instance Monoid BackendAnalysis where
     , rewrite: false
     , deps: Set.empty
     , result: KnownNeutral
+    , hash: mempty
     }
 
 bound :: Level -> BackendAnalysis -> BackendAnalysis

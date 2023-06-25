@@ -45,6 +45,7 @@ You can edit this file as you like.
   , "strings"
   , "transformers"
   , "tuples"
+  , "unordered-collections"
   , "unsafe-coerce"
   ]
 , packages = ./packages.dhall
