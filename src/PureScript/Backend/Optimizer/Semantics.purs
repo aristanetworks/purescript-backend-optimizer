@@ -874,15 +874,15 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (puntMe env group) (promoteToRecAbs qual expr)
+            Just $ eval (puntMe env group) (if Array.null group then expr else promoteToRecAbs qual expr)
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (puntMe env group) (promoteToRecAbs qual expr)
+                Just $ eval (puntMe env group) (if Array.null group then expr else promoteToRecAbs qual expr)
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (puntMe env group) (promoteToRecAbs qual expr)
+                Just $ eval (puntMe env group) (if Array.null group then expr else promoteToRecAbs qual expr)
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
