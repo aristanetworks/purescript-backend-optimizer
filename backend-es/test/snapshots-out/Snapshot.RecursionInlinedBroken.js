@@ -7,7 +7,7 @@ const addStuffBroken = v => v1 => {
   if (v === 0) { return v1; }
   return 1 + addStuffBroken(v - 1 | 0)(v1) | 0;
 };
-const test1 = /* #__PURE__ */ (() => 2 + addStuffBroken(-5)(4) | 0)();
+const test1 = v => 2 + addStuffBroken(-5)(4) | 0;
 const test2 = z => 2 + addStuffBroken(-5)((() => {
   if (z === 0) { return 5; }
   const $0 = z - 1 | 0;

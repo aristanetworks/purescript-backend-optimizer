@@ -7,7 +7,7 @@ const addStuff = x => ys => {
   if (x < 0) { return -1 + addStuff(x + 1 | 0)(ys) | 0; }
   return ys;
 };
-const test1 = 7;
+const test1 = 42;
 const test2 = z => 2 + addStuff(1)((() => {
   if (z > 0) {
     const $0 = z - 1 | 0;

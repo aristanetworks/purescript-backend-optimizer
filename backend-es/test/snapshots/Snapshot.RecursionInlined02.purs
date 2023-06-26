@@ -15,6 +15,6 @@ addStuff x ys
 infixr 4 addStuff as ++
 
 test1 :: Int
-test1 = 3 ++ 4
+test1 = 38 ++ 4
 test2 :: Int -> Int
 test2 z = 3 ++ z ++ 5
