@@ -15,6 +15,7 @@ data BackendSyntax a
   | Lit (Literal a)
   | App a (NonEmptyArray a)
   | Abs (NonEmptyArray (Tuple (Maybe Ident) Level)) a
+  | RecAbs (Qualified Ident) (NonEmptyArray (Tuple (Maybe Ident) Level)) a
   | UncurriedApp a (Array a)
   | UncurriedAbs (Array (Tuple (Maybe Ident) Level)) a
   | UncurriedEffectApp a (Array a)
@@ -24,6 +25,7 @@ data BackendSyntax a
   | CtorSaturated (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
   | CtorDef ConstructorType ProperName Ident (Array String)
   | LetRec Level (NonEmptyArray (Tuple Ident a)) a
+  | RecLet (Qualified Ident) (Maybe Ident) Level a a
   | Let (Maybe Ident) Level a a
   | EffectBind (Maybe Ident) Level a a
   | EffectPure a
@@ -133,6 +135,7 @@ instance Foldable BackendSyntax where
         _ -> mempty
     App a bs -> f a <> foldMap f bs
     Abs _ b -> f b
+    RecAbs _ _ b -> f b
     UncurriedApp a bs -> f a <> foldMap f bs
     UncurriedAbs _ b -> f b
     UncurriedEffectApp a bs -> f a <> foldMap f bs
@@ -141,6 +144,7 @@ instance Foldable BackendSyntax where
     Update a bs -> f a <> foldMap (foldMap f) bs
     LetRec _ as b -> foldMap (foldMap f) as <> f b
     Let _ _ b c -> f b <> f c
+    RecLet _ _ _ b c -> f b <> f c
     EffectBind _ _ b c -> f b <> f c
     EffectPure a -> f a
     EffectDefer a -> f a
@@ -172,6 +176,8 @@ instance Traversable BackendSyntax where
       App <$> f a <*> traverse f bs
     Abs as b ->
       Abs as <$> f b
+    RecAbs i as b ->
+      RecAbs i as <$> f b
     UncurriedApp a bs ->
       UncurriedApp <$> f a <*> traverse f bs
     UncurriedAbs as b ->
@@ -192,6 +198,8 @@ instance Traversable BackendSyntax where
       LetRec lvl <$> traverse (traverse f) as <*> f b
     Let ident lvl b c ->
       Let ident lvl <$> f b <*> f c
+    RecLet topIdent ident lvl b c ->
+      RecLet topIdent ident lvl <$> f b <*> f c
     EffectBind ident lvl b c ->
       EffectBind ident lvl <$> f b <*> f c
     EffectPure a ->

@@ -26,6 +26,10 @@ import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
+foreign import spyx :: forall a. String -> a -> a
+spy :: forall a. String -> a -> a
+spy = spyx
+
 type Spine a = Array a
 
 type RecSpine a = NonEmptyArray (Tuple Ident (Lazy a))
@@ -37,8 +41,10 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
+  | RecSemLam (Qualified Ident) (Maybe Ident) (BackendSemantics -> BackendSemantics)
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
+  | RecSemLet (Qualified Ident) (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemLetRec (NonEmptyArray (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -247,9 +253,18 @@ instance Eval f => Eval (BackendSyntax f) where
         (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
         idents
         env
+    RecAbs topIdent idents body -> let _ = spy "found recabs" true in
+      foldr1Array
+        (\(Tuple ident _) next env' -> RecSemLam topIdent ident (next <<< bindLocal env' <<< One))
+        (\(Tuple ident _) env' -> RecSemLam topIdent ident (flip eval body <<< bindLocal env' <<< One))
+        idents
+        env
     Let ident _ binding body ->
       guardFail (eval env binding) \binding' ->
         makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
+    RecLet topIdent ident _ binding body ->
+      guardFail (eval env binding) \binding' ->
+        makeRecLet topIdent ident binding' (flip eval body <<< bindLocal env <<< One)
     LetRec _ bindings body -> do
       let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
       SemLetRec (map bindGroup <$> bindings) (bindGroup body)
@@ -387,6 +402,9 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
+    RecSemLam i _ k, List.Cons arg args -> let _ = spy "rsllll!!" true in
+      makeRecLet i Nothing arg \nextArg ->
+        go env' (k nextArg) args
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
@@ -600,6 +618,9 @@ makeLet ident binding go = case binding of
     go binding
   _ ->
     SemLet ident binding go
+
+makeRecLet :: Qualified Ident -> Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+makeRecLet = RecSemLet
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -844,6 +865,9 @@ envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> En
 envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
+promoteToRecAbs :: Qualified Ident -> NeutralExpr -> NeutralExpr
+promoteToRecAbs i (NeutralExpr (Abs a b)) = NeutralExpr (RecAbs i a b)
+promoteToRecAbs _ x = x
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
@@ -855,15 +879,15 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (puntMe env group) expr
+            Just $ eval (puntMe env group) (promoteToRecAbs qual expr)
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (puntMe env group) expr
+                Just $ eval (puntMe env group) (promoteToRecAbs qual expr)
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (puntMe env group) expr
+                Just $ eval (puntMe env group) (promoteToRecAbs qual expr)
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
@@ -1044,6 +1068,9 @@ quote = go
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+    RecSemLet topIdent ident binding k -> do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ RecLet topIdent ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
@@ -1068,9 +1095,12 @@ quote = go
     RecurseWithRecklessAbandon ident -> ExprRewrite (withRewrite (analyzeDefault ctx (Var ident))) $ RewriteRecurse ident
     SemExtern _ _ sem ->
       go ctx (force sem)
-    SemLam ident k -> do
+    SemLam ident k -> let _ = spy "found vanilla semlam" true in do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+    RecSemLam topIdent ident k -> let _ = spy "found recsemlam" true in do
+      let Tuple level ctx' = nextLevel ctx
+      build ctx $ RecAbs topIdent (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1148,6 +1178,12 @@ build ctx = case _ of
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
       (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
       body1
+  RecLet _ ident level binding body
+    | shouldInlineLet level binding body ->
+        let _ = spy "issuing go for reclet" true  in
+        rewriteInline ident level binding body
+  -- if we shouldn't rewrite it, we issue a stop
+  expr@(RecLet topLevel _ _ _ _) -> let _ = spy "issuing stop for reclet" true in ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteStop (Qualified Nothing (Ident "wefzdfewfsdfs"))
   Let ident level binding body
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
@@ -1518,6 +1554,7 @@ optimize ctx env (Qualified mn (Ident id)) initN = go initN
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
+        let _ = spy "optimize" { id, n }
         let expr2 = quote ctx (eval env expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
         if rewrite then

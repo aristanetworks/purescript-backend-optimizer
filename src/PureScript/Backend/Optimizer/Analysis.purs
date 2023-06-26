@@ -211,6 +211,11 @@ analyze externAnalysis expr = case expr of
       $ bump
       $ complex NonTrivial
       $ analysisOf a <> bound lvl (analysisOf b)
+  RecLet _ _ lvl a b ->
+    withResult (resultOf b)
+      $ bump
+      $ complex NonTrivial
+      $ analysisOf a <> bound lvl (analysisOf b)
   LetRec lvl as b ->
     withResult (resultOf b)
       $ complex NonTrivial
@@ -234,6 +239,11 @@ analyze externAnalysis expr = case expr of
       $ bump
       $ analysisOf a
   Abs args _ ->
+    withResult KnownNeutral
+      $ complex KnownSize
+      $ capture CaptureClosure
+      $ foldr (boundArg <<< snd) (analyzeDefault expr) args
+  RecAbs _ args _ ->
     withResult KnownNeutral
       $ complex KnownSize
       $ capture CaptureClosure

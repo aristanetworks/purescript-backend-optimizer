@@ -256,6 +256,9 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   Abs idents body -> do
     let result = freshNames RefStrict env idents
     esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray result.value) (codegenBlockStatements pureMode result.accum body)
+  RecAbs _ idents body -> do
+    let result = freshNames RefStrict env idents
+    esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray result.value) (codegenBlockStatements pureMode result.accum body)
   UncurriedAbs idents body -> do
     let result = freshNames RefStrict env idents
     esArrowFunction (toEsIdent <$> result.value) (codegenBlockStatements pureMode result.accum body)
@@ -308,6 +311,8 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   LetRec _ _ _ ->
     codegenPureBlock env tcoExpr
   Let _ _ _ _ ->
+    codegenPureBlock env tcoExpr
+  RecLet _ _ _ _ _ ->
     codegenPureBlock env tcoExpr
   EffectBind _ _ _ _ ->
     codegenEffectBlock env tcoExpr
@@ -793,6 +798,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
   go (TcoExpr _ expr) = case expr of
     Abs _ _ ->
       true
+    RecAbs _ _ _ ->
+      true
     UncurriedAbs _ _ ->
       true
     UncurriedEffectAbs _ _ ->
@@ -830,6 +837,8 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
     LetRec _ _ _ ->
       false
     Let _ _ _ _ ->
+      false
+    RecLet _ _ _ _ _ ->
       false
     Branch _ _ ->
       false
