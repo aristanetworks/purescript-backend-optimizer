@@ -211,7 +211,7 @@ analyze externAnalysis expr = case expr of
       $ bump
       $ complex NonTrivial
       $ analysisOf a <> bound lvl (analysisOf b)
-  RecLet _ _ lvl a b ->
+  RecLet lvl _ a b ->
     withResult (resultOf b)
       $ bump
       $ complex NonTrivial

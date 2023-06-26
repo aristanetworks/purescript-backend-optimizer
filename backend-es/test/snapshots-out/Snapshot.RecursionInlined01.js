@@ -40,7 +40,7 @@ const test2 = alist => $List(
                           alist._2._2._1,
                           (() => {
                             if (alist._2._2._2.tag === "Nil") { return Nil; }
-                            if (alist._2._2._2.tag === "Cons") { return $List("Cons", alist._2._2._2._1, append); }
+                            if (alist._2._2._2.tag === "Cons") { return $List("Cons", alist._2._2._2._1, append(alist._2._2._2._2)(Nil)); }
                             $runtime.fail();
                           })()
                         );

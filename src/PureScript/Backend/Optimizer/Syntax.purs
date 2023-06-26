@@ -25,7 +25,7 @@ data BackendSyntax a
   | CtorSaturated (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
   | CtorDef ConstructorType ProperName Ident (Array String)
   | LetRec Level (NonEmptyArray (Tuple Ident a)) a
-  | RecLet (Qualified Ident) (Maybe Ident) Level a a
+  | RecLet Level a a a
   | Let (Maybe Ident) Level a a
   | EffectBind (Maybe Ident) Level a a
   | EffectPure a
@@ -144,7 +144,7 @@ instance Foldable BackendSyntax where
     Update a bs -> f a <> foldMap (foldMap f) bs
     LetRec _ as b -> foldMap (foldMap f) as <> f b
     Let _ _ b c -> f b <> f c
-    RecLet _ _ _ b c -> f b <> f c
+    RecLet _ a b c -> f a <> f b <> f c
     EffectBind _ _ b c -> f b <> f c
     EffectPure a -> f a
     EffectDefer a -> f a
@@ -198,8 +198,8 @@ instance Traversable BackendSyntax where
       LetRec lvl <$> traverse (traverse f) as <*> f b
     Let ident lvl b c ->
       Let ident lvl <$> f b <*> f c
-    RecLet topIdent ident lvl b c ->
-      RecLet topIdent ident lvl <$> f b <*> f c
+    RecLet lvl a b c ->
+      RecLet lvl <$> f a <*> f b <*> f c
     EffectBind ident lvl b c ->
       EffectBind ident lvl <$> f b <*> f c
     EffectPure a ->

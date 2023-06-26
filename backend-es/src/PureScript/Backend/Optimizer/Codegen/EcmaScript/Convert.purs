@@ -312,7 +312,7 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
     codegenPureBlock env tcoExpr
   Let _ _ _ _ ->
     codegenPureBlock env tcoExpr
-  RecLet _ _ _ _ _ ->
+  RecLet _ _ _ _ ->
     codegenPureBlock env tcoExpr
   EffectBind _ _ _ _ ->
     codegenEffectBlock env tcoExpr
@@ -838,7 +838,7 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
       false
     Let _ _ _ _ ->
       false
-    RecLet _ _ _ _ _ ->
+    RecLet _ _ _ _ ->
       false
     Branch _ _ ->
       false
