@@ -21,4 +21,21 @@ const test1 = /* #__PURE__ */ $List(
     )
   )
 );
-export {$List, Cons, Nil, append, test1};
+const test2 = z => $List(
+  "Cons",
+  "a",
+  $List(
+    "Cons",
+    "b",
+    $List(
+      "Cons",
+      "c",
+      (() => {
+        if (z.tag === "Nil") { return $List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))); }
+        if (z.tag === "Cons") { return $List("Cons", z._1, append(z._2)($List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))))); }
+        $runtime.fail();
+      })()
+    )
+  )
+);
+export {$List, Cons, Nil, append, test1, test2};

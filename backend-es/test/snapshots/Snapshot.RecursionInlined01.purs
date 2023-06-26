@@ -11,4 +11,6 @@ append (Cons x xs) ys = Cons x (append xs ys)
 infixr 4 append as <>
 
 test1 :: List String
-test1 = ("a" : "b" : "c" : "d" : "e" : "f" : "g" : Nil) <> Nil
+test1 = ("a" : "b" : "c" : Nil) <> ("d" : "e" : "f" : "g" : Nil)
+test2 :: List String -> List String
+test2 z = ("a" : "b" : "c" : z) <> ("d" : "e" : "f" : "g" : Nil)
