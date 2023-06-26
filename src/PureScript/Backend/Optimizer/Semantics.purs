@@ -167,6 +167,7 @@ newtype Env = Env
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   , punt :: Set.Set (Qualified Ident)
+  , blockNextRecursion :: Boolean
   }
 
 derive instance Newtype Env _
@@ -186,6 +187,15 @@ insertDirective ref acc dir = Map.alter
       Just $ Map.singleton acc dir
   ref
 
+recursable :: Array BackendSemantics -> Boolean
+recursable = go
+  where
+  go arr
+    | Just { head, tail } <- Array.uncons arr = case head of
+        NeutData _ _ _ _ _ -> true && go tail
+        _ -> false
+    | otherwise = true
+
 addStop :: Env -> EvalRef -> InlineAccessor -> Env
 addStop (Env env) ref acc = Env env
   { directives = Map.alter
@@ -202,11 +212,12 @@ puntMe :: Env -> Array (Qualified Ident) -> Env
 puntMe (Env env) quals = Env env
   { punt = Set.union env.punt (Set.fromFoldable quals)
   }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env@(Env { punt }) = case _ of
+  eval env@(Env envx@{ punt }) = case _ of
     Var qual
       | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
       | otherwise -> evalExtern env qual []
@@ -217,8 +228,11 @@ instance Eval f => Eval (BackendSyntax f) where
           force sem
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-    App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
+    App hd tl -> do
+      let tailEvaled = NonEmptyArray.toArray (eval env <$> tl)
+      let canRecurse = recursable tailEvaled
+      let headEvaled = eval (Env envx { blockNextRecursion = not canRecurse }) hd
+      evalApp env headEvaled tailEvaled
     UncurriedApp hd tl ->
       evalUncurriedApp env (eval env hd) (eval env <$> tl)
     UncurriedAbs idents body -> do
@@ -282,12 +296,12 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
 instance Eval BackendExpr where
-  eval = go
+  eval (Env e@{ blockNextRecursion }) = go (Env e { blockNextRecursion = false })
     where
     go env = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
-          RewriteRecurse ident -> eval env (Var ident :: BackendSyntax BackendExpr)
+          RewriteRecurse ident -> if blockNextRecursion then mkSemExtern ident [] else eval env (Var ident :: BackendSyntax BackendExpr)
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
           RewriteUncurry ident _ args binding body ->
@@ -835,9 +849,12 @@ primOpOrdNot = case _ of
   OpGt -> OpLte
   OpGte -> OpLt
 
+mkSemExtern :: Qualified Ident -> Array ExternSpine -> BackendSemantics
+mkSemExtern qual spine = SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
+
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
 evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
-  Nothing -> SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
+  Nothing -> mkSemExtern qual spine
   Just sem -> sem
 
 envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
