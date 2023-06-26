@@ -193,6 +193,7 @@ recursable = go
   go arr
     | Just { head, tail } <- Array.uncons arr = case head of
         NeutData _ _ _ _ _ -> go tail
+        NeutLit _ -> go tail
         _ -> false
     | otherwise = true
 

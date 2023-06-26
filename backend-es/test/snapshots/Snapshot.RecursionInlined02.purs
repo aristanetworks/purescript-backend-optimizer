@@ -1,0 +1,17 @@
+-- @inline Snapshot.RecursionInlined02.addStuff always
+module Snapshot.RecursionInlined02 where
+
+import Prelude
+
+data List a = Nil | Cons a (List a)
+infixr 5 Cons as :
+
+addStuff :: Int -> Int -> Int
+addStuff x ys = if x == zero then ys else one + addStuff (x - one) ys
+
+infixr 4 addStuff as ++
+
+test1 :: Int
+test1 = 3 ++ 4
+test2 :: Int -> Int
+test2 z = 3 ++ z ++ 5
