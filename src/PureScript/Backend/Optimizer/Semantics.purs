@@ -169,6 +169,7 @@ newtype Env = Env
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   , punt :: Set.Set (Qualified Ident)
+  , stopTrying :: Boolean
   }
 
 derive instance Newtype Env _
@@ -209,7 +210,7 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env@(Env { punt }) = case _ of
+  eval env@(Env { punt, stopTrying }) = case _ of
     Var qual
       | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
       | otherwise -> evalExtern env qual []
@@ -221,7 +222,7 @@ instance Eval f => Eval (BackendSyntax f) where
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
     Try attempts backup main ->
-      SemTry attempts (eval env backup) (eval env main)
+      if stopTrying then eval env backup else SemTry attempts (eval env backup) (eval env main)
     App hd tl ->
       evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
     UncurriedApp hd tl ->
@@ -1528,20 +1529,26 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
+withStopTrying :: Boolean -> Env -> Env
+withStopTrying stopTrying (Env env) = Env env
+  { stopTrying = stopTrying }
+
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified mn (Ident id)) initN = go initN
+optimize ctx env (Qualified mn (Ident id)) initN = go initN false
   where
-  go n expr1
-    | n == 0 = do
+  go n stopTrying expr1
+    | n == 0, stopTrying = do
         -- expr1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
+    | n == 0, not stopTrying = do
+       go initN true expr1
     | otherwise = do
-        let expr2 = quote ctx (eval env expr1)
+        let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
         let _ = spy "done" { id, n, expr2 }
         if rewrite then
-          go (n - 1) expr2
+          go (n - 1) stopTrying expr2
         else
           expr2
 
