@@ -1540,7 +1540,6 @@ withStopTrying stopTrying (Env env) = Env env
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
   where
-  _ = spy "startingEx" { id, ex1 }
   go n stopTrying expr1
     | n == 0, stopTrying = do
         -- expr1
