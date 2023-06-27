@@ -18,3 +18,6 @@ test1 :: Int
 test1 = 38 ++ 4
 test2 :: Int -> Int
 test2 z = 3 ++ z ++ 5
+
+testFoo :: Int
+testFoo = 3 + 7

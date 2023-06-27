@@ -1198,9 +1198,13 @@ build ctx = case _ of
   Accessor (ExprSyntax analysis (Branch bs def)) acc
     | Just expr' <- shouldDistributeBranchAccessor analysis bs def acc ->
         expr'
+  expr@(PrimOp (Op1 _ (ExprSyntax _ (Lit _)))) ->
+    ExprSyntax (withRewrite (analyzeDefault ctx expr)) $ expr
   PrimOp (Op1 op1 (ExprSyntax analysis (Branch bs def)))
     | Just expr' <- shouldDistributeBranchPrimOp1 analysis bs def op1 ->
         expr'
+  expr@(PrimOp (Op2 _ (ExprSyntax _ (Lit _)) (ExprSyntax _ (Lit _)))) ->
+    ExprSyntax (withRewrite (analyzeDefault ctx expr)) $ expr
   PrimOp (Op2 op2 (ExprSyntax analysis (Branch bs def)) rhs)
     | Just expr' <- shouldDistributeBranchPrimOp2L analysis bs def op2 rhs ->
         expr'
@@ -1534,15 +1538,16 @@ withStopTrying stopTrying (Env env) = Env env
   { stopTrying = stopTrying }
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified mn (Ident id)) initN = go initN false
+optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
   where
+  _ = spy "startingEx" { id, ex1 }
   go n stopTrying expr1
     | n == 0, stopTrying = do
         -- expr1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | n == 0, not stopTrying = do
-       go initN true expr1
+        go initN true expr1
     | otherwise = do
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2

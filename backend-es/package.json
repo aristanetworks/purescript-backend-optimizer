@@ -39,5 +39,10 @@
   "homepage": "https://github.com/aristanetworks/purescript-backend-optimizer#readme",
   "devDependencies": {
     "esbuild": "^0.15.5"
+  },
+  "dependencies": {
+    "purescript": "^0.15.9",
+    "purs-tidy": "^0.10.0",
+    "spago": "^0.21.0"
   }
 }
