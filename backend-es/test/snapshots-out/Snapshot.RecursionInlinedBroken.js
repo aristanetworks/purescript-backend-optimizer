@@ -8,5 +8,5 @@ const addStuffBroken = v => v1 => {
   return 1 + addStuffBroken(v - 1 | 0)(v1) | 0;
 };
 const test1 = v => addStuffBroken(-3)(4);
-const test2 = z => addStuffBroken(z === 0 ? 5 : 1 + addStuffBroken(z - 1 | 0)(5) | 0);
+const test2 = z => addStuffBroken(-3)(addStuffBroken(z)(5));
 export {$List, Cons, Nil, addStuffBroken, test1, test2};

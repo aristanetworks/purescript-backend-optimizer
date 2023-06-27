@@ -7,10 +7,6 @@ const addStuff = x => ys => {
   if (x < 0) { return -1 + addStuff(x + 1 | 0)(ys) | 0; }
   return ys;
 };
-const test1 = 42;
-const test2 = z => addStuff((() => {
-  if (z > 0) { return 1 + addStuff(z - 1 | 0)(5) | 0; }
-  if (z < 0) { return -1 + addStuff(z + 1 | 0)(5) | 0; }
-  return 5;
-})());
+const test1 = /* #__PURE__ */ addStuff(38)(4);
+const test2 = z => addStuff(3)(addStuff(z)(5));
 export {$List, Cons, Nil, addStuff, test1, test2};

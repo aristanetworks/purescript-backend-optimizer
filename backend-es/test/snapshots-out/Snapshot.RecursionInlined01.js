@@ -21,53 +21,5 @@ const test1 = /* #__PURE__ */ $List(
     )
   )
 );
-const test2 = z => $List(
-  "Cons",
-  "a",
-  $List(
-    "Cons",
-    "b",
-    $List(
-      "Cons",
-      "c",
-      (() => {
-        if (z.tag === "Nil") { return $List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))); }
-        if (z.tag === "Cons") {
-          return $List(
-            "Cons",
-            z._1,
-            (() => {
-              if (z._2.tag === "Nil") { return $List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))); }
-              if (z._2.tag === "Cons") {
-                return $List(
-                  "Cons",
-                  z._2._1,
-                  (() => {
-                    if (z._2._2.tag === "Nil") { return $List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))); }
-                    if (z._2._2.tag === "Cons") {
-                      return $List(
-                        "Cons",
-                        z._2._2._1,
-                        (() => {
-                          if (z._2._2._2.tag === "Nil") { return $List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))); }
-                          if (z._2._2._2.tag === "Cons") {
-                            return $List("Cons", z._2._2._2._1, append(z._2._2._2._2)($List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil))))));
-                          }
-                          $runtime.fail();
-                        })()
-                      );
-                    }
-                    $runtime.fail();
-                  })()
-                );
-              }
-              $runtime.fail();
-            })()
-          );
-        }
-        $runtime.fail();
-      })()
-    )
-  )
-);
+const test2 = z => append($List("Cons", "a", $List("Cons", "b", $List("Cons", "c", z))))($List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))));
 export {$List, Cons, Nil, append, test1, test2};

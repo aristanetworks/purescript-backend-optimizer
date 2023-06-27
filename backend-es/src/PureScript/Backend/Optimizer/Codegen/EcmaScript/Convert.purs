@@ -229,6 +229,8 @@ codegenExpr :: CodegenEnv -> TcoExpr -> EsExpr
 codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ expr) = case expr of
   Var (Qualified (Just mn) ident) | mn == currentModule ->
     codegenName $ renameTopLevel ident env
+  Try _ _ main -> -- should never hit this
+    codegenExpr env main
   Var qual
     | Just expr' <- inlineApp env qual (InlineApp []) ->
         expr'
@@ -254,9 +256,6 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
           (codegenExpr env a)
           bs
   Abs idents body -> do
-    let result = freshNames RefStrict env idents
-    esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray result.value) (codegenBlockStatements pureMode result.accum body)
-  RecAbs _ idents body -> do
     let result = freshNames RefStrict env idents
     esCurriedFunction (toEsIdent <$> NonEmptyArray.toArray result.value) (codegenBlockStatements pureMode result.accum body)
   UncurriedAbs idents body -> do
@@ -311,8 +310,6 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   LetRec _ _ _ ->
     codegenPureBlock env tcoExpr
   Let _ _ _ _ ->
-    codegenPureBlock env tcoExpr
-  RecLet _ _ _ _ ->
     codegenPureBlock env tcoExpr
   EffectBind _ _ _ _ ->
     codegenEffectBlock env tcoExpr
@@ -798,7 +795,7 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
   go (TcoExpr _ expr) = case expr of
     Abs _ _ ->
       true
-    RecAbs _ _ _ ->
+    Try _ _ _ ->
       true
     UncurriedAbs _ _ ->
       true
@@ -837,8 +834,6 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
     LetRec _ _ _ ->
       false
     Let _ _ _ _ ->
-      false
-    RecLet _ _ _ _ ->
       false
     Branch _ _ ->
       false

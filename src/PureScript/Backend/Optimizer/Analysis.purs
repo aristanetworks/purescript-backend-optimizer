@@ -203,15 +203,15 @@ analyze externAnalysis expr = case expr of
     withArgs args
       $ bump
       $ usedDep qi
+  -- we defer to the main branch for analysis
+  Try _ _ main -> withResult (resultOf main)
+    $ bump
+    $ complex NonTrivial
+    $ analysisOf main
   Local _ lvl ->
     bump
       $ used lvl
   Let _ lvl a b ->
-    withResult (resultOf b)
-      $ bump
-      $ complex NonTrivial
-      $ analysisOf a <> bound lvl (analysisOf b)
-  RecLet lvl _ a b ->
     withResult (resultOf b)
       $ bump
       $ complex NonTrivial
@@ -239,11 +239,6 @@ analyze externAnalysis expr = case expr of
       $ bump
       $ analysisOf a
   Abs args _ ->
-    withResult KnownNeutral
-      $ complex KnownSize
-      $ capture CaptureClosure
-      $ foldr (boundArg <<< snd) (analyzeDefault expr) args
-  RecAbs _ args _ ->
     withResult KnownNeutral
       $ complex KnownSize
       $ capture CaptureClosure

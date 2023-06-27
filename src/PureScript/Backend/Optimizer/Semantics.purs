@@ -24,7 +24,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, Attempts(..), BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
 type Spine a = Array a
@@ -38,10 +38,9 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
-  | RecSemLam (Qualified Ident) (Maybe Ident) (BackendSemantics -> BackendSemantics)
+  | SemTry Attempts BackendSemantics BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
-  | RecSemLet BackendSemantics BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
   | SemLetRec (NonEmptyArray (Tuple Ident (RecSpine BackendSemantics -> BackendSemantics))) (RecSpine BackendSemantics -> BackendSemantics)
   | SemEffectBind (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -205,6 +204,7 @@ puntMe :: Env -> Array (Qualified Ident) -> Env
 puntMe (Env env) quals = Env env
   { punt = Set.union env.punt (Set.fromFoldable quals)
   }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -220,6 +220,8 @@ instance Eval f => Eval (BackendSyntax f) where
           force sem
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
+    Try attempts backup main ->
+      SemTry attempts (eval env backup) (eval env main)
     App hd tl ->
       evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
     UncurriedApp hd tl ->
@@ -250,16 +252,9 @@ instance Eval f => Eval (BackendSyntax f) where
         (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
         idents
         env
-    RecAbs topIdent idents body ->
-      foldr1Array
-        (\(Tuple ident _) next env' -> RecSemLam topIdent ident (next <<< bindLocal env' <<< One))
-        (\(Tuple ident _) env' -> RecSemLam topIdent ident (flip eval body <<< bindLocal env' <<< One))
-        idents
-        env
     Let ident _ binding body ->
       guardFail (eval env binding) \binding' ->
         makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
-    RecLet _ _ _ _ -> NeutFail "Programming error - RecLet is only used as an intermediary step and should never be evaled."
     LetRec _ bindings body -> do
       let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
       SemLetRec (map bindGroup <$> bindings) (bindGroup body)
@@ -397,9 +392,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    RecSemLam i _ k, List.Cons arg args -> 
-      makeRecLet (NeutApp (NeutStop i) (List.toUnfoldable (arg : args))) arg \nextArg ->
-        go env' (k nextArg) args
+    SemTry attempts backup main, _ ->
+      SemTry attempts (evalApp env backup spine) (evalApp env main spine)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
@@ -613,9 +607,6 @@ makeLet ident binding go = case binding of
     go binding
   _ ->
     SemLet ident binding go
-
-makeRecLet :: BackendSemantics -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
-makeRecLet = RecSemLet
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -860,9 +851,11 @@ envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> En
 envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
-promoteToRecAbs :: Qualified Ident -> NeutralExpr -> NeutralExpr
-promoteToRecAbs i (NeutralExpr (Abs a b)) = NeutralExpr (RecAbs i a b)
-promoteToRecAbs _ x = x
+
+withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
+withTry qual env group expr = if Array.null group then evaled else SemTry (Attempts 0) (NeutStop qual) evaled
+  where
+  evaled = eval (puntMe env group) expr
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
@@ -874,15 +867,15 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (puntMe env group) (if Array.null group then expr else promoteToRecAbs qual expr)
+            Just $ withTry qual env group expr
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (puntMe env group) (if Array.null group then expr else promoteToRecAbs qual expr)
+                Just $ withTry qual env group expr
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (puntMe env group) (if Array.null group then expr else promoteToRecAbs qual expr)
+                Just $ withTry qual env group expr
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
@@ -1060,12 +1053,14 @@ quote = go
   where
   go ctx = case _ of
     -- Block constructors
+    SemTry (Attempts attempts) backup main
+      | attempts >= 10 -> go ctx backup
+      | otherwise -> case quote (ctx { effect = false }) main of
+          newMain@(ExprSyntax _ (Lit _)) -> newMain
+          newMain -> build ctx $ Try (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
-    RecSemLet sem binding k -> do
-      let Tuple level ctx' = nextLevel ctx
-      build ctx $ RecLet level (quote (ctx { effect = false }) sem) (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal Nothing level
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
@@ -1093,9 +1088,6 @@ quote = go
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
-    RecSemLam topIdent ident k -> do
-      let Tuple level ctx' = nextLevel ctx
-      build ctx $ RecAbs topIdent (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1173,10 +1165,6 @@ build ctx = case _ of
     ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
       (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
       body1
-  RecLet level _ binding body
-    | shouldInlineLet level binding body ->
-        rewriteInline Nothing level binding body
-  RecLet _ rep _ _ -> rep
   Let ident level binding body
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body

@@ -11,11 +11,29 @@ const append = v => b => {
   if (v.type === "nil") { return b; }
   return Partial._crashWith("Data.Variant: pattern match failure [" + v.type + "]");
 };
-const test1 = /* #__PURE__ */ append({
+const test1 = {
   type: "cons",
-  value: {head: "d", tail: {type: "cons", value: {head: "e", tail: {type: "cons", value: {head: "f", tail: {type: "cons", value: {head: "g", tail: nil}}}}}}}
-});
-const test2 = z => append({
+  value: {
+    head: "a",
+    tail: {
+      type: "cons",
+      value: {
+        head: "b",
+        tail: {
+          type: "cons",
+          value: {
+            head: "c",
+            tail: {
+              type: "cons",
+              value: {head: "d", tail: {type: "cons", value: {head: "e", tail: {type: "cons", value: {head: "f", tail: {type: "cons", value: {head: "g", tail: nil}}}}}}}
+            }
+          }
+        }
+      }
+    }
+  }
+};
+const test2 = z => append({type: "cons", value: {head: "a", tail: {type: "cons", value: {head: "b", tail: {type: "cons", value: {head: "c", tail: z}}}}}})({
   type: "cons",
   value: {head: "d", tail: {type: "cons", value: {head: "e", tail: {type: "cons", value: {head: "f", tail: {type: "cons", value: {head: "g", tail: nil}}}}}}}
 });
