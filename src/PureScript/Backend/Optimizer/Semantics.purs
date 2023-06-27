@@ -1057,6 +1057,7 @@ quote = go
       | attempts >= 10 -> go ctx backup
       | otherwise -> case quote (ctx { effect = false }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
+          newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
           newMain -> build ctx $ Try (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
@@ -1537,6 +1538,7 @@ optimize ctx env (Qualified mn (Ident id)) initN = go initN
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
+        let _ = spy "done" { id, n, expr2 }
         if rewrite then
           go (n - 1) expr2
         else
@@ -1662,3 +1664,6 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
+
+foreign import spyx :: forall a. String -> a -> a
+spy = spyx
