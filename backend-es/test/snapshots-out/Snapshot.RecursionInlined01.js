@@ -21,5 +21,5 @@ const test1 = /* #__PURE__ */ $List(
     )
   )
 );
-const test2 = z => append($List("Cons", "a", $List("Cons", "b", $List("Cons", "c", z))))($List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil)))));
+const test2 = z => $List("Cons", "a", $List("Cons", "b", $List("Cons", "c", append(z)($List("Cons", "d", $List("Cons", "e", $List("Cons", "f", $List("Cons", "g", Nil))))))));
 export {$List, Cons, Nil, append, test1, test2};
