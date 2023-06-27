@@ -1057,6 +1057,7 @@ quote = go
       | attempts >= 10 -> go ctx backup
       | otherwise -> case quote (ctx { effect = false }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
+          newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
           newMain -> build ctx $ Try (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
