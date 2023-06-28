@@ -210,7 +210,7 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env@(Env { punt, stopTrying }) = case _ of
+  eval env@(Env { punt, stopTrying, locals }) = case _ of
     Var qual
       | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
       | otherwise -> evalExtern env qual []
@@ -272,7 +272,8 @@ instance Eval f => Eval (BackendSyntax f) where
       evalUpdate env (eval env lhs) (map (eval env) <$> updates)
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
-    PrimOp op ->
+    PrimOp op -> do
+      let _ = spy "hit prim op" { locals, op }
       evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
@@ -1055,7 +1056,7 @@ quote = go
   go ctx = case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 10 -> go ctx backup
+      | attempts >= 20 -> go ctx backup
       | otherwise -> case quote (ctx { effect = false }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
@@ -1248,7 +1249,7 @@ build ctx = case _ of
     expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
-  expr ->
+  expr -> do
     buildDefault ctx expr
 
 buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
@@ -1541,6 +1542,7 @@ optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
   where
   _ = spy "startingEx" { id, ex1 }
+  -- _ = spy "startingEx" { id }
   go n stopTrying expr1
     | n == 0, stopTrying = do
         -- expr1

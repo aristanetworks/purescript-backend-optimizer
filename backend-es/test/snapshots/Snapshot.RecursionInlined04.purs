@@ -10,9 +10,7 @@ import Data.Array as Array
 import Partial.Unsafe (unsafePartial)
 
 foldlArray :: forall a b . (b -> a -> b) -> b -> Array a -> b
-foldlArray bab b arr = foldlArray2 0 len bab b arr
-  where
-  len = Array.length arr
+foldlArray bab b arr = foldlArray2 0 (Array.length arr) bab b arr
 
 foldlArray2 :: forall a b . Int -> Int -> (b -> a -> b) -> b -> Array a -> b
 foldlArray2 n i bab b arr
