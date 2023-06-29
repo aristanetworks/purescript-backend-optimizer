@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, oneOf, or)
+import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
@@ -20,7 +20,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
@@ -627,16 +627,6 @@ evalPrimOp env = case _ of
           NeutPrimOp (Op1 op1 x')
   Op2 op2 x y ->
     case op2 of
-      OpArrayIndex
-        | NeutLit (LitArray arr) <- deref x
-        , NeutLit (LitInt i) <- deref y
-        , neut <- unsafePartial $ Array.unsafeIndex arr i
-        , Just _ <-
-            oneOf
-              [ void $ caseInt neut
-              , void $ caseNumber neut
-              , void $ caseString neut
-              ] -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x
