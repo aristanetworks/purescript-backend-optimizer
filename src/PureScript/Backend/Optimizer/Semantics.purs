@@ -21,7 +21,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
-import Partial.Unsafe (unsafeCrashWith)
+import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
@@ -672,6 +672,9 @@ evalPrimOp env = case _ of
           NeutPrimOp (Op1 op1 x')
   Op2 op2 x y ->
     case op2 of
+      OpArrayIndex
+        | NeutLit (LitArray arr) <- deref x
+        , NeutLit (LitInt i) <- deref y -> unsafePartial $ Array.unsafeIndex arr i
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x
@@ -1603,7 +1606,7 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
         -- let _ = spy "startingEx" { id, n }
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        -- let _ = spy "done" { id }
+        let _ = spy "done" { id, expr2 }
         if rewrite then
           go (n - 1) stopTrying expr2
         else

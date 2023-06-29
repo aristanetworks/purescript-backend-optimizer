@@ -16,7 +16,7 @@ foldlArray bab b arr = foldlArray2 0 len bab b arr
 
 foldlArray2 :: forall a b . Int -> Int -> (b -> a -> b) -> b -> Array a -> b
 foldlArray2 n i bab b arr
-  | n == i - 1 = b
+  | n == i = b
   | otherwise = foldlArray2 (n + 1) i bab (bab b (unsafePartial $ Array.unsafeIndex arr n)) arr
 test1 :: String
 test1 = foldlArray (<>) "" ["a", "b", "c"]
