@@ -1,7 +1,6 @@
 // @inline Snapshot.RecursionInlined04.foldlArray always
 // @inline Snapshot.RecursionInlined04.foldlArray2 always
 // A "real-world" example from deku
-import * as Data$dSemigroup from "../Data.Semigroup/index.js";
 const foldlArray2 = foldlArray2$a0$copy => foldlArray2$a1$copy => foldlArray2$a2$copy => foldlArray2$a3$copy => foldlArray2$a4$copy => {
   let foldlArray2$a0 = foldlArray2$a0$copy;
   let foldlArray2$a1 = foldlArray2$a1$copy;
@@ -26,5 +25,8 @@ const foldlArray2 = foldlArray2$a0$copy => foldlArray2$a1$copy => foldlArray2$a2
   return foldlArray2$r;
 };
 const foldlArray = bab => b => arr => foldlArray2(0)(arr.length)(bab)(b)(arr);
-const test1 = /* #__PURE__ */ foldlArray2(0)(3)(Data$dSemigroup.concatString)("")(["a", "b", "c"])(Data$dSemigroup.concatString)("")(["a", "b", "c"]);
+const test1 = /* #__PURE__ */ (() => {
+  const $0 = ["a", "b", "c"];
+  return "" + $0[0] + $0[1];
+})();
 export {foldlArray, foldlArray2, test1};

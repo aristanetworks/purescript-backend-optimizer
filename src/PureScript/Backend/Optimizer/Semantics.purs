@@ -400,8 +400,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry attempts backup main, _ ->
-      SemTry attempts (evalApp env backup spine) (evalApp env main spine)
+    SemTry attempts backup main, args ->
+      SemTry attempts (evalApp env' backup $ List.toUnfoldable args) (evalApp env' main $ List.toUnfoldable args)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
