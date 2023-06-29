@@ -1071,7 +1071,7 @@ quote = go
   go ctx = case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 20 -> go ctx backup
+      | attempts >= 10 -> go ctx backup
       | otherwise -> case quote (ctx { effect = false }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
