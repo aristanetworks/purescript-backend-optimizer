@@ -229,8 +229,6 @@ codegenExpr :: CodegenEnv -> TcoExpr -> EsExpr
 codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ expr) = case expr of
   Var (Qualified (Just mn) ident) | mn == currentModule ->
     codegenName $ renameTopLevel ident env
-  Try _ _ main -> -- should never hit this
-    codegenExpr env main
   Var qual
     | Just expr' <- inlineApp env qual (InlineApp []) ->
         expr'
@@ -794,8 +792,6 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
   -- TODO: Should this be fused with the TCO pass?
   go (TcoExpr _ expr) = case expr of
     Abs _ _ ->
-      true
-    Try _ _ _ ->
       true
     UncurriedAbs _ _ ->
       true

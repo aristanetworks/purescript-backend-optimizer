@@ -24,8 +24,14 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, Attempts(..), BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
+
+newtype Attempts = Attempts Int
+
+derive newtype instance Eq Attempts
+derive newtype instance Ord Attempts
+derive instance Newtype Attempts _
 
 type Spine a = Array a
 
@@ -85,6 +91,7 @@ type EffectBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
+  | RewriteTry Attempts BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
@@ -210,7 +217,11 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
+<<<<<<< HEAD
   eval env@(Env { punt, locals, stopTrying }) = case _ of
+=======
+  eval env@(Env { punt }) = case _ of
+>>>>>>> inlined-recursion-try
     Var qual
       | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
       | otherwise -> evalExtern env qual []
@@ -221,8 +232,6 @@ instance Eval f => Eval (BackendSyntax f) where
           force sem
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-    Try attempts backup main ->
-      if stopTrying then eval env backup else SemTry attempts (eval env backup) (eval env main)
     App hd tl ->
       evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
     UncurriedApp hd tl ->
@@ -291,7 +300,7 @@ instance Eval f => Eval (BackendSyntax f) where
 instance Eval BackendExpr where
   eval = go
     where
-    go env = case _ of
+    go env@(Env { stopTrying }) = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
           RewriteRecurse ident -> eval env (Var ident :: BackendSyntax BackendExpr)
@@ -354,6 +363,8 @@ instance Eval BackendExpr where
                   (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
+          RewriteTry attempts backup main ->
+            if stopTrying then eval env backup else SemTry attempts (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -1054,6 +1065,10 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
+buildTry :: Ctx -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry ctx attempts backup main =
+  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts backup main
+
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
@@ -1065,7 +1080,7 @@ quote = go
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
-          newMain -> build ctx $ Try (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+          newMain -> buildTry ctx (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1574,6 +1589,8 @@ freeze init = Tuple (analysisOf init) (go init)
       NeutralExpr $ go <$> expr
     ExprRewrite _ rewrite ->
       case rewrite of
+        RewriteTry _ backup _ ->
+          go backup
         RewriteInline ident level binding body ->
           NeutralExpr $ Let ident level (go binding) (go body)
         RewriteUncurry ident level args binding body ->
