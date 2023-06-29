@@ -1041,7 +1041,11 @@ quote = go
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
-      -- todo: can we do better than `Nothing` here?
+      -- From Nate: There may be a problem here
+      -- in the case of a strict recursive loop.
+      -- A runtime check is emitted with an appropriate exception,
+      -- but we have no such check as part of eval.
+      -- Probably best to leave recursive terms out of the NeutLocal for now.
       let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
@@ -1071,7 +1075,6 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            -- todo - can we do better than `Nothing` here?
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
@@ -1081,7 +1084,6 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            -- todo - can we do better than `Nothing` here?
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
