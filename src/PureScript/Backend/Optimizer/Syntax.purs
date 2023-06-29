@@ -13,7 +13,6 @@ data BackendSyntax a
   = Var (Qualified Ident)
   | Local (Maybe Ident) Level
   | Lit (Literal a)
-  | Try Attempts a a
   | App a (NonEmptyArray a)
   | Abs (NonEmptyArray (Tuple (Maybe Ident) Level)) a
   | UncurriedApp a (Array a)
@@ -132,7 +131,6 @@ instance Foldable BackendSyntax where
         LitArray as -> foldMap f as
         LitRecord as -> foldMap (foldMap f) as
         _ -> mempty
-    Try _ a b -> f a <> f b
     App a bs -> f a <> foldMap f bs
     Abs _ b -> f b
     UncurriedApp a bs -> f a <> foldMap f bs
@@ -154,19 +152,11 @@ instance Foldable BackendSyntax where
     CtorDef _ _ _ _ -> mempty
     Fail _ -> mempty
 
-newtype Attempts = Attempts Int
-
-derive newtype instance Eq Attempts
-derive newtype instance Ord Attempts
-derive instance Newtype Attempts _
-
 instance Traversable BackendSyntax where
   sequence a = sequenceDefault a
   traverse f = case _ of
     Var a ->
       pure (Var a)
-    Try attempts backup main ->
-      Try attempts <$> f backup <*> f main
     Local a b ->
       pure (Local a b)
     Lit lit ->

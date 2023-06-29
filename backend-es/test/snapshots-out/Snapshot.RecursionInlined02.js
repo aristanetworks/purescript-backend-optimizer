@@ -9,5 +9,5 @@ const addStuff = x => ys => {
   return ys;
 };
 const test1 = 42;
-const test2 = z => 3 + addStuff(z)(5) | 0;
+const test2 = z => 3 + addStuff(0)(addStuff(z)(5)) | 0;
 export {$List, Cons, Nil, addStuff, test1, test2, testFoo};

@@ -203,8 +203,6 @@ analyze externAnalysis expr = case expr of
     withArgs args
       $ bump
       $ usedDep qi
-  -- we defer to the main branch for analysis
-  Try _ _ main -> analysisOf main
   Local _ lvl ->
     bump
       $ used lvl
