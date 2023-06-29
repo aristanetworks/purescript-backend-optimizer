@@ -252,7 +252,8 @@ instance Eval f => Eval (BackendSyntax f) where
             MkFnNext a \nextArg ->
               loop (bindLocal env' (One nextArg)) as
       SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
-    Abs idents body ->
+    Abs idents body -> do
+      let _ = spy "abs body" body
       foldr1Array
         (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
         (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
@@ -359,7 +360,7 @@ instance Eval BackendExpr where
                   (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
-          RewriteTry attempts backup main ->
+          RewriteTry attempts backup main -> do
             if stopTrying then eval env backup else SemTry attempts (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
@@ -401,24 +402,36 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry attempts backup main, _ ->
-      SemTry attempts (evalApp env backup spine) (evalApp env main spine)
-    SemLam _ k, List.Cons arg args ->
-      makeLet Nothing arg \nextArg ->
+    SemTry attempts backup main, _ -> do
+      let _ = spyy "hit sem try" backup
+      let _ = spy "the main for the above backup" main
+      let back = evalApp env backup spine
+      let _ = spy "back evaled" true
+      SemTry attempts back (evalApp env main spine)
+    SemLam _ k, List.Cons arg args -> do
+      let _ = spy "hit sem lam" true
+      makeLet Nothing arg \nextArg -> do
+        let _ = spy "nextArg" {nextArg, appd: (k nextArg)}
         go env' (k nextArg) args
     SemExtern qual sp _, List.Cons arg args -> do
+      let _ = spy "hit sem extern" true
       go env' (evalExtern env' qual (snocApp sp arg)) args
-    SemLet ident val k, args ->
+    SemLet ident val k, args -> do
+      let _ = spy "hit sem let" true
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
           go (bindLocal (bindLocal env' (One nextVal)) (One nextFn)) nextFn args
-    SemLetRec vals k, args ->
+    SemLetRec vals k, args -> do
+      let _ = spy "hit sem let rec" true
       SemLetRec vals \nextVals ->
         makeLet Nothing (k nextVals) \nextFn ->
           go (bindLocal (bindLocal env' (Group nextVals)) (One nextFn)) nextFn args
-    fn, List.Nil ->
+    fn, List.Nil -> do
+      let _ = spy "hit nil" true
       fn
-    fn, args ->
+    fn, args -> do
+      -- let _ = spy "more info for neut app" { napp: NeutApp fn (List.toUnfoldable args) }
+      let _ = spy "NANANA" {fn}
       NeutApp fn (List.toUnfoldable args)
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
@@ -483,7 +496,8 @@ neutralSpine :: BackendSemantics -> Array ExternSpine -> BackendSemantics
 neutralSpine = foldl go
   where
   go hd = case _ of
-    ExternApp apps ->
+    ExternApp apps -> do
+      let _ = spy "NAEX" true
       NeutApp hd apps
     ExternUncurriedApp apps ->
       NeutUncurriedApp hd apps
@@ -497,9 +511,11 @@ neutralApp hd spine
   | Array.null spine =
       hd
   | otherwise = case hd of
-      NeutApp hd' spine' ->
+      NeutApp hd' spine' -> do
+        let _ = spy "NAAP" true
         NeutApp hd' (spine' <> spine)
-      _ ->
+      _ -> do
+        let _ = spy "NAXL" true
         NeutApp hd spine
 
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
@@ -636,7 +652,7 @@ evalPrimOp env = case _ of
       OpIsTag a, NeutData b _ _ _ _ ->
         liftBoolean (a == b)
       OpArrayLength, expr
-        | NeutLit (LitArray arr) <- deref (spy "dereffing!" expr) -> let _ = spy "deref success" true in liftInt (Array.length arr)
+        | NeutLit (LitArray arr) <- deref expr -> liftInt (Array.length arr)
       OpIntNegate, NeutLit (LitInt a) ->
         liftInt (negate a)
       OpNumberNegate, NeutLit (LitNumber a) ->
@@ -879,15 +895,18 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         case Map.lookup ref e.directives >>= Map.lookup InlineRef of
           Just InlineNever ->
             Just $ NeutStop qual
-          Just InlineAlways ->
+          Just InlineAlways -> do
+            let _ = spy "creating try" qual
             Just $ withTry qual env group expr
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
-              NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
+              NeutralExpr (Lit lit) | shouldInlineExternLiteral lit -> do
+                let _ = spy "starting try"
                 Just $ withTry qual env group expr
-              _ | shouldInlineExternReference qual analysis expr ->
+              _ | shouldInlineExternReference qual analysis expr -> do
+                let _ = spy "starting try"
                 Just $ withTry qual env group expr
               _ ->
                 Nothing
@@ -1063,7 +1082,7 @@ nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.curren
 
 buildTry ::  Attempts -> BackendExpr -> BackendExpr -> BackendExpr
 buildTry attempts backup main =
-  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts backup main
+  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts (spy "newBackup" backup) main
 
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
@@ -1072,11 +1091,11 @@ quote = go
     -- Block constructors
     SemTry (Attempts attempts) backup main
       | attempts >= 10 -> go ctx backup
-      | otherwise -> case quote (ctx { effect = false }) main of
+      | otherwise -> let _ = spy "final backup" backup in case quote (ctx { effect = false }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
-          newMain -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+          newMain -> let _ = spy "oldBackup" { backup } in buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1107,7 +1126,9 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
+      let unlammed = k $ NeutLocal ident level Nothing
+      let _ = spy "unlammed" unlammed
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ unlammed
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1151,6 +1172,7 @@ quote = go
     NeutApp hd spine -> do
       let ctx' = ctx { effect = false }
       let hd' = quote ctx' hd
+      -- let _ = spy "quoting a NeutApp" { hd, hd' }
       case NonEmptyArray.fromArray (quote ctx' <$> spine) of
         Nothing ->
           hd'
@@ -1173,7 +1195,8 @@ quote = go
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of
-  App (ExprSyntax _ (App hd tl1)) tl2 ->
+  ugggh@(App (ExprSyntax _ (App hd tl1)) tl2) -> do
+    -- let _ = spy "booooo" ugggh
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
     build ctx $ Abs (ids1 <> ids2) body
@@ -1571,7 +1594,7 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
         let _ = spy "startingEx" { id, n }
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        let _ = spy "done" { id, n, expr2 }
+        let _ = spy "done" { id }
         if rewrite then
           go (n - 1) stopTrying expr2
         else
@@ -1701,4 +1724,5 @@ guardFailOver f as k =
     _ -> Nothing
 
 foreign import spyx :: forall a. String -> a -> a
+foreign import spyy :: forall a. String -> a -> a
 spy = spyx
