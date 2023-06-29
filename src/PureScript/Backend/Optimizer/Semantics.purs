@@ -593,8 +593,9 @@ makeLet ident binding go = case binding of
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
-deref (NeutLocal _ _ (Just expr)) = expr
-deref expr = expr
+deref = case _ of
+  NeutLocal _ _ (Just expr) -> expr
+  expr -> expr
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
