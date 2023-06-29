@@ -217,11 +217,7 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-<<<<<<< HEAD
-  eval env@(Env { punt, locals, stopTrying }) = case _ of
-=======
   eval env@(Env { punt }) = case _ of
->>>>>>> inlined-recursion-try
     Var qual
       | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
       | otherwise -> evalExtern env qual []
@@ -1065,8 +1061,8 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry :: Ctx -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
-buildTry ctx attempts backup main =
+buildTry ::  Attempts -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry attempts backup main =
   ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts backup main
 
 quote :: Ctx -> BackendSemantics -> BackendExpr
@@ -1080,7 +1076,7 @@ quote = go
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
-          newMain -> buildTry ctx (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+          newMain -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
