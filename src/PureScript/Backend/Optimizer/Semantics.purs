@@ -593,8 +593,9 @@ makeLet ident binding go = case binding of
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
-deref (NeutLocal _ _ (Just expr)) = expr
-deref expr = expr
+deref = case _ of
+  NeutLocal _ _ (Just expr) -> expr
+  expr -> expr
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -610,8 +611,9 @@ evalPrimOp env = case _ of
         liftInt (complement a)
       OpIsTag a, NeutData b _ _ _ _ ->
         liftBoolean (a == b)
-      OpArrayLength, expr
-        | NeutLit (LitArray arr) <- deref expr -> liftInt (Array.length arr)
+      OpArrayLength, _
+        | NeutLit (LitArray arr) <- deref x ->
+            liftInt (Array.length arr)
       OpIntNegate, NeutLit (LitInt a) ->
         liftInt (negate a)
       OpNumberNegate, NeutLit (LitNumber a) ->
