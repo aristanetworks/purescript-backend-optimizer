@@ -6,12 +6,11 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
+import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, oneOf, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
-import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -256,7 +255,7 @@ instance Eval f => Eval (BackendSyntax f) where
       -- let _ = spy "making sem lam for Abs" true -- {idents,body}
       foldr1Array
         (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
-        (\(Tuple ident _) env' -> SemLam ident (flip eval body  <<< bindLocal env' <<< One))
+        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
         idents
         env
     Let ident _ binding body ->
@@ -674,7 +673,14 @@ evalPrimOp env = case _ of
     case op2 of
       OpArrayIndex
         | NeutLit (LitArray arr) <- deref x
-        , NeutLit (LitInt i) <- deref y -> unsafePartial $ Array.unsafeIndex arr i
+        , NeutLit (LitInt i) <- deref y
+        , neut <- unsafePartial $ Array.unsafeIndex arr i
+        , Just _ <-
+            oneOf
+              [ void $ caseInt neut
+              , void $ caseNumber neut
+              , void $ caseString neut
+              ] -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x
@@ -1089,7 +1095,7 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry ::  Attempts -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry :: Attempts -> BackendExpr -> BackendExpr -> BackendExpr
 buildTry attempts backup main =
   ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts backup main
 
@@ -1207,7 +1213,7 @@ quote = go
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of
-  ugggh@(App (ExprSyntax _ (App hd tl1)) tl2) -> do
+  App (ExprSyntax _ (App hd tl1)) tl2 -> do
     -- let _ = spy "booooo" ugggh
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
@@ -1738,4 +1744,6 @@ guardFailOver f as k =
 
 foreign import spyx :: forall a. String -> a -> a
 foreign import spyy :: forall a. String -> a -> a
+
+spy :: forall a. String -> a -> a
 spy = spyx
