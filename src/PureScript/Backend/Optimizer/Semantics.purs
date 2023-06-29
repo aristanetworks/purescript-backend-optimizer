@@ -1043,11 +1043,10 @@ quote = go
       build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
-      -- From Nate: There may be a problem here
-      -- in the case of a strict recursive loop.
-      -- A runtime check is emitted with an appropriate exception,
-      -- but we have no such check as part of eval.
-      -- Probably best to leave recursive terms out of the NeutLocal for now.
+      -- We are not currently propagating references
+      -- to recursive bindings. The language requires
+      -- a runtime check for strictly recursive bindings
+      -- which we don't currently implement.
       let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
