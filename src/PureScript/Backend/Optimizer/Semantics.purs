@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, oneOf, or)
+import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
@@ -20,7 +20,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
@@ -1092,8 +1092,8 @@ quote = go
   go ctx = case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 10 -> go ctx backup
-      | otherwise -> case quote (ctx { effect = false }) main of
+      | attempts >= 10 -> let _ = spy "BAILING" main in go ctx backup
+      | otherwise -> let _ = spy "starting eval of semtry" main in let oo = spy "evaled" (quote (ctx { effect = false }) main) in case oo of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
@@ -1590,16 +1590,16 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
   -- _ = spy "startingEx" { id }
   go n stopTrying expr1
     | n == 0, stopTrying, stopTrying = do
-        -- expr1
+        -- let _ = spy "done" { id, n }
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | n == 0, not stopTrying = do
         go initN true expr1
     | otherwise = do
-        -- let _ = spy "startingEx" { id, n }
+        let _ = spy "startingEx" { id, n }
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        let _ = spy "done" { id, expr2 }
+        let _ = spy "done" { id, n }
         if rewrite then
           go (n - 1) stopTrying expr2
         else
