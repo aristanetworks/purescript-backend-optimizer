@@ -24,4 +24,4 @@ test1 :: { count :: Int } -> Int
 test1 v = v.count + Array.length (foldlArray2 0 (1) (\b a -> case a of
   Left _ -> b <> [a]
   Right _ -> b
-) [] [Left $ Left "hello"])
+) [] [Left \_ -> Left "hello"])
