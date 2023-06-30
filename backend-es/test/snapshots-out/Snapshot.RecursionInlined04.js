@@ -11,7 +11,7 @@ const foldlArray2 = foldlArray2$a0$copy => foldlArray2$a1$copy => foldlArray2$a2
   let foldlArray2$r;
   while (foldlArray2$c) {
     const n = foldlArray2$a0, i = foldlArray2$a1, bab = foldlArray2$a2, b = foldlArray2$a3, arr = foldlArray2$a4;
-    if (n === (i - 1 | 0)) {
+    if (n === i) {
       foldlArray2$c = false;
       foldlArray2$r = b;
       continue;
@@ -25,8 +25,5 @@ const foldlArray2 = foldlArray2$a0$copy => foldlArray2$a1$copy => foldlArray2$a2
   return foldlArray2$r;
 };
 const foldlArray = bab => b => arr => foldlArray2(0)(arr.length)(bab)(b)(arr);
-const test1 = /* #__PURE__ */ (() => {
-  const $0 = ["a", "b", "c"];
-  return "" + $0[0] + $0[1];
-})();
+const test1 = {left: ["a"], right: []};
 export {foldlArray, foldlArray2, test1};

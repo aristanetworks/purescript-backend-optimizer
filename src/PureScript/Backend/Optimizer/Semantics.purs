@@ -401,17 +401,10 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry attempts backup main, args -> do
-      -- let _ = (if i then spyy else spy) "SEMTRY has been touched" i
-      -- let _ = spyy "hit sem try" backup
-      -- let _ = spy "the main for the above backup" main
-      -- let back = evalApp env backup spine
-      --let _ = spy "back evaled" true
+    SemTry attempts backup main, args ->
       SemTry attempts (go env' backup args) (go env' main args)
-    SemLam _ k, List.Cons arg args -> do
-      -- let _ = spy "hit sem lam" true
-      makeLet Nothing arg \nextArg -> do
-        -- let _ = spy "nextArg in let actualized" true
+    SemLam _ k, List.Cons arg args ->
+      makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
     SemExtern qual sp _, List.Cons arg args -> do
       -- let _ = spy "hit sem extern" true
@@ -674,13 +667,7 @@ evalPrimOp env = case _ of
       OpArrayIndex
         | NeutLit (LitArray arr) <- deref x
         , NeutLit (LitInt i) <- deref y
-        , neut <- unsafePartial $ Array.unsafeIndex arr i
-        , Just _ <-
-            oneOf
-              [ void $ caseInt neut
-              , void $ caseNumber neut
-              , void $ caseString neut
-              ] -> neut
+        , Just neut <- Array.index arr i -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x
