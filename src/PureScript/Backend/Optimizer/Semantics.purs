@@ -609,8 +609,8 @@ evalPrimOp env = case _ of
         evalPrimOpNot op
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, NeutData b _ _ _ _ ->
-        liftBoolean (a == b)
+      OpIsTag a, _
+        | NeutData b _ _ _ _ <- deref x -> liftBoolean (a == b)
       OpArrayLength, _
         | NeutLit (LitArray arr) <- deref x ->
             liftInt (Array.length arr)
