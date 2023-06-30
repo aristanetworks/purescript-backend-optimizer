@@ -652,13 +652,7 @@ evalPrimOp env = case _ of
       OpArrayIndex
         | NeutLit (LitArray arr) <- deref x
         , NeutLit (LitInt i) <- deref y
-        , neut <- unsafePartial $ Array.unsafeIndex arr i
-        , Just _ <-
-            oneOf
-              [ void $ caseInt neut
-              , void $ caseNumber neut
-              , void $ caseString neut
-              ] -> neut
+        , Just neut <-Array.index arr i -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x

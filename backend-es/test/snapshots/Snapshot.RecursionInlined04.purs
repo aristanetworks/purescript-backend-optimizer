@@ -27,4 +27,4 @@ test1 = foldlArray
       Right x -> { left, right: right <> [ x ] }
   )
   { left: [], right: [] }
-  [ Left "a" ]
+  [ Left "a", Right "b", Left "c" ]
