@@ -1,5 +1,3 @@
--- @inline Snapshot.PrimOnLocals.a always
-
 module Snapshot.InlineLocalReferenceOpArrayLength where
 
 import Prelude
