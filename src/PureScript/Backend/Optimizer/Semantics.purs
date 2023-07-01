@@ -668,7 +668,6 @@ evalPrimOp env = case _ of
         | NeutLit (LitArray arr) <- deref x
         , NeutLit (LitInt i) <- deref y
         , Just neut <- Array.index arr i -> neut
-        , Just neut <- Array.index arr i -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x
@@ -1102,7 +1101,7 @@ quote = go
           newMain -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
     SemLet ident binding k -> do
       -- let _ = spy "quoting SemLet" true
-      let bound = quote (ctx { effect = false }) binding
+      -- let bound = quote (ctx { effect = false }) binding
       -- let _ = spy "SEMLET NOW QUOTED" bound
       let Tuple level ctx' = nextLevel ctx
       build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
