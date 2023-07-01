@@ -46,5 +46,5 @@ const nutsToHtml = actualized => count => foldlArray2(0)(actualized.length)(v1 =
     $runtime.fail();
   };
 })(Data$dTuple.$Tuple("", count))(actualized)._1;
-const test1 = /* #__PURE__ */ (() => Data$dTuple.$Tuple("<div></div>", 0)._1)();
+const test1 = /* #__PURE__ */ (() => Data$dTuple.$Tuple("<div></div><h1></h1><b></b><i></i>", 0)._1)();
 export {ActualizedKorok, Nut, PureKorok, delimiter, foldlArray, foldlArray2, nutsToHtml, test1};
