@@ -647,8 +647,8 @@ evalPrimOp env = case _ of
         evalPrimOpNot op
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, NeutData b _ _ _ _ ->
-        liftBoolean (a == b)
+      OpIsTag a, _
+        | NeutData b _ _ _ _ <- deref x -> liftBoolean (a == b)
       OpArrayLength, expr
         | NeutLit (LitArray arr) <- deref expr -> liftInt (Array.length arr)
       OpIntNegate, NeutLit (LitInt a) ->
@@ -667,6 +667,7 @@ evalPrimOp env = case _ of
       OpArrayIndex
         | NeutLit (LitArray arr) <- deref x
         , NeutLit (LitInt i) <- deref y
+        , Just neut <- Array.index arr i -> neut
         , Just neut <- Array.index arr i -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
@@ -1075,6 +1076,7 @@ caseNumber = case _ of
 
 type Ctx =
   { currentLevel :: Int
+  , trying :: Boolean
   , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
   , effect :: Boolean
   }
@@ -1089,11 +1091,11 @@ buildTry attempts backup main =
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
-  go ctx = case _ of
+  go ctxx@{ trying } = let ctx = ctxx { trying = false } in case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 20 -> go ctx backup
-      | otherwise -> case quote (ctx { effect = false }) main of
+      | attempts >= 10 -> go ctx backup
+      | otherwise -> case quote (ctx { effect = false, trying = true }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
@@ -1103,7 +1105,7 @@ quote = go
       let bound = quote (ctx { effect = false }) binding
       -- let _ = spy "SEMLET NOW QUOTED" bound
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level bound $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- todo: can we do better than `Nothing` here?
@@ -1199,9 +1201,8 @@ quote = go
       build ctx $ Fail err
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
-build ctx = case _ of
-  App (ExprSyntax _ (App hd tl1)) tl2 -> do
-    -- let _ = spy "booooo" ugggh
+build ctx@{ trying } = case _ of
+  App (ExprSyntax _ (App hd tl1)) tl2 ->
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
     build ctx $ Abs (ids1 <> ids2) body
@@ -1216,7 +1217,7 @@ build ctx = case _ of
       (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
       body1
   Let ident level binding body
-    | shouldInlineLet level binding body ->
+    | shouldInlineLet trying level binding body ->
         rewriteInline ident level binding body
   Let ident level binding body
     | Just expr' <- shouldUncurryAbs ident level binding body ->
@@ -1512,8 +1513,8 @@ shouldUncurryAbs ident level a b = do
     _ ->
       Nothing
 
-shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
-shouldInlineLet level a b = do
+shouldInlineLet :: Boolean -> Level -> BackendExpr -> BackendExpr -> Boolean
+shouldInlineLet trying level a b = if trying then true else do
   let BackendAnalysis s1 = analysisOf a
   let BackendAnalysis s2 = analysisOf b
   case Map.lookup level s2.usages of

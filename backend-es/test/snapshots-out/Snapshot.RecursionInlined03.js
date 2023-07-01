@@ -33,8 +33,28 @@ const test1 = {
     }
   }
 };
-const test2 = z => append({type: "cons", value: {head: "a", tail: {type: "cons", value: {head: "b", tail: {type: "cons", value: {head: "c", tail: z}}}}}})({
-  type: "cons",
-  value: {head: "d", tail: {type: "cons", value: {head: "e", tail: {type: "cons", value: {head: "f", tail: {type: "cons", value: {head: "g", tail: nil}}}}}}}
-});
+const test2 = z => (
+  {
+    type: "cons",
+    value: {
+      head: "a",
+      tail: {
+        type: "cons",
+        value: {
+          head: "b",
+          tail: {
+            type: "cons",
+            value: {
+              head: "c",
+              tail: append(z)({
+                type: "cons",
+                value: {head: "d", tail: {type: "cons", value: {head: "e", tail: {type: "cons", value: {head: "f", tail: {type: "cons", value: {head: "g", tail: nil}}}}}}}
+              })
+            }
+          }
+        }
+      }
+    }
+  }
+);
 export {List, append, cons, nil, test1, test2};
