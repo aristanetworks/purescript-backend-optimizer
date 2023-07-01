@@ -1092,8 +1092,8 @@ quote = go
   go ctx = case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 10 -> let _ = spy "BAILING" main in go ctx backup
-      | otherwise -> let _ = spy "starting eval of semtry" main in let oo = spy "evaled" (quote (ctx { effect = false }) main) in case oo of
+      | attempts >= 20 -> go ctx backup
+      | otherwise -> case quote (ctx { effect = false }) main of
           newMain@(ExprSyntax _ (Lit _)) -> newMain
           newMain@(ExprSyntax _ (PrimOp _)) -> newMain
           newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
@@ -1599,7 +1599,7 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
         let _ = spy "startingEx" { id, n }
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        let _ = spy "done" { id, n }
+        let _ = spy "done" { id, n, expr2 }
         if rewrite then
           go (n - 1) stopTrying expr2
         else
