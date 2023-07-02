@@ -4,8 +4,16 @@ import Prelude
 
 import Data.Array as Array
 
-shouldInlineArrayLength :: Array Int -> Array Int
-shouldInlineArrayLength = Array.snoc <*> Array.length
+test :: ({} -> Int) -> Array Int
+test fn = do
+  let
+    array =
+      [ 1
+      , 2
+      , fn {}
+      ]
+  if Array.length array > 3 then
+    array
+  else
+    []
 
-test :: Array Int
-test = shouldInlineArrayLength [ 1, 2, 3 ]
