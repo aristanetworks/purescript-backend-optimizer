@@ -5,6 +5,33 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dTuple from "../Data.Tuple/index.js";
+const $AttributeValue = (tag, _1) => ({tag, _1});
+const $Child = (tag, _1) => ({tag, _1});
+const $Entity = (tag, _1) => ({tag, _1});
+const $Scope = (tag, _1) => ({tag, _1});
+const Local = value0 => $Scope("Local", value0);
+const Global = /* #__PURE__ */ $Scope("Global");
+const Event = x => x;
+const Element = x => x;
+const DOMInterpret = x => x;
+const Node = x => x;
+const Insert = value0 => $Child("Insert", value0);
+const Remove = /* #__PURE__ */ $Child("Remove");
+const Logic = value0 => $Child("Logic", value0);
+const DynamicChildren$p = value0 => $Entity("DynamicChildren'", value0);
+const FixedChildren$p = value0 => $Entity("FixedChildren'", value0);
+const EventfulElement$p = value0 => $Entity("EventfulElement'", value0);
+const Element$p = value0 => $Entity("Element'", value0);
+const DynamicChildren = x => x;
+const FixedChildren = x => x;
+const EventfulElement = x => x;
+const NutF = x => x;
+const Korok = x => x;
+const Cb = x => x;
+const Prop$p = value0 => $AttributeValue("Prop'", value0);
+const Cb$p = value0 => $AttributeValue("Cb'", value0);
+const Unset$p = /* #__PURE__ */ $AttributeValue("Unset'");
+const VolatileAttribute = x => x;
 const ActualizedKorok = x => x;
 const PureKorok = x => x;
 const Nut = x => x;
@@ -47,4 +74,40 @@ const nutsToHtml = actualized => count => foldlArray2(0)(actualized.length)(v1 =
   };
 })(Data$dTuple.$Tuple("", count))(actualized)._1;
 const test1 = "<div></div><h1></h1><b></b><i></i>";
-export {ActualizedKorok, Nut, PureKorok, delimiter, foldlArray, foldlArray2, nutsToHtml, test1};
+export {
+  $AttributeValue,
+  $Child,
+  $Entity,
+  $Scope,
+  ActualizedKorok,
+  Cb,
+  Cb$p,
+  DOMInterpret,
+  DynamicChildren,
+  DynamicChildren$p,
+  Element,
+  Element$p,
+  Event,
+  EventfulElement,
+  EventfulElement$p,
+  FixedChildren,
+  FixedChildren$p,
+  Global,
+  Insert,
+  Korok,
+  Local,
+  Logic,
+  Node,
+  Nut,
+  NutF,
+  Prop$p,
+  PureKorok,
+  Remove,
+  Unset$p,
+  VolatileAttribute,
+  delimiter,
+  foldlArray,
+  foldlArray2,
+  nutsToHtml,
+  test1
+};
