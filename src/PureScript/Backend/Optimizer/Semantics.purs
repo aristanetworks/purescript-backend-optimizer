@@ -45,7 +45,7 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
-  | NeutLocal (Maybe Ident) Level
+  | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
   | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
@@ -583,7 +583,7 @@ makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemant
 makeLet ident binding go = case binding of
   SemExtern _ [] _ ->
     go binding
-  NeutLocal _ _ ->
+  NeutLocal _ _ _ ->
     go binding
   NeutStop _ ->
     go binding
@@ -591,6 +591,11 @@ makeLet ident binding go = case binding of
     go binding
   _ ->
     SemLet ident binding go
+
+deref :: BackendSemantics -> BackendSemantics
+deref = case _ of
+  NeutLocal _ _ (Just expr) -> expr
+  expr -> expr
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -604,10 +609,12 @@ evalPrimOp env = case _ of
         evalPrimOpNot op
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, NeutData b _ _ _ _ ->
-        liftBoolean (a == b)
-      OpArrayLength, NeutLit (LitArray arr) ->
-        liftInt (Array.length arr)
+      OpIsTag a, _
+        | NeutData b _ _ _ _ <- deref x ->
+            liftBoolean (a == b)
+      OpArrayLength, _
+        | NeutLit (LitArray arr) <- deref x ->
+            liftInt (Array.length arr)
       OpIntNegate, NeutLit (LitInt a) ->
         liftInt (negate a)
       OpNumberNegate, NeutLit (LitNumber a) ->
@@ -1034,17 +1041,21 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
+      -- We are not currently propagating references
+      -- to recursive bindings. The language requires
+      -- a runtime check for strictly recursive bindings
+      -- which we don't currently implement.
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level
+      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemEffectDefer sem ->
@@ -1060,13 +1071,13 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
@@ -1075,11 +1086,11 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
-    NeutLocal ident level ->
+    NeutLocal ident level _ ->
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual

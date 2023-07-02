@@ -573,7 +573,7 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
           )
           props
       Just $ NeutLit (LitRecord props')
-    [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _) _) ] ] -> do
+    [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _ _) _) ] ] -> do
       let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
       Just $ evalUpdate env r [ update ]
     [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
