@@ -1719,9 +1719,3 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
-foreign import spyx :: forall a. String -> a -> a
-
-foreign import spyy :: forall a. String -> a -> a
-
-spy :: forall a. String -> a -> a
-spy = spyx

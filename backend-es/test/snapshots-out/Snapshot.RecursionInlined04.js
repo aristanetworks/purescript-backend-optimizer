@@ -25,5 +25,5 @@ const foldlArray2 = foldlArray2$a0$copy => foldlArray2$a1$copy => foldlArray2$a2
   return foldlArray2$r;
 };
 const foldlArray = bab => b => arr => foldlArray2(0)(arr.length)(bab)(b)(arr);
-const test1 = {left: ["a"], right: []};
+const test1 = {left: ["a", "c"], right: ["b"]};
 export {foldlArray, foldlArray2, test1};
