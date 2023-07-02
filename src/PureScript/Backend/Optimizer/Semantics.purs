@@ -22,7 +22,7 @@ import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
@@ -252,7 +252,6 @@ instance Eval f => Eval (BackendSyntax f) where
               loop (bindLocal env' (One nextArg)) as
       SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
     Abs idents body -> do
-      -- let _ = spy "making sem lam for Abs" true -- {idents,body}
       foldr1Array
         (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
         (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
@@ -278,7 +277,6 @@ instance Eval f => Eval (BackendSyntax f) where
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op -> do
-      -- let _ = spy "hit prim op" { locals, op }
       evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
@@ -407,24 +405,18 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
     SemExtern qual sp _, List.Cons arg args -> do
-      -- let _ = spy "hit sem extern" true
       go env' (evalExtern env' qual (snocApp sp arg)) args
     SemLet ident val k, args -> do
-      -- let _ = spy "hit sem let" true
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
           go (bindLocal (bindLocal env' (One nextVal)) (One nextFn)) nextFn args
     SemLetRec vals k, args -> do
-      -- let _ = spy "hit sem let rec" true
       SemLetRec vals \nextVals ->
         makeLet Nothing (k nextVals) \nextFn ->
           go (bindLocal (bindLocal env' (Group nextVals)) (One nextFn)) nextFn args
     fn, List.Nil -> do
-      -- let _ = spy "hit nil" true
       fn
     fn, args -> do
-      -- let _ = spy "more info for neut app" { napp: NeutApp fn (List.toUnfoldable args) }
-      -- let _ = spy "NANANA" {fn}
       NeutApp fn (List.toUnfoldable args)
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
@@ -490,7 +482,6 @@ neutralSpine = foldl go
   where
   go hd = case _ of
     ExternApp apps -> do
-      -- let _ = spy "NAEX" true
       NeutApp hd apps
     ExternUncurriedApp apps ->
       NeutUncurriedApp hd apps
@@ -505,10 +496,8 @@ neutralApp hd spine
       hd
   | otherwise = case hd of
       NeutApp hd' spine' -> do
-        -- let _ = spy "NAAP" true
         NeutApp hd' (spine' <> spine)
       _ -> do
-        -- let _ = spy "NAXL" true
         NeutApp hd spine
 
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
@@ -616,19 +605,14 @@ evalAssocLet2 env sem1 sem2 go =
 makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
 makeLet ident binding go = case binding of
   SemExtern _ [] _ -> do
-    -- let _ = spy "MLET SemExtern" true
     go binding
   NeutLocal _ _ _ -> do
-    -- let _ = spy "MLET NeutLocal" true
     go binding
   NeutStop _ -> do
-    -- let _ = spy "MLET NeutStop" true
     go binding
   NeutVar _ -> do
-    -- let _ = spy "MLET NeutVar" true
     go binding
   _ -> do
-    -- let _ = spy "MLET everything else" true
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
@@ -898,17 +882,14 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways -> do
-            -- let _ = spy "creating try" qual
             Just $ withTry qual env group expr
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit -> do
-                -- let _ = spy "starting try"
                 Just $ withTry qual env group expr
               _ | shouldInlineExternReference qual analysis expr -> do
-                -- let _ = spy "starting try"
                 Just $ withTry qual env group expr
               _ ->
                 Nothing
@@ -1090,114 +1071,111 @@ buildTry attempts backup main =
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
-  go ctxx@{ trying } = let ctx = ctxx { trying = false } in case _ of
-    -- Block constructors
-    SemTry (Attempts attempts) backup main
-      | attempts >= 10 -> go ctx backup
-      | otherwise -> case quote (ctx { effect = false, trying = true }) main of
-          newMain@(ExprSyntax _ (Lit _)) -> newMain
-          newMain@(ExprSyntax _ (PrimOp _)) -> newMain
-          newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
-          newMain -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
-    SemLet ident binding k -> do
-      -- let _ = spy "quoting SemLet" true
-      -- let bound = quote (ctx { effect = false }) binding
-      -- let _ = spy "SEMLET NOW QUOTED" bound
-      let Tuple level ctx' = nextLevel ctx
-      build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
-    SemLetRec bindings k -> do
-      let Tuple level ctx' = nextLevel ctx
-      -- todo: can we do better than `Nothing` here?
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
-      build ctx $ LetRec level
-        (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
-        (quote ctx' $ k neutBindings)
-    SemEffectBind ident binding k -> do
-      let ctx' = ctx { effect = true }
-      let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
-    SemEffectPure sem ->
-      build ctx $ EffectPure (quote (ctx { effect = false }) sem)
-    SemEffectDefer sem ->
-      build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
-    SemBranch branches def -> do
-      let ctx' = ctx { effect = false }
-      let quoteCond (SemConditional a b) = Pair (quote ctx' $ force a) (quote ctx $ force b)
-      let branches' = quoteCond <$> branches
-      foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
+  go ctxx@{ trying } =
+    let
+      ctx = ctxx { trying = false }
+    in
+      case _ of
+        -- Block constructors
+        SemTry (Attempts attempts) backup main
+          | attempts >= 10 -> go ctx backup
+          | otherwise -> case quote (ctx { effect = false, trying = true }) main of
+              newMain@(ExprSyntax _ (Lit _)) -> newMain
+              newMain@(ExprSyntax _ (PrimOp _)) -> newMain
+              newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
+              newMain -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+        SemLet ident binding k -> do
+          let Tuple level ctx' = nextLevel ctx
+          build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+        SemLetRec bindings k -> do
+          let Tuple level ctx' = nextLevel ctx
+          let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
+          build ctx $ LetRec level
+            (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
+            (quote ctx' $ k neutBindings)
+        SemEffectBind ident binding k -> do
+          let ctx' = ctx { effect = true }
+          let Tuple level ctx'' = nextLevel ctx'
+          build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
+        SemEffectPure sem ->
+          build ctx $ EffectPure (quote (ctx { effect = false }) sem)
+        SemEffectDefer sem ->
+          build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
+        SemBranch branches def -> do
+          let ctx' = ctx { effect = false }
+          let quoteCond (SemConditional a b) = Pair (quote ctx' $ force a) (quote ctx $ force b)
+          let branches' = quoteCond <$> branches
+          foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
-    -- Non-block constructors
-    RecurseWithRecklessAbandon ident -> ExprRewrite (withRewrite (analyzeDefault ctx (Var ident))) $ RewriteRecurse ident
-    SemExtern _ _ sem ->
-      go ctx (force sem)
-    SemLam ident k -> do
-      let Tuple level ctx' = nextLevel ctx
-      -- let unlammed = k $ NeutLocal ident level Nothing
-      -- let _ = spy "unlammed" unlammed
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
-    SemMkFn pro -> do
-      let
-        loop ctx' idents = case _ of
-          MkFnNext ident k -> do
-            let Tuple lvl ctx'' = nextLevel ctx'
-            -- todo - can we do better than `Nothing` here?
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
-          MkFnApplied body ->
-            build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
-      loop ctx [] pro
-    SemMkEffectFn pro -> do
-      let
-        loop ctx' idents = case _ of
-          MkFnNext ident k -> do
-            let Tuple lvl ctx'' = nextLevel ctx'
-            -- todo - can we do better than `Nothing` here?
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
-          MkFnApplied body ->
-            build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
-      loop ctx [] pro
-    NeutLocal ident level _ ->
-      build ctx $ Local ident level
-    NeutVar qual ->
-      build ctx $ Var qual
-    NeutStop qual ->
-      buildStop ctx qual
-    NeutData qual _ _ _ [] ->
-      build ctx $ Var qual
-    NeutData qual ct ty tag values ->
-      build ctx $ CtorSaturated qual ct ty tag (map (quote ctx) <$> values)
-    NeutCtorDef _ ct ty tag fields ->
-      build ctx $ CtorDef ct ty tag fields
-    NeutUncurriedApp hd spine -> do
-      let ctx' = ctx { effect = false }
-      let hd' = quote ctx' hd
-      build ctx $ UncurriedApp hd' (quote ctx' <$> spine)
-    NeutUncurriedEffectApp hd spine -> do
-      let ctx' = ctx { effect = false }
-      let hd' = quote ctx' hd
-      build ctx $ UncurriedEffectApp hd' (quote ctx' <$> spine)
-    NeutApp hd spine -> do
-      let ctx' = ctx { effect = false }
-      let hd' = quote ctx' hd
-      -- let _ = spy "quoting a NeutApp" { hd, hd' }
-      case NonEmptyArray.fromArray (quote ctx' <$> spine) of
-        Nothing ->
-          hd'
-        Just args ->
-          build ctx $ App hd' args
-    NeutAccessor lhs accessor ->
-      build ctx $ Accessor (quote ctx lhs) accessor
-    NeutUpdate lhs props ->
-      build ctx $ Update (quote ctx lhs) (map (quote ctx) <$> props)
-    NeutLit lit ->
-      build ctx $ Lit (quote ctx <$> lit)
-    NeutPrimOp op ->
-      build ctx $ PrimOp (quote ctx <$> op)
-    NeutPrimEffect eff ->
-      build ctx $ PrimEffect (quote (ctx { effect = false }) <$> eff)
-    NeutPrimUndefined ->
-      build ctx PrimUndefined
-    NeutFail err ->
-      build ctx $ Fail err
+        -- Non-block constructors
+        RecurseWithRecklessAbandon ident -> ExprRewrite (withRewrite (analyzeDefault ctx (Var ident))) $ RewriteRecurse ident
+        SemExtern _ _ sem ->
+          go ctx (force sem)
+        SemLam ident k -> do
+          let Tuple level ctx' = nextLevel ctx
+          build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
+        SemMkFn pro -> do
+          let
+            loop ctx' idents = case _ of
+              MkFnNext ident k -> do
+                let Tuple lvl ctx'' = nextLevel ctx'
+                -- todo - can we do better than `Nothing` here?
+                loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+              MkFnApplied body ->
+                build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
+          loop ctx [] pro
+        SemMkEffectFn pro -> do
+          let
+            loop ctx' idents = case _ of
+              MkFnNext ident k -> do
+                let Tuple lvl ctx'' = nextLevel ctx'
+                -- todo - can we do better than `Nothing` here?
+                loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+              MkFnApplied body ->
+                build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
+          loop ctx [] pro
+        NeutLocal ident level _ ->
+          build ctx $ Local ident level
+        NeutVar qual ->
+          build ctx $ Var qual
+        NeutStop qual ->
+          buildStop ctx qual
+        NeutData qual _ _ _ [] ->
+          build ctx $ Var qual
+        NeutData qual ct ty tag values ->
+          build ctx $ CtorSaturated qual ct ty tag (map (quote ctx) <$> values)
+        NeutCtorDef _ ct ty tag fields ->
+          build ctx $ CtorDef ct ty tag fields
+        NeutUncurriedApp hd spine -> do
+          let ctx' = ctx { effect = false }
+          let hd' = quote ctx' hd
+          build ctx $ UncurriedApp hd' (quote ctx' <$> spine)
+        NeutUncurriedEffectApp hd spine -> do
+          let ctx' = ctx { effect = false }
+          let hd' = quote ctx' hd
+          build ctx $ UncurriedEffectApp hd' (quote ctx' <$> spine)
+        NeutApp hd spine -> do
+          let ctx' = ctx { effect = false }
+          let hd' = quote ctx' hd
+          case NonEmptyArray.fromArray (quote ctx' <$> spine) of
+            Nothing ->
+              hd'
+            Just args ->
+              build ctx $ App hd' args
+        NeutAccessor lhs accessor ->
+          build ctx $ Accessor (quote ctx lhs) accessor
+        NeutUpdate lhs props ->
+          build ctx $ Update (quote ctx lhs) (map (quote ctx) <$> props)
+        NeutLit lit ->
+          build ctx $ Lit (quote ctx <$> lit)
+        NeutPrimOp op ->
+          build ctx $ PrimOp (quote ctx <$> op)
+        NeutPrimEffect eff ->
+          build ctx $ PrimEffect (quote (ctx { effect = false }) <$> eff)
+        NeutPrimUndefined ->
+          build ctx PrimUndefined
+        NeutFail err ->
+          build ctx $ Fail err
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx@{ trying } = case _ of
@@ -1244,6 +1222,9 @@ build ctx@{ trying } = case _ of
         expr'
   Accessor (ExprSyntax analysis (Branch bs def)) acc
     | Just expr' <- shouldDistributeBranchAccessor analysis bs def acc ->
+        expr'
+  Accessor (ExprSyntax analysis body) acc
+    | Just expr' <- shouldDisposeOfAccessor'sAccessee analysis body acc ->
         expr'
   expr@(PrimOp (Op1 _ (ExprSyntax _ (Lit _)))) ->
     ExprSyntax (withRewrite (analyzeDefault ctx expr)) $ expr
@@ -1512,21 +1493,35 @@ shouldUncurryAbs ident level a b = do
     _ ->
       Nothing
 
+shouldDisposeOfAccessor'sAccessee :: BackendAnalysis -> BackendSyntax BackendExpr -> BackendAccessor -> Maybe BackendExpr
+shouldDisposeOfAccessor'sAccessee (BackendAnalysis { usages }) syn acc =
+  if not (Map.isEmpty usages) then Nothing
+  else case syn, acc of
+    Lit (LitArray arr), GetIndex i
+      | Just v <- Array.index arr i -> Just v
+    Lit (LitRecord rec), GetProp p
+      | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> Just v
+    CtorSaturated _ ProductType _ _ vals, GetCtorField _ _ _ _ _ i
+      | Just (Tuple _ v) <- Array.index vals i -> Just v
+    _, _ -> Nothing
+
 shouldInlineLet :: Boolean -> Level -> BackendExpr -> BackendExpr -> Boolean
-shouldInlineLet trying level a b = if trying then true else do
-  let BackendAnalysis s1 = analysisOf a
-  let BackendAnalysis s2 = analysisOf b
-  case Map.lookup level s2.usages of
-    Nothing ->
-      true
-    Just (Usage { captured, total, call }) ->
-      (s1.complexity == Trivial)
-        || (captured == CaptureNone && total == 1)
-        || (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5)
-        || (s1.complexity == Deref && call == total)
-        || (s1.complexity == KnownSize && total == 1)
-        || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
-        || (isKnownEffect a && total == 1)
+shouldInlineLet trying level a b =
+  if trying then true
+  else do
+    let BackendAnalysis s1 = analysisOf a
+    let BackendAnalysis s2 = analysisOf b
+    case Map.lookup level s2.usages of
+      Nothing ->
+        true
+      Just (Usage { captured, total, call }) ->
+        (s1.complexity == Trivial)
+          || (captured == CaptureNone && total == 1)
+          || (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5)
+          || (s1.complexity == Deref && call == total)
+          || (s1.complexity == KnownSize && total == 1)
+          || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
+          || (isKnownEffect a && total == 1)
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ =
@@ -1587,19 +1582,15 @@ withStopTrying stopTrying (Env env) = Env env
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
   where
-  -- _ = spy "startingEx" { id }
   go n stopTrying expr1
     | n == 0, stopTrying, stopTrying = do
-        -- let _ = spy "done" { id, n }
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | n == 0, not stopTrying = do
         go initN true expr1
     | otherwise = do
-        let _ = spy "startingEx" { id, n }
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        let _ = spy "done" { id, n, expr2 }
         if rewrite then
           go (n - 1) stopTrying expr2
         else
@@ -1700,7 +1691,6 @@ mkUncurriedAppRewrite env hd = go []
   go acc n
     | n == 0 = evalUncurriedApp env hd acc
     | otherwise = do
-        -- let _ = spy "making sem lam in mkUncurriedAppRewrite" true
         SemLam Nothing \arg ->
           go (Array.snoc acc arg) (n - 1)
 
@@ -1730,6 +1720,7 @@ guardFailOver f as k =
     _ -> Nothing
 
 foreign import spyx :: forall a. String -> a -> a
+
 foreign import spyy :: forall a. String -> a -> a
 
 spy :: forall a. String -> a -> a

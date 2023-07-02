@@ -34,15 +34,21 @@ nutsToHtml :: Array (Either ActualizedKorok Korok) -> Int -> String
 nutsToHtml actualized count = acc
   where
   (Tuple acc _) = foldlArray
-      ( \(Tuple acc c) -> case _ of
-          Left (ActualizedKorok k) -> case k of
-            Left txt -> Tuple  (acc <> txt) c
-            Right { html } -> Tuple  (acc <> html) c 
-          Right _ ->
-            Tuple (acc <> delimiter <> show c <> delimiter) (c + 1)
-      )
-      (Tuple "" count)
-      actualized
+    ( \(Tuple acc c) -> case _ of
+        Left (ActualizedKorok k) -> case k of
+          Left txt -> Tuple (acc <> txt) c
+          Right { html } -> Tuple (acc <> html) c
+        Right _ ->
+          Tuple (acc <> delimiter <> show c <> delimiter) (c + 1)
+    )
+    (Tuple "" count)
+    actualized
 
 test1 :: String
-test1 = nutsToHtml [ Left $ ActualizedKorok $ Right { count: 0, html: "<div></div>" } ] 0
+test1 = nutsToHtml
+  [ Left $ ActualizedKorok $ Right { count: 0, html: "<div></div>" }
+  , Left $ ActualizedKorok $ Right { count: 0, html: "<h1></h1>" }
+  , Left $ ActualizedKorok $ Right { count: 0, html: "<b></b>" }
+  , Left $ ActualizedKorok $ Right { count: 0, html: "<i></i>" }
+  ]
+  0
