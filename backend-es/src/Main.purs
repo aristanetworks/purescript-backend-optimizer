@@ -9,20 +9,23 @@ import Data.Array as Array
 import Data.Either (Either(..), isRight)
 import Data.Foldable (foldMap, for_, oneOf)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (guard, power)
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(..))
+import Data.Set (Set)
 import Data.Set as Set
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..), uncurry)
 import Dodo as Dodo
 import Effect (Effect)
 import Effect.Aff (Aff, attempt, effectCanceler, error, launchAff_, makeAff, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
+import Effect.Ref as Ref
 import Node.ChildProcess (Exit(..), StdIOBehaviour(..), defaultSpawnOptions)
 import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
@@ -36,22 +39,17 @@ import Node.Path as Path
 import Node.Process as Process
 import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
-import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile, externalTracedIdentifiersFromFile)
+import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
-import PureScript.Backend.Optimizer.CoreFn (Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.CoreFn (Ident(..), Module(..), ModuleName(..), Qualified(..))
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
-import PureScript.Backend.Optimizer.Tracer.Printer (printSteps)
+import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
+import PureScript.CST.Lexer (lexToken)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))
+import PureScript.CST.Types as CST
 import Unsafe.Coerce (unsafeCoerce)
 import Version as Version
-
-data TraceLocation
-  = ToOutputFile
-  | ToStdOut
-  | ToStdErr
-
-derive instance Eq TraceLocation
 
 type BuildArgs =
   { coreFnDir :: FilePath
@@ -59,8 +57,7 @@ type BuildArgs =
   , foreignDir :: Maybe FilePath
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
-  , tracerFile :: Maybe FilePath
-  , traceOptimization :: Maybe TraceLocation
+  , traceIdents :: Set (Qualified Ident)
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -89,21 +86,19 @@ buildArgsParser =
           "Use integers for tags in codegen instead of strings."
           # ArgParser.boolean
           # ArgParser.default false
-    , tracerFile:
-        ArgParser.argument [ "--tracer-file" ]
-          "Path to file that lists additional identifiers to trace besides those specified in module comments (optional)."
-          # ArgParser.optional
-    , traceOptimization:
-        ArgParser.argument [ "--trace" ]
-          "Enables optimization steps tracing and outputs the result based on the location: `output` = a file in the `output` dir; `stdout`; or `stderr` (optional)."
-          # ArgParser.unformat "LOCATION"
-              ( case _ of
-                  "output" -> Right ToOutputFile
-                  "stdout" -> Right ToStdOut
-                  "stderr" -> Right ToStdErr
-                  s -> Left $ "Expected either 'output', 'stdout', or `stderr`, but got " <> show s <> "."
+    , traceIdents:
+        ArgParser.argument [ "--trace-rewrites" ]
+          "Traces rewrite passes for a top-level definition during optimizations.\n\
+          \Outputs results to optimization-traces.txt."
+          # ArgParser.unformat "QUALIFIED_NAME"
+              ( \str ->
+                  case lexToken str of
+                    Right (CST.TokLowerName (Just (CST.ModuleName mod)) ident) ->
+                      Right $ Set.singleton $ Qualified (Just (ModuleName mod)) (Ident ident)
+                    _ ->
+                      Left $ "Unable to parse qualified name: " <> str
               )
-          # ArgParser.optional
+          # ArgParser.folded
     }
 
 data TargetPlatform = Browser | Node
@@ -216,17 +211,20 @@ main cliRoot =
       bundleCmd true bundleArgs args
   where
   buildCmd :: BuildArgs -> Aff Unit
-  buildCmd args = basicBuildMain
+  buildCmd args = liftEffect (Ref.new []) >>= \stepsRef -> basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
-    , resolveExternalTracedIdentifiers: map (fromMaybe Set.empty) $ traverse externalTracedIdentifiersFromFile args.tracerFile
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
         mkdirp args.outputDir
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
-    , onCodegenAfter: mempty
-    , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } mbOptimizationSteps -> do
+    , onCodegenAfter: do
+        allSteps <- liftEffect (Ref.read stepsRef)
+        unless (Array.null allSteps) do
+          let allDoc = Dodo.foldWithSeparator (Dodo.break <> Dodo.break) $ uncurry printModuleSteps <$> allSteps
+          FS.writeTextFile UTF8 "optimization-traces.txt" $ Dodo.print Dodo.plainText Dodo.twoSpaces allDoc
+    , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } optimizationSteps -> do
         let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
@@ -241,24 +239,15 @@ main cliRoot =
             ]
           unless (isRight res) do
             Console.log $ "  Foreign implementation missing."
-        for_ mbOptimizationSteps \optimizationSteps -> do
-          for_ args.traceOptimization \loc -> do
-            let tracedContent = Dodo.print Dodo.plainText Dodo.twoSpaces $ printSteps backendMod.name optimizationSteps
-            case loc of
-              ToOutputFile ->
-                writeTextFile UTF8 (Path.concat [ modPath, "optimization-steps.txt" ]) tracedContent
-              ToStdOut ->
-                Console.log tracedContent
-              ToStdErr ->
-                Console.error tracedContent
-
+        unless (Array.null optimizationSteps) do
+          liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) stepsRef
     , onPrepareModule: \build coreFnMod@(Module { name }) -> do
         let total = show build.moduleCount
         let index = show (build.moduleIndex + 1)
         let padding = power " " (SCU.length total - SCU.length index)
         Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
         pure coreFnMod
-    , traceOptimization: isJust args.traceOptimization
+    , traceIdents: args.traceIdents
     }
 
   bundleCmd :: Boolean -> BundleArgs -> BuildArgs -> Aff Unit

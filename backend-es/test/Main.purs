@@ -16,12 +16,13 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Monoid (power)
 import Data.Newtype (unwrap)
+import Data.Set (Set)
 import Data.Set as Set
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
 import Data.TraversableWithIndex (forWithIndex)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Dodo as Dodo
 import Effect (Effect)
 import Effect.Aff (Aff, Error, attempt, launchAff_)
@@ -39,17 +40,19 @@ import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.Convert (BackendModule)
-import PureScript.Backend.Optimizer.CoreFn (Comment(..), Module(..), ModuleName(..))
+import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), Module(..), ModuleName(..), Qualified(..))
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
-import PureScript.Backend.Optimizer.Tracer.Printer (printSteps)
+import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
+import PureScript.CST.Lexer (lexToken)
+import PureScript.CST.Types as CST
 import Test.Utils (bufferToUTF8, copyFile, execWithStdin, loadModuleMain, mkdirp, spawnFromParent)
 
 type TestArgs =
   { accept :: Boolean
   , filter :: NonEmptyArray String
-  , shouldTrace :: Maybe TraceChoice
+  , traceIdents :: Set (Qualified Ident)
   }
 
 data TraceChoice
@@ -71,16 +74,19 @@ argParser =
           "Filter tests matching a prefix"
           # ArgParser.unfolded1
           # ArgParser.default (pure "Snapshot.*")
-    , shouldTrace:
-        ArgParser.argument [ "--trace", "-t" ]
-          "Trace optimization steps to stdout ('stdout') or to the corresponding file in the `snapshots-out` dir ('snapshots'). Disabled when unused."
-          # ArgParser.unformat "OPTION"
-              ( case _ of
-                  "stdout" -> Right TraceToStdOut
-                  "output" -> Right TraceToOutput
-                  x -> Left $ "Expected 'stdout' or 'output' but got '" <> x <> "'"
+    , traceIdents:
+        ArgParser.argument [ "--trace-rewrites" ]
+          "Traces rewrite passes for a top-level definition during optimizations.\n\
+          \Outputs results to optimization-traces.txt."
+          # ArgParser.unformat "QUALIFIED_NAME"
+              ( \str ->
+                  case lexToken str of
+                    Right (CST.TokLowerName (Just (CST.ModuleName mod)) ident) ->
+                      Right $ Set.singleton $ Qualified (Just (ModuleName mod)) (Ident ident)
+                    _ ->
+                      Left $ "Unable to parse qualified name: " <> str
               )
-          # ArgParser.optional
+          # ArgParser.folded
     }
 
 main :: Effect Unit
@@ -93,7 +99,7 @@ main = do
       launchAff_ $ runSnapshotTests args
 
 runSnapshotTests :: TestArgs -> Aff Unit
-runSnapshotTests { accept, filter, shouldTrace } = do
+runSnapshotTests { accept, filter, traceIdents } = do
   liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
   spawnFromParent "spago" [ "build -u \"-g corefn\"" ]
   snapshotDir <- liftEffect Process.cwd
@@ -110,45 +116,40 @@ runSnapshotTests { accept, filter, shouldTrace } = do
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      let traceOptimization = isJust shouldTrace
       copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
+      stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
-        , onCodegenModule: \build (Module { name: modName@(ModuleName name), path }) backend mbOptimizationSteps -> do
+        , onCodegenModule: \build (Module { name: ModuleName name, path }) backendMod optimizationSteps -> do
             let
               formatted =
                 Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $
-                  codegenModule { intTags: false } build.implementations backend
+                  codegenModule { intTags: false } build.implementations backendMod
             let testFileDir = Path.concat [ testOut, name ]
             let testFilePath = Path.concat [ testFileDir, "index.js" ]
             mkdirp testFileDir
             FS.writeTextFile UTF8 testFilePath formatted
-            unless (Set.isEmpty backend.foreign) do
+            unless (Set.isEmpty backendMod.foreign) do
               let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
               let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
               copyFile foreignSiblingPath foreignOutputPath
             when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
-              void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backend))) outputRef
-
-            for_ mbOptimizationSteps \optimizationSteps -> do
-              for_ shouldTrace \traceChoice -> do
-                let doc = printSteps modName optimizationSteps
-                case traceChoice of
-                  TraceToStdOut ->
-                    Console.log $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
-                  TraceToOutput -> do
-                    FS.writeTextFile UTF8 (Path.concat [ snapshotsOut, name <> "--optimization-steps.txt" ])
-                      $ Dodo.print Dodo.plainText Dodo.twoSpaces doc
+              void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backendMod))) outputRef
+            unless (Array.null optimizationSteps) do
+              liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) stepsRef
         , onPrepareModule: \build coreFnMod@(Module { name }) -> do
             let total = show build.moduleCount
             let index = show (build.moduleIndex + 1)
             let padding = power " " (SCU.length total - SCU.length index)
             Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
             pure coreFnMod
-        , traceableIdents: Set.empty
-        , traceOptimization
+        , traceIdents
         }
+      allSteps <- liftEffect (Ref.read stepsRef)
+      unless (Array.null allSteps) do
+        let allDoc = Dodo.foldWithSeparator (Dodo.break <> Dodo.break) $ uncurry printModuleSteps <$> allSteps
+        FS.writeTextFile UTF8 "optimization-traces.txt" $ Dodo.print Dodo.plainText Dodo.twoSpaces allDoc
       outputModules <- liftEffect $ Ref.read outputRef
       results <- forWithIndex outputModules \name (Tuple output failsWith) -> do
         let

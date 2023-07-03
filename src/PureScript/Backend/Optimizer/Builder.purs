@@ -11,7 +11,6 @@ import Data.List (List, foldM)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
@@ -29,10 +28,9 @@ type BuildEnv =
 type BuildOptions m =
   { directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
-  , traceableIdents :: Set (Qualified Ident)
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
-  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Maybe OptimizationSteps -> m Unit
-  , traceOptimization :: Boolean
+  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
+  , traceIdents :: Set (Qualified Ident)
   }
 
 -- | Builds modules given a _sorted_ list of modules.
@@ -56,14 +54,12 @@ buildModules options coreFnModules =
         , dataTypes: Map.empty
         , foreignSemantics: options.foreignSemantics
         , rewriteLimit: 10_000
-        , traceableIdents: options.traceableIdents
-        , traceOptimization: options.traceOptimization
-        , optimizationSteps: Map.empty
+        , traceIdents: options.traceIdents
+        , optimizationSteps: []
         }
       newImplementations =
         foldrWithIndex Map.insert implementations backendMod.implementations
-      optimizationSteps' = if Map.isEmpty optimizationSteps then Nothing else Just optimizationSteps
-    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps'
+    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps
     pure
       { directives: foldrWithIndex Map.insert directives backendMod.directives
       , implementations: newImplementations
