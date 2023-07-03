@@ -36,7 +36,7 @@ printModuleSteps (ModuleName mod) steps =
     [ heading "=" $ D.text mod
     , D.break
     , D.withPosition \{ pageWidth } ->
-        D.text (power "=" pageWidth )
+        D.text (power "=" pageWidth)
     , D.break
     , D.break
     , foldWithSeparator (D.break <> D.break) (uncurry printSteps <$> steps)
@@ -408,7 +408,7 @@ printBackendAccessor = case _ of
     D.text $ "." <> show lbl
   GetIndex i ->
     D.text $ "[" <> show i <> "]"
-  GetCtorField _ _ _ _ _ ix  ->
+  GetCtorField _ _ _ _ _ ix ->
     D.text $ "#" <> show ix
 
 printLiteral :: Literal PrecDoc -> PrecDoc
