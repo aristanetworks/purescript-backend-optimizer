@@ -418,7 +418,7 @@ printLiteral = Tuple PrecAtom <<< case _ of
   LitNumber n ->
     D.text $ show n
   LitString s ->
-    D.text "\"" <> (D.text s) <> D.text "\""
+    D.text $ show s
   LitChar c ->
     D.text $ show c
   LitBoolean b ->
