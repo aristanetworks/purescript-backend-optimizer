@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), SemConditional(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, liftInt, makeLet)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
@@ -37,6 +37,7 @@ coreForeignSemantics = Map.fromFoldable semantics
     , control_monad_st_internal_read
     , control_monad_st_internal_run
     , control_monad_st_internal_write
+    , data_array_indexImpl
     , data_array_length
     , data_array_unsafeIndexImpl
     , data_eq_eqBooleanImpl
@@ -146,7 +147,42 @@ control_monad_st_internal_modify :: ForeignSemantics
 control_monad_st_internal_modify = Tuple (qualified "Control.Monad.ST.Internal" "modify") effectRefModify
 
 data_array_unsafeIndexImpl :: ForeignSemantics
-data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") $ primBinaryOperator OpArrayIndex
+data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") go
+  where
+  go env _ = case _ of
+    [ ExternUncurriedApp [ a, b ] ] ->
+      Just $ makeLet Nothing a \a' ->
+        makeLet Nothing b \b' ->
+          evalPrimOp env (Op2 OpArrayIndex a' b')
+    [ ExternApp [ a ] ] ->
+      Just $ makeLet Nothing a \a' ->
+        SemLam Nothing \b' ->
+          evalPrimOp env (Op2 OpArrayIndex a' b')
+    _ ->
+      Nothing
+
+data_array_indexImpl :: ForeignSemantics
+data_array_indexImpl = Tuple (qualified "Data.Array" "indexImpl") go
+  where
+  go env _ = case _ of
+    [ ExternUncurriedApp [ just, nothing, arr, ix ] ] ->
+      Just $ makeLet Nothing arr \arr' ->
+        makeLet Nothing ix \ix' ->
+          SemBranch
+            ( NonEmptyArray.singleton $ SemConditional
+                ( Lazy.defer \_ ->
+                    evalPrimOp env $ Op2 OpBooleanAnd
+                      (evalPrimOp env (Op2 (OpIntOrd OpGte) ix' (liftInt 0)))
+                      (evalPrimOp env (Op2 (OpIntOrd OpLt) ix' (evalPrimOp env (Op1 OpArrayLength arr'))))
+                )
+                ( Lazy.defer \_ ->
+                    evalApp env just
+                      [ evalPrimOp env (Op2 OpArrayIndex arr' ix') ]
+                )
+            )
+            (pure nothing)
+    _ ->
+      Nothing
 
 data_array_length :: ForeignSemantics
 data_array_length = Tuple (qualified "Data.Array" "length") $ primUnaryOperator OpArrayLength
