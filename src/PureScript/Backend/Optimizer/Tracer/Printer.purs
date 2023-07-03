@@ -311,6 +311,8 @@ printUnpackOpCase = case _ of
     printRewrite "UnpackRecord"
   UnpackUpdate _ _ ->
     printRewrite "UnpackUpdate"
+  UnpackArray _ ->
+    printRewrite "UnpackArray"
   UnpackData _ _ _ _ _ ->
     printRewrite "UnpackData"
 

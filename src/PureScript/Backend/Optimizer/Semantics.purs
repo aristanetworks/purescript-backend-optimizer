@@ -45,7 +45,7 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
-  | NeutLocal (Maybe Ident) Level
+  | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
   | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
@@ -93,6 +93,7 @@ data BackendRewrite
 data UnpackOp
   = UnpackRecord (Array (Prop BackendExpr))
   | UnpackUpdate BackendExpr (Array (Prop BackendExpr))
+  | UnpackArray (Array BackendExpr)
   | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr))
 
 data DistOp
@@ -329,6 +330,15 @@ instance Eval BackendExpr where
                     (flip eval body <<< bindLocal env <<< One <<< NeutUpdate hd')
                     props
                     []
+              UnpackArray exprs ->
+                foldr
+                  ( \expr next exprs' ->
+                      makeLet Nothing (eval env expr) \val ->
+                        next (Array.snoc exprs' val)
+                  )
+                  (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitArray)
+                  exprs
+                  []
               UnpackData qual ct ty tag fields ->
                 foldr
                   ( \(Tuple field expr) next props' ->
@@ -583,7 +593,7 @@ makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemant
 makeLet ident binding go = case binding of
   SemExtern _ [] _ ->
     go binding
-  NeutLocal _ _ ->
+  NeutLocal _ _ _ ->
     go binding
   NeutStop _ ->
     go binding
@@ -591,6 +601,11 @@ makeLet ident binding go = case binding of
     go binding
   _ ->
     SemLet ident binding go
+
+deref :: BackendSemantics -> BackendSemantics
+deref = case _ of
+  NeutLocal _ _ (Just expr) -> expr
+  expr -> expr
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -604,10 +619,12 @@ evalPrimOp env = case _ of
         evalPrimOpNot op
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
-      OpIsTag a, NeutData b _ _ _ _ ->
-        liftBoolean (a == b)
-      OpArrayLength, NeutLit (LitArray arr) ->
-        liftInt (Array.length arr)
+      OpIsTag a, _
+        | NeutData b _ _ _ _ <- deref x ->
+            liftBoolean (a == b)
+      OpArrayLength, _
+        | NeutLit (LitArray arr) <- deref x ->
+            liftInt (Array.length arr)
       OpIntNegate, NeutLit (LitInt a) ->
         liftInt (negate a)
       OpNumberNegate, NeutLit (LitNumber a) ->
@@ -703,6 +720,9 @@ evalPrimOp env = case _ of
       OpStringAppend
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
+      OpArrayIndex
+        | NeutLit (LitInt n) <- y ->
+            evalAccessor env x (GetIndex n)
       OpBooleanAnd -> -- Lazy operator should not be reassociated
 
         case x, y of
@@ -1034,17 +1054,21 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
+      -- We are not currently propagating references
+      -- to recursive bindings. The language requires
+      -- a runtime check for strictly recursive bindings
+      -- which we don't currently implement.
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level
+      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemEffectDefer sem ->
@@ -1060,13 +1084,13 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
@@ -1075,11 +1099,11 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
-    NeutLocal ident level ->
+    NeutLocal ident level _ ->
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
@@ -1152,6 +1176,9 @@ build ctx = case _ of
         expr'
   Let ident level binding body
     | Just expr' <- shouldUnpackCtor ident level binding body ->
+        expr'
+  Let ident level binding body
+    | Just expr' <- shouldUnpackArray ident level binding body ->
         expr'
   Let ident level binding body
     | Just expr' <- shouldDistributeBranches ident level binding body ->
@@ -1347,6 +1374,19 @@ shouldUnpackUpdate ident level binding body = do
           -- TODO: Not sure what to do about analysis, or if it matters.
           let analysis = updated level $ analysisOf hd <> foldr (append <<< analysisOf <<< propValue) (complex NonTrivial (bound level (BackendAnalysis s2))) props
           Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackUpdate hd props) body
+    _ ->
+      Nothing
+
+shouldUnpackArray :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldUnpackArray ident level binding body = do
+  let BackendAnalysis s2 = analysisOf body
+  case binding of
+    ExprSyntax _ (Lit (LitArray exprs))
+      | Just (Usage us) <- Map.lookup level s2.usages
+      , us.total == us.access -> do
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = foldr (append <<< analysisOf) (complex NonTrivial (bound level (BackendAnalysis s2))) exprs
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackArray exprs) body
     _ ->
       Nothing
 
@@ -1586,6 +1626,8 @@ foldBackendExpr foldSyntax foldRewrite = go
               foldSyntax $ Let ident level (foldSyntax (Lit (LitRecord (map go <$> props)))) (go body)
             UnpackUpdate hd props ->
               foldSyntax $ Let ident level (foldSyntax (Update (go hd) (map go <$> props))) (go body)
+            UnpackArray exprs ->
+              foldSyntax $ Let ident level (foldSyntax (Lit (LitArray (go <$> exprs)))) (go body)
             UnpackData qual ct ty tag values ->
               foldSyntax $ Let ident level (foldSyntax (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
         RewriteDistBranchesLet ident level branches def body ->
