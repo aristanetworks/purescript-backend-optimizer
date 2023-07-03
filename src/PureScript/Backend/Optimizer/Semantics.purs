@@ -661,10 +661,6 @@ evalPrimOp env = case _ of
           NeutPrimOp (Op1 op1 x')
   Op2 op2 x y ->
     case op2 of
-      OpArrayIndex
-        | NeutLit (LitArray arr) <- deref x
-        , NeutLit (LitInt i) <- deref y
-        , Just neut <- Array.index arr i -> neut
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- x ->
             x
