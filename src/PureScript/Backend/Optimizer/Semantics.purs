@@ -1539,30 +1539,21 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-optimize :: Boolean -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Maybe (NonEmptyArray BackendExpr)) BackendExpr
+optimize :: Boolean -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
 optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
-  if traceSteps then goWithSteps (pure originalExpr) initN originalExpr
-  else goNoSteps initN originalExpr
+  go (if traceSteps then pure originalExpr else List.Nil) initN originalExpr
   where
-  goNoSteps n expr1 = do
-    let Tuple rewrite expr2 = optimizationStep n expr1
+  go steps n expr1 = do
+    let Tuple rewrite expr2 = goStep n expr1
+    let newSteps = if traceSteps then List.Cons expr2 steps else steps
     if rewrite then
-      goNoSteps (n - 1) expr2
+      go newSteps (n - 1) expr2
     else
-      Tuple Nothing expr2
+      Tuple (Array.reverse (List.toUnfoldable steps)) expr2
 
-  goWithSteps steps n expr1 = do
-    let Tuple rewrite expr2 = optimizationStep n expr1
-    let updatedSteps = NonEmptyArray.snoc steps expr2
-    if rewrite then
-      goWithSteps updatedSteps (n - 1) expr2
-    else
-      Tuple (Just updatedSteps) expr2
-
-  optimizationStep :: Int -> BackendExpr -> Tuple Boolean BackendExpr
-  optimizationStep n expr1
+  goStep :: Int -> BackendExpr -> Tuple Boolean BackendExpr
+  goStep n expr1
     | n == 0 = do
-        -- expr1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do

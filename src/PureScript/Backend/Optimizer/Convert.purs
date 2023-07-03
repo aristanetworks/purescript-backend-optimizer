@@ -252,7 +252,7 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   { accum: env
       { implementations = Map.insert qualifiedIdent impl env.implementations
       , moduleImplementations = Map.insert qualifiedIdent impl env.moduleImplementations
-      , optimizationSteps = maybe env.optimizationSteps (Array.snoc env.optimizationSteps <<< Tuple qualifiedIdent) mbSteps
+      , optimizationSteps = maybe env.optimizationSteps (Array.snoc env.optimizationSteps <<< Tuple qualifiedIdent) $ NonEmptyArray.fromArray mbSteps
       , directives =
           case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
             Just dirs ->
