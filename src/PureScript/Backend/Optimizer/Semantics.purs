@@ -1090,7 +1090,7 @@ quote = go
       case _ of
         -- Block constructors
         SemTry (Attempts attempts) backup main
-          | attempts >= 10 -> go ctx backup
+          | attempts >= 30 -> go ctx backup
           | otherwise -> case quote (ctx { effect = false, trying = true }) main of
               newMain@(ExprSyntax _ (Lit _)) -> newMain
               newMain@(ExprSyntax _ (PrimOp _)) -> newMain
@@ -1538,6 +1538,7 @@ shouldDisposeOfAccessor'sAccessee (BackendAnalysis { usages }) syn acc =
     _, _ -> Nothing
 
 shouldInlineLet :: Boolean -> Level -> BackendExpr -> BackendExpr -> Boolean
+shouldInlineLet _ _ (ExprRewrite _ (RewriteTry _ _ _)) _ = false
 shouldInlineLet trying level a b =
   if trying then true
   else do
