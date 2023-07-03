@@ -11,9 +11,10 @@ import Data.List (List, foldM)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Tuple (Tuple)
+import Data.Set (Set)
+import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
-import PureScript.Backend.Optimizer.Convert (BackendModule, toBackendModule)
+import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
 import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
@@ -28,7 +29,8 @@ type BuildOptions m =
   { directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
-  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> m Unit
+  , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
+  , traceIdents :: Set (Qualified Ident)
   }
 
 -- | Builds modules given a _sorted_ list of modules.
@@ -42,7 +44,7 @@ buildModules options coreFnModules =
     let buildEnv = { implementations, moduleCount, moduleIndex }
     coreFnModule'@(Module { name }) <- options.onPrepareModule buildEnv coreFnModule
     let
-      backendMod = toBackendModule coreFnModule'
+      Tuple optimizationSteps backendMod = toBackendModule coreFnModule'
         { currentModule: name
         , currentLevel: 0
         , toLevel: Map.empty
@@ -52,10 +54,12 @@ buildModules options coreFnModules =
         , dataTypes: Map.empty
         , foreignSemantics: options.foreignSemantics
         , rewriteLimit: 10_000
+        , traceIdents: options.traceIdents
+        , optimizationSteps: []
         }
       newImplementations =
         foldrWithIndex Map.insert implementations backendMod.implementations
-    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod
+    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps
     pure
       { directives: foldrWithIndex Map.insert directives backendMod.directives
       , implementations: newImplementations
