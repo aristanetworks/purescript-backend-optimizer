@@ -103,6 +103,7 @@ data BackendRewrite
 data UnpackOp
   = UnpackRecord (Array (Prop BackendExpr))
   | UnpackUpdate BackendExpr (Array (Prop BackendExpr))
+  | UnpackArray (Array BackendExpr)
   | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr))
 
 data DistOp
@@ -348,6 +349,15 @@ instance Eval BackendExpr where
                     (flip eval body <<< bindLocal env <<< One <<< NeutUpdate hd')
                     props
                     []
+              UnpackArray exprs ->
+                foldr
+                  ( \expr next exprs' ->
+                      makeLet Nothing (eval env expr) \val ->
+                        next (Array.snoc exprs' val)
+                  )
+                  (flip eval body <<< bindLocal env <<< One <<< NeutLit <<< LitArray)
+                  exprs
+                  []
               UnpackData qual ct ty tag fields ->
                 foldr
                   ( \(Tuple field expr) next props' ->
@@ -616,8 +626,9 @@ makeLet ident binding go = case binding of
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
-deref (NeutLocal _ _ (Just expr)) = expr
-deref expr = expr
+deref = case _ of
+  NeutLocal _ _ (Just expr) -> expr
+  expr -> expr
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -632,9 +643,11 @@ evalPrimOp env = case _ of
       OpIntBitNot, NeutLit (LitInt a) ->
         liftInt (complement a)
       OpIsTag a, _
-        | NeutData b _ _ _ _ <- deref x -> liftBoolean (a == b)
-      OpArrayLength, expr
-        | NeutLit (LitArray arr) <- deref expr -> liftInt (Array.length arr)
+        | NeutData b _ _ _ _ <- deref x ->
+            liftBoolean (a == b)
+      OpArrayLength, _
+        | NeutLit (LitArray arr) <- deref x ->
+            liftInt (Array.length arr)
       OpIntNegate, NeutLit (LitInt a) ->
         liftInt (negate a)
       OpNumberNegate, NeutLit (LitNumber a) ->
@@ -734,6 +747,9 @@ evalPrimOp env = case _ of
       OpStringAppend
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
+      OpArrayIndex
+        | NeutLit (LitInt n) <- y ->
+            evalAccessor env x (GetIndex n)
       OpBooleanAnd -> -- Lazy operator should not be reassociated
 
         case x, y of
@@ -1089,6 +1105,10 @@ quote = go
           build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
         SemLetRec bindings k -> do
           let Tuple level ctx' = nextLevel ctx
+          -- We are not currently propagating references
+          -- to recursive bindings. The language requires
+          -- a runtime check for strictly recursive bindings
+          -- which we don't currently implement.
           let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
           build ctx $ LetRec level
             (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
@@ -1207,6 +1227,9 @@ build ctx@{ trying } = case _ of
         expr'
   Let ident level binding body
     | Just expr' <- shouldUnpackCtor ident level binding body ->
+        expr'
+  Let ident level binding body
+    | Just expr' <- shouldUnpackArray ident level binding body ->
         expr'
   Let ident level binding body
     | Just expr' <- shouldDistributeBranches ident level binding body ->
@@ -1409,6 +1432,19 @@ shouldUnpackUpdate ident level binding body = do
           -- TODO: Not sure what to do about analysis, or if it matters.
           let analysis = updated level $ analysisOf hd <> foldr (append <<< analysisOf <<< propValue) (complex NonTrivial (bound level (BackendAnalysis s2))) props
           Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackUpdate hd props) body
+    _ ->
+      Nothing
+
+shouldUnpackArray :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldUnpackArray ident level binding body = do
+  let BackendAnalysis s2 = analysisOf body
+  case binding of
+    ExprSyntax _ (Lit (LitArray exprs))
+      | Just (Usage us) <- Map.lookup level s2.usages
+      , us.total == us.access -> do
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = foldr (append <<< analysisOf) (complex NonTrivial (bound level (BackendAnalysis s2))) exprs
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteUnpackOp ident level (UnpackArray exprs) body
     _ ->
       Nothing
 
@@ -1653,6 +1689,8 @@ freeze init = Tuple (analysisOf init) (go init)
               NeutralExpr $ Let ident level (NeutralExpr (Lit (LitRecord (map go <$> props)))) (go body)
             UnpackUpdate hd props ->
               NeutralExpr $ Let ident level (NeutralExpr (Update (go hd) (map go <$> props))) (go body)
+            UnpackArray exprs ->
+              NeutralExpr $ Let ident level (NeutralExpr (Lit (LitArray (go <$> exprs)))) (go body)
             UnpackData qual ct ty tag values ->
               NeutralExpr $ Let ident level (NeutralExpr (CtorSaturated qual ct ty tag (map go <$> values))) (go body)
         RewriteDistBranchesLet ident level branches def body ->
