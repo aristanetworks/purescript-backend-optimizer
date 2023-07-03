@@ -48,6 +48,7 @@ data BackendSemantics
   | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
+  | RecurseWithRecklessAbandon (Qualified Ident)
   | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
   | NeutCtorDef (Qualified Ident) ConstructorType ProperName Ident (Array String)
   | NeutApp BackendSemantics (Spine BackendSemantics)
@@ -86,6 +87,7 @@ data BackendRewrite
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
+  | RewriteRecurse (Qualified Ident)
   | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
   | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
   | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
@@ -165,6 +167,8 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
+  , punt :: Set.Set (Qualified Ident)
+  , blockNextRecursion :: Boolean
   }
 
 derive instance Newtype Env _
@@ -184,6 +188,16 @@ insertDirective ref acc dir = Map.alter
       Just $ Map.singleton acc dir
   ref
 
+recursable :: Array BackendSemantics -> Boolean
+recursable = go
+  where
+  go arr
+    | Just { head, tail } <- Array.uncons arr = case head of
+        NeutData _ _ _ _ _ -> go tail
+        NeutLit _ -> go tail
+        _ -> false
+    | otherwise = true
+
 addStop :: Env -> EvalRef -> InlineAccessor -> Env
 addStop (Env env) ref acc = Env env
   { directives = Map.alter
@@ -196,13 +210,19 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
+puntMe :: Env -> Array (Qualified Ident) -> Env
+puntMe (Env env) quals = Env env
+  { punt = Set.union env.punt (Set.fromFoldable quals)
+  }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env = case _ of
-    Var qual ->
-      evalExtern env qual []
+  eval env@(Env envx@{ punt }) = case _ of
+    Var qual
+      | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
+      | otherwise -> evalExtern env qual []
     Local ident lvl ->
       case lookupLocal env lvl of
         Just (One sem) -> sem
@@ -210,8 +230,11 @@ instance Eval f => Eval (BackendSyntax f) where
           force sem
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-    App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
+    App hd tl -> do
+      let tailEvaled = NonEmptyArray.toArray (eval env <$> tl)
+      let canRecurse = recursable tailEvaled
+      let headEvaled = eval (Env envx { blockNextRecursion = not canRecurse }) hd
+      evalApp env headEvaled tailEvaled
     UncurriedApp hd tl ->
       evalUncurriedApp env (eval env hd) (eval env <$> tl)
     UncurriedAbs idents body -> do
@@ -275,11 +298,12 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
 instance Eval BackendExpr where
-  eval = go
+  eval (Env e@{ blockNextRecursion }) = go (Env e { blockNextRecursion = false })
     where
     go env = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
+          RewriteRecurse ident -> if blockNextRecursion then mkSemExtern ident [] else eval env (Var ident :: BackendSyntax BackendExpr)
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
           RewriteUncurry ident _ args binding body ->
@@ -846,9 +870,12 @@ primOpOrdNot = case _ of
   OpGt -> OpLte
   OpGte -> OpLt
 
+mkSemExtern :: Qualified Ident -> Array ExternSpine -> BackendSemantics
+mkSemExtern qual spine = SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
+
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
 evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
-  Nothing -> SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
+  Nothing -> mkSemExtern qual spine
   Just sem -> sem
 
 envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
@@ -866,15 +893,15 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref InlineRef group) expr
+            Just $ eval (puntMe env group) expr
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval (puntMe env group) expr
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval (puntMe env group) expr
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
@@ -1080,6 +1107,7 @@ quote = go
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
+    RecurseWithRecklessAbandon ident -> ExprRewrite (withRewrite (analyzeDefault ctx (Var ident))) $ RewriteRecurse ident
     SemExtern _ _ sem ->
       go ctx (force sem)
     SemLam ident k -> do
@@ -1568,6 +1596,8 @@ freeze init = Tuple (analysisOf init) (go init)
         RewriteUncurry ident level args binding body ->
           NeutralExpr $ Let ident level (NeutralExpr (Abs args (go binding))) (go body)
         RewriteStop qual ->
+          NeutralExpr $ Var qual
+        RewriteRecurse qual ->
           NeutralExpr $ Var qual
         RewriteLetAssoc bindings body ->
           case NonEmptyArray.fromArray bindings of
