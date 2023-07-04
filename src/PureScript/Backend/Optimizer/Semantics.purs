@@ -9,6 +9,7 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
+import Data.Function (on)
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
@@ -19,11 +20,11 @@ import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
 newtype Attempts = Attempts Int
@@ -38,7 +39,6 @@ derive newtype instance Eq Strikes
 derive newtype instance Ord Strikes
 derive instance Newtype Strikes _
 
-
 type Spine a = Array a
 
 type RecSpine a = NonEmptyArray (Tuple Ident (Lazy a))
@@ -50,7 +50,7 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
-  | SemTry Strikes Attempts BackendSemantics BackendSemantics
+  | SemTry (Maybe NeutralExpr) Strikes Attempts BackendSemantics BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -97,7 +97,7 @@ type EffectBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteTry Strikes Attempts BackendExpr BackendExpr
+  | RewriteTry (Maybe NeutralExpr) Strikes Attempts BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
@@ -374,8 +374,8 @@ instance Eval BackendExpr where
                   (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
-          RewriteTry strikes attempts backup main -> do
-            if stopTrying then eval env backup else SemTry strikes attempts (eval env backup) (eval env main)
+          RewriteTry mne strikes attempts backup main -> do
+            if stopTrying then eval env backup else SemTry mne strikes attempts (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -416,8 +416,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry strikes attempts backup main, args ->
-      SemTry strikes attempts (go env' backup args) (go env' main args)
+    SemTry mne strikes attempts backup main, args ->
+      SemTry mne strikes attempts (go env' backup args) (go env' main args)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
@@ -887,7 +887,7 @@ envForGroup env ref acc group
   | otherwise = addStop env ref acc
 
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
-withTry qual env group expr = if Array.null group then evaled else SemTry (Strikes 0) (Attempts 0) (NeutStop qual) evaled
+withTry qual env group expr = if Array.null group then evaled else SemTry Nothing (Strikes 0) (Attempts 0) (NeutStop qual) evaled
   where
   evaled = eval (puntMe env group) expr
 
@@ -1083,14 +1083,96 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry :: Strikes -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
-buildTry strikes attempts backup main =
-  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry strikes attempts backup main
+buildTry :: Maybe NeutralExpr -> Strikes -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry mne strikes attempts backup main =
+  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry mne strikes attempts backup main
 
 unletted :: BackendExpr -> BackendExpr
 unletted = case _ of
   ExprSyntax _ (Let _ _ _ k) -> unletted k
   o -> o
+
+class NeutSim a where
+  neutSim :: a -> a -> Boolean
+
+instance NeutSim a => NeutSim (NonEmptyArray a) where
+  neutSim = neutSim `on` NonEmptyArray.toArray
+
+instance NeutSim a => NeutSim (Array a) where
+  neutSim a b = Array.length a == Array.length b && foldl (&&) true (Array.zipWith neutSim a b)
+
+instance NeutSim a => NeutSim (Prop a) where
+  neutSim (Prop k a) (Prop k' b) = k == k' && neutSim a b
+
+instance NeutSim a => NeutSim (Pair a) where
+  neutSim (Pair a b) (Pair a' b') = neutSim a a' && neutSim b b'
+
+instance NeutSim a => NeutSim (BackendOperator a) where
+  neutSim (Op1 o a) (Op1 o' a') = o == o' && neutSim a a'
+  neutSim (Op2 o a b) (Op2 o' a' b') = o == o' && neutSim a a' && neutSim b b'
+  neutSim _ _ = false
+
+instance NeutSim a => NeutSim (BackendEffect a) where
+  neutSim (EffectRefNew a) (EffectRefNew b) = neutSim a b
+  neutSim (EffectRefRead a) (EffectRefRead b) = neutSim a b
+  neutSim (EffectRefWrite a b) (EffectRefWrite a' b') = neutSim a a' && neutSim b b'
+  neutSim _ _ = false
+
+instance NeutSim a => NeutSim (Literal a) where
+  neutSim (LitInt a) (LitInt b) = a == b
+  neutSim (LitNumber a) (LitNumber b) = a == b
+  neutSim (LitString a) (LitString b) = a == b
+  neutSim (LitChar a) (LitChar b) = a == b
+  neutSim (LitBoolean a) (LitBoolean b) = a == b
+  neutSim (LitArray a) (LitArray b) = neutSim a b
+  neutSim (LitRecord a) (LitRecord b) = neutSim a b
+  neutSim _ _ = false
+
+instance NeutSim a => NeutSim (Tuple String a) where
+  neutSim (Tuple a b) (Tuple a' b') = a == a' && neutSim b b'
+
+instance NeutSim NeutralExpr where
+  neutSim (NeutralExpr a) (NeutralExpr b) = case a, b of
+    Var qual, Var qual' -> qual == qual'
+    Local _ _, Local _ _ -> true
+    App hd tl, App hd' tl' ->
+      hd `neutSim` hd' && NonEmptyArray.length tl == NonEmptyArray.length tl' && tl `neutSim` tl'
+    UncurriedApp hd tl, UncurriedApp hd' tl' ->
+      hd `neutSim` hd' && Array.length tl == Array.length tl' && tl `neutSim` tl'
+    UncurriedAbs _ body, UncurriedAbs _ body' -> body `neutSim` body'
+    UncurriedEffectApp hd tl, UncurriedEffectApp hd' tl' ->
+      hd `neutSim` hd' && Array.length tl == Array.length tl' && tl `neutSim` tl'
+    UncurriedEffectAbs idents body, UncurriedEffectAbs idents' body' ->
+      Array.length idents == Array.length idents' && body `neutSim` body'
+    Abs idents body, Abs idents' body' ->
+      NonEmptyArray.length idents == NonEmptyArray.length idents' && body `neutSim` body'
+    Let _ _ binding body, Let _ _ binding' body' -> binding `neutSim` binding' && body `neutSim` body'
+    LetRec _ _ body, LetRec _ _ body' -> body `neutSim` body'
+    EffectBind _ _ binding body, EffectBind _ _ binding' body' ->
+      binding `neutSim` binding' && body `neutSim` body'
+    EffectPure val, EffectPure val' -> val `neutSim` val'
+    EffectDefer val, EffectDefer val' -> val `neutSim` val'
+    Accessor lhs accessor, Accessor lhs' accessor' ->
+      lhs `neutSim` lhs' && accessor == accessor'
+    Update lhs props, Update lhs' props' ->
+      lhs `neutSim` lhs' && props `neutSim` props'
+    Branch branches def, Branch branches' def' ->
+      NonEmptyArray.length branches == NonEmptyArray.length branches' && branches `neutSim` branches' && def `neutSim` def'
+    PrimOp op, PrimOp op' ->
+      op `neutSim` op'
+    PrimEffect eff, PrimEffect eff' ->
+      eff `neutSim` eff'
+    PrimUndefined, PrimUndefined ->
+      true
+    Lit lit, Lit lit' ->
+      lit `neutSim` lit'
+    Fail _, Fail _ ->
+      true
+    CtorDef _ _ _ _, CtorDef _ _ _ _ ->
+      false
+    CtorSaturated qual ct ty tag fields, CtorSaturated qual' ct' ty' tag' fields' ->
+      qual == qual' && ct == ct' && ty == ty' && tag == tag' && fields `neutSim` fields'
+    _, _ -> false
 
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
@@ -1101,8 +1183,8 @@ quote = go
     in
       case _ of
         -- Block constructors
-        SemTry (Strikes strikes) (Attempts attempts) backup main
-          | attempts >= 30 -> go ctx backup
+        SemTry mne (Strikes strikes) (Attempts attempts) backup main
+          | attempts >= 100 -> go ctx backup
           | strikes >= 10 -> go ctx backup
           | otherwise ->
               let
@@ -1112,8 +1194,19 @@ quote = go
                   ExprSyntax _ (Lit _) -> newMain
                   ExprSyntax _ (PrimOp _) -> newMain
                   ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
-                  ExprSyntax _ (Branch _ _) -> buildTry (Strikes (strikes + 1)) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
-                  _ -> buildTry (Strikes 0) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+                  ExprSyntax _ (Branch _ _) -> do
+                    -- one common pattern is that we recursively hit the same branch over and over
+                    -- but the let bindings over the branch are different.
+                    -- these let bindings won't have been inlined yet
+                    -- a crude way to test stuff out is to test the let bindings for equality up until the branch
+                    -- we can do this by comparing it to the previous let in the SemTry
+                    let
+                      neutMain = snd $ freeze newMain
+                      neutAndStrikes = Tuple (Just neutMain) $ case mne of
+                        Just m -> if m `neutSim` neutMain then (Strikes (strikes + 1)) else Strikes 0
+                        Nothing -> Strikes 0
+                    uncurry buildTry neutAndStrikes (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+                  _ -> buildTry Nothing (Strikes 0) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
         SemLet ident binding k -> do
           let Tuple level ctx' = nextLevel ctx
           build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1652,7 +1745,7 @@ freeze init = Tuple (analysisOf init) (go init)
       NeutralExpr $ go <$> expr
     ExprRewrite _ rewrite ->
       case rewrite of
-        RewriteTry _ _ backup _ ->
+        RewriteTry _ _ _ backup _ ->
           go backup
         RewriteInline ident level binding body ->
           NeutralExpr $ Let ident level (go binding) (go body)
@@ -1768,7 +1861,6 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
-
 
 -- foreign import spyx :: forall a. String -> a -> a
 -- foreign import spyxx :: forall a b. String -> a -> b -> b
