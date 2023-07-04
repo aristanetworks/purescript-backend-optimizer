@@ -1080,6 +1080,11 @@ buildTry :: Attempts -> BackendExpr -> BackendExpr -> BackendExpr
 buildTry attempts backup main =
   ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts backup main
 
+unletted :: BackendExpr -> BackendExpr
+unletted = case _ of
+  ExprSyntax _ (Let _ _ _ k) -> unletted k
+  o -> o
+
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
@@ -1091,11 +1096,15 @@ quote = go
         -- Block constructors
         SemTry (Attempts attempts) backup main
           | attempts >= 30 -> go ctx backup
-          | otherwise -> case quote (ctx { effect = false, trying = true }) main of
-              newMain@(ExprSyntax _ (Lit _)) -> newMain
-              newMain@(ExprSyntax _ (PrimOp _)) -> newMain
-              newMain@(ExprSyntax _ (CtorSaturated _ _ _ _ _)) -> newMain
-              newMain -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+          | otherwise ->
+              let
+                newMain = quote (ctx { effect = false, trying = true }) main
+              in
+                case unletted newMain of
+                  ExprSyntax _ (Lit _) -> newMain
+                  ExprSyntax _ (PrimOp _) -> newMain
+                  ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
+                  _ -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
         SemLet ident binding k -> do
           let Tuple level ctx' = nextLevel ctx
           build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1210,7 +1219,7 @@ build ctx@{ trying } = case _ of
       (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
       body1
   Let ident level binding body
-    | shouldInlineLet trying level binding body ->
+    | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
   Let ident level binding body
     | Just expr' <- shouldUncurryAbs ident level binding body ->
@@ -1537,24 +1546,21 @@ shouldDisposeOfAccessor'sAccessee (BackendAnalysis { usages }) syn acc =
       | Just (Tuple _ v) <- Array.index vals i -> Just v
     _, _ -> Nothing
 
-shouldInlineLet :: Boolean -> Level -> BackendExpr -> BackendExpr -> Boolean
-shouldInlineLet _ _ (ExprRewrite _ (RewriteTry _ _ _)) _ = false
-shouldInlineLet trying level a b =
-  if trying then true
-  else do
-    let BackendAnalysis s1 = analysisOf a
-    let BackendAnalysis s2 = analysisOf b
-    case Map.lookup level s2.usages of
-      Nothing ->
-        true
-      Just (Usage { captured, total, call }) ->
-        (s1.complexity == Trivial)
-          || (captured == CaptureNone && total == 1)
-          || (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5)
-          || (s1.complexity == Deref && call == total)
-          || (s1.complexity == KnownSize && total == 1)
-          || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
-          || (isKnownEffect a && total == 1)
+shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
+shouldInlineLet level a b = do
+  let BackendAnalysis s1 = analysisOf a
+  let BackendAnalysis s2 = analysisOf b
+  case Map.lookup level s2.usages of
+    Nothing ->
+      true
+    Just (Usage { captured, total, call }) ->
+      (s1.complexity == Trivial)
+        || (captured == CaptureNone && total == 1)
+        || (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5)
+        || (s1.complexity == Deref && call == total)
+        || (s1.complexity == KnownSize && total == 1)
+        || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
+        || (isKnownEffect a && total == 1)
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ =

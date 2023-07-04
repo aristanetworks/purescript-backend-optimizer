@@ -32,8 +32,11 @@ const foldlArray2 = foldlArray2$a0$copy => foldlArray2$a1$copy => foldlArray2$a2
 };
 const foldlArray = bab => b => arr => foldlArray2(0)(arr.length)(bab)(b)(arr);
 const actualizeNuts = count => {
-  const $0 = count + 1 | 0;
-  return Data$dTuple.$Tuple([Data$dEither.$Either("Left", Data$dEither.$Either("Right", {count: $0}))], $0);
+  const v2 = Data$dEither.$Either("Right", {count: count + 1 | 0});
+  return Data$dTuple.$Tuple([Data$dEither.$Either("Left", v2)], v2._1.count);
 };
-const test1 = /* #__PURE__ */ Data$dTuple.$Tuple([/* #__PURE__ */ Data$dEither.$Either("Left", /* #__PURE__ */ Data$dEither.$Either("Right", {count: 43}))], 43);
+const test1 = /* #__PURE__ */ (() => {
+  const v2 = Data$dEither.$Either("Right", {count: 43});
+  return Data$dTuple.$Tuple([Data$dEither.$Either("Left", v2)], v2._1.count);
+})();
 export {ActualizedKorok, Nut, PureKorok, actualizeNuts, foldlArray, foldlArray2, test1};

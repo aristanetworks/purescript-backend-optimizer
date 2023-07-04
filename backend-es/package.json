@@ -20,6 +20,7 @@
     "test": "cd .. && spago test",
     "test:output-diff": "npm run build && cd ../ && ./backend-es/index.js build --int-tags --output-dir=output-es2 && diff -r output-es output-es2 && rm -r output-es2",
     "build": "cd .. && spago build -u '-g corefn,js' && node ./backend-es/index.dev.js bundle-module -m Main --int-tags --platform=node --to=./backend-es/bundle/index.js",
+    "build2": "cd .. && spago build -u '-g corefn,js' && esbuild output/Main/index.js --format=esm --platform=node --bundle --outfile=./backend-es/bundle/index.js",
     "prepublishOnly": "rm -rf bundle ../output ../output-es && npm run build"
   },
   "repository": {
@@ -38,7 +39,7 @@
   },
   "homepage": "https://github.com/aristanetworks/purescript-backend-optimizer#readme",
   "devDependencies": {
-    "esbuild": "^0.15.5"
+    "esbuild": "^0.15.18"
   },
   "dependencies": {
     "purescript": "^0.15.9",
