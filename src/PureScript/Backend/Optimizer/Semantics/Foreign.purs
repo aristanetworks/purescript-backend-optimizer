@@ -146,7 +146,19 @@ control_monad_st_internal_modify :: ForeignSemantics
 control_monad_st_internal_modify = Tuple (qualified "Control.Monad.ST.Internal" "modify") effectRefModify
 
 data_array_unsafeIndexImpl :: ForeignSemantics
-data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") $ primBinaryOperator OpArrayIndex
+data_array_unsafeIndexImpl = Tuple (qualified "Data.Array" "unsafeIndexImpl") go
+  where
+  go env _ = case _ of
+    [ ExternUncurriedApp [ a, b ] ] ->
+      Just $ makeLet Nothing a \a' ->
+        makeLet Nothing b \b' ->
+          evalPrimOp env (Op2 OpArrayIndex a' b')
+    [ ExternApp [ a ] ] ->
+      Just $ makeLet Nothing a \a' ->
+        SemLam Nothing \b' ->
+          evalPrimOp env (Op2 OpArrayIndex a' b')
+    _ ->
+      Nothing
 
 data_array_length :: ForeignSemantics
 data_array_length = Tuple (qualified "Data.Array" "length") $ primUnaryOperator OpArrayLength
