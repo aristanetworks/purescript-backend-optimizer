@@ -32,6 +32,13 @@ derive newtype instance Eq Attempts
 derive newtype instance Ord Attempts
 derive instance Newtype Attempts _
 
+newtype Strikes = Strikes Int
+
+derive newtype instance Eq Strikes
+derive newtype instance Ord Strikes
+derive instance Newtype Strikes _
+
+
 type Spine a = Array a
 
 type RecSpine a = NonEmptyArray (Tuple Ident (Lazy a))
@@ -43,7 +50,7 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
-  | SemTry Attempts BackendSemantics BackendSemantics
+  | SemTry Strikes Attempts BackendSemantics BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -90,7 +97,7 @@ type EffectBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteTry Attempts BackendExpr BackendExpr
+  | RewriteTry Strikes Attempts BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
@@ -367,8 +374,8 @@ instance Eval BackendExpr where
                   (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
-          RewriteTry attempts backup main -> do
-            if stopTrying then eval env backup else SemTry attempts (eval env backup) (eval env main)
+          RewriteTry strikes attempts backup main -> do
+            if stopTrying then eval env backup else SemTry strikes attempts (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -409,8 +416,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry attempts backup main, args ->
-      SemTry attempts (go env' backup args) (go env' main args)
+    SemTry strikes attempts backup main, args ->
+      SemTry strikes attempts (go env' backup args) (go env' main args)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
@@ -880,7 +887,7 @@ envForGroup env ref acc group
   | otherwise = addStop env ref acc
 
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
-withTry qual env group expr = if Array.null group then evaled else SemTry (Attempts 0) (NeutStop qual) evaled
+withTry qual env group expr = if Array.null group then evaled else SemTry (Strikes 0) (Attempts 0) (NeutStop qual) evaled
   where
   evaled = eval (puntMe env group) expr
 
@@ -1076,9 +1083,9 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry :: Attempts -> BackendExpr -> BackendExpr -> BackendExpr
-buildTry attempts backup main =
-  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry attempts backup main
+buildTry :: Strikes -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry strikes attempts backup main =
+  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry strikes attempts backup main
 
 unletted :: BackendExpr -> BackendExpr
 unletted = case _ of
@@ -1094,8 +1101,9 @@ quote = go
     in
       case _ of
         -- Block constructors
-        SemTry (Attempts attempts) backup main
+        SemTry (Strikes strikes) (Attempts attempts) backup main
           | attempts >= 30 -> go ctx backup
+          | strikes >= 10 -> go ctx backup
           | otherwise ->
               let
                 newMain = quote (ctx { effect = false, trying = true }) main
@@ -1104,7 +1112,8 @@ quote = go
                   ExprSyntax _ (Lit _) -> newMain
                   ExprSyntax _ (PrimOp _) -> newMain
                   ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
-                  _ -> buildTry (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+                  ExprSyntax _ (Branch _ _) -> buildTry (Strikes (strikes + 1)) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+                  _ -> buildTry (Strikes 0) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
         SemLet ident binding k -> do
           let Tuple level ctx' = nextLevel ctx
           build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1643,7 +1652,7 @@ freeze init = Tuple (analysisOf init) (go init)
       NeutralExpr $ go <$> expr
     ExprRewrite _ rewrite ->
       case rewrite of
-        RewriteTry _ backup _ ->
+        RewriteTry _ _ backup _ ->
           go backup
         RewriteInline ident level binding body ->
           NeutralExpr $ Let ident level (go binding) (go body)
@@ -1760,3 +1769,9 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
+
+-- foreign import spyx :: forall a. String -> a -> a
+-- foreign import spyxx :: forall a b. String -> a -> b -> b
+-- spy = spyx :: forall a. String -> a -> a
+
+-- foreign import spyy :: forall a. String -> a -> a
