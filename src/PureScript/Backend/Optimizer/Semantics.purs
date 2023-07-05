@@ -1075,7 +1075,6 @@ caseNumber = case _ of
 
 type Ctx =
   { currentLevel :: Int
-  , trying :: Boolean
   , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
   , effect :: Boolean
   }
@@ -1177,18 +1176,14 @@ instance NeutSim NeutralExpr where
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
-  go ctxx@{ trying } =
-    let
-      ctx = ctxx { trying = false }
-    in
-      case _ of
+  go ctx = case _ of
         -- Block constructors
         SemTry (Strikes strikes) (Attempts attempts) backup main
           | attempts >= 50 -> go ctx backup
           | strikes >= 10 -> go ctx backup
           | otherwise ->
               let
-                newMain = quote (ctx { effect = false, trying = true }) main
+                newMain = quote (ctx { effect = false }) main
               in
                 case unletted newMain of
                   ExprSyntax _ (Lit _) -> newMain
@@ -1198,7 +1193,7 @@ quote = go
                   _ -> buildTry (Strikes 0) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
         SemLet ident binding k -> do
           let Tuple level ctx' = nextLevel ctx
-          build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+          build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
         SemLetRec bindings k -> do
           let Tuple level ctx' = nextLevel ctx
           -- We are not currently propagating references
@@ -1294,7 +1289,7 @@ quote = go
           build ctx $ Fail err
 
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
-build ctx@{ trying } = case _ of
+build ctx = case _ of
   App (ExprSyntax _ (App hd tl1)) tl2 ->
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
