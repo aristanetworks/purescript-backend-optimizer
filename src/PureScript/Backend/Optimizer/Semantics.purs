@@ -1087,10 +1087,12 @@ buildTry :: Maybe NeutralExpr -> Strikes -> Attempts -> BackendExpr -> BackendEx
 buildTry mne strikes attempts backup main =
   ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry mne strikes attempts backup main
 
-unletted :: BackendExpr -> BackendExpr
+unletted :: BackendExpr -> Tuple BackendExpr BackendExpr
 unletted = case _ of
-  ExprSyntax _ (Let _ _ _ k) -> unletted k
-  o -> o
+  ExprSyntax es (Let a b c k) -> do
+    let Tuple e v = unletted k
+    Tuple (ExprSyntax es (Let a b c e)) v
+  o -> Tuple (ExprSyntax mempty PrimUndefined) o
 
 class NeutSim a where
   neutSim :: a -> a -> Boolean
@@ -1184,13 +1186,14 @@ quote = go
       case _ of
         -- Block constructors
         SemTry mne (Strikes strikes) (Attempts attempts) backup main
-          | attempts >= 100 -> go ctx backup
-          | strikes >= 10 -> go ctx backup
+          | attempts >= 50 -> go ctx backup
+          | strikes >= 30 -> go ctx backup
           | otherwise ->
               let
                 newMain = quote (ctx { effect = false, trying = true }) main
+                Tuple letBranch exp = unletted newMain
               in
-                case unletted newMain of
+                case exp of
                   ExprSyntax _ (Lit _) -> newMain
                   ExprSyntax _ (PrimOp _) -> newMain
                   ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
@@ -1201,7 +1204,7 @@ quote = go
                     -- a crude way to test stuff out is to test the let bindings for equality up until the branch
                     -- we can do this by comparing it to the previous let in the SemTry
                     let
-                      neutMain = snd $ freeze newMain
+                      neutMain = snd $ freeze letBranch
                       neutAndStrikes = Tuple (Just neutMain) $ case mne of
                         Just m -> if m `neutSim` neutMain then (Strikes (strikes + 1)) else Strikes 0
                         Nothing -> Strikes 0
