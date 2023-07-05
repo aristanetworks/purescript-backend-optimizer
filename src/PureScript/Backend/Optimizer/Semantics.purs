@@ -1088,6 +1088,11 @@ buildTry :: Attempts -> BackendExpr -> BackendExpr -> BackendExpr
 buildTry attempts backup main =
   ExprRewrite (withRewrite $ clearAbstractionCase $ analysisOf main) $ RewriteTry attempts backup main
 
+getAnalysis :: BackendExpr -> BackendAnalysis
+getAnalysis = case _ of
+  ExprRewrite analysis _ -> analysis
+  ExprSyntax analysis _ -> analysis
+
 unletted :: BackendExpr -> BackendExpr
 unletted = case _ of
   ExprSyntax es (Let _ _ _ k) -> unletted k
@@ -1105,10 +1110,11 @@ quote = go
   go ctx = case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 50 -> go ctx backup
+      | attempts >= 1000 -> go ctx backup
       | otherwise ->
           let
             newMain = quote (diseffectCtx ctx) main
+            -- _ = if attempts > 45 then const unit $ spy "shit" { lvls: Array.fromFoldable ctx.abstractedLevels, nm: snd $ freeze newMain} else unit
           in
             case unletted newMain of
               ExprSyntax _ (Lit _) -> newMain
@@ -1118,7 +1124,9 @@ quote = go
               _ -> buildTry (Attempts (attempts + 1)) (quote (diseffectCtx ctx) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      let stmt = quote (diseffectCtx ctx) binding
+      let stmtUsesAbstraction = not $ Set.isEmpty $ Set.intersection ctx.abstractedLevels (Map.keys $ (unwrap $ getAnalysis stmt).usages)
+      build ctx $ Let ident level stmt $ quote ((if stmtUsesAbstraction then addAbsLevelToCtx level else identity) ctx') $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1393,7 +1401,7 @@ build ctx = case _ of
     expr
   Branch pairs def | Just expr <- simplifyBranches ctx pairs def ->
     expr
-  expr@(Branch pairs def) ->
+  expr@(Branch pairs _) ->
     ExprSyntax (setAbstractionCase (isAbstractionInBranch ctx.abstractedLevels pairs) (analyzeDefault ctx expr)) expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
@@ -1723,6 +1731,7 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go initN false ex1
     | otherwise = do
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
+        -- let _ = if true then const unit $ spy "done" { e2: expr2} else unit
         if rewrite then
           go (n - 1) stopTrying expr2
         else
