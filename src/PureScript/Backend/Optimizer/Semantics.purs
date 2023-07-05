@@ -1110,23 +1110,19 @@ quote = go
   go ctx = case _ of
     -- Block constructors
     SemTry (Attempts attempts) backup main
-      | attempts >= 1000 -> go ctx backup
-      | otherwise ->
-          let
-            newMain = quote (diseffectCtx ctx) main
-          -- _ = if attempts > 45 then const unit $ spy "shit" { lvls: Array.fromFoldable ctx.abstractedLevels, nm: snd $ freeze newMain} else unit
-
-          in
-            case unlet newMain of
-              ExprSyntax _ (Lit _) -> newMain
-              ExprSyntax _ (PrimOp _) -> newMain
-              ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
-              ExprSyntax (BackendAnalysis { casesOnAbstraction: true }) (Branch _ _)
-                | attempts > 10 -> do
-                    -- if we're still branching on an unapplied abstraction argument after 10 rounds, we give up
-                    -- as it's unlikely that it'll reduce any further
-                    go ctx backup
-              _ -> buildTry (Attempts (attempts + 1)) (quote (diseffectCtx ctx) backup) newMain
+      | attempts >= 10000 -> go ctx backup
+      | otherwise -> do
+          let newMain = quote (diseffectCtx ctx) main
+          case unlet newMain of
+            ExprSyntax _ (Lit _) -> newMain
+            ExprSyntax _ (PrimOp _) -> newMain
+            ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
+            ExprSyntax (BackendAnalysis { casesOnAbstraction: true }) (Branch _ _)
+              | attempts > 10 -> do
+                  -- if we're still branching on an unapplied abstraction argument after 10 rounds, we give up
+                  -- as it's unlikely that it'll reduce any further
+                  go ctx backup
+            _ -> buildTry (Attempts (attempts + 1)) (quote (diseffectCtx ctx) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       let stmt = quote (diseffectCtx ctx) binding
@@ -1726,7 +1722,6 @@ withStopTrying stopTrying (Env env) = Env env
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
-  -- let _ = spy "starting" id
   go initN false ex1
   where
   go n stopTrying expr1
@@ -1736,11 +1731,8 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
     | n == 0, not stopTrying = do
         go initN true expr1
     | otherwise = do
-        -- let _ = spy "at level" { n, id }
         let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
-        -- let _ = if true then const unit $ spy "done" { e2: expr2} else unit
-        -- let _ = spy "finished" { n, id, expr2 }
         if rewrite then
           go (n - 1) stopTrying expr2
         else
@@ -1871,8 +1863,8 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
-foreign import spyx :: forall a. String -> a -> a
-foreign import spyxx :: forall a b. String -> a -> b -> b
-spy = spyx :: forall a. String -> a -> a
+-- foreign import spyx :: forall a. String -> a -> a
+-- foreign import spyxx :: forall a b. String -> a -> b -> b
+-- spy = spyx :: forall a. String -> a -> a
 
-foreign import spyy :: forall a. String -> a -> a
+-- foreign import spyy :: forall a. String -> a -> a
