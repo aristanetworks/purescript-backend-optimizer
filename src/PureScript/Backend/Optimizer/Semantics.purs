@@ -50,7 +50,7 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
-  | SemTry (Maybe NeutralExpr) Strikes Attempts BackendSemantics BackendSemantics
+  | SemTry Strikes Attempts BackendSemantics BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -97,7 +97,7 @@ type EffectBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteTry (Maybe NeutralExpr) Strikes Attempts BackendExpr BackendExpr
+  | RewriteTry Strikes Attempts BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
@@ -374,8 +374,8 @@ instance Eval BackendExpr where
                   (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
-          RewriteTry mne strikes attempts backup main -> do
-            if stopTrying then eval env backup else SemTry mne strikes attempts (eval env backup) (eval env main)
+          RewriteTry strikes attempts backup main -> do
+            if stopTrying then eval env backup else SemTry strikes attempts (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -416,8 +416,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry mne strikes attempts backup main, args ->
-      SemTry mne strikes attempts (go env' backup args) (go env' main args)
+    SemTry strikes attempts backup main, args ->
+      SemTry strikes attempts (go env' backup args) (go env' main args)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
@@ -887,7 +887,7 @@ envForGroup env ref acc group
   | otherwise = addStop env ref acc
 
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
-withTry qual env group expr = if Array.null group then evaled else SemTry Nothing (Strikes 0) (Attempts 0) (NeutStop qual) evaled
+withTry qual env group expr = if Array.null group then evaled else SemTry (Strikes 0) (Attempts 0) (NeutStop qual) evaled
   where
   evaled = eval (puntMe env group) expr
 
@@ -1083,16 +1083,14 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry :: Maybe NeutralExpr -> Strikes -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
-buildTry mne strikes attempts backup main =
-  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry mne strikes attempts backup main
+buildTry :: Strikes -> Attempts -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry strikes attempts backup main =
+  ExprRewrite (withRewrite (analysisOf main)) $ RewriteTry strikes attempts backup main
 
-unletted :: BackendExpr -> Tuple BackendExpr BackendExpr
+unletted :: BackendExpr -> BackendExpr
 unletted = case _ of
-  ExprSyntax es (Let a b c k) -> do
-    let Tuple e v = unletted k
-    Tuple (ExprSyntax es (Let a b c e)) v
-  o -> Tuple (ExprSyntax mempty PrimUndefined) o
+  ExprSyntax es (Let _ _ _ k) -> unletted k
+  o -> o
 
 class NeutSim a where
   neutSim :: a -> a -> Boolean
@@ -1185,31 +1183,19 @@ quote = go
     in
       case _ of
         -- Block constructors
-        SemTry mne (Strikes strikes) (Attempts attempts) backup main
+        SemTry (Strikes strikes) (Attempts attempts) backup main
           | attempts >= 50 -> go ctx backup
-          | strikes >= 30 -> go ctx backup
+          | strikes >= 10 -> go ctx backup
           | otherwise ->
               let
                 newMain = quote (ctx { effect = false, trying = true }) main
-                Tuple letBranch exp = unletted newMain
               in
-                case exp of
+                case unletted newMain of
                   ExprSyntax _ (Lit _) -> newMain
                   ExprSyntax _ (PrimOp _) -> newMain
                   ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
-                  ExprSyntax _ (Branch _ _) -> do
-                    -- one common pattern is that we recursively hit the same branch over and over
-                    -- but the let bindings over the branch are different.
-                    -- these let bindings won't have been inlined yet
-                    -- a crude way to test stuff out is to test the let bindings for equality up until the branch
-                    -- we can do this by comparing it to the previous let in the SemTry
-                    let
-                      neutMain = snd $ freeze letBranch
-                      neutAndStrikes = Tuple (Just neutMain) $ case mne of
-                        Just m -> if m `neutSim` neutMain then (Strikes (strikes + 1)) else Strikes 0
-                        Nothing -> Strikes 0
-                    uncurry buildTry neutAndStrikes (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
-                  _ -> buildTry Nothing (Strikes 0) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+                  ExprSyntax _ (Branch _ _) -> buildTry (Strikes (strikes + 1)) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
+                  _ -> buildTry (Strikes 0) (Attempts (attempts + 1)) (quote (ctx { effect = false }) backup) newMain
         SemLet ident binding k -> do
           let Tuple level ctx' = nextLevel ctx
           build (ctx { trying = trying }) $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1748,7 +1734,7 @@ freeze init = Tuple (analysisOf init) (go init)
       NeutralExpr $ go <$> expr
     ExprRewrite _ rewrite ->
       case rewrite of
-        RewriteTry _ _ _ backup _ ->
+        RewriteTry _ _ backup _ ->
           go backup
         RewriteInline ident level binding body ->
           NeutralExpr $ Let ident level (go binding) (go body)
