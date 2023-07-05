@@ -91,6 +91,7 @@ newtype BackendAnalysis = BackendAnalysis
   , complexity :: Complexity
   , args :: Array Usage
   , rewrite :: Boolean
+  , casesOnAbstraction :: Boolean
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
   }
@@ -102,6 +103,7 @@ instance Semigroup BackendAnalysis where
     { usages: Map.unionWith append a.usages b.usages
     , size: a.size + b.size
     , complexity: a.complexity <> b.complexity
+    , casesOnAbstraction: a.casesOnAbstraction || b.casesOnAbstraction
     , args: []
     , rewrite: a.rewrite || b.rewrite
     , deps: Set.union a.deps b.deps
@@ -113,6 +115,7 @@ instance Monoid BackendAnalysis where
     { usages: Map.empty
     , size: 0
     , complexity: Trivial
+    , casesOnAbstraction: false
     , args: []
     , rewrite: false
     , deps: Set.empty

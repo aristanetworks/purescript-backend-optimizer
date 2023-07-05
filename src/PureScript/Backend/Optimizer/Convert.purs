@@ -344,6 +344,7 @@ getCtx env =
   { currentLevel: env.currentLevel
   , lookupExtern
   , effect: false
+  , abstractedLevels: Set.empty
   }
   where
   lookupExtern (Tuple qual acc) = do
