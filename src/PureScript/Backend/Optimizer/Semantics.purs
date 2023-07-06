@@ -1078,15 +1078,9 @@ type Ctx =
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-clearAbstractionCase :: BackendAnalysis -> BackendAnalysis
-clearAbstractionCase (BackendAnalysis analysis) = BackendAnalysis analysis { casesOnAbstraction = false }
-
-setAbstractionCase :: Boolean -> BackendAnalysis -> BackendAnalysis
-setAbstractionCase casesOnAbstraction (BackendAnalysis analysis) = BackendAnalysis analysis { casesOnAbstraction = casesOnAbstraction }
-
 buildTry :: Attempts -> BackendExpr -> BackendExpr -> BackendExpr
 buildTry attempts backup main =
-  ExprRewrite (withRewrite $ clearAbstractionCase $ analysisOf main) $ RewriteTry attempts backup main
+  ExprRewrite (withRewrite $ analysisOf main) $ RewriteTry attempts backup main
 
 getAnalysis :: BackendExpr -> BackendAnalysis
 getAnalysis = case _ of
@@ -1117,7 +1111,7 @@ quote = go
             ExprSyntax _ (Lit _) -> newMain
             ExprSyntax _ (PrimOp _) -> newMain
             ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
-            ExprSyntax (BackendAnalysis { casesOnAbstraction: true }) (Branch _ _)
+            ExprSyntax _ (Branch _ _)
               | attempts > 10 -> do
                   -- if we're still branching on an unapplied abstraction argument after 10 rounds, we give up
                   -- as it's unlikely that it'll reduce any further
@@ -1222,86 +1216,6 @@ quote = go
     NeutFail err ->
       build ctx $ Fail err
 
-class IsAbstractionInCondition a where
-  isAbstractionInCondition :: Set.Set Level -> a -> Boolean
-
-instance IsAbstractionInCondition BackendExpr where
-  isAbstractionInCondition levels = case _ of
-    ExprRewrite _ r -> false
-    ExprSyntax _ v -> isAbstractionInCondition levels v
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (Array a) where
-  isAbstractionInCondition levels = any (isAbstractionInCondition levels)
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (NonEmptyArray a) where
-  isAbstractionInCondition levels = isAbstractionInCondition levels <<< NonEmptyArray.toArray
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (Prop a) where
-  isAbstractionInCondition levels (Prop _ a) = isAbstractionInCondition levels a
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (Pair a) where
-  isAbstractionInCondition levels (Pair a b) = isAbstractionInCondition levels a || isAbstractionInCondition levels b
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (Tuple String a) where
-  isAbstractionInCondition levels (Tuple _ a) = isAbstractionInCondition levels a
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (Tuple Ident a) where
-  isAbstractionInCondition levels (Tuple _ a) = isAbstractionInCondition levels a
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (BackendOperator a) where
-  isAbstractionInCondition levels = case _ of
-    Op1 _ a -> isAbstractionInCondition levels a
-    Op2 _ a b -> isAbstractionInCondition levels a || isAbstractionInCondition levels b
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (Literal a) where
-  isAbstractionInCondition levels = case _ of
-    LitInt _ -> false
-    LitNumber _ -> false
-    LitString _ -> false
-    LitChar _ -> false
-    LitBoolean _ -> false
-    LitArray arr -> isAbstractionInCondition levels arr
-    LitRecord props -> isAbstractionInCondition levels props
-
-instance IsAbstractionInCondition a => IsAbstractionInCondition (BackendEffect a) where
-  isAbstractionInCondition levels = case _ of
-    EffectRefNew a -> isAbstractionInCondition levels a
-    EffectRefRead a -> isAbstractionInCondition levels a
-    EffectRefWrite a b -> isAbstractionInCondition levels a || isAbstractionInCondition levels b
-
-instance IsAbstractionInCondition f => IsAbstractionInCondition (BackendSyntax f) where
-  isAbstractionInCondition levels = case _ of
-    Var _ -> false
-    Local _ level -> level `Set.member` levels
-    Lit lit -> isAbstractionInCondition levels lit
-    App fn args -> isAbstractionInCondition levels fn || isAbstractionInCondition levels args
-    Abs _ body -> isAbstractionInCondition levels body
-    UncurriedApp fn args -> isAbstractionInCondition levels fn || isAbstractionInCondition levels args
-    UncurriedAbs _ body -> isAbstractionInCondition levels body
-    UncurriedEffectApp fn args -> isAbstractionInCondition levels fn || isAbstractionInCondition levels args
-    UncurriedEffectAbs _ body -> isAbstractionInCondition levels body
-    Accessor obj _ -> isAbstractionInCondition levels obj
-    Update obj props -> isAbstractionInCondition levels obj || isAbstractionInCondition levels props
-    CtorSaturated _ _ _ _ args -> isAbstractionInCondition levels args
-    CtorDef _ _ _ _ -> false
-    LetRec _ bindings body -> isAbstractionInCondition levels bindings || isAbstractionInCondition levels body
-    Let _ _ binding body -> isAbstractionInCondition levels binding || isAbstractionInCondition levels body
-    EffectBind _ _ binding body -> isAbstractionInCondition levels binding || isAbstractionInCondition levels body
-    EffectPure binding -> isAbstractionInCondition levels binding
-    EffectDefer binding -> isAbstractionInCondition levels binding
-    Branch branches def -> isAbstractionInCondition levels branches || isAbstractionInCondition levels def
-    PrimOp op -> isAbstractionInCondition levels op
-    PrimEffect eff -> isAbstractionInCondition levels eff
-    PrimUndefined -> false
-    Fail _ -> false
-
-isAbstractionInBranch :: Set.Set Level -> NonEmptyArray (Pair BackendExpr) -> Boolean
-isAbstractionInBranch levels pairs = go (NonEmptyArray.toArray pairs)
-  where
-  go arr
-    | Just { head: Pair head _, tail } <- Array.uncons arr = isAbstractionInCondition levels head || go tail
-    | otherwise = false
-
 build :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
 build ctx = case _ of
   App (ExprSyntax _ (App hd tl1)) tl2 ->
@@ -1402,8 +1316,6 @@ build ctx = case _ of
     expr
   Branch pairs def | Just expr <- simplifyBranches ctx pairs def ->
     expr
-  expr@(Branch pairs _) ->
-    ExprSyntax (setAbstractionCase (isAbstractionInBranch ctx.abstractedLevels pairs) (analyzeDefault ctx expr)) expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr -> do
