@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), IsFunction(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
@@ -335,14 +335,14 @@ primBinaryOperator op env _ = case _ of
   [ ExternApp [ a ] ] ->
     Just $ makeLet Nothing a \a' ->
       SemLam Nothing \b' ->
-        evalPrimOp env (Op2 op a' b')
+        evalPrimOp env (IsFunction false) (Op2 op a' b')
   _ ->
     Nothing
 
 primUnaryOperator :: BackendOperator1 -> ForeignEval
 primUnaryOperator op env _ = case _ of
   [ ExternApp [ a ] ] ->
-    Just $ evalPrimOp env (Op1 op a)
+    Just $ evalPrimOp env (IsFunction false) (Op1 op a)
   _ ->
     Nothing
 
@@ -350,11 +350,11 @@ primOrdOperator :: (BackendOperatorOrd -> BackendOperator2) -> ForeignEval
 primOrdOperator op env _ = case _ of
   [ ExternAccessor (GetProp "compare"), ExternApp [ a, b ], ExternPrimOp (OpIsTag tag) ]
     | isQualified "Data.Ordering" "LT" tag ->
-        Just $ evalPrimOp env $ Op2 (op OpLt) a b
+        Just $ evalPrimOp env (IsFunction false) $ Op2 (op OpLt) a b
     | isQualified "Data.Ordering" "GT" tag ->
-        Just $ evalPrimOp env $ Op2 (op OpGt) a b
+        Just $ evalPrimOp env (IsFunction false) $ Op2 (op OpGt) a b
     | isQualified "Data.Ordering" "EQ" tag ->
-        Just $ evalPrimOp env $ Op2 (op OpEq) a b
+        Just $ evalPrimOp env (IsFunction false) $ Op2 (op OpEq) a b
   _ ->
     Nothing
 
@@ -574,11 +574,11 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
           props
       Just $ NeutLit (LitRecord props')
     [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _ _) _) ] ] -> do
-      let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
+      let update = Prop prop (evalApp env fn [ (evalAccessor env (IsFunction false) r' (GetProp prop)) ])
       Just $ evalUpdate env r [ update ]
     [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
       Just $ makeLet Nothing r \r' -> do
-        let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
+        let update = Prop prop (evalApp env fn [ (evalAccessor env (IsFunction false) r' (GetProp prop)) ])
         evalUpdate env r [ update ]
     _ ->
       Nothing
@@ -614,7 +614,7 @@ record_unsafe_unsafeGet = Tuple (qualified "Record.Unsafe" "unsafeGet") go
   go env _ = case _ of
     [ ExternApp [ NeutLit (LitString prop) ] ] ->
       Just $ SemLam Nothing \r ->
-        evalAccessor env r $ GetProp prop
+        evalAccessor env (IsFunction false) r $ GetProp prop
     _ ->
       Nothing
 

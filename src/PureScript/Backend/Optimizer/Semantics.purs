@@ -23,15 +23,15 @@ import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
-newtype Attempts = Attempts Int
+newtype IsFunction = IsFunction Boolean
 
-derive newtype instance Eq Attempts
-derive newtype instance Ord Attempts
-derive instance Newtype Attempts _
+derive newtype instance Eq IsFunction
+derive newtype instance Ord IsFunction
+derive instance Newtype IsFunction _
 
 type Spine a = Array a
 
@@ -173,6 +173,7 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
+  , isAppHead :: Boolean
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
@@ -181,6 +182,9 @@ newtype Env = Env
   , stopTrying :: Boolean
   , punt :: Set.Set (Qualified Ident)
   }
+
+setIsAppHead :: Boolean -> Env -> Env
+setIsAppHead b (Env env) = Env env { isAppHead = b }
 
 derive instance Newtype Env _
 
@@ -220,80 +224,82 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env@(Env { punt }) = case _ of
-    Var qual
-      | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
-      | otherwise -> evalExtern env qual []
-    Local ident lvl ->
-      case lookupLocal env lvl of
-        Just (One sem) -> sem
-        Just (Group group) | Just sem <- flip Tuple.lookup group =<< ident ->
-          force sem
-        _ ->
-          unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-    App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
-    UncurriedApp hd tl ->
-      evalUncurriedApp env (eval env hd) (eval env <$> tl)
-    UncurriedAbs idents body -> do
-      let
-        loop env' = case _ of
-          List.Nil ->
-            MkFnApplied (eval env' body)
-          List.Cons a as ->
-            MkFnNext a \nextArg ->
-              loop (bindLocal env' (One nextArg)) as
-      SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
-    UncurriedEffectApp hd tl ->
-      evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
-    UncurriedEffectAbs idents body -> do
-      let
-        loop env' = case _ of
-          List.Nil ->
-            MkFnApplied (eval env' body)
-          List.Cons a as ->
-            MkFnNext a \nextArg ->
-              loop (bindLocal env' (One nextArg)) as
-      SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
-    Abs idents body -> do
-      foldr1Array
-        (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
-        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
-        idents
-        env
-    Let ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
-    LetRec _ bindings body -> do
-      let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
-      SemLetRec (map bindGroup <$> bindings) (bindGroup body)
-    EffectBind ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
-    EffectPure val ->
-      guardFail (eval env val) SemEffectPure
-    EffectDefer val ->
-      guardFail (eval env val) SemEffectDefer
-    Accessor lhs accessor ->
-      evalAccessor env (eval env lhs) accessor
-    Update lhs updates ->
-      evalUpdate env (eval env lhs) (map (eval env) <$> updates)
-    Branch branches def ->
-      evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
-    PrimOp op -> do
-      evalPrimOp env (eval env <$> op)
-    PrimEffect eff ->
-      guardFailOver identity (eval env <$> eff) NeutPrimEffect
-    PrimUndefined ->
-      NeutPrimUndefined
-    Lit lit ->
-      guardFailOver identity (eval env <$> lit) NeutLit
-    Fail err ->
-      NeutFail err
-    CtorDef ct ty tag fields ->
-      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-    CtorSaturated qual ct ty tag fields ->
-      guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
+  eval (Env e@{ isAppHead }) = go (Env e { isAppHead = false })
+    where
+    go env@(Env ee@{ punt }) = case _ of
+      Var qual
+        | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
+        | otherwise -> evalExtern env qual []
+      Local ident lvl ->
+        case lookupLocal env lvl of
+          Just (One sem) -> sem
+          Just (Group group) | Just sem <- flip Tuple.lookup group =<< ident ->
+            force sem
+          _ ->
+            unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
+      App hd tl ->
+        evalApp env (eval (Env ee { isAppHead = true}) hd) (NonEmptyArray.toArray (eval env <$> tl))
+      UncurriedApp hd tl ->
+        evalUncurriedApp env (eval env hd) (eval env <$> tl)
+      UncurriedAbs idents body -> do
+        let
+          loop env' = case _ of
+            List.Nil ->
+              MkFnApplied (eval env' body)
+            List.Cons a as ->
+              MkFnNext a \nextArg ->
+                loop (bindLocal env' (One nextArg)) as
+        SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
+      UncurriedEffectApp hd tl ->
+        evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
+      UncurriedEffectAbs idents body -> do
+        let
+          loop env' = case _ of
+            List.Nil ->
+              MkFnApplied (eval env' body)
+            List.Cons a as ->
+              MkFnNext a \nextArg ->
+                loop (bindLocal env' (One nextArg)) as
+        SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
+      Abs idents body -> do
+        foldr1Array
+          (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
+          (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
+          idents
+          env
+      Let ident _ binding body ->
+        guardFail (eval env binding) \binding' ->
+          makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
+      LetRec _ bindings body -> do
+        let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
+        SemLetRec (map bindGroup <$> bindings) (bindGroup body)
+      EffectBind ident _ binding body ->
+        guardFail (eval env binding) \binding' ->
+          SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
+      EffectPure val ->
+        guardFail (eval env val) SemEffectPure
+      EffectDefer val ->
+        guardFail (eval env val) SemEffectDefer
+      Accessor lhs accessor -> do
+        evalAccessor env (IsFunction isAppHead) (eval (setIsAppHead isAppHead env) lhs) accessor
+      Update lhs updates ->
+        evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+      Branch branches def ->
+        evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
+      PrimOp op -> do
+        evalPrimOp env (IsFunction isAppHead) (eval env <$> op)
+      PrimEffect eff ->
+        guardFailOver identity (eval env <$> eff) NeutPrimEffect
+      PrimUndefined ->
+        NeutPrimUndefined
+      Lit lit ->
+        guardFailOver identity (eval env <$> lit) NeutLit
+      Fail err ->
+        NeutFail err
+      CtorDef ct ty tag fields ->
+        NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
+      CtorSaturated qual ct ty tag fields ->
+        guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
 clearRecurse :: Env -> Env
 clearRecurse (Env e) = Env e { safeToRecurse = Nothing }
@@ -394,13 +400,13 @@ instance Eval BackendExpr where
               DistUncurriedApp spine ->
                 flip (evalUncurriedApp env) (eval env <$> spine)
               DistAccessor acc ->
-                flip (evalAccessor env) acc
+                flip (evalAccessor env (IsFunction false)) acc
               DistPrimOp1 op1 ->
-                evalPrimOp env <<< Op1 op1
+                evalPrimOp env (IsFunction false) <<< Op1 op1
               DistPrimOp2L op2 rhs ->
-                evalPrimOp env <<< flip (Op2 op2) (eval env rhs)
+                evalPrimOp env (IsFunction false) <<< flip (Op2 op2) (eval env rhs)
               DistPrimOp2R lhs op2 ->
-                evalPrimOp env <<< Op2 op2 (eval env lhs)
+                evalPrimOp env (IsFunction false) <<< Op2 op2 (eval env lhs)
       ExprSyntax _ expr ->
         eval env expr
 
@@ -496,9 +502,9 @@ evalSpine env = foldl go
     ExternUncurriedApp spine ->
       evalUncurriedApp env hd spine
     ExternAccessor accessor ->
-      evalAccessor env hd accessor
+      evalAccessor env (IsFunction false) hd accessor
     ExternPrimOp op1 ->
-      evalPrimOp env (Op1 op1 hd)
+      evalPrimOp env (IsFunction false) (Op1 op1 hd)
 
 neutralSpine :: BackendSemantics -> Array ExternSpine -> BackendSemantics
 neutralSpine = foldl go
@@ -523,9 +529,9 @@ neutralApp hd spine
       _ -> do
         NeutApp hd spine
 
-evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
-evalAccessor initEnv initLhs accessor =
-  evalAssocLet initEnv initLhs \env lhs -> case lhs of
+evalAccessor :: Env -> IsFunction -> BackendSemantics -> BackendAccessor -> BackendSemantics
+evalAccessor initEnv (IsFunction isFunction) initLhs accessor = 
+  evalAssocLet initEnv initLhs \env lhs -> (if isFunction then deref else identity) $ case (if isFunction then deref else identity) lhs of
     SemExtern qual spine _ ->
       evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
     NeutLit (LitRecord props)
@@ -538,7 +544,7 @@ evalAccessor initEnv initLhs accessor =
             Just sem ->
               sem
             Nothing ->
-              evalAccessor env rec accessor
+              evalAccessor env (IsFunction isFunction) rec accessor
     NeutLit (LitArray values)
       | GetIndex n <- accessor
       , Just sem <- Array.index values n ->
@@ -640,13 +646,22 @@ makeLet ident binding go = case binding of
 
 deref :: BackendSemantics -> BackendSemantics
 deref = case _ of
-  NeutLocal _ _ (Just expr) -> expr
+  o@(NeutAccessor expr accessand) -> do
+    case deref expr, accessand of
+      NeutLit (LitArray arr), GetIndex i
+        | Just v <- Array.index arr i -> deref v
+      NeutLit (LitRecord rec), GetProp p
+        | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> deref v
+      NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
+        | Just (Tuple _ v) <- Array.index vals i -> deref v
+      _, _ -> o
+  NeutLocal _ _ (Just expr) -> deref expr
   expr -> expr
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
-evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
-evalPrimOp env = case _ of
+evalPrimOp :: Env -> IsFunction -> BackendOperator BackendSemantics -> BackendSemantics
+evalPrimOp env isFunction = case _ of
   Op1 op1 x ->
     case op1, x of
       OpBooleanNot, NeutLit (LitBoolean bool) ->
@@ -694,9 +709,9 @@ evalPrimOp env = case _ of
             y
       OpBooleanOrd OpEq
         | NeutLit (LitBoolean bool) <- x ->
-            if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
+            if bool then y else evalPrimOp env isFunction (Op1 OpBooleanNot y)
         | NeutLit (LitBoolean bool) <- y ->
-            if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
+            if bool then x else evalPrimOp env isFunction (Op1 OpBooleanNot x)
       OpBooleanOrd op
         | NeutLit (LitBoolean a) <- x
         , NeutLit (LitBoolean b) <- y ->
@@ -731,7 +746,7 @@ evalPrimOp env = case _ of
             liftInt (zshr a b)
       OpIntNum OpSubtract
         | NeutLit (LitInt 0) <- x ->
-            evalPrimOp env (Op1 OpIntNegate y)
+            evalPrimOp env isFunction (Op1 OpIntNegate y)
       OpIntNum op
         | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
             result
@@ -741,7 +756,7 @@ evalPrimOp env = case _ of
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
         | NeutLit (LitNumber 0.0) <- x ->
-            evalPrimOp env (Op1 OpNumberNegate y)
+            evalPrimOp env isFunction (Op1 OpNumberNegate y)
       OpNumberNum op
         | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
             result
@@ -754,11 +769,11 @@ evalPrimOp env = case _ of
         , NeutLit (LitString b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
-        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
+        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) (deref x) (deref y) ->
             result
       OpArrayIndex
         | NeutLit (LitInt n) <- y ->
-            evalAccessor env x (GetIndex n)
+            evalAccessor env isFunction x (GetIndex n)
       OpBooleanAnd -> -- Lazy operator should not be reassociated
 
         case x, y of
@@ -1130,12 +1145,11 @@ quote = go
           if prevWasRewritten then
             buildTry qual (quote (diseffectCtx ctx) backup) newMain
           else if hasBranch then do
-              let _ = spy "shit" newMain
-              quote (diseffectCtx ctx) backup
+            -- let _ = spy "has branch" newMain
+            quote (diseffectCtx ctx) backup
           else safeToRecurse qual newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      let _ = spy "injecting let" level
       build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
@@ -1170,7 +1184,6 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      let _ = spy "injecting for sem lam" level
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
@@ -1192,7 +1205,7 @@ quote = go
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
-    NeutLocal ident level _ ->
+    NeutLocal ident level _ -> do
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
@@ -1337,6 +1350,8 @@ build ctx = case _ of
     expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
+  expr@(Local _ _) -> do
+    buildDefault ctx expr
   expr -> do
     buildDefault ctx expr
 
@@ -1575,7 +1590,7 @@ shouldDisposeOfAccessor'sAccessee (BackendAnalysis { usages }) syn acc =
       | Just v <- Array.index arr i -> Just v
     Lit (LitRecord rec), GetProp p
       | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> Just v
-    CtorSaturated _ ProductType _ _ vals, GetCtorField _ _ _ _ _ i
+    CtorSaturated _ _ _ _ vals, GetCtorField _ _ _ _ _ i
       | Just (Tuple _ v) <- Array.index vals i -> Just v
     _, _ -> Nothing
 
@@ -1648,14 +1663,14 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 derive instance Newtype NeutralExpr _
 
 withStopTrying :: Boolean -> Env -> Env
-withStopTrying stopTrying (Env env) = Env env  { stopTrying = stopTrying }
+withStopTrying stopTrying (Env env) = Env env { stopTrying = stopTrying }
 
 withPrevWasRewritten :: Boolean -> Env -> Env
-withPrevWasRewritten prevWasRewritten (Env env) = Env env  { prevWasRewritten = prevWasRewritten }
+withPrevWasRewritten prevWasRewritten (Env env) = Env env { prevWasRewritten = prevWasRewritten }
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
-  -- let _ = spy "starting" { id } 
+  -- let _ = spy "starting" id
   go true false initN ex1
   where
   go prevWasRewritten stopTrying n expr1

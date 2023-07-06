@@ -9,7 +9,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), evalApp, evalPrimOp, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), IsFunction(..), evalApp, evalPrimOp, makeLet)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSemantics, qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator2(..))
 import PureScript.Backend.Optimizer.Utils (foldr1Array)
@@ -133,7 +133,7 @@ data_show_showArrayImpl = Tuple (qualified "Data.Show" "showArrayImpl") go
         Nothing ->
           litString "[]"
         Just nea -> do
-          let appendStrings l r = evalPrimOp env (Op2 OpStringAppend l r)
+          let appendStrings l r = evalPrimOp env (IsFunction false) (Op2 OpStringAppend l r)
           let showVal val = evalApp env showDict [ val ]
           let foldFn next acc = appendStrings (showVal next) $ appendStrings (litString ",") acc
           appendStrings (litString "[") $ foldr1Array foldFn (\last -> appendStrings (showVal last) (litString "]")) nea
