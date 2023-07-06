@@ -88,9 +88,15 @@ instance Monoid ResultTerm where
 newtype BackendAnalysis = BackendAnalysis
   { usages :: Map Level Usage
   , size :: Int
+  , hasBranch :: Boolean
   , complexity :: Complexity
   , args :: Array Usage
   , rewrite :: Boolean
+  -- rewriteTry separate from rewrite because
+  -- rewrite tracks everything but recursion,
+  -- whereas rewriteTry tracks only recursion.
+  , rewriteTry :: Boolean
+  , safeToRecurse :: Maybe (Qualified Ident)
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
   }
@@ -103,7 +109,12 @@ instance Semigroup BackendAnalysis where
     , size: a.size + b.size
     , complexity: a.complexity <> b.complexity
     , args: []
+    , hasBranch: a.hasBranch || b.hasBranch
     , rewrite: a.rewrite || b.rewrite
+    -- we never propagate safe to recurse up the tree
+    -- it should always be in one and only one place
+    , safeToRecurse: Nothing
+    , rewriteTry: a.rewriteTry || b.rewriteTry
     , deps: Set.union a.deps b.deps
     , result: a.result <> b.result
     }
@@ -114,7 +125,10 @@ instance Monoid BackendAnalysis where
     , size: 0
     , complexity: Trivial
     , args: []
+    , hasBranch: false
     , rewrite: false
+    , rewriteTry: false
+    , safeToRecurse: Nothing
     , deps: Set.empty
     , result: KnownNeutral
     }
@@ -134,6 +148,9 @@ withArgs args (BackendAnalysis s) = BackendAnalysis s { args = args }
 
 withRewrite :: BackendAnalysis -> BackendAnalysis
 withRewrite (BackendAnalysis s) = BackendAnalysis s { rewrite = true }
+
+withRewriteTry :: BackendAnalysis -> BackendAnalysis
+withRewriteTry (BackendAnalysis s) = BackendAnalysis s { rewriteTry = true }
 
 used :: Level -> BackendAnalysis
 used level = do
@@ -190,6 +207,12 @@ callArity lvl arity (BackendAnalysis s) = BackendAnalysis s
 withResult :: ResultTerm -> BackendAnalysis -> BackendAnalysis
 withResult r (BackendAnalysis s) = BackendAnalysis s { result = r }
 
+isBranch :: BackendAnalysis -> BackendAnalysis
+isBranch (BackendAnalysis s) = BackendAnalysis s { hasBranch = true }
+
+clearBranch :: BackendAnalysis -> BackendAnalysis
+clearBranch (BackendAnalysis s) = BackendAnalysis s { hasBranch = false }
+
 class HasAnalysis a where
   analysisOf :: a -> BackendAnalysis
 
@@ -235,6 +258,7 @@ analyze externAnalysis expr = case expr of
       $ analysisOf a
   Abs args _ ->
     withResult KnownNeutral
+      $ clearBranch
       $ complex KnownSize
       $ capture CaptureClosure
       $ foldr (boundArg <<< snd) (analyzeDefault expr) args
@@ -310,7 +334,7 @@ analyze externAnalysis expr = case expr of
   Branch bs def -> do
     let Pair a b = NonEmptyArray.head bs
     let result = foldMap (resultOf <<< sndPair) bs
-    withResult result $ complex NonTrivial do
+    withResult result $ isBranch $ complex NonTrivial do
       analysisOf a
         <> capture CaptureBranch (analysisOf b)
         <> capture CaptureBranch (foldMap (foldMap analysisOf) (NonEmptyArray.tail bs))

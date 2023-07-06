@@ -2,6 +2,7 @@ module PureScript.Backend.Optimizer.Semantics where
 
 import Prelude
 
+import Control.Alt ((<|>))
 import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -21,7 +22,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
+import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
@@ -43,7 +44,7 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
-  | SemTry Attempts BackendSemantics BackendSemantics
+  | SemTry (Qualified Ident) Boolean BackendSemantics BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -90,7 +91,7 @@ type EffectBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteTry Attempts BackendExpr BackendExpr
+  | RewriteTry (Qualified Ident) BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
@@ -175,6 +176,9 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
+  , safeToRecurse :: Maybe (Qualified Ident)
+  , prevWasRewritten :: Boolean
+  , stopTrying :: Boolean
   , punt :: Set.Set (Qualified Ident)
   }
 
@@ -291,13 +295,23 @@ instance Eval f => Eval (BackendSyntax f) where
     CtorSaturated qual ct ty tag fields ->
       guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
+clearRecurse :: Env -> Env
+clearRecurse (Env e) = Env e { safeToRecurse = Nothing }
+
 instance Eval BackendExpr where
-  eval = go
+  eval = go'
     where
-    go env = case _ of
+    go' (Env env) be = do
+      let BackendAnalysis { safeToRecurse } = getAnalysis be
+      -- because the analysis semigroup clears safeToRecurse at any point
+      -- other than where its added to the tree, we alt it here so that it
+      -- makes its way down to where it needs to be
+      go (Env env { safeToRecurse = safeToRecurse <|> env.safeToRecurse }) be
+    go env@(Env { safeToRecurse: s2r, stopTrying, prevWasRewritten }) = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
-          RewriteRecurse ident -> eval env (Var ident :: BackendSyntax BackendExpr)
+          RewriteRecurse ident ->
+            if s2r == Just ident || stopTrying then eval (clearRecurse env) (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon ident
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
           RewriteUncurry ident _ args binding body ->
@@ -366,8 +380,8 @@ instance Eval BackendExpr where
                   (flip eval body <<< bindLocal env <<< One <<< NeutData qual ct ty tag)
                   fields
                   []
-          RewriteTry attempts backup main -> do
-            SemTry attempts (eval env backup) (eval env main)
+          RewriteTry qual backup main ->
+            if stopTrying then eval env backup else SemTry qual prevWasRewritten (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -408,8 +422,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
       NeutFail err
     NeutFail err, _ ->
       NeutFail err
-    SemTry attempts backup main, args ->
-      SemTry attempts (go env' backup args) (go env' main args)
+    SemTry attempts pwr backup main, args ->
+      SemTry attempts pwr (go env' backup args) (go env' main args)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
@@ -879,7 +893,7 @@ envForGroup env ref acc group
   | otherwise = addStop env ref acc
 
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
-withTry qual env group expr = if Array.null group then evaled else SemTry (Attempts 0) (NeutStop qual) evaled
+withTry qual env group expr = if Array.null group then evaled else SemTry qual true (NeutStop qual) evaled
   where
   evaled = eval (puntMe env group) expr
 
@@ -1071,12 +1085,21 @@ type Ctx =
   , effect :: Boolean
   }
 
+safeToRecurse :: Qualified Ident -> BackendExpr -> BackendExpr
+safeToRecurse qual = case _ of
+  ExprRewrite a expr ->
+    ExprRewrite (go a) expr
+  ExprSyntax a expr ->
+    ExprSyntax (go a) expr
+  where
+  go (BackendAnalysis analysis) = (BackendAnalysis analysis { safeToRecurse = Just qual, rewrite = true })
+
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry :: Attempts -> BackendExpr -> BackendExpr -> BackendExpr
-buildTry attempts backup main =
-  ExprRewrite (withRewrite $ analysisOf main) $ RewriteTry attempts backup main
+buildTry :: Qualified Ident -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry qual backup main =
+  ExprRewrite (withRewriteTry $ analysisOf main) $ RewriteTry qual backup main
 
 getAnalysis :: BackendExpr -> BackendAnalysis
 getAnalysis = case _ of
@@ -1096,22 +1119,23 @@ quote = go
   where
   go ctx = case _ of
     -- Block constructors
-    SemTry (Attempts attempts) backup main
-      | attempts >= 10000 -> go ctx backup
-      | otherwise -> do
-          let newMain = quote (diseffectCtx ctx) main
-          case unlet newMain of
-            ExprSyntax _ (Lit _) -> newMain
-            ExprSyntax _ (PrimOp _) -> newMain
-            ExprSyntax _ (CtorSaturated _ _ _ _ _) -> newMain
-            ExprSyntax _ (Branch _ _)
-              | attempts > 10 -> do
-                  -- if we're still branching on an unapplied abstraction argument after 10 rounds, we give up
-                  -- as it's unlikely that it'll reduce any further
-                  go ctx backup
-            _ -> buildTry (Attempts (attempts + 1)) (quote (diseffectCtx ctx) backup) newMain
+    SemTry qual prevWasRewritten backup main -> do
+      let newMain = quote (diseffectCtx ctx) main
+      case unlet newMain of
+        ExprSyntax _ (Lit _) -> safeToRecurse qual newMain
+        ExprSyntax _ (PrimOp _) -> safeToRecurse qual newMain
+        ExprSyntax _ (CtorSaturated _ _ _ _ _) -> safeToRecurse qual newMain
+        _ -> do
+          let BackendAnalysis { hasBranch } = getAnalysis newMain
+          if prevWasRewritten then
+            buildTry qual (quote (diseffectCtx ctx) backup) newMain
+          else if hasBranch then do
+              let _ = spy "shit" newMain
+              quote (diseffectCtx ctx) backup
+          else safeToRecurse qual newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
+      let _ = spy "injecting let" level
       build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
@@ -1138,11 +1162,15 @@ quote = go
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
-    RecurseWithRecklessAbandon ident -> ExprRewrite (withRewrite (analyzeDefault ctx (Var ident))) $ RewriteRecurse ident
+    RecurseWithRecklessAbandon ident -> do
+      -- this should not trigger a rewrite
+      -- as we want to see if the rest of the tree triggers a rewrite
+      ExprRewrite (analyzeDefault ctx (Var ident)) $ RewriteRecurse ident
     SemExtern _ _ sem ->
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
+      let _ = spy "injecting for sem lam" level
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
@@ -1619,19 +1647,27 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
+withStopTrying :: Boolean -> Env -> Env
+withStopTrying stopTrying (Env env) = Env env  { stopTrying = stopTrying }
+
+withPrevWasRewritten :: Boolean -> Env -> Env
+withPrevWasRewritten prevWasRewritten (Env env) = Env env  { prevWasRewritten = prevWasRewritten }
+
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
-  go initN ex1
+  -- let _ = spy "starting" { id } 
+  go true false initN ex1
   where
-  go n expr1
+  go prevWasRewritten stopTrying n expr1
+    | n == 0, not stopTrying = go true true initN expr1
     | n == 0 = do
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
-        let expr2 = quote ctx (eval env expr1)
-        let BackendAnalysis { rewrite } = analysisOf expr2
-        if rewrite then
-          go (n - 1) expr2
+        let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
+        let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
+        if rewrite || rewriteTry then
+          go rewrite stopTrying (n - 1) expr2
         else
           expr2
 
