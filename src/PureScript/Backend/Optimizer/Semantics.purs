@@ -3,14 +3,12 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
-import Data.Array (any)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
-import Data.Function (on)
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
@@ -21,11 +19,11 @@ import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
-import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
 newtype Attempts = Attempts Int
@@ -178,7 +176,6 @@ newtype Env = Env
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   , punt :: Set.Set (Qualified Ident)
-  , stopTrying :: Boolean
   }
 
 derive instance Newtype Env _
@@ -297,7 +294,7 @@ instance Eval f => Eval (BackendSyntax f) where
 instance Eval BackendExpr where
   eval = go
     where
-    go env@(Env { stopTrying }) = case _ of
+    go env = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
           RewriteRecurse ident -> eval env (Var ident :: BackendSyntax BackendExpr)
@@ -370,7 +367,7 @@ instance Eval BackendExpr where
                   fields
                   []
           RewriteTry attempts backup main -> do
-            if stopTrying then eval env backup else SemTry attempts (eval env backup) (eval env main)
+            SemTry attempts (eval env backup) (eval env main)
           RewriteDistBranchesLet _ _ branches def body ->
             rewriteBranches (flip eval body <<< bindLocal env <<< One)
               $ evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -1628,25 +1625,19 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-withStopTrying :: Boolean -> Env -> Env
-withStopTrying stopTrying (Env env) = Env env
-  { stopTrying = stopTrying }
-
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
-  go initN false ex1
+  go initN ex1
   where
-  go n stopTrying expr1
-    | n == 0, stopTrying, stopTrying = do
+  go n expr1
+    | n == 0 = do
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
-    | n == 0, not stopTrying = do
-        go initN true expr1
     | otherwise = do
-        let expr2 = quote ctx (eval (withStopTrying stopTrying env) expr1)
+        let expr2 = quote ctx (eval env expr1)
         let BackendAnalysis { rewrite } = analysisOf expr2
         if rewrite then
-          go (n - 1) stopTrying expr2
+          go (n - 1) expr2
         else
           expr2
 
@@ -1775,8 +1766,7 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
--- foreign import spyx :: forall a. String -> a -> a
--- foreign import spyxx :: forall a b. String -> a -> b -> b
--- spy = spyx :: forall a. String -> a -> a
-
--- foreign import spyy :: forall a. String -> a -> a
+foreign import spyx :: forall a. String -> a -> a
+foreign import spyxx :: forall a b. String -> a -> b -> b
+foreign import spyy :: forall a. String -> a -> a
+spy = spyx :: forall a. String -> a -> a
