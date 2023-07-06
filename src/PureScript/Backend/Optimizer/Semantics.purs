@@ -1069,7 +1069,6 @@ type Ctx =
   { currentLevel :: Int
   , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
   , effect :: Boolean
-  , abstractedLevels :: Set.Set Level
   }
 
 nextLevel :: Ctx -> Tuple Level Ctx
@@ -1092,9 +1091,6 @@ unlet = case _ of
 diseffectCtx :: Ctx -> Ctx
 diseffectCtx ctx = ctx { effect = false }
 
-addAbsLevelToCtx :: Level -> Ctx -> Ctx
-addAbsLevelToCtx i ctx = ctx { abstractedLevels = Set.insert i ctx.abstractedLevels }
-
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
@@ -1116,9 +1112,7 @@ quote = go
             _ -> buildTry (Attempts (attempts + 1)) (quote (diseffectCtx ctx) backup) newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      let stmt = quote (diseffectCtx ctx) binding
-      let stmtUsesAbstraction = not $ Set.isEmpty $ Set.intersection ctx.abstractedLevels (Map.keys $ (unwrap $ getAnalysis stmt).usages)
-      build ctx $ Let ident level stmt $ quote ((if stmtUsesAbstraction then addAbsLevelToCtx level else identity) ctx') $ k $ NeutLocal ident level (Just binding)
+      build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1149,7 +1143,7 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (addAbsLevelToCtx level $ diseffectCtx ctx') $ k $ NeutLocal ident level Nothing
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
