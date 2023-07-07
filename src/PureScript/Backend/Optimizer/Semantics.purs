@@ -22,7 +22,6 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
-import Prim.TypeError (class Warn, Text)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
@@ -1151,18 +1150,6 @@ unlet = case _ of
 diseffectCtx :: Ctx -> Ctx
 diseffectCtx ctx = ctx { effect = false }
 
-markAsFail :: BackendExpr -> BackendExpr
-markAsFail = case _ of
-  ExprRewrite a expr ->
-    ExprRewrite (go a) expr
-  ExprSyntax a expr ->
-    ExprSyntax (go a) expr
-  where
-  go (BackendAnalysis analysis) = (BackendAnalysis analysis { fail = true })
-
-dbg :: forall a. Warn (Text "Use the second one in production") => a -> a -> a
-dbg a _ = a
-
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
@@ -1231,7 +1218,7 @@ quote = go
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
-    NeutLocal ident level t -> do
+    NeutLocal ident level _ -> do
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
