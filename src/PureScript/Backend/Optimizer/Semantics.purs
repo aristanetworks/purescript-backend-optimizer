@@ -930,8 +930,10 @@ envForGroup env ref acc group
 
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
 withTry qual env group expr =
-  if Array.null group then eval env expr
-  else SemTry qual true (NeutStop qual) (eval (puntMe env group) expr)
+  if Array.null group then eval evaled expr
+  else SemTry qual true (NeutStop qual) (eval evaled expr)
+  where
+  evaled = puntMe env group
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
@@ -1161,7 +1163,7 @@ quote = go
       if not hasBranch then safeToRecurse qual newMain
       else if prevWasRewritten then
         buildTry qual (quote (diseffectCtx ctx) backup) newMain
-      else quote (diseffectCtx ctx) backup
+      else {-let _ = spy "FAILING" {qual,newMain,main} in-} quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
