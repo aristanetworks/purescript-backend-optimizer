@@ -15,7 +15,7 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..))
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
@@ -1151,15 +1151,6 @@ unlet = case _ of
 diseffectCtx :: Ctx -> Ctx
 diseffectCtx ctx = ctx { effect = false }
 
-addDereferenceInfo :: Boolean -> BackendExpr -> BackendExpr
-addDereferenceInfo isDereference = case _ of
-  ExprRewrite a expr ->
-    ExprRewrite (go a) expr
-  ExprSyntax a expr ->
-    ExprSyntax (go a) expr
-  where
-  go (BackendAnalysis analysis) = (BackendAnalysis analysis { localsCanBeDereferenced = isDereference })
-
 markAsFail :: BackendExpr -> BackendExpr
 markAsFail = case _ of
   ExprRewrite a expr ->
@@ -1220,7 +1211,7 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      addDereferenceInfo true $ build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1241,7 +1232,7 @@ quote = go
             build ctx' $ UncurriedEffectAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
     NeutLocal ident level t -> do
-      addDereferenceInfo (isJust t) $ build ctx $ Local ident level
+      build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
     NeutStop qual ->
