@@ -175,14 +175,13 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 newtype Env = Env
   { currentModule :: ModuleName
   , isAppHead :: Boolean
-  , inlineChain :: Array (Qualified Ident)
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   , safeToRecurse :: Maybe (Qualified Ident)
   , prevWasRewritten :: Boolean
   , stopTrying :: Boolean
-  , punt :: Set.Set (Array (Qualified Ident))
+  , punt :: Set.Set (Qualified Ident)
   }
 
 setIsAppHead :: Boolean -> Env -> Env
@@ -217,13 +216,10 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
-puntMe :: Env -> Qualified Ident -> Env
-puntMe (Env env) qual = Env env
-  { punt = Set.insert chain env.punt
-  , inlineChain = chain
+puntMe :: Env -> Array (Qualified Ident) -> Env
+puntMe (Env env) group = Env env
+  { punt = Set.fromFoldable group
   }
-  where
-  chain = Array.snoc env.inlineChain qual
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -231,9 +227,9 @@ class Eval f where
 instance Eval f => Eval (BackendSyntax f) where
   eval (Env e@{ isAppHead }) = go (Env e { isAppHead = false })
     where
-    go env@(Env ee@{ punt, inlineChain }) = case _ of
+    go env@(Env ee@{ punt }) = case _ of
       Var qual
-        | not (Array.null inlineChain) && (inlineChain `Set.member` punt) -> RecurseWithRecklessAbandon qual
+        | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
         | otherwise -> evalExtern env qual []
       Local ident lvl ->
         case lookupLocal env lvl of
@@ -934,9 +930,9 @@ envForGroup env ref acc group
   | otherwise = addStop env ref acc
 
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
-withTry qual env group expr = if Array.null group then evaled else SemTry qual true (NeutStop qual) evaled
-  where
-  evaled = eval (puntMe env qual) expr
+withTry qual env group expr =
+  if Array.null group then eval env expr
+  else SemTry qual true (NeutStop qual) (eval (puntMe env group) expr)
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
@@ -1183,25 +1179,14 @@ quote = go
     -- Block constructors
     SemTry qual prevWasRewritten backup main -> do
       let newMain = quote (diseffectCtx ctx) main
-      case unlet newMain of
-        ExprSyntax _ (Lit _) -> safeToRecurse qual newMain
-        ExprSyntax _ (PrimOp _) -> safeToRecurse qual newMain
-        ExprSyntax _ (CtorSaturated _ _ _ _ _) -> safeToRecurse qual newMain
-        _ -> do
-          let BackendAnalysis { hasBranch } = getAnalysis newMain
-          if prevWasRewritten then
-            buildTry qual (quote (diseffectCtx ctx) backup) newMain
-          else if hasBranch {- && not localsCanBeDereferenced -} then do
-            -- let _ =  spy "has branch" { newMain, main }
-            -- markAsFail (dbg newMain (quote (diseffectCtx ctx) backup))
-            quote (diseffectCtx ctx) backup
-          else safeToRecurse qual newMain
+      let BackendAnalysis { hasBranch } = getAnalysis newMain
+      if not hasBranch then safeToRecurse qual newMain
+      else if prevWasRewritten then
+        buildTry qual (quote (diseffectCtx ctx) backup) newMain
+      else quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      let term = quote (diseffectCtx ctx) binding
-      let o = build ctx $ Let ident level term $ quote ctx' $ k $ NeutLocal ident level (Just binding)
-      let _ = if ident == Just (Ident "writableAtts" )then spyu "writable atts" term else unit
-      o
+      build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1256,7 +1241,6 @@ quote = go
             build ctx' $ UncurriedEffectAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
     NeutLocal ident level t -> do
-      let _ = if level == Level 3 && ident == Just (Ident "atts") then spyu "MYDIG" t else unit
       addDereferenceInfo (isJust t) $ build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
@@ -1721,7 +1705,6 @@ withPrevWasRewritten prevWasRewritten (Env env) = Env env { prevWasRewritten = p
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
-  -- let _ = spy "starting" id
   go true false initN ex1
   where
   go prevWasRewritten stopTrying n expr1
@@ -1732,9 +1715,7 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
     | otherwise = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
-        -- let _ = if fail then let _ = spyu "failed" expr2 in unsafeCrashWith "fail" else unit
         if rewrite || rewriteTry then do
-          -- let _ = if not rewrite && mn == (Just $ ModuleName "Deku.Example.Optimus") && id == "main" && n < (initN - 100) then spyc "done" expr2 else unit
           go rewrite stopTrying (n - 1) expr2
         else
           expr2
@@ -1865,9 +1846,11 @@ guardFailOver f as k =
     _ -> Nothing
 
 spyu :: forall a. String -> a -> Unit
-spyu a b = const unit $ spy a b 
+spyu a b = const unit $ spy a b
+
 spyc :: forall a. String -> a -> Unit
 spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+
 foreign import spyx :: forall a. String -> a -> a
 foreign import spyxx :: forall a b. String -> a -> b -> b
 foreign import spyy :: forall a. String -> a -> a
