@@ -22,7 +22,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
+import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
@@ -44,7 +44,7 @@ data MkFn a
 data BackendSemantics
   = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
-  | SemTry (Qualified Ident) Boolean BackendSemantics BackendSemantics
+  | SemTry TryLevel Boolean BackendSemantics BackendSemantics
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
   | SemLet (Maybe Ident) BackendSemantics (BackendSemantics -> BackendSemantics)
@@ -56,7 +56,7 @@ data BackendSemantics
   | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
-  | RecurseWithRecklessAbandon (Qualified Ident)
+  | RecurseWithRecklessAbandon TryLevel (Qualified Ident)
   | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
   | NeutCtorDef (Qualified Ident) ConstructorType ProperName Ident (Array String)
   | NeutApp BackendSemantics (Spine BackendSemantics)
@@ -91,12 +91,12 @@ type EffectBindingAssoc a =
 
 data BackendRewrite
   = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteTry (Qualified Ident) BackendExpr BackendExpr
+  | RewriteTry TryLevel BackendExpr BackendExpr
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
-  | RewriteRecurse (Qualified Ident)
+  | RewriteRecurse TryLevel (Qualified Ident)
   | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
   | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
   | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
@@ -174,10 +174,11 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 newtype Env = Env
   { currentModule :: ModuleName
   , isAppHead :: Boolean
+  , tryLevel :: TryLevel
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
-  , safeToRecurse :: Maybe (Qualified Ident)
+  , safeToRecurse :: Maybe TryLevel
   , prevWasRewritten :: Boolean
   , stopTrying :: Boolean
   , punt :: Set.Set (Qualified Ident)
@@ -226,9 +227,9 @@ class Eval f where
 instance Eval f => Eval (BackendSyntax f) where
   eval (Env e@{ isAppHead }) = go (Env e { isAppHead = false })
     where
-    go env@(Env ee@{ punt }) = case _ of
+    go env@(Env ee@{ punt, tryLevel }) = case _ of
       Var qual
-        | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
+        | qual `Set.member` punt -> RecurseWithRecklessAbandon (tryLevel - one) qual
         | otherwise -> evalExtern env qual []
       Local ident lvl ->
         case lookupLocal env lvl of
@@ -316,8 +317,8 @@ instance Eval BackendExpr where
     go env@(Env { safeToRecurse: s2r, stopTrying, prevWasRewritten }) = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
-          RewriteRecurse ident ->
-            if s2r == Just ident || stopTrying then eval (clearRecurse env) (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon ident
+          RewriteRecurse tryLevel ident ->
+            if s2r == Just tryLevel || stopTrying then eval (clearRecurse env) (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon tryLevel ident
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
           RewriteUncurry ident _ args binding body ->
@@ -928,11 +929,15 @@ envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
 
+bumpTryLevel :: Env -> Tuple TryLevel Env
+bumpTryLevel (Env e) = Tuple e.tryLevel (Env e { tryLevel = e.tryLevel + one })
+
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
-withTry qual env group expr =
+withTry qual env' group expr =
   if Array.null group then eval evaled expr
-  else SemTry qual true (NeutStop qual) (eval evaled expr)
+  else SemTry tryLevel true (NeutStop qual) (eval evaled expr)
   where
+  Tuple tryLevel env = bumpTryLevel env'
   evaled = puntMe env group
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
@@ -1123,21 +1128,21 @@ type Ctx =
   , effect :: Boolean
   }
 
-safeToRecurse :: Qualified Ident -> BackendExpr -> BackendExpr
-safeToRecurse qual = case _ of
+safeToRecurse :: TryLevel -> BackendExpr -> BackendExpr
+safeToRecurse tryLevel = case _ of
   ExprRewrite a expr ->
     ExprRewrite (go a) expr
   ExprSyntax a expr ->
     ExprSyntax (go a) expr
   where
-  go (BackendAnalysis analysis) = (BackendAnalysis analysis { safeToRecurse = Just qual, rewrite = true })
+  go (BackendAnalysis analysis) = (BackendAnalysis analysis { safeToRecurse = Just tryLevel, rewrite = true })
 
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
-buildTry :: Qualified Ident -> BackendExpr -> BackendExpr -> BackendExpr
-buildTry qual backup main =
-  ExprRewrite (withRewriteTry $ analysisOf main) $ RewriteTry qual backup main
+buildTry :: TryLevel -> BackendExpr -> BackendExpr -> BackendExpr
+buildTry tryLevel backup main =
+  ExprRewrite (withRewriteTry $ analysisOf main) $ RewriteTry tryLevel backup main
 
 getAnalysis :: BackendExpr -> BackendAnalysis
 getAnalysis = case _ of
@@ -1157,13 +1162,13 @@ quote = go
   where
   go ctx = case _ of
     -- Block constructors
-    SemTry qual prevWasRewritten backup main -> do
+    SemTry tryLevel prevWasRewritten backup main -> do
       let newMain = quote (diseffectCtx ctx) main
       let BackendAnalysis { hasBranch } = getAnalysis newMain
-      if not hasBranch then safeToRecurse qual newMain
+      if not hasBranch then safeToRecurse tryLevel newMain
       else if prevWasRewritten then
-        buildTry qual (quote (diseffectCtx ctx) backup) newMain
-      else {-let _ = spy "FAILING" {qual,newMain,main} in-} quote (diseffectCtx ctx) backup
+        buildTry tryLevel (quote (diseffectCtx ctx) backup) newMain
+      else {-let _ = spy "FAILING" {tryLevel,newMain,main} in-} quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1192,10 +1197,10 @@ quote = go
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
-    RecurseWithRecklessAbandon ident -> do
+    RecurseWithRecklessAbandon tryLevel ident -> do
       -- this should not trigger a rewrite
       -- as we want to see if the rest of the tree triggers a rewrite
-      ExprRewrite (analyzeDefault ctx (Var ident)) $ RewriteRecurse ident
+      ExprRewrite (analyzeDefault ctx (Var ident)) $ RewriteRecurse tryLevel ident
     SemExtern _ _ sem ->
       go ctx (force sem)
     SemLam ident k -> do
@@ -1716,7 +1721,7 @@ freeze init = Tuple (analysisOf init) (go init)
           NeutralExpr $ Let ident level (NeutralExpr (Abs args (go binding))) (go body)
         RewriteStop qual ->
           NeutralExpr $ Var qual
-        RewriteRecurse qual ->
+        RewriteRecurse _ qual ->
           NeutralExpr $ Var qual
         RewriteLetAssoc bindings body ->
           case NonEmptyArray.fromArray bindings of

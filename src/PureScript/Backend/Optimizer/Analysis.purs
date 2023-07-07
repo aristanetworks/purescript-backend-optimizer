@@ -85,6 +85,14 @@ instance Semigroup ResultTerm where
 instance Monoid ResultTerm where
   mempty = KnownNeutral
 
+
+newtype TryLevel = TryLevel Int
+derive instance Eq TryLevel
+derive instance Ord TryLevel
+derive instance Newtype TryLevel _
+derive newtype instance Semiring TryLevel
+derive newtype instance Ring TryLevel
+
 newtype BackendAnalysis = BackendAnalysis
   { usages :: Map Level Usage
   , size :: Int
@@ -96,7 +104,7 @@ newtype BackendAnalysis = BackendAnalysis
   -- rewrite tracks everything but recursion,
   -- whereas rewriteTry tracks only recursion.
   , rewriteTry :: Boolean
-  , safeToRecurse :: Maybe (Qualified Ident)
+  , safeToRecurse :: Maybe TryLevel
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
   }
