@@ -22,6 +22,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
+import Prim.TypeError (class Warn, Text)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
@@ -238,7 +239,7 @@ instance Eval f => Eval (BackendSyntax f) where
           _ ->
             unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
       App hd tl ->
-        evalApp env (eval (Env ee { isAppHead = true}) hd) (NonEmptyArray.toArray (eval env <$> tl))
+        evalApp env (eval (Env ee { isAppHead = true }) hd) (NonEmptyArray.toArray (eval env <$> tl))
       UncurriedApp hd tl ->
         evalUncurriedApp env (eval env hd) (eval env <$> tl)
       UncurriedAbs idents body -> do
@@ -530,7 +531,7 @@ neutralApp hd spine
         NeutApp hd spine
 
 evalAccessor :: Env -> IsFunction -> BackendSemantics -> BackendAccessor -> BackendSemantics
-evalAccessor initEnv (IsFunction isFunction) initLhs accessor = 
+evalAccessor initEnv (IsFunction isFunction) initLhs accessor =
   evalAssocLet initEnv initLhs \env lhs -> (if isFunction then deref else identity) $ case (if isFunction then deref else identity) lhs of
     SemExtern qual spine _ ->
       evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
@@ -1129,6 +1130,18 @@ unlet = case _ of
 diseffectCtx :: Ctx -> Ctx
 diseffectCtx ctx = ctx { effect = false }
 
+markAsFail :: BackendExpr -> BackendExpr
+markAsFail = case _ of
+  ExprRewrite a expr ->
+    ExprRewrite (go a) expr
+  ExprSyntax a expr ->
+    ExprSyntax (go a) expr
+  where
+  go (BackendAnalysis analysis) = (BackendAnalysis analysis { fail = true })
+
+dbg :: forall a. Warn (Text "Use the second one in production") => a -> a -> a
+dbg a _ = a
+
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
   where
@@ -1145,8 +1158,8 @@ quote = go
           if prevWasRewritten then
             buildTry qual (quote (diseffectCtx ctx) backup) newMain
           else if hasBranch then do
-            -- let _ = spy "has branch" newMain
-            quote (diseffectCtx ctx) backup
+            -- let _ = spy "has branch" { newMain }
+            markAsFail (dbg newMain (quote (diseffectCtx ctx) backup))
           else safeToRecurse qual newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
@@ -1680,7 +1693,8 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
-        let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
+        let BackendAnalysis { rewrite, rewriteTry, fail } = analysisOf expr2
+        -- let _ = if fail then let _ = const unit (spy "failed" expr2) in unsafeCrashWith "fail" else unit
         if rewrite || rewriteTry then
           go rewrite stopTrying (n - 1) expr2
         else
