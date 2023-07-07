@@ -99,6 +99,7 @@ newtype BackendAnalysis = BackendAnalysis
   -- used internally for debugging, when
   -- we want to force a computation to stop
   , fail :: Boolean
+  , localsCanBeDereferenced :: Boolean
   , safeToRecurse :: Maybe (Qualified Ident)
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
@@ -118,6 +119,7 @@ instance Semigroup BackendAnalysis where
     -- it should always be in one and only one place
     , safeToRecurse: Nothing
     , rewriteTry: a.rewriteTry || b.rewriteTry
+    , localsCanBeDereferenced: a.localsCanBeDereferenced && b.localsCanBeDereferenced
     , fail: a.fail || b.fail
     , deps: Set.union a.deps b.deps
     , result: a.result <> b.result
@@ -134,6 +136,7 @@ instance Monoid BackendAnalysis where
     , rewriteTry: false
     , fail: false
     , safeToRecurse: Nothing
+    , localsCanBeDereferenced: true
     , deps: Set.empty
     , result: KnownNeutral
     }

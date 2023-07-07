@@ -15,7 +15,7 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
@@ -24,7 +24,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.TypeError (class Warn, Text)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
@@ -645,8 +645,8 @@ makeLet ident binding go = case binding of
   _ -> do
     SemLet ident binding go
 
-deref :: BackendSemantics -> BackendSemantics
-deref = case _ of
+deref' :: (BackendSemantics -> BackendSemantics) -> BackendSemantics -> BackendSemantics
+deref' f = case _ of
   o@(NeutAccessor expr accessand) -> do
     case deref expr, accessand of
       NeutLit (LitArray arr), GetIndex i
@@ -656,104 +656,123 @@ deref = case _ of
       NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
         | Just (Tuple _ v) <- Array.index vals i -> deref v
       _, _ -> o
+  -- in the case of a try, we try to deref on the happy path
+  -- and revert to the toplevel in case of failure
+  e@(SemTry _ _ _ expr) -> deref' (f <<< const e) expr
   NeutLocal _ _ (Just expr) -> deref expr
-  expr -> expr
+  e@(NeutLit (LitInt _)) -> e
+  e@(NeutLit (LitNumber _)) -> e
+  e@(NeutLit (LitString _)) -> e
+  e@(NeutLit (LitChar _)) -> e
+  e@(NeutLit (LitBoolean _)) -> e
+  e@(NeutLit (LitArray _)) -> e
+  e@(NeutLit (LitRecord _)) -> e
+  -- fail
+  expr -> f expr
+
+-- why no eta reduce?
+deref :: BackendSemantics -> BackendSemantics
+deref a = deref' identity a
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
 evalPrimOp :: Env -> IsFunction -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env isFunction = case _ of
   Op1 op1 x ->
-    case op1, x of
-      OpBooleanNot, NeutLit (LitBoolean bool) ->
-        liftBoolean (not bool)
-      OpBooleanNot, NeutPrimOp op ->
-        evalPrimOpNot op
-      OpIntBitNot, NeutLit (LitInt a) ->
-        liftInt (complement a)
-      OpIsTag a, _
+    case op1 of
+      OpBooleanNot
+        | NeutLit (LitBoolean bool) <- deref x ->
+            liftBoolean (not bool)
+      OpBooleanNot
+        | NeutPrimOp op <- x -> evalPrimOpNot op
+      OpIntBitNot
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (complement a)
+      OpIsTag a
         | NeutData b _ _ _ _ <- deref x ->
             liftBoolean (a == b)
-      OpArrayLength, _
+      OpArrayLength
         | NeutLit (LitArray arr) <- deref x ->
             liftInt (Array.length arr)
-      OpIntNegate, NeutLit (LitInt a) ->
-        liftInt (negate a)
-      OpNumberNegate, NeutLit (LitNumber a) ->
-        liftNumber (negate a)
-      _, SemExtern qual spine _ ->
-        evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
-      _, NeutFail err ->
-        NeutFail err
-      _, _ ->
+      OpIntNegate
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (negate a)
+      OpNumberNegate
+        | NeutLit (LitNumber a) <- deref x ->
+            liftNumber (negate a)
+      _
+        | SemExtern qual spine _ <- x -> evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+      _
+        | NeutFail err <- x -> NeutFail err
+      _ ->
         evalAssocLet env x \_ x' ->
           NeutPrimOp (Op1 op1 x')
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
-        | NeutLit (LitBoolean false) <- x ->
-            x
-        | NeutLit (LitBoolean false) <- y ->
+        | o@(NeutLit (LitBoolean false)) <- deref x ->
+            o
+        | o@(NeutLit (LitBoolean false)) <- deref y ->
+            o
+        | NeutLit (LitBoolean true) <- deref x ->
             y
-        | NeutLit (LitBoolean true) <- x ->
-            y
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             x
       OpBooleanOr
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             y
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             x
-        | NeutLit (LitBoolean true) <- x ->
-            x
-        | NeutLit (LitBoolean true) <- y ->
-            y
+        | o@(NeutLit (LitBoolean true)) <- deref x ->
+            o
+        | o@(NeutLit (LitBoolean true)) <- y ->
+            o
       OpBooleanOrd OpEq
-        | NeutLit (LitBoolean bool) <- x ->
+        | NeutLit (LitBoolean bool) <- deref x ->
             if bool then y else evalPrimOp env isFunction (Op1 OpBooleanNot y)
-        | NeutLit (LitBoolean bool) <- y ->
+        | NeutLit (LitBoolean bool) <- deref y ->
             if bool then x else evalPrimOp env isFunction (Op1 OpBooleanNot x)
       OpBooleanOrd op
-        | NeutLit (LitBoolean a) <- x
-        , NeutLit (LitBoolean b) <- y ->
+        | NeutLit (LitBoolean a) <- deref x
+        , NeutLit (LitBoolean b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpCharOrd op
-        | NeutLit (LitChar a) <- x
-        , NeutLit (LitChar b) <- y ->
+        | NeutLit (LitChar a) <- deref x
+        , NeutLit (LitChar b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpIntBitAnd
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .&. b)
       OpIntBitOr
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .|. b)
       OpIntBitShiftLeft
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shl a b)
       OpIntBitShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shr a b)
       OpIntBitXor
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (xor a b)
       OpIntBitZeroFillShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (zshr a b)
       OpIntNum OpSubtract
-        | NeutLit (LitInt 0) <- x ->
+        | NeutLit (LitInt 0) <- deref x ->
             evalPrimOp env isFunction (Op1 OpIntNegate y)
       OpIntNum op
         | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
             result
       OpIntOrd op
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
         | NeutLit (LitNumber 0.0) <- x ->
@@ -762,18 +781,18 @@ evalPrimOp env isFunction = case _ of
         | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
             result
       OpNumberOrd op
-        | NeutLit (LitNumber a) <- x
-        , NeutLit (LitNumber b) <- y ->
+        | NeutLit (LitNumber a) <- deref x
+        , NeutLit (LitNumber b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringOrd op
-        | NeutLit (LitString a) <- x
-        , NeutLit (LitString b) <- y ->
+        | NeutLit (LitString a) <- deref x
+        , NeutLit (LitString b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
-        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) (deref x) (deref y) ->
+        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
       OpArrayIndex
-        | NeutLit (LitInt n) <- y ->
+        | NeutLit (LitInt n) <- deref y ->
             evalAccessor env isFunction x (GetIndex n)
       OpBooleanAnd -> -- Lazy operator should not be reassociated
 
@@ -796,7 +815,7 @@ evalPrimOp env isFunction = case _ of
               NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
-evalPrimOpAssocL op match combine a b = case match a of
+evalPrimOpAssocL op match combine a' b' = case match a of
   Just lhs
     | Just rhs <- match b ->
         Just $ combine lhs rhs
@@ -825,6 +844,8 @@ evalPrimOpAssocL op match combine a b = case match a of
   _ ->
     Nothing
   where
+  a = deref a'
+  b = deref b'
   decompose = case _ of
     NeutPrimOp (Op2 op' x y) | op == op' ->
       Just (Tuple x y)
@@ -1130,6 +1151,15 @@ unlet = case _ of
 diseffectCtx :: Ctx -> Ctx
 diseffectCtx ctx = ctx { effect = false }
 
+addDereferenceInfo :: Boolean -> BackendExpr -> BackendExpr
+addDereferenceInfo isDereference = case _ of
+  ExprRewrite a expr ->
+    ExprRewrite (go a) expr
+  ExprSyntax a expr ->
+    ExprSyntax (go a) expr
+  where
+  go (BackendAnalysis analysis) = (BackendAnalysis analysis { localsCanBeDereferenced = isDereference })
+
 markAsFail :: BackendExpr -> BackendExpr
 markAsFail = case _ of
   ExprRewrite a expr ->
@@ -1157,13 +1187,17 @@ quote = go
           let BackendAnalysis { hasBranch } = getAnalysis newMain
           if prevWasRewritten then
             buildTry qual (quote (diseffectCtx ctx) backup) newMain
-          else if hasBranch then do
-            -- let _ = spy "has branch" { newMain }
-            markAsFail (dbg newMain (quote (diseffectCtx ctx) backup))
+          else if hasBranch {- && not localsCanBeDereferenced -} then do
+            -- let _ =  spy "has branch" { newMain, main }
+            -- markAsFail (dbg newMain (quote (diseffectCtx ctx) backup))
+            quote (diseffectCtx ctx) backup
           else safeToRecurse qual newMain
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      let term = quote (diseffectCtx ctx) binding
+      let o = build ctx $ Let ident level term $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      let _ = if ident == Just (Ident "writableAtts" )then spyu "writable atts" term else unit
+      o
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1197,13 +1231,12 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
+      addDereferenceInfo true $ build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            -- todo - can we do better than `Nothing` here?
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (diseffectCtx ctx') body
@@ -1218,8 +1251,9 @@ quote = go
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
-    NeutLocal ident level _ -> do
-      build ctx $ Local ident level
+    NeutLocal ident level t -> do
+      let _ = if level == Level 3 && ident == Just (Ident "atts") then spyu "MYDIG" t else unit
+      addDereferenceInfo (isJust t) $ build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
     NeutStop qual ->
@@ -1694,8 +1728,9 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
     | otherwise = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry, fail } = analysisOf expr2
-        -- let _ = if fail then let _ = const unit (spy "failed" expr2) in unsafeCrashWith "fail" else unit
-        if rewrite || rewriteTry then
+        -- let _ = if fail then let _ = spyu "failed" expr2 in unsafeCrashWith "fail" else unit
+        if rewrite || rewriteTry then do
+          -- let _ = if not rewrite && mn == (Just $ ModuleName "Deku.Example.Optimus") && id == "main" && n < (initN - 100) then spyc "done" expr2 else unit
           go rewrite stopTrying (n - 1) expr2
         else
           expr2
@@ -1825,6 +1860,10 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
+spyu :: forall a. String -> a -> Unit
+spyu a b = const unit $ spy a b 
+spyc :: forall a. String -> a -> Unit
+spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
 foreign import spyx :: forall a. String -> a -> a
 foreign import spyxx :: forall a b. String -> a -> b -> b
 foreign import spyy :: forall a. String -> a -> a
