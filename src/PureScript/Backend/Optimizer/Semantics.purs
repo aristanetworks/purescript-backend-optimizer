@@ -24,7 +24,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.TypeError (class Warn, Text)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
@@ -175,13 +175,14 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 newtype Env = Env
   { currentModule :: ModuleName
   , isAppHead :: Boolean
+  , inlineChain :: Array (Qualified Ident)
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   , safeToRecurse :: Maybe (Qualified Ident)
   , prevWasRewritten :: Boolean
   , stopTrying :: Boolean
-  , punt :: Set.Set (Qualified Ident)
+  , punt :: Set.Set (Array (Qualified Ident))
   }
 
 setIsAppHead :: Boolean -> Env -> Env
@@ -216,10 +217,13 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
-puntMe :: Env -> Array (Qualified Ident) -> Env
-puntMe (Env env) quals = Env env
-  { punt = Set.union env.punt (Set.fromFoldable quals)
+puntMe :: Env -> Qualified Ident -> Env
+puntMe (Env env) qual = Env env
+  { punt = Set.insert chain env.punt
+  , inlineChain = chain
   }
+  where
+  chain = Array.snoc env.inlineChain qual
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -227,9 +231,9 @@ class Eval f where
 instance Eval f => Eval (BackendSyntax f) where
   eval (Env e@{ isAppHead }) = go (Env e { isAppHead = false })
     where
-    go env@(Env ee@{ punt }) = case _ of
+    go env@(Env ee@{ punt, inlineChain }) = case _ of
       Var qual
-        | qual `Set.member` punt -> RecurseWithRecklessAbandon qual
+        | not (Array.null inlineChain) && (inlineChain `Set.member` punt) -> RecurseWithRecklessAbandon qual
         | otherwise -> evalExtern env qual []
       Local ident lvl ->
         case lookupLocal env lvl of
@@ -932,7 +936,7 @@ envForGroup env ref acc group
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
 withTry qual env group expr = if Array.null group then evaled else SemTry qual true (NeutStop qual) evaled
   where
-  evaled = eval (puntMe env group) expr
+  evaled = eval (puntMe env qual) expr
 
 evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
@@ -1727,7 +1731,7 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
-        let BackendAnalysis { rewrite, rewriteTry, fail } = analysisOf expr2
+        let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
         -- let _ = if fail then let _ = spyu "failed" expr2 in unsafeCrashWith "fail" else unit
         if rewrite || rewriteTry then do
           -- let _ = if not rewrite && mn == (Just $ ModuleName "Deku.Example.Optimus") && id == "main" && n < (initN - 100) then spyc "done" expr2 else unit
