@@ -2,7 +2,6 @@ module PureScript.Backend.Optimizer.Semantics where
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -12,6 +11,8 @@ import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
+import Data.Lens (over, traversed)
+import Data.Lens.Record (prop)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -24,8 +25,9 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
+import Type.Proxy (Proxy(..))
 
 newtype IsFunction = IsFunction Boolean
 
@@ -96,7 +98,7 @@ data BackendRewrite
   | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
   | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
   | RewriteStop (Qualified Ident)
-  | RewriteRecurse TryLevel (Qualified Ident)
+  | RewriteRecurse Boolean TryLevel (Qualified Ident)
   | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
   | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
   | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
@@ -178,7 +180,6 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
-  , safeToRecurse :: Set.Set TryLevel
   , prevWasRewritten :: Boolean
   , stopTrying :: Boolean
   , punt :: Set.Set (Qualified Ident)
@@ -305,25 +306,11 @@ instance Eval f => Eval (BackendSyntax f) where
 instance Eval BackendExpr where
   eval = go
     where
-    go (Env env) be = do
-      let BackendAnalysis { safeToRecurse } = getAnalysis be
-      -- because the analysis semigroup clears safeToRecurse at any point
-      -- other than where its added to the tree, we alt it here so that it
-      -- makes its way down to where it needs to be
-      go'
-        ( Env env
-            { safeToRecurse = case safeToRecurse of
-                Just x -> let _ = spy "RECEIVING SAFE" x in Set.insert x env.safeToRecurse
-                Nothing -> env.safeToRecurse
-            }
-        )
-        be
-    go' env@(Env { safeToRecurse: s2r, stopTrying, prevWasRewritten }) = case _ of
+    go env@(Env { stopTrying, prevWasRewritten }) = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
-          RewriteRecurse tryLevel ident -> do
-            let _ = spyuc (tryLevel `Set.member` s2r) "ACTUALIZING" tryLevel
-            if (tryLevel `Set.member` s2r) || stopTrying then eval env (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon tryLevel ident
+          RewriteRecurse safeToRecurse tryLevel ident -> do
+            if safeToRecurse || stopTrying then eval env (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon tryLevel ident
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
           RewriteUncurry ident _ args binding body ->
@@ -1133,14 +1120,92 @@ type Ctx =
   , effect :: Boolean
   }
 
-markAsSafeToRecurse :: TryLevel -> BackendExpr -> BackendExpr
-markAsSafeToRecurse tryLevel = case _ of
-  ExprRewrite a expr ->
-    ExprRewrite (go a) expr
-  ExprSyntax a expr ->
-    ExprSyntax (go a) expr
-  where
-  go (BackendAnalysis analysis) = let _ = spy "MARKING SAFE" tryLevel in (BackendAnalysis analysis { safeToRecurse = Just tryLevel, rewrite = true })
+class MarkAsSafeToRecurse a where
+  markAsSafeToRecurse :: TryLevel -> a -> a
+
+instance MarkAsSafeToRecurse a => MarkAsSafeToRecurse (Pair a) where
+  markAsSafeToRecurse tryLevel (Pair a b) = Pair (markAsSafeToRecurse tryLevel a) (markAsSafeToRecurse tryLevel b)
+
+instance MarkAsSafeToRecurse BackendExpr where
+  markAsSafeToRecurse tryLevel = case _ of
+    ExprSyntax analysis expr ->
+      ExprSyntax analysis $ markAsSafeToRecurse tryLevel expr
+    ExprRewrite analysis rewrite ->
+      ExprRewrite analysis $ markAsSafeToRecurse tryLevel rewrite
+
+instance MarkAsSafeToRecurse UnpackOp where
+  markAsSafeToRecurse tryLevel = case _ of
+    UnpackRecord props -> UnpackRecord ((map <<< map) (markAsSafeToRecurse tryLevel) props)
+    UnpackUpdate expr props -> UnpackUpdate (markAsSafeToRecurse tryLevel expr) ((map <<< map) (markAsSafeToRecurse tryLevel) props)
+    UnpackArray elts -> UnpackArray (markAsSafeToRecurse tryLevel <$> elts)
+    UnpackData qident ct pn ident props -> UnpackData qident ct pn ident ((map <<< map) (markAsSafeToRecurse tryLevel) props)
+
+instance MarkAsSafeToRecurse a => MarkAsSafeToRecurse (BackendEffect a) where
+  markAsSafeToRecurse tryLevel = case _ of
+    EffectRefNew a -> EffectRefNew (markAsSafeToRecurse tryLevel a)
+    EffectRefRead a -> EffectRefRead (markAsSafeToRecurse tryLevel a)
+    EffectRefWrite a b -> EffectRefWrite (markAsSafeToRecurse tryLevel a) (markAsSafeToRecurse tryLevel b)
+
+instance MarkAsSafeToRecurse a => MarkAsSafeToRecurse (Literal a) where
+  markAsSafeToRecurse tryLevel = case _ of
+    LitArray a -> LitArray (markAsSafeToRecurse tryLevel <$> a)
+    LitRecord a -> LitRecord ((map <<< map) (markAsSafeToRecurse tryLevel) a)
+    e -> e
+
+instance MarkAsSafeToRecurse DistOp where
+  markAsSafeToRecurse tryLevel = case _ of
+    DistApp exprs -> DistApp (markAsSafeToRecurse tryLevel <$> exprs)
+    DistUncurriedApp exprs -> DistUncurriedApp (markAsSafeToRecurse tryLevel <$> exprs)
+    DistAccessor acc -> DistAccessor acc
+    DistPrimOp1 op -> DistPrimOp1 op
+    DistPrimOp2L op expr -> DistPrimOp2L op (markAsSafeToRecurse tryLevel expr)
+    DistPrimOp2R expr op -> DistPrimOp2R (markAsSafeToRecurse tryLevel expr) op
+
+instance MarkAsSafeToRecurse a => MarkAsSafeToRecurse (BackendOperator a) where
+  markAsSafeToRecurse tryLevel = case _ of
+    Op1 op a -> Op1 op (markAsSafeToRecurse tryLevel a)
+    Op2 op a b -> Op2 op (markAsSafeToRecurse tryLevel a) (markAsSafeToRecurse tryLevel b)
+
+instance MarkAsSafeToRecurse BackendRewrite where
+  markAsSafeToRecurse tryLevel = case _ of
+    RewriteInline ident level binding body -> RewriteInline ident level (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
+    -- do not propagate mark into next try
+    RewriteTry lvl l r -> RewriteTry lvl l r
+    RewriteUncurry ident lvl lvls expr1 expr2 -> RewriteUncurry ident lvl lvls (markAsSafeToRecurse tryLevel expr1) (markAsSafeToRecurse tryLevel expr2)
+    RewriteLetAssoc assocs body -> RewriteLetAssoc (over (traversed <<< prop (Proxy :: _ "binding")) (markAsSafeToRecurse tryLevel) assocs) (markAsSafeToRecurse tryLevel body)
+    RewriteEffectBindAssoc assocs body -> RewriteEffectBindAssoc (over (traversed <<< prop (Proxy :: _ "binding")) (markAsSafeToRecurse tryLevel) assocs) (markAsSafeToRecurse tryLevel body)
+    RewriteStop ident -> RewriteStop ident
+    RewriteRecurse _ lvl ident -> RewriteRecurse (tryLevel == lvl) lvl ident
+    RewriteUnpackOp ident lvl op expr -> RewriteUnpackOp ident lvl (markAsSafeToRecurse tryLevel op) (markAsSafeToRecurse tryLevel expr)
+    RewriteDistBranchesLet ident lvl pairs binding body -> RewriteDistBranchesLet ident lvl (map (markAsSafeToRecurse tryLevel) pairs) (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
+    RewriteDistBranchesOp pairs otws dop -> RewriteDistBranchesOp (markAsSafeToRecurse tryLevel <$> pairs) (markAsSafeToRecurse tryLevel otws) (markAsSafeToRecurse tryLevel dop)
+
+instance MarkAsSafeToRecurse f => MarkAsSafeToRecurse (BackendSyntax f) where
+  markAsSafeToRecurse tryLevel = case _ of
+      e@(Var _) -> e
+      e@(Local _ _) -> e
+      App hd tl -> App (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
+      UncurriedApp hd tl ->
+        UncurriedApp (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
+      UncurriedAbs idents body -> UncurriedAbs idents (markAsSafeToRecurse tryLevel body)
+      UncurriedEffectApp hd tl -> UncurriedEffectApp (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
+      UncurriedEffectAbs idents body -> UncurriedEffectAbs idents (markAsSafeToRecurse tryLevel body)
+      Abs idents body -> Abs idents (markAsSafeToRecurse tryLevel body)
+      Let ident lvl binding body -> Let ident lvl (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
+      LetRec lvl bindings body -> LetRec lvl ((map <<< map) (markAsSafeToRecurse tryLevel) bindings) (markAsSafeToRecurse tryLevel body)
+      EffectBind ident lvl binding body -> EffectBind ident lvl (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
+      EffectPure val -> EffectPure (markAsSafeToRecurse tryLevel val)
+      EffectDefer val -> EffectDefer (markAsSafeToRecurse tryLevel val)
+      Accessor lhs accessor -> Accessor (markAsSafeToRecurse tryLevel lhs) accessor
+      Update lhs updates -> Update (markAsSafeToRecurse tryLevel lhs) ((map <<< map) (markAsSafeToRecurse tryLevel) updates)
+      Branch branches def -> Branch ((map <<< map) (markAsSafeToRecurse tryLevel) branches) (markAsSafeToRecurse tryLevel def)
+      PrimOp op -> PrimOp (markAsSafeToRecurse tryLevel op)
+      PrimEffect eff -> PrimEffect (markAsSafeToRecurse tryLevel eff)
+      PrimUndefined -> PrimUndefined
+      Lit lit -> Lit (markAsSafeToRecurse tryLevel lit)
+      Fail err -> Fail err
+      e@(CtorDef ct ty tag fields) -> e
+      CtorSaturated qual ct ty tag fields -> CtorSaturated qual ct ty tag ((map <<< map) (markAsSafeToRecurse tryLevel) fields)
 
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
@@ -1170,10 +1235,16 @@ quote = go
     SemTry tryLevel prevWasRewritten backup main -> do
       let newMain = quote (diseffectCtx ctx) main
       let BackendAnalysis { hasBranch } = getAnalysis newMain
+      -- todo: markAsSafeToRecurse is a potentially very expensive function
+      -- is there a more efficient way to do this?
+      -- or can we at least benchmark its impact?
+      -- if the tree is usually shallow at these points
+      -- then it's likely not that bad but if we're
+      -- dipping deep into the tree then it could be bad
       if not hasBranch then markAsSafeToRecurse tryLevel newMain
       else if prevWasRewritten then
         buildTry tryLevel (quote (diseffectCtx ctx) backup) newMain
-      else let _ = spy "FAILING" { tryLevel, newMain, main } in quote (diseffectCtx ctx) backup
+      else quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1205,7 +1276,7 @@ quote = go
     RecurseWithRecklessAbandon tryLevel ident -> do
       -- this should not trigger a rewrite
       -- as we want to see if the rest of the tree triggers a rewrite
-      ExprRewrite (analyzeDefault ctx (Var ident)) $ RewriteRecurse tryLevel ident
+      ExprRewrite (analyzeDefault ctx (Var ident)) $ RewriteRecurse false tryLevel ident
     SemExtern _ _ sem ->
       go ctx (force sem)
     SemLam ident k -> do
@@ -1705,8 +1776,6 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
     | otherwise = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
-        let _ = spyuc (mn == Just (ModuleName "Deku.Example.Optimus") && id == "main") "ITERN" { n }
-        let _ = spyuc (not rewrite && mn == Just (ModuleName "Deku.Example.Optimus") && id == "main") "NOTREWRITE" { rewrite, rewriteTry, expr2 }
         if rewrite || rewriteTry then do
           go rewrite stopTrying (n - 1) expr2
         else
@@ -1728,7 +1797,7 @@ freeze init = Tuple (analysisOf init) (go init)
           NeutralExpr $ Let ident level (NeutralExpr (Abs args (go binding))) (go body)
         RewriteStop qual ->
           NeutralExpr $ Var qual
-        RewriteRecurse _ qual ->
+        RewriteRecurse _ _ qual ->
           NeutralExpr $ Var qual
         RewriteLetAssoc bindings body ->
           case NonEmptyArray.fromArray bindings of
@@ -1836,17 +1905,3 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
-
-spyu :: forall a. String -> a -> Unit
-spyu a b = const unit $ spy a b
-
-spyuc :: forall a. Boolean -> String -> a -> Unit
-spyuc cond a b = if cond then const unit $ spy a b else unit
-
-spyc :: forall a. String -> a -> Unit
-spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
-
-foreign import spyx :: forall a. String -> a -> a
-foreign import spyxx :: forall a b. String -> a -> b -> b
-foreign import spyy :: forall a. String -> a -> a
-spy = spyx :: forall a. String -> a -> a

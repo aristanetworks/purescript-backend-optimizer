@@ -104,7 +104,6 @@ newtype BackendAnalysis = BackendAnalysis
   -- rewrite tracks everything but recursion,
   -- whereas rewriteTry tracks only recursion.
   , rewriteTry :: Boolean
-  , safeToRecurse :: Maybe TryLevel
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
   }
@@ -119,9 +118,6 @@ instance Semigroup BackendAnalysis where
     , args: []
     , hasBranch: a.hasBranch || b.hasBranch
     , rewrite: a.rewrite || b.rewrite
-    -- we never propagate safe to recurse up the tree
-    -- it should always be in one and only one place
-    , safeToRecurse: Nothing
     , rewriteTry: a.rewriteTry || b.rewriteTry
     , deps: Set.union a.deps b.deps
     , result: a.result <> b.result
@@ -136,7 +132,6 @@ instance Monoid BackendAnalysis where
     , hasBranch: false
     , rewrite: false
     , rewriteTry: false
-    , safeToRecurse: Nothing
     , deps: Set.empty
     , result: KnownNeutral
     }
