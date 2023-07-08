@@ -85,18 +85,21 @@ instance Semigroup ResultTerm where
 instance Monoid ResultTerm where
   mempty = KnownNeutral
 
-
 newtype TryLevel = TryLevel Int
+
 derive instance Eq TryLevel
 derive instance Ord TryLevel
 derive instance Newtype TryLevel _
 derive newtype instance Semiring TryLevel
 derive newtype instance Ring TryLevel
 
+data HasTry = IsTry | HasTry | NoTry
+
 newtype BackendAnalysis = BackendAnalysis
   { usages :: Map Level Usage
   , size :: Int
   , hasBranch :: Boolean
+  , hasTry :: HasTry
   , complexity :: Complexity
   , args :: Array Usage
   , rewrite :: Boolean
@@ -116,6 +119,13 @@ instance Semigroup BackendAnalysis where
     , size: a.size + b.size
     , complexity: a.complexity <> b.complexity
     , args: []
+    , hasTry: do
+        let
+          f c = case _ of
+            HasTry -> HasTry
+            IsTry -> HasTry
+            NoTry -> c
+        f (f NoTry b.hasTry) a.hasTry
     , hasBranch: a.hasBranch || b.hasBranch
     , rewrite: a.rewrite || b.rewrite
     , rewriteTry: a.rewriteTry || b.rewriteTry
@@ -129,6 +139,7 @@ instance Monoid BackendAnalysis where
     , size: 0
     , complexity: Trivial
     , args: []
+    , hasTry: NoTry
     , hasBranch: false
     , rewrite: false
     , rewriteTry: false
@@ -154,6 +165,14 @@ withRewrite (BackendAnalysis s) = BackendAnalysis s { rewrite = true }
 
 withRewriteTry :: BackendAnalysis -> BackendAnalysis
 withRewriteTry (BackendAnalysis s) = BackendAnalysis s { rewriteTry = true }
+
+withIsTry :: BackendAnalysis -> BackendAnalysis
+withIsTry (BackendAnalysis s) = BackendAnalysis s
+  { hasTry = case s.hasTry of
+      NoTry -> IsTry
+      IsTry -> HasTry
+      HasTry -> HasTry
+  }
 
 used :: Level -> BackendAnalysis
 used level = do

@@ -7,6 +7,4 @@ const addStuffBroken = v => v1 => {
   if (v === 0) { return v1; }
   return 1 + addStuffBroken(v - 1 | 0)(v1) | 0;
 };
-const test1 = v => 1 + addStuffBroken(-4)(4) | 0;
-const test2 = z => 1 + addStuffBroken(-4)(addStuffBroken(z)(5)) | 0;
-export {$List, Cons, Nil, addStuffBroken, test1, test2};
+export {$List, Cons, Nil, addStuffBroken};

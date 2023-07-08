@@ -16,15 +16,15 @@ import Data.Lens.Record (prop)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), HasTry(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withIsTry, withResult, withRewrite, withRewriteTry)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 import Type.Proxy (Proxy(..))
@@ -55,7 +55,7 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
-  | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
+  | NeutLocal (Maybe Ident) Level HasTry (Maybe BackendSemantics)
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
   | RecurseWithRecklessAbandon TryLevel (Qualified Ident)
@@ -269,8 +269,8 @@ instance Eval f => Eval (BackendSyntax f) where
           (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
           idents
           env
-      Let ident _ binding body ->
-        guardFail (eval env binding) \binding' ->
+      Let ident _ binding body -> do
+        guardFail (eval env binding) \binding' -> do
           makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
       LetRec _ bindings body -> do
         let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
@@ -628,7 +628,7 @@ makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemant
 makeLet ident binding go = case binding of
   SemExtern _ [] _ -> do
     go binding
-  NeutLocal _ _ _ -> do
+  NeutLocal _ _ _ _ -> do
     go binding
   NeutStop _ -> do
     go binding
@@ -637,35 +637,70 @@ makeLet ident binding go = case binding of
   _ -> do
     SemLet ident binding go
 
-deref' :: (BackendSemantics -> BackendSemantics) -> BackendSemantics -> BackendSemantics
-deref' f = case _ of
-  o@(NeutAccessor expr accessand) -> do
-    case deref expr, accessand of
-      NeutLit (LitArray arr), GetIndex i
-        | Just v <- Array.index arr i -> deref v
-      NeutLit (LitRecord rec), GetProp p
-        | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> deref v
-      NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
-        | Just (Tuple _ v) <- Array.index vals i -> deref v
-      _, _ -> o
-  -- in the case of a try, we try to deref on the happy path
-  -- and revert to the toplevel in case of failure
-  e@(SemTry _ _ _ expr) -> deref' (f <<< const e) expr
-  NeutLocal _ _ (Just expr) -> deref expr
-  e@(NeutLit (LitInt _)) -> e
-  e@(NeutLit (LitNumber _)) -> e
-  e@(NeutLit (LitString _)) -> e
-  e@(NeutLit (LitChar _)) -> e
-  e@(NeutLit (LitBoolean _)) -> e
-  e@(NeutLit (LitArray _)) -> e
-  e@(NeutLit (LitRecord _)) -> e
-  -- fail
-  expr -> f expr
-
 -- why no eta reduce?
 deref :: BackendSemantics -> BackendSemantics
-deref a = deref' identity a
+deref = fromMaybe <*> go
+  where
+  go = case _ of
+    NeutAccessor expr' accessand -> go expr' >>=
+      case _, accessand of
+        NeutLit (LitArray arr), GetIndex i
+          | Just v <- Array.index arr i -> go v
+        NeutLit (LitRecord rec), GetProp p
+          | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> go v
+        NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
+          | Just (Tuple _ v) <- Array.index vals i -> go v
+        _, _ -> Nothing
+    -- in the case of a try, we try to deref on the happy path
+    -- and revert to the toplevel in case of failure
+    SemTry _ _ _ expr -> go expr
+    SemLet _ binding expr -> go (expr binding)
+    NeutLocal _ _ _ expr -> expr >>= go
+    e@(NeutLit (LitInt _)) -> Just e
+    e@(NeutLit (LitNumber _)) -> Just e
+    e@(NeutLit (LitString _)) -> Just e
+    e@(NeutLit (LitChar _)) -> Just e
+    e@(NeutLit (LitBoolean _)) -> Just e
+    -- in the following three cases, all we may need
+    -- is the object itself, meaning that we don't want to
+    -- give up on the whole thing if it doesn't work
+    -- so we call `deref` on the children
+    -- instead of calling `go`
+    NeutLit (LitArray arr) -> Just (NeutLit (LitArray (deref <$> arr)))
+    NeutLit (LitRecord rec) -> Just (NeutLit (LitRecord ((map <<< map) deref rec)))
+    NeutData qual ct ty tag vals -> Just (NeutData qual ct ty tag ((map <<< map) deref vals))
+    -- fail
+    _ -> Nothing
 
+-- deref' :: (BackendSemantics -> BackendSemantics) -> BackendSemantics -> BackendSemantics
+-- deref' f = case _ of
+--   o@(NeutAccessor expr accessand) -> do
+--     case deref' f expr, accessand of
+--       NeutLit (LitArray arr), GetIndex i
+--         | Just v <- Array.index arr i -> deref' f v
+--       NeutLit (LitRecord rec), GetProp p
+--         | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> deref' f v
+--       NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
+--         | Just (Tuple _ v) <- Array.index vals i -> deref' f v
+--       _, _ -> o
+--   -- in the case of a try, we try to deref on the happy path
+--   -- and revert to the toplevel in case of failure
+--   e@(SemTry _ _ _ expr) -> deref' (f <<< const e) expr
+--   SemLet _ binding expr -> deref' f (expr binding)
+--   NeutLocal _ _ _ (Just expr) -> deref' f expr
+--   e@(NeutLit (LitInt _)) -> e
+--   e@(NeutLit (LitNumber _)) -> e
+--   e@(NeutLit (LitString _)) -> e
+--   e@(NeutLit (LitChar _)) -> e
+--   e@(NeutLit (LitBoolean _)) -> e
+--   e@(NeutLit (LitArray _)) -> e
+--   e@(NeutLit (LitRecord _)) -> e
+--   -- fail
+--   expr -> f expr
+
+-- -- why no eta reduce?
+-- deref :: BackendSemantics -> BackendSemantics
+-- deref a = deref' identity a
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
 evalPrimOp :: Env -> IsFunction -> BackendOperator BackendSemantics -> BackendSemantics
@@ -1182,42 +1217,45 @@ instance MarkAsSafeToRecurse BackendRewrite where
 
 instance MarkAsSafeToRecurse f => MarkAsSafeToRecurse (BackendSyntax f) where
   markAsSafeToRecurse tryLevel = case _ of
-      e@(Var _) -> e
-      e@(Local _ _) -> e
-      App hd tl -> App (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
-      UncurriedApp hd tl ->
-        UncurriedApp (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
-      UncurriedAbs idents body -> UncurriedAbs idents (markAsSafeToRecurse tryLevel body)
-      UncurriedEffectApp hd tl -> UncurriedEffectApp (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
-      UncurriedEffectAbs idents body -> UncurriedEffectAbs idents (markAsSafeToRecurse tryLevel body)
-      Abs idents body -> Abs idents (markAsSafeToRecurse tryLevel body)
-      Let ident lvl binding body -> Let ident lvl (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
-      LetRec lvl bindings body -> LetRec lvl ((map <<< map) (markAsSafeToRecurse tryLevel) bindings) (markAsSafeToRecurse tryLevel body)
-      EffectBind ident lvl binding body -> EffectBind ident lvl (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
-      EffectPure val -> EffectPure (markAsSafeToRecurse tryLevel val)
-      EffectDefer val -> EffectDefer (markAsSafeToRecurse tryLevel val)
-      Accessor lhs accessor -> Accessor (markAsSafeToRecurse tryLevel lhs) accessor
-      Update lhs updates -> Update (markAsSafeToRecurse tryLevel lhs) ((map <<< map) (markAsSafeToRecurse tryLevel) updates)
-      Branch branches def -> Branch ((map <<< map) (markAsSafeToRecurse tryLevel) branches) (markAsSafeToRecurse tryLevel def)
-      PrimOp op -> PrimOp (markAsSafeToRecurse tryLevel op)
-      PrimEffect eff -> PrimEffect (markAsSafeToRecurse tryLevel eff)
-      PrimUndefined -> PrimUndefined
-      Lit lit -> Lit (markAsSafeToRecurse tryLevel lit)
-      Fail err -> Fail err
-      e@(CtorDef ct ty tag fields) -> e
-      CtorSaturated qual ct ty tag fields -> CtorSaturated qual ct ty tag ((map <<< map) (markAsSafeToRecurse tryLevel) fields)
+    e@(Var _) -> e
+    e@(Local _ _) -> e
+    App hd tl -> App (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
+    UncurriedApp hd tl ->
+      UncurriedApp (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
+    UncurriedAbs idents body -> UncurriedAbs idents (markAsSafeToRecurse tryLevel body)
+    UncurriedEffectApp hd tl -> UncurriedEffectApp (markAsSafeToRecurse tryLevel hd) (markAsSafeToRecurse tryLevel <$> tl)
+    UncurriedEffectAbs idents body -> UncurriedEffectAbs idents (markAsSafeToRecurse tryLevel body)
+    Abs idents body -> Abs idents (markAsSafeToRecurse tryLevel body)
+    Let ident lvl binding body -> Let ident lvl (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
+    LetRec lvl bindings body -> LetRec lvl ((map <<< map) (markAsSafeToRecurse tryLevel) bindings) (markAsSafeToRecurse tryLevel body)
+    EffectBind ident lvl binding body -> EffectBind ident lvl (markAsSafeToRecurse tryLevel binding) (markAsSafeToRecurse tryLevel body)
+    EffectPure val -> EffectPure (markAsSafeToRecurse tryLevel val)
+    EffectDefer val -> EffectDefer (markAsSafeToRecurse tryLevel val)
+    Accessor lhs accessor -> Accessor (markAsSafeToRecurse tryLevel lhs) accessor
+    Update lhs updates -> Update (markAsSafeToRecurse tryLevel lhs) ((map <<< map) (markAsSafeToRecurse tryLevel) updates)
+    Branch branches def -> Branch ((map <<< map) (markAsSafeToRecurse tryLevel) branches) (markAsSafeToRecurse tryLevel def)
+    PrimOp op -> PrimOp (markAsSafeToRecurse tryLevel op)
+    PrimEffect eff -> PrimEffect (markAsSafeToRecurse tryLevel eff)
+    PrimUndefined -> PrimUndefined
+    Lit lit -> Lit (markAsSafeToRecurse tryLevel lit)
+    Fail err -> Fail err
+    e@(CtorDef _ _ _ _) -> e
+    CtorSaturated qual ct ty tag fields -> CtorSaturated qual ct ty tag ((map <<< map) (markAsSafeToRecurse tryLevel) fields)
 
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
 
 buildTry :: TryLevel -> BackendExpr -> BackendExpr -> BackendExpr
 buildTry tryLevel backup main =
-  ExprRewrite (withRewriteTry $ analysisOf main) $ RewriteTry tryLevel backup main
+  ExprRewrite (withRewriteTry $ withIsTry $ analysisOf main) $ RewriteTry tryLevel backup main
 
 getAnalysis :: BackendExpr -> BackendAnalysis
 getAnalysis = case _ of
   ExprRewrite analysis _ -> analysis
   ExprSyntax analysis _ -> analysis
+
+getTry :: BackendExpr -> HasTry
+getTry = getAnalysis >>> unwrap >>> _.hasTry
 
 unlet :: BackendExpr -> BackendExpr
 unlet = case _ of
@@ -1226,6 +1264,13 @@ unlet = case _ of
 
 diseffectCtx :: Ctx -> Ctx
 diseffectCtx ctx = ctx { effect = false }
+
+addTryInfo :: HasTry -> BackendExpr -> BackendExpr
+addTryInfo ht = case _ of
+  ExprSyntax a b -> ExprSyntax (go a) b
+  ExprRewrite a b -> ExprRewrite (go a) b
+  where
+  go (BackendAnalysis a) = BackendAnalysis a { hasTry = ht }
 
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
@@ -1247,21 +1292,23 @@ quote = go
       else quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      let binding' = quote (diseffectCtx ctx) binding
+      build ctx $ Let ident level binding' $ quote ctx' $ k $ NeutLocal ident level (getTry binding') (Just binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
       -- to recursive bindings. The language requires
       -- a runtime check for strictly recursive bindings
       -- which we don't currently implement.
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level NoTry Nothing) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (diseffectCtx ctx') $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
+      let binding' = quote ctx' binding
+      build ctx $ EffectBind ident level binding' $ quote ctx'' $ k $ NeutLocal ident level (getTry binding') (Just binding)
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (diseffectCtx ctx) sem)
     SemEffectDefer sem ->
@@ -1281,13 +1328,13 @@ quote = go
       go ctx (force sem)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level Nothing
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote ctx' $ k $ NeutLocal ident level NoTry Nothing
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl NoTry Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
@@ -1297,12 +1344,12 @@ quote = go
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
             -- todo - can we do better than `Nothing` here?
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl NoTry Nothing))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (diseffectCtx ctx') body
       loop ctx [] pro
-    NeutLocal ident level _ -> do
-      build ctx $ Local ident level
+    NeutLocal ident level hasTry _ -> do
+      addTryInfo hasTry $ build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
     NeutStop qual ->
@@ -1905,3 +1952,17 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
+
+-- spyu :: forall a. String -> a -> Unit
+-- spyu a b = const unit $ spy a b
+
+-- spyuc :: forall a. Boolean -> String -> a -> Unit
+-- spyuc cond a b = if cond then const unit $ spy a b else unit
+
+-- spyc :: forall a. String -> a -> Unit
+-- spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+
+-- foreign import spyx :: forall a. String -> a -> a
+-- foreign import spyxx :: forall a b. String -> a -> b -> b
+-- foreign import spyy :: forall a. String -> a -> a
+-- spy = spyx :: forall a. String -> a -> a
