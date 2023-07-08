@@ -23,7 +23,7 @@ import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite, withRewriteTry)
-import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
@@ -178,7 +178,7 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
-  , safeToRecurse :: Maybe TryLevel
+  , safeToRecurse :: Set.Set TryLevel
   , prevWasRewritten :: Boolean
   , stopTrying :: Boolean
   , punt :: Set.Set (Qualified Ident)
@@ -302,23 +302,28 @@ instance Eval f => Eval (BackendSyntax f) where
       CtorSaturated qual ct ty tag fields ->
         guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
-clearRecurse :: Env -> Env
-clearRecurse (Env e) = Env e { safeToRecurse = Nothing }
-
 instance Eval BackendExpr where
-  eval = go'
+  eval = go
     where
-    go' (Env env) be = do
+    go (Env env) be = do
       let BackendAnalysis { safeToRecurse } = getAnalysis be
       -- because the analysis semigroup clears safeToRecurse at any point
       -- other than where its added to the tree, we alt it here so that it
       -- makes its way down to where it needs to be
-      go (Env env { safeToRecurse = safeToRecurse <|> env.safeToRecurse }) be
-    go env@(Env { safeToRecurse: s2r, stopTrying, prevWasRewritten }) = case _ of
+      go'
+        ( Env env
+            { safeToRecurse = case safeToRecurse of
+                Just x -> let _ = spy "RECEIVING SAFE" x in Set.insert x env.safeToRecurse
+                Nothing -> env.safeToRecurse
+            }
+        )
+        be
+    go' env@(Env { safeToRecurse: s2r, stopTrying, prevWasRewritten }) = case _ of
       ExprRewrite _ rewrite ->
         case rewrite of
-          RewriteRecurse tryLevel ident ->
-            if s2r == Just tryLevel || stopTrying then eval (clearRecurse env) (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon tryLevel ident
+          RewriteRecurse tryLevel ident -> do
+            let _ = spyuc (tryLevel `Set.member` s2r) "ACTUALIZING" tryLevel
+            if (tryLevel `Set.member` s2r) || stopTrying then eval env (Var ident :: BackendSyntax BackendExpr) else RecurseWithRecklessAbandon tryLevel ident
           RewriteInline _ _ binding body ->
             go (bindLocal env (One (eval env binding))) body
           RewriteUncurry ident _ args binding body ->
@@ -1128,14 +1133,14 @@ type Ctx =
   , effect :: Boolean
   }
 
-safeToRecurse :: TryLevel -> BackendExpr -> BackendExpr
-safeToRecurse tryLevel = case _ of
+markAsSafeToRecurse :: TryLevel -> BackendExpr -> BackendExpr
+markAsSafeToRecurse tryLevel = case _ of
   ExprRewrite a expr ->
     ExprRewrite (go a) expr
   ExprSyntax a expr ->
     ExprSyntax (go a) expr
   where
-  go (BackendAnalysis analysis) = (BackendAnalysis analysis { safeToRecurse = Just tryLevel, rewrite = true })
+  go (BackendAnalysis analysis) = let _ = spy "MARKING SAFE" tryLevel in (BackendAnalysis analysis { safeToRecurse = Just tryLevel, rewrite = true })
 
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
@@ -1165,10 +1170,10 @@ quote = go
     SemTry tryLevel prevWasRewritten backup main -> do
       let newMain = quote (diseffectCtx ctx) main
       let BackendAnalysis { hasBranch } = getAnalysis newMain
-      if not hasBranch then safeToRecurse tryLevel newMain
+      if not hasBranch then markAsSafeToRecurse tryLevel newMain
       else if prevWasRewritten then
         buildTry tryLevel (quote (diseffectCtx ctx) backup) newMain
-      else {-let _ = spy "FAILING" {tryLevel,newMain,main} in-} quote (diseffectCtx ctx) backup
+      else let _ = spy "FAILING" { tryLevel, newMain, main } in quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Let ident level (quote (diseffectCtx ctx) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
@@ -1700,6 +1705,8 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
     | otherwise = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
+        let _ = spyuc (mn == Just (ModuleName "Deku.Example.Optimus") && id == "main") "ITERN" { n }
+        let _ = spyuc (not rewrite && mn == Just (ModuleName "Deku.Example.Optimus") && id == "main") "NOTREWRITE" { rewrite, rewriteTry, expr2 }
         if rewrite || rewriteTry then do
           go rewrite stopTrying (n - 1) expr2
         else
@@ -1832,6 +1839,9 @@ guardFailOver f as k =
 
 spyu :: forall a. String -> a -> Unit
 spyu a b = const unit $ spy a b
+
+spyuc :: forall a. Boolean -> String -> a -> Unit
+spyuc cond a b = if cond then const unit $ spy a b else unit
 
 spyc :: forall a. String -> a -> Unit
 spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
