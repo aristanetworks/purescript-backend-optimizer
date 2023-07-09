@@ -24,7 +24,6 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Effect.Console (logShow)
-import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), HasTry(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withIsTry, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
@@ -939,7 +938,7 @@ bumpTryLevel (Env e) = Tuple e.tryLevel (Env e { tryLevel = e.tryLevel + one })
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
 withTry qual env' group expr =
   if Array.null group then eval evaled expr
-  else let _ = spy "FRESH SEMTRY" qual in SemTry tryLevel true (NeutStop qual) (eval evaled expr)
+  else SemTry tryLevel true (NeutStop qual) (eval evaled expr)
   where
   Tuple tryLevel env = bumpTryLevel env'
   evaled = puntMe env group
@@ -1789,9 +1788,7 @@ withPrevWasRewritten :: Boolean -> Env -> Env
 withPrevWasRewritten prevWasRewritten (Env env) = Env env { prevWasRewritten = prevWasRewritten }
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
-optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
-  let _ = unsafePerformEffect ((getTime >>> { time: _, id, tag: "starting" } <$> now) >>= logShow)
-  go true false initN ex1
+optimize ctx env (Qualified mn (Ident id)) initN ex1 = go true false initN ex1
   where
   go prevWasRewritten stopTrying n expr1
     | n == 0, not stopTrying = go true true initN expr1
@@ -1802,9 +1799,6 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
         if rewrite || rewriteTry then do
-          let _ = unsafePerformEffect do
-                            pure unit
-                            ((getTime >>> { time: _, id, n } <$> now) >>= logShow)
           go rewrite stopTrying (n - 1) expr2
         else
           expr2
@@ -1934,16 +1928,16 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
-spyu :: forall a. String -> a -> Unit
-spyu a b = const unit $ spy a b
+-- spyu :: forall a. String -> a -> Unit
+-- spyu a b = const unit $ spy a b
 
-spyuc :: forall a. Boolean -> String -> a -> Unit
-spyuc cond a b = if cond then const unit $ spy a b else unit
+-- spyuc :: forall a. Boolean -> String -> a -> Unit
+-- spyuc cond a b = if cond then const unit $ spy a b else unit
 
-spyc :: forall a. String -> a -> Unit
-spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+-- spyc :: forall a. String -> a -> Unit
+-- spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
 
-foreign import spyx :: forall a. String -> a -> a
-foreign import spyxx :: forall a b. String -> a -> b -> b
-foreign import spyy :: forall a. String -> a -> a
-spy = spyx :: forall a. String -> a -> a
+-- foreign import spyx :: forall a. String -> a -> a
+-- foreign import spyxx :: forall a b. String -> a -> b -> b
+-- foreign import spyy :: forall a. String -> a -> a
+-- spy = spyx :: forall a. String -> a -> a
