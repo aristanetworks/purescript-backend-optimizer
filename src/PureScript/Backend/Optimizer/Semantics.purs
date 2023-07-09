@@ -658,7 +658,7 @@ prepDeref = fromMaybe <*> go
         NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
           | Just (Tuple _ v) <- Array.index vals i -> go v
         _, _ -> Nothing
-    -- in the case of a try, we try to deref on the happy path
+    -- in the case of a try, we try to prepDeref on the happy path
     -- and revert to the toplevel in case of failure
     SemTry _ _ _ expr -> go expr
     SemLet _ binding expr -> go (expr binding)
@@ -671,11 +671,11 @@ prepDeref = fromMaybe <*> go
     -- in the following three cases, all we may need
     -- is the object itself, meaning that we don't want to
     -- give up on the whole thing if it doesn't work
-    -- so we call `deref` on the children
+    -- so we call `prepDeref` on the children
     -- instead of calling `go`
-    NeutLit (LitArray arr) -> Just (NeutLit (LitArray (deref <$> arr)))
-    NeutLit (LitRecord rec) -> Just (NeutLit (LitRecord ((map <<< map) deref rec)))
-    NeutData qual ct ty tag vals -> Just (NeutData qual ct ty tag ((map <<< map) deref vals))
+    NeutLit (LitArray arr) -> Just (NeutLit (LitArray (prepDeref <$> arr)))
+    NeutLit (LitRecord rec) -> Just (NeutLit (LitRecord ((map <<< map) prepDeref rec)))
+    NeutData qual ct ty tag vals -> Just (NeutData qual ct ty tag ((map <<< map) prepDeref vals))
     -- fail
     _ -> Nothing
 
