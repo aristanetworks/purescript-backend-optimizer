@@ -22,6 +22,7 @@ You can edit this file as you like.
   , "foldable-traversable"
   , "foreign-object"
   , "integers"
+  , "js-date"
   , "language-cst-parser"
   , "lazy"
   , "lists"

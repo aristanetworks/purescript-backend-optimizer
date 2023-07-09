@@ -10,6 +10,7 @@ import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
+import Data.JSDate (getTime, now)
 import Data.Lazy (Lazy, defer, force)
 import Data.Lens (over, traversed)
 import Data.Lens.Record (prop)
@@ -22,6 +23,8 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
+import Effect.Console (logShow)
+import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), HasTry(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withIsTry, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
@@ -637,9 +640,14 @@ makeLet ident binding go = case binding of
   _ -> do
     SemLet ident binding go
 
--- why no eta reduce?
 deref :: BackendSemantics -> BackendSemantics
-deref = fromMaybe <*> go
+deref = case _ of
+  NeutLocal _ _ _ expr
+    | Just expr' <- expr -> expr'
+  a -> a
+
+prepDeref :: BackendSemantics -> BackendSemantics
+prepDeref = fromMaybe <*> go
   where
   go = case _ of
     NeutAccessor expr' accessand -> go expr' >>=
@@ -672,37 +680,6 @@ deref = fromMaybe <*> go
     -- fail
     _ -> Nothing
 
--- deref' :: (BackendSemantics -> BackendSemantics) -> BackendSemantics -> BackendSemantics
--- deref' f = case _ of
---   o@(NeutAccessor expr accessand) -> do
---     case deref' f expr, accessand of
---       NeutLit (LitArray arr), GetIndex i
---         | Just v <- Array.index arr i -> deref' f v
---       NeutLit (LitRecord rec), GetProp p
---         | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> deref' f v
---       NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
---         | Just (Tuple _ v) <- Array.index vals i -> deref' f v
---       _, _ -> o
---   -- in the case of a try, we try to deref on the happy path
---   -- and revert to the toplevel in case of failure
---   e@(SemTry _ _ _ expr) -> deref' (f <<< const e) expr
---   SemLet _ binding expr -> deref' f (expr binding)
---   NeutLocal _ _ _ (Just expr) -> deref' f expr
---   e@(NeutLit (LitInt _)) -> e
---   e@(NeutLit (LitNumber _)) -> e
---   e@(NeutLit (LitString _)) -> e
---   e@(NeutLit (LitChar _)) -> e
---   e@(NeutLit (LitBoolean _)) -> e
---   e@(NeutLit (LitArray _)) -> e
---   e@(NeutLit (LitRecord _)) -> e
---   -- fail
---   expr -> f expr
-
--- -- why no eta reduce?
--- deref :: BackendSemantics -> BackendSemantics
--- deref a = deref' identity a
--- TODO: Check for overflow in Int ops since backends may not handle it the
--- same was as the JS backend.
 evalPrimOp :: Env -> IsFunction -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env isFunction = case _ of
   Op1 op1 x ->
@@ -962,7 +939,7 @@ bumpTryLevel (Env e) = Tuple e.tryLevel (Env e { tryLevel = e.tryLevel + one })
 withTry :: Qualified Ident -> Env -> Array (Qualified Ident) -> NeutralExpr -> BackendSemantics
 withTry qual env' group expr =
   if Array.null group then eval evaled expr
-  else SemTry tryLevel true (NeutStop qual) (eval evaled expr)
+  else let _ = spy "FRESH SEMTRY" qual in SemTry tryLevel true (NeutStop qual) (eval evaled expr)
   where
   Tuple tryLevel env = bumpTryLevel env'
   evaled = puntMe env group
@@ -1293,7 +1270,7 @@ quote = go
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       let binding' = quote (diseffectCtx ctx) binding
-      build ctx $ Let ident level binding' $ quote ctx' $ k $ NeutLocal ident level (getTry binding') (Just binding)
+      build ctx $ Let ident level binding' $ quote ctx' $ k $ NeutLocal ident level (getTry binding') (Just $ prepDeref binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1308,7 +1285,7 @@ quote = go
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
       let binding' = quote ctx' binding
-      build ctx $ EffectBind ident level binding' $ quote ctx'' $ k $ NeutLocal ident level (getTry binding') (Just binding)
+      build ctx $ EffectBind ident level binding' $ quote ctx'' $ k $ NeutLocal ident level (getTry binding') (Just $ prepDeref binding)
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (diseffectCtx ctx) sem)
     SemEffectDefer sem ->
@@ -1813,6 +1790,7 @@ withPrevWasRewritten prevWasRewritten (Env env) = Env env { prevWasRewritten = p
 
 optimize :: Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> BackendExpr
 optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
+  let _ = unsafePerformEffect ((getTime >>> { time: _, id, tag: "starting" } <$> now) >>= logShow)
   go true false initN ex1
   where
   go prevWasRewritten stopTrying n expr1
@@ -1824,6 +1802,9 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = do
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
         if rewrite || rewriteTry then do
+          let _ = unsafePerformEffect do
+                            pure unit
+                            ((getTime >>> { time: _, id, n } <$> now) >>= logShow)
           go rewrite stopTrying (n - 1) expr2
         else
           expr2
@@ -1953,16 +1934,16 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
--- spyu :: forall a. String -> a -> Unit
--- spyu a b = const unit $ spy a b
+spyu :: forall a. String -> a -> Unit
+spyu a b = const unit $ spy a b
 
--- spyuc :: forall a. Boolean -> String -> a -> Unit
--- spyuc cond a b = if cond then const unit $ spy a b else unit
+spyuc :: forall a. Boolean -> String -> a -> Unit
+spyuc cond a b = if cond then const unit $ spy a b else unit
 
--- spyc :: forall a. String -> a -> Unit
--- spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+spyc :: forall a. String -> a -> Unit
+spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
 
--- foreign import spyx :: forall a. String -> a -> a
--- foreign import spyxx :: forall a b. String -> a -> b -> b
--- foreign import spyy :: forall a. String -> a -> a
--- spy = spyx :: forall a. String -> a -> a
+foreign import spyx :: forall a. String -> a -> a
+foreign import spyxx :: forall a b. String -> a -> b -> b
+foreign import spyy :: forall a. String -> a -> a
+spy = spyx :: forall a. String -> a -> a
