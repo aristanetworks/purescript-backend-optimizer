@@ -640,13 +640,16 @@ makeLet ident binding go = case binding of
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
-deref = case _ of
-  NeutLocal _ _ _ expr
-    | Just expr' <- expr -> expr'
-  a -> a
+deref = prepDeref' true
 
+-- prepDeref is an optimization
+-- that runs the deref chain once when the local is cached in the env
+-- from then on, we use the cached version
 prepDeref :: BackendSemantics -> BackendSemantics
-prepDeref = fromMaybe <*> go
+prepDeref a = prepDeref' false a
+
+prepDeref' :: Boolean -> BackendSemantics -> BackendSemantics
+prepDeref' shallow = fromMaybe <*> go
   where
   go = case _ of
     NeutAccessor expr' accessand -> go expr' >>=
@@ -662,7 +665,7 @@ prepDeref = fromMaybe <*> go
     -- and revert to the toplevel in case of failure
     SemTry _ _ _ expr -> go expr
     SemLet _ binding expr -> go (expr binding)
-    NeutLocal _ _ _ expr -> expr >>= go
+    NeutLocal _ _ _ expr -> if shallow then expr else expr >>= go
     e@(NeutLit (LitInt _)) -> Just e
     e@(NeutLit (LitNumber _)) -> Just e
     e@(NeutLit (LitString _)) -> Just e
