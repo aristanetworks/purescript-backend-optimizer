@@ -173,9 +173,6 @@ usedDep dep = do
   let BackendAnalysis s = mempty
   BackendAnalysis s { deps = Set.singleton dep }
 
-withDep :: Qualified Ident -> BackendAnalysis -> BackendAnalysis
-withDep dep (BackendAnalysis s) = BackendAnalysis s { deps = Set.insert dep s.deps }
-
 bump :: BackendAnalysis -> BackendAnalysis
 bump (BackendAnalysis s) = BackendAnalysis s { size = s.size + 1 }
 
