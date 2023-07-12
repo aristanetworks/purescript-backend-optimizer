@@ -14,7 +14,7 @@ import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor, BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
 
@@ -338,6 +338,8 @@ analyze externAnalysis expr = case expr of
     analyzeDefault expr
   Accessor hd acc ->
     case syntaxOf hd of
+      Just (Accessor _ (GetCtorField qi _ _ _ _ _)) ->
+        analysis <> usedDep qi
       Just (Accessor _ _) ->
         analysis
       Just (Local _ lvl) ->
