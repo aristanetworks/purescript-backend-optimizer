@@ -173,6 +173,9 @@ usedDep dep = do
   let BackendAnalysis s = mempty
   BackendAnalysis s { deps = Set.singleton dep }
 
+withDep :: Qualified Ident -> BackendAnalysis -> BackendAnalysis
+withDep dep (BackendAnalysis s) = BackendAnalysis s { deps = Set.insert dep s.deps }
+
 bump :: BackendAnalysis -> BackendAnalysis
 bump (BackendAnalysis s) = BackendAnalysis s { size = s.size + 1 }
 
@@ -338,8 +341,6 @@ analyze externAnalysis expr = case expr of
     analyzeDefault expr
   Accessor hd acc ->
     case syntaxOf hd of
-      Just (Accessor _ (GetCtorField qi _ _ _ _ _)) ->
-        analysis <> usedDep qi
       Just (Accessor _ _) ->
         analysis
       Just (Local _ lvl) ->
@@ -351,8 +352,10 @@ analyze externAnalysis expr = case expr of
         complex Deref analysis
     where
     analysis =
-      withResult Unknown
-        $ analyzeDefault expr
+      case acc of
+        GetCtorField qi _ _ _ _ _ -> do
+          withResult Unknown $ analyzeDefault expr <> usedDep qi
+        _ -> withResult Unknown $ analyzeDefault expr
   Lit lit ->
     case lit of
       LitArray as | Array.length as > 0 ->
