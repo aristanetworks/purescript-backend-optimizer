@@ -640,16 +640,7 @@ makeLet ident binding go = case binding of
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
-deref = prepDeref' true
-
--- prepDeref is an optimization
--- that runs the deref chain once when the local is cached in the env
--- from then on, we use the cached version
-prepDeref :: BackendSemantics -> BackendSemantics
-prepDeref a = prepDeref' false a
-
-prepDeref' :: Boolean -> BackendSemantics -> BackendSemantics
-prepDeref' shallow = fromMaybe <*> go
+deref = fromMaybe <*> go
   where
   go = case _ of
     NeutAccessor expr' accessand -> go expr' >>=
@@ -661,11 +652,11 @@ prepDeref' shallow = fromMaybe <*> go
         NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
           | Just (Tuple _ v) <- Array.index vals i -> go v
         _, _ -> Nothing
-    -- in the case of a try, we try to prepDeref on the happy path
+    -- in the case of a try, we try to deref on the happy path
     -- and revert to the toplevel in case of failure
     SemTry _ _ _ expr -> go expr
     SemLet _ binding expr -> go (expr binding)
-    NeutLocal _ _ _ expr -> if shallow then expr else expr >>= go
+    NeutLocal _ _ _ expr -> expr >>= go
     e@(NeutLit (LitInt _)) -> Just e
     e@(NeutLit (LitNumber _)) -> Just e
     e@(NeutLit (LitString _)) -> Just e
@@ -674,11 +665,11 @@ prepDeref' shallow = fromMaybe <*> go
     -- in the following three cases, all we may need
     -- is the object itself, meaning that we don't want to
     -- give up on the whole thing if it doesn't work
-    -- so we call `prepDeref` on the children
+    -- so we call `deref` on the children
     -- instead of calling `go`
-    NeutLit (LitArray arr) -> Just (NeutLit (LitArray (prepDeref <$> arr)))
-    NeutLit (LitRecord rec) -> Just (NeutLit (LitRecord ((map <<< map) prepDeref rec)))
-    NeutData qual ct ty tag vals -> Just (NeutData qual ct ty tag ((map <<< map) prepDeref vals))
+    NeutLit (LitArray arr) -> Just (NeutLit (LitArray (deref <$> arr)))
+    NeutLit (LitRecord rec) -> Just (NeutLit (LitRecord ((map <<< map) deref rec)))
+    NeutData qual ct ty tag vals -> Just (NeutData qual ct ty tag ((map <<< map) deref vals))
     -- fail
     _ -> Nothing
 
@@ -1272,7 +1263,7 @@ quote = go
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       let binding' = quote (diseffectCtx ctx) binding
-      build ctx $ Let ident level binding' $ quote ctx' $ k $ NeutLocal ident level (getTry binding') (Just $ prepDeref binding)
+      build ctx $ Let ident level binding' $ quote ctx' $ k $ NeutLocal ident level (getTry binding') (Just $ deref binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1287,7 +1278,7 @@ quote = go
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
       let binding' = quote ctx' binding
-      build ctx $ EffectBind ident level binding' $ quote ctx'' $ k $ NeutLocal ident level (getTry binding') (Just $ prepDeref binding)
+      build ctx $ EffectBind ident level binding' $ quote ctx'' $ k $ NeutLocal ident level (getTry binding') (Just $ deref binding)
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (diseffectCtx ctx) sem)
     SemEffectDefer sem ->
