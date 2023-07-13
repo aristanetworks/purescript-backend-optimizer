@@ -16,6 +16,7 @@ import Data.List (List)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (maybe)
+import Data.Set (Set)
 import Data.Set as Set
 import Data.Set.NonEmpty as NonEmptySet
 import Data.Tuple (Tuple(..))
@@ -28,7 +29,7 @@ import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules)
-import PureScript.Backend.Optimizer.Convert (BackendModule)
+import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, ModuleName(..), Qualified)
 import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
@@ -85,8 +86,9 @@ basicBuildMain
      , foreignSemantics :: Map (Qualified Ident) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit
-     , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> Aff Unit
+     , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> Aff Unit
      , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
+     , traceIdents :: Set (Qualified Ident)
      }
   -> Aff Unit
 basicBuildMain options = do
@@ -108,5 +110,6 @@ basicBuildMain options = do
         , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule
+        , traceIdents: options.traceIdents
         }
       options.onCodegenAfter

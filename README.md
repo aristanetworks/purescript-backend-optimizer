@@ -229,6 +229,12 @@ Precedence applies in the following order (most specific to least specific):
 | Module A's header, `@inline export` module A directive | Module A's usages in all modules |
 | Default heuristics | All modules |
 
+## Tracing Optimizations
+
+`purs-backend-es` can also trace the rewrite passes taken when optimizing a
+top-level expression via the `--trace-rewrites` CLI arg. This may help in
+debugging an unexpected or non-optimal result.
+
 ## Semantics
 
 `purescript-backend-optimizer` consumes the PureScript compiler's high-level

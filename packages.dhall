@@ -24,3 +24,4 @@ in  upstream
     , repo = "https://github.com/natefaubion/purescript-node-glob-basic.git"
     , version = "v1.2.2"
     }
+  with arrays.version = "v7.2.1"
