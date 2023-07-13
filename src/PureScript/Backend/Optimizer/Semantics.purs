@@ -23,7 +23,6 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
-import Effect.Console (logShow)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), HasTry(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withIsTry, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
@@ -655,7 +654,6 @@ deref = fromMaybe <*> go
     -- in the case of a try, we try to deref on the happy path
     -- and revert to the toplevel in case of failure
     SemTry _ _ _ expr -> go expr
-    SemLet _ binding expr -> go (expr binding)
     NeutLocal _ _ _ expr -> expr >>= go
     e@(NeutLit (LitInt _)) -> Just e
     e@(NeutLit (LitNumber _)) -> Just e
@@ -1259,7 +1257,7 @@ quote = go
       if not hasBranch then markAsSafeToRecurse tryLevel newMain
       else if prevWasRewritten then
         buildTry tryLevel (quote (diseffectCtx ctx) backup) newMain
-      else quote (diseffectCtx ctx) backup
+      else let _ = spy "crap" {newMain, main} in quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       let binding' = quote (diseffectCtx ctx) binding
@@ -1790,6 +1788,8 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go true false initN ex1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
+        let _ = spyuc (id == "main2") "nnnnnnnnnnnn" { n }
+        let _ = spyuc (n <= 9974 && id == "main2") "EXPR1" { expr1 }
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
         if rewrite || rewriteTry then do
@@ -1922,16 +1922,16 @@ guardFailOver f as k =
     NeutFail _ -> Just expr
     _ -> Nothing
 
--- spyu :: forall a. String -> a -> Unit
--- spyu a b = const unit $ spy a b
+spyu :: forall a. String -> a -> Unit
+spyu a b = const unit $ spy a b
 
--- spyuc :: forall a. Boolean -> String -> a -> Unit
--- spyuc cond a b = if cond then const unit $ spy a b else unit
+spyuc :: forall a. Boolean -> String -> a -> Unit
+spyuc cond a b = if cond then const unit $ spy a b else unit
 
--- spyc :: forall a. String -> a -> Unit
--- spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+spyc :: forall a. String -> a -> Unit
+spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
 
--- foreign import spyx :: forall a. String -> a -> a
--- foreign import spyxx :: forall a b. String -> a -> b -> b
--- foreign import spyy :: forall a. String -> a -> a
--- spy = spyx :: forall a. String -> a -> a
+foreign import spyx :: forall a. String -> a -> a
+foreign import spyxx :: forall a b. String -> a -> b -> b
+foreign import spyy :: forall a. String -> a -> a
+spy = spyx :: forall a. String -> a -> a
