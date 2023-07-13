@@ -593,12 +593,10 @@ evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSe
 evalAssocLet env sem go = case sem of
   SemLet ident val k ->
     SemLet ident val \nextVal1 ->
-      makeLet Nothing (k nextVal1) \nextVal2 ->
-        go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
+      evalAssocLet env (k nextVal1) go
   SemLetRec vals k ->
     SemLetRec vals \nextVals1 ->
-      makeLet Nothing (k nextVals1) \nextVal2 ->
-        go (bindLocal (bindLocal env (Group nextVals1)) (One nextVal2)) nextVal2
+      evalAssocLet env (k nextVals1) go
   NeutFail err ->
     NeutFail err
   _ ->
