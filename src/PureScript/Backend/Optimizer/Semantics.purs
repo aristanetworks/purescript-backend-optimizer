@@ -295,6 +295,8 @@ instance Eval f => Eval (BackendSyntax f) where
         guardFailOver identity (eval env <$> eff) NeutPrimEffect
       PrimUndefined ->
         NeutPrimUndefined
+      Lit (LitArray lit) ->
+        floatLetFromArr env (eval env <$> lit)
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
@@ -1222,6 +1224,14 @@ getAnalysis = case _ of
   ExprRewrite analysis _ -> analysis
   ExprSyntax analysis _ -> analysis
 
+-- evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
+floatLetFromArr :: Env -> Array BackendSemantics -> BackendSemantics
+floatLetFromArr = go []
+  where
+  go acc env = Array.uncons >>> case _ of
+    Nothing -> guardFailOver identity (LitArray acc) NeutLit
+    Just { head, tail } -> evalAssocLet env head (\e v -> go (acc <> [v]) e tail)
+
 getTry :: BackendExpr -> HasTry
 getTry = getAnalysis >>> unwrap >>> _.hasTry
 
@@ -1257,7 +1267,7 @@ quote = go
       if not hasBranch then markAsSafeToRecurse tryLevel newMain
       else if prevWasRewritten then
         buildTry tryLevel (quote (diseffectCtx ctx) backup) newMain
-      else let _ = spy "crap" {newMain, main} in quote (diseffectCtx ctx) backup
+      else quote (diseffectCtx ctx) backup
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
       let binding' = quote (diseffectCtx ctx) binding
@@ -1788,8 +1798,6 @@ optimize ctx env (Qualified mn (Ident id)) initN ex1 = go true false initN ex1
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
-        let _ = spyuc (id == "main2") "nnnnnnnnnnnn" { n }
-        let _ = spyuc (n <= 9974 && id == "main2") "EXPR1" { expr1 }
         let expr2 = quote ctx (eval (withPrevWasRewritten prevWasRewritten $ withStopTrying stopTrying env) expr1)
         let BackendAnalysis { rewrite, rewriteTry } = analysisOf expr2
         if rewrite || rewriteTry then do
@@ -1921,17 +1929,3 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
-
-spyu :: forall a. String -> a -> Unit
-spyu a b = const unit $ spy a b
-
-spyuc :: forall a. Boolean -> String -> a -> Unit
-spyuc cond a b = if cond then const unit $ spy a b else unit
-
-spyc :: forall a. String -> a -> Unit
-spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
-
-foreign import spyx :: forall a. String -> a -> a
-foreign import spyxx :: forall a b. String -> a -> b -> b
-foreign import spyy :: forall a. String -> a -> a
-spy = spyx :: forall a. String -> a -> a
