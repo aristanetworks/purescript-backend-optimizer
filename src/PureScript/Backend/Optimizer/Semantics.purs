@@ -297,6 +297,8 @@ instance Eval f => Eval (BackendSyntax f) where
         NeutPrimUndefined
       Lit (LitArray lit) ->
         floatLetFromArr env (eval env <$> lit)
+      Lit (LitRecord lit) ->
+        floatLetFromRec env ((map <<< map) (eval env) lit)
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
@@ -1230,7 +1232,14 @@ floatLetFromArr = go []
   where
   go acc env = Array.uncons >>> case _ of
     Nothing -> guardFailOver identity (LitArray acc) NeutLit
-    Just { head, tail } -> evalAssocLet env head (\e v -> go (acc <> [v]) e tail)
+    Just { head, tail } -> evalAssocLet env head (\e v -> go (acc <> [ v ]) e tail)
+
+floatLetFromRec :: Env -> Array (Prop BackendSemantics) -> BackendSemantics
+floatLetFromRec = go []
+  where
+  go acc env = Array.uncons >>> case _ of
+    Nothing -> guardFailOver identity (LitRecord acc) NeutLit
+    Just { head: Prop k v, tail } -> evalAssocLet env v (\e x -> go (acc <> [ Prop k x ]) e tail)
 
 getTry :: BackendExpr -> HasTry
 getTry = getAnalysis >>> unwrap >>> _.hasTry
