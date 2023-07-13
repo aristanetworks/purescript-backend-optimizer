@@ -1226,7 +1226,6 @@ getAnalysis = case _ of
   ExprRewrite analysis _ -> analysis
   ExprSyntax analysis _ -> analysis
 
--- evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
 floatLetFromArr :: Env -> Array BackendSemantics -> BackendSemantics
 floatLetFromArr = go []
   where
