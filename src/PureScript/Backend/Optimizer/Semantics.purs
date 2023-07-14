@@ -210,8 +210,14 @@ instance Eval f => Eval (BackendSyntax f) where
           force sem
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-    App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
+    App hd tl -> do
+      let l = List.fromFoldable (eval env <$> tl)
+      evalAssocLet env (eval env hd) \ex hd' -> do
+        let
+          go acc ee = case _ of
+            List.Nil -> evalApp ee hd' acc
+            List.Cons v tail -> evalAssocLet ee v (\e x -> go (acc <> [ x ]) e tail)
+        go [] ex l
     UncurriedApp hd tl ->
       evalUncurriedApp env (eval env hd) (eval env <$> tl)
     UncurriedAbs idents body -> do

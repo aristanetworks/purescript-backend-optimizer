@@ -14,10 +14,10 @@ const test3 = f => g => {
   return x => $0($1($2($3(x))));
 };
 const test2 = f => g => {
-  const $0 = g();
-  const $1 = f();
+  const $0 = f();
+  const $1 = g();
   const $2 = g();
-  return x => $0($1($2(x)));
+  return x => $2($0($1(x)));
 };
 const test1 = f => g => {
   const $0 = f();
