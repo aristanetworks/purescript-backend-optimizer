@@ -243,7 +243,7 @@ type OptimizationSteps = Array (Tuple (Qualified Ident) (NonEmptyArray BackendEx
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let evalEnv = Env { isAppHead: false, tryLevel: zero, currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], prevWasRewritten: true, punt: Set.empty, directives: env.directives, stopTrying: false }
+  let evalEnv = Env { safeToRecurse: Set.empty, isAppHead: false, tryLevel: zero, currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], prevWasRewritten: true, punt: Set.empty, directives: env.directives, stopTrying: false }
   let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
   let enableTracing = Set.member qualifiedIdent env.traceIdents

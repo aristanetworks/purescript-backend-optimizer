@@ -292,8 +292,10 @@ printBackendRewriteCase = case _ of
     printRewrite "Inline"
   RewriteTry _ _ _ ->
     printRewrite "Try"
-  RewriteRecurse _ _ _ ->
+  RewriteRecurse _ _ ->
     printRewrite "Recurse"
+  RewriteSafeToRecurse _ _ ->
+    printRewrite "SafeToRecurse"
   RewriteUncurry _ _ _ _ _ ->
     printRewrite "Uncurry"
   RewriteLetAssoc _ _ ->
