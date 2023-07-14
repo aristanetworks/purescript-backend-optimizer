@@ -151,7 +151,6 @@ instance Comonad Prop where
 instance Extend Prop where
   extend f p@(Prop k _) = Prop k (f p)
 
-
 instance foldableProp :: Foldable Prop where
   foldl k a (Prop _ b) = k a b
   foldr k b (Prop _ a) = k a b
