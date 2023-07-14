@@ -234,6 +234,14 @@ floatArray
   -> BackendSemantics
 floatArray atTop env arr hf tf ef = floatAppLets (pure $ pure $ ef) hf tf identity atTop env NeutPrimUndefined arr
 
+floatHead
+  :: Boolean
+  -> Env
+  -> BackendSemantics
+  -> (Env -> BackendSemantics -> BackendSemantics)
+  -> BackendSemantics
+floatHead atTop env hd ef = floatAppLets (\e a -> const (ef e a)) identity (pure identity) identity atTop env hd []
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -294,14 +302,17 @@ instance Eval f => Eval (BackendSyntax f) where
       EffectDefer val ->
         guardFail (eval env val) SemEffectDefer
       Accessor lhs accessor ->
-        if atTop then evalAccessor env (eval env lhs) accessor
-        else evalAssocLet env (eval env lhs) \e v -> evalAccessor e v accessor
+        floatHead atTop env (eval env lhs) (const $ flip (evalAccessor env) accessor)
       Update lhs updates ->
         floatAppLets evalUpdate extract ($>) identity atTop env (eval env lhs) (map (eval env) <$> updates)
       Branch branches def ->
         evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
       PrimOp op ->
-        evalPrimOp env (eval env <$> op)
+        case op of
+          Op1 b a -> floatHead atTop env (eval env a) \e -> evalPrimOp e <<< Op1 b
+          Op2 b a c -> floatHead atTop env (eval env a) \z x ->
+            floatHead atTop z (eval z c) \e y ->
+              evalPrimOp e $ Op2 b x y
       PrimEffect eff ->
         guardFailOver identity (eval env <$> eff) NeutPrimEffect
       PrimUndefined ->
