@@ -303,7 +303,7 @@ instance Eval f => Eval (BackendSyntax f) where
       EffectDefer val ->
         guardFail (eval env val) SemEffectDefer
       Accessor lhs accessor ->
-        floatHead atTop env (eval env lhs) (const $ flip (evalAccessor env) accessor)
+        floatHead atTop env (eval env lhs) (\e h -> evalAccessor e h accessor)
       Update lhs updates ->
         floatAppLets evalUpdate extract ($>) identity atTop env (eval env lhs) (map (eval env) <$> updates)
       Branch branches def ->
