@@ -165,6 +165,7 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
+  , atTop :: Boolean
   }
 
 derive instance Newtype Env _
@@ -196,105 +197,116 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
+notAtTop :: Env -> Env
+notAtTop (Env e) = Env e { atTop = false }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env = case _ of
-    Var qual ->
-      evalExtern env qual []
-    Local ident lvl ->
-      case lookupLocal env lvl of
-        Just (One sem) -> sem
-        Just (Group group) | Just sem <- flip Tuple.lookup group =<< ident ->
-          force sem
-        _ ->
-          unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-    App hd tl -> do
-      let l = List.fromFoldable (eval env <$> tl)
-      evalAssocLet env (eval env hd) \ex hd' -> do
+  eval iEnv@(Env { atTop }) = inner $ notAtTop iEnv
+    where
+    inner env = case _ of
+      Var qual ->
+        evalExtern env qual []
+      Local ident lvl ->
+        case lookupLocal env lvl of
+          Just (One sem) -> sem
+          Just (Group group) | Just sem <- flip Tuple.lookup group =<< ident ->
+            force sem
+          _ ->
+            unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
+      App hd tl -> do
+        let h = eval env hd
+        let l = eval env <$> tl
+        if atTop then evalApp env h (NonEmptyArray.toArray l)
+        else evalAssocLet env h \ex hd' -> do
+          let
+            go acc ee = case _ of
+              List.Nil -> evalApp ee hd' acc
+              List.Cons v tail -> evalAssocLet ee v (\e x -> go (acc <> [ x ]) e tail)
+          go [] ex (List.fromFoldable l)
+      UncurriedApp hd tl ->
+        evalUncurriedApp env (eval env hd) (eval env <$> tl)
+      UncurriedAbs idents body -> do
         let
-          go acc ee = case _ of
-            List.Nil -> evalApp ee hd' acc
-            List.Cons v tail -> evalAssocLet ee v (\e x -> go (acc <> [ x ]) e tail)
-        go [] ex l
-    UncurriedApp hd tl ->
-      evalUncurriedApp env (eval env hd) (eval env <$> tl)
-    UncurriedAbs idents body -> do
-      let
-        loop env' = case _ of
-          List.Nil ->
-            MkFnApplied (eval env' body)
-          List.Cons a as ->
-            MkFnNext a \nextArg ->
-              loop (bindLocal env' (One nextArg)) as
-      SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
-    UncurriedEffectApp hd tl ->
-      evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
-    UncurriedEffectAbs idents body -> do
-      let
-        loop env' = case _ of
-          List.Nil ->
-            MkFnApplied (eval env' body)
-          List.Cons a as ->
-            MkFnNext a \nextArg ->
-              loop (bindLocal env' (One nextArg)) as
-      SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
-    Abs idents body ->
-      foldr1Array
-        (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
-        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
-        idents
-        env
-    Let ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
-    LetRec _ bindings body -> do
-      let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
-      SemLetRec (map bindGroup <$> bindings) (bindGroup body)
-    EffectBind ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
-    EffectPure val ->
-      guardFail (eval env val) SemEffectPure
-    EffectDefer val ->
-      guardFail (eval env val) SemEffectDefer
-    Accessor lhs accessor ->
-      evalAccessor env (eval env lhs) accessor
-    Update lhs updates ->
-      evalUpdate env (eval env lhs) (map (eval env) <$> updates)
-    Branch branches def ->
-      evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
-    PrimOp op ->
-      evalPrimOp env (eval env <$> op)
-    PrimEffect eff ->
-      guardFailOver identity (eval env <$> eff) NeutPrimEffect
-    PrimUndefined ->
-      NeutPrimUndefined
-    Lit (LitArray arr) -> do
-      let
-        go acc ee = case _ of
-          List.Nil -> guardFailOver identity (LitArray acc) NeutLit
-          List.Cons head tail -> evalAssocLet ee head (\e v -> go (acc <> [ v ]) e tail)
-      go [] env $ List.fromFoldable (eval env <$> arr)
-    Lit (LitRecord arr) -> do
-      let
-        go acc ee = case _ of
-          List.Nil -> guardFailOver identity (LitRecord acc) NeutLit
-          List.Cons (Prop k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Prop k x ]) e tail)
-      go [] env $ List.fromFoldable ((map <<< map) (eval env) arr)
-    Lit lit ->
-      guardFailOver identity (eval env <$> lit) NeutLit
-    Fail err ->
-      NeutFail err
-    CtorDef ct ty tag fields ->
-      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-    CtorSaturated qual ct ty tag fields -> do
-      let
-        go acc ee = case _ of
-          List.Nil -> guardFailOver snd acc $ NeutData qual ct ty tag
-          List.Cons (Tuple k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Tuple k x ]) e tail)
-      go [] env $ List.fromFoldable ((map <<< map) (eval env) fields)
+          loop env' = case _ of
+            List.Nil ->
+              MkFnApplied (eval env' body)
+            List.Cons a as ->
+              MkFnNext a \nextArg ->
+                loop (bindLocal env' (One nextArg)) as
+        SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
+      UncurriedEffectApp hd tl ->
+        evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
+      UncurriedEffectAbs idents body -> do
+        let
+          loop env' = case _ of
+            List.Nil ->
+              MkFnApplied (eval env' body)
+            List.Cons a as ->
+              MkFnNext a \nextArg ->
+                loop (bindLocal env' (One nextArg)) as
+        SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
+      Abs idents body ->
+        foldr1Array
+          (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
+          (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
+          idents
+          env
+      Let ident _ binding body ->
+        guardFail (eval env binding) \binding' ->
+          makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
+      LetRec _ bindings body -> do
+        let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
+        SemLetRec (map bindGroup <$> bindings) (bindGroup body)
+      EffectBind ident _ binding body ->
+        guardFail (eval env binding) \binding' ->
+          SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
+      EffectPure val ->
+        guardFail (eval env val) SemEffectPure
+      EffectDefer val ->
+        guardFail (eval env val) SemEffectDefer
+      Accessor lhs accessor ->
+        evalAccessor env (eval env lhs) accessor
+      Update lhs updates ->
+        evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+      Branch branches def ->
+        evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
+      PrimOp op ->
+        evalPrimOp env (eval env <$> op)
+      PrimEffect eff ->
+        guardFailOver identity (eval env <$> eff) NeutPrimEffect
+      PrimUndefined ->
+        NeutPrimUndefined
+      Lit (LitArray arr)
+        | not atTop -> do
+            let
+              go acc ee = case _ of
+                List.Nil -> guardFailOver identity (LitArray acc) NeutLit
+                List.Cons head tail -> evalAssocLet ee head (\e v -> go (acc <> [ v ]) e tail)
+            go [] env $ List.fromFoldable (eval env <$> arr)
+      Lit (LitRecord arr)
+        | not atTop -> do
+            let
+              go acc ee = case _ of
+                List.Nil -> guardFailOver identity (LitRecord acc) NeutLit
+                List.Cons (Prop k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Prop k x ]) e tail)
+            go [] env $ List.fromFoldable ((map <<< map) (eval env) arr)
+      Lit lit ->
+        guardFailOver identity (eval env <$> lit) NeutLit
+      Fail err ->
+        NeutFail err
+      CtorDef ct ty tag fields ->
+        NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
+      CtorSaturated qual ct ty tag fields -> do
+        let newFields = ((map <<< map) (eval env) fields)
+        if atTop then guardFailOver snd newFields $ NeutData qual ct ty tag else do
+          let
+            go acc ee = case _ of
+              List.Nil -> guardFailOver snd acc $ NeutData qual ct ty tag
+              List.Cons (Tuple k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Tuple k x ]) e tail)
+          go [] env $ List.fromFoldable newFields
 
 instance Eval BackendExpr where
   eval = go
