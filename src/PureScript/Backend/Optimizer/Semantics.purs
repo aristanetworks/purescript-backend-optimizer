@@ -10,10 +10,7 @@ import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
-import Data.JSDate (getTime, now)
 import Data.Lazy (Lazy, defer, force)
-import Data.Lens (over, traversed)
-import Data.Lens.Record (prop)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -26,9 +23,8 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), HasTry(..), ResultTerm(..), TryLevel, Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withIsTry, withResult, withRewrite, withRewriteTry)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
-import Type.Proxy (Proxy(..))
 
 newtype IsFunction = IsFunction Boolean
 
@@ -1723,7 +1719,7 @@ optimize :: Boolean -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tu
 optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
   go (if traceSteps then pure originalExpr else List.Nil) true false initN originalExpr
   where
-  go steps prevWasRewritten stopTrying n expr1
+  go steps _ stopTrying n expr1
     | n == 0, not stopTrying = go steps true true initN expr1
   go steps prevWasRewritten stopTrying n expr1 = do
     let Tuple rewrite (Tuple rewriteTry expr2) = goStep prevWasRewritten stopTrying n expr1
