@@ -309,10 +309,10 @@ instance Eval f => Eval (BackendSyntax f) where
         evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
       PrimOp op ->
         case op of
-          Op1 b a -> floatHead atTop env (eval env a) \e -> evalPrimOp e <<< Op1 b
-          Op2 b a c -> floatHead atTop env (eval env a) \z x ->
-            floatHead atTop z (eval z c) \e y ->
-              evalPrimOp e $ Op2 b x y
+          Op1 o a -> floatHead atTop env (eval env a) \e -> evalPrimOp e <<< Op1 o
+          Op2 o a b -> floatHead atTop env (eval env a) \z x ->
+            floatHead atTop z (eval z b) \e y ->
+              evalPrimOp e $ Op2 o x y
       PrimEffect eff ->
         guardFailOver identity (eval env <$> eff) NeutPrimEffect
       PrimUndefined ->
