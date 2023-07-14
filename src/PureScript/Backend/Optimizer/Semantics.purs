@@ -294,9 +294,9 @@ instance Eval f => Eval (BackendSyntax f) where
       PrimUndefined ->
         NeutPrimUndefined
       Lit (LitArray arr)
-        | not atTop -> floatArray env (eval env <$> arr) identity (pure identity) $ pure \acc -> guardFailOver identity (LitArray acc) NeutLit
+        | not atTop -> floatArray env (eval env <$> arr) identity (pure identity) $ pure (flip (guardFailOver identity) NeutLit <<< LitArray)
       Lit (LitRecord arr)
-        | not atTop -> floatArray env (map (eval env) <$> arr) extract ($>) $ pure \acc -> guardFailOver identity (LitRecord acc) NeutLit
+        | not atTop -> floatArray env (map (eval env) <$> arr) extract ($>) $ pure (flip (guardFailOver identity) NeutLit <<< LitRecord)
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
