@@ -964,7 +964,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit -> do
                 Just $ withTry qual env group expr
-              _ | shouldInlineExternReference qual analysis expr -> do
+              _ | not (Array.null group) || shouldInlineExternReference qual analysis expr -> do
                 Just $ withTry qual env group expr
               _ ->
                 Nothing
