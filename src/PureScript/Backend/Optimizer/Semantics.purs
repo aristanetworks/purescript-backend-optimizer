@@ -223,18 +223,16 @@ floatAppLets ef hf tf f atTop env hd tl = do
       List.Nil -> ef ee acc
       List.Cons head tail -> evalAssocLet ee (hf head) (\e v -> go (acc <> [ tf head v ]) e tail)
 
+floatArray
+  :: forall o
+   . Boolean
+  -> Env
+  -> Array o
+  -> (o -> BackendSemantics)
+  -> (o -> BackendSemantics -> o)
+  -> (Array o -> BackendSemantics)
+  -> BackendSemantics
 floatArray atTop env arr hf tf ef = floatAppLets (pure $ pure $ ef) hf tf identity atTop env NeutPrimUndefined arr
-
--- floatArray
---   :: forall (a :: Type) (i :: Type) f
---    . Foldable f
---   => Env
---   -> f a
---   -> (a -> BackendSemantics)
---   -> (a -> BackendSemantics -> i)
---   -> (Env -> Array i -> BackendSemantics)
---   -> BackendSemantics
--- floatArray env arr hf tf ef =
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
