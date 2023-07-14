@@ -201,24 +201,9 @@ addStop (Env env) ref acc = Env env
 notAtTop :: Env -> Env
 notAtTop (Env e) = Env e { atTop = false }
 
-floatAppLets
-  :: forall a eval f
-   . Eval a
-  => Functor f
-  => Eval eval
-  => Foldable f
-  => (Env -> BackendSemantics -> Array BackendSemantics -> BackendSemantics)
-  -> (f BackendSemantics -> Array BackendSemantics)
-  -> Boolean
-  -> Env
-  -> a
-  -> f eval
-  -> BackendSemantics
-floatAppLets ef f atTop env hd tl = do
-  let h = eval env hd
-  let l = eval env <$> tl
-  if atTop then ef env h (f l)
-  else evalAssocLet env h \ex hd' -> floatArray ex l identity (pure identity) (flip ef hd')
+floatAppLets ef hf tf f atTop env hd tl = do
+  if atTop then ef env hd (f tl)
+  else evalAssocLet env hd \ex hd' -> floatArray ex tl hf tf (flip ef hd')
 
 floatArray
   :: forall (a :: Type) (i :: Type) f
@@ -253,9 +238,9 @@ instance Eval f => Eval (BackendSyntax f) where
           _ ->
             unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
       App hd tl ->
-        floatAppLets evalApp NonEmptyArray.toArray atTop env hd tl
+        floatAppLets evalApp identity (pure identity) NonEmptyArray.toArray atTop env (eval env hd) (eval env <$> tl)
       UncurriedApp hd tl ->
-        floatAppLets evalUncurriedApp identity atTop env hd tl
+        floatAppLets evalUncurriedApp identity (pure identity) identity atTop env (eval env hd) (eval env <$> tl)
       UncurriedAbs idents body -> do
         let
           loop env' = case _ of
@@ -299,7 +284,7 @@ instance Eval f => Eval (BackendSyntax f) where
         if atTop then evalAccessor env (eval env lhs) accessor
         else evalAssocLet env (eval env lhs) \e v -> evalAccessor e v accessor
       Update lhs updates ->
-        evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+        floatAppLets evalUpdate extract ($>) identity atTop env (eval env lhs) (map (eval env) <$> updates)
       Branch branches def ->
         evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
       PrimOp op ->
@@ -311,17 +296,15 @@ instance Eval f => Eval (BackendSyntax f) where
       Lit (LitArray arr)
         | not atTop -> floatArray env (eval env <$> arr) identity (pure identity) $ pure \acc -> guardFailOver identity (LitArray acc) NeutLit
       Lit (LitRecord arr)
-        | not atTop -> floatArray env ((map <<< map) (eval env) arr) extract ($>) $ pure \acc -> guardFailOver identity (LitRecord acc) NeutLit
+        | not atTop -> floatArray env (map (eval env) <$> arr) extract ($>) $ pure \acc -> guardFailOver identity (LitRecord acc) NeutLit
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
         NeutFail err
       CtorDef ct ty tag fields ->
         NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-      CtorSaturated qual ct ty tag fields -> do
-        let newFields = ((map <<< map) (eval env) fields)
-        if atTop then guardFailOver extract newFields $ NeutData qual ct ty tag
-        else floatArray env newFields extract ($>) $ pure \acc -> guardFailOver extract acc $ NeutData qual ct ty tag
+      CtorSaturated qual ct ty tag fields ->
+        floatAppLets (pure $ pure $ flip (guardFailOver extract) (NeutData qual ct ty tag)) extract ($>) identity atTop env NeutPrimUndefined (map (eval env) <$> fields)
 
 instance Eval BackendExpr where
   eval = go
