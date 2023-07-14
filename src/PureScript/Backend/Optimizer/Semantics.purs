@@ -215,9 +215,9 @@ floatAppLets
   -> BackendSemantics
 floatAppLets ef hf tf f atTop env hd tl = do
   if atTop then ef env hd (f tl)
-  else evalAssocLet env hd \ex hd' -> floatArray ex (flip ef hd')
+  else evalAssocLet env hd \ex hd' -> go' ex (flip ef hd')
   where
-  floatArray env ef = go [] env $ List.fromFoldable tl
+  go' env ef = go [] env $ List.fromFoldable tl
     where
     go acc ee = case _ of
       List.Nil -> ef ee acc
