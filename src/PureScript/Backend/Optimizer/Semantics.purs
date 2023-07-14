@@ -201,25 +201,40 @@ addStop (Env env) ref acc = Env env
 notAtTop :: Env -> Env
 notAtTop (Env e) = Env e { atTop = false }
 
+floatAppLets
+  :: forall i o f
+   . Foldable f
+  => (Env -> BackendSemantics -> Array o -> BackendSemantics)
+  -> (i -> BackendSemantics)
+  -> (i -> BackendSemantics -> o)
+  -> (f i -> Array o)
+  -> Boolean
+  -> Env
+  -> BackendSemantics
+  -> f i
+  -> BackendSemantics
 floatAppLets ef hf tf f atTop env hd tl = do
   if atTop then ef env hd (f tl)
-  else evalAssocLet env hd \ex hd' -> floatArray ex tl hf tf (flip ef hd')
-
-floatArray
-  :: forall (a :: Type) (i :: Type) f
-   . Foldable f
-  => Env
-  -> f a
-  -> (a -> BackendSemantics)
-  -> (a -> BackendSemantics -> i)
-  -> (Env -> Array i -> BackendSemantics)
-  -> BackendSemantics
-floatArray env arr hf tf ef =
-  go [] env $ List.fromFoldable arr
+  else evalAssocLet env hd \ex hd' -> floatArray ex (flip ef hd')
   where
-  go acc ee = case _ of
-    List.Nil -> ef ee acc
-    List.Cons head tail -> evalAssocLet ee (hf head) (\e v -> go (acc <> [ tf head v ]) e tail)
+  floatArray env ef = go [] env $ List.fromFoldable tl
+    where
+    go acc ee = case _ of
+      List.Nil -> ef ee acc
+      List.Cons head tail -> evalAssocLet ee (hf head) (\e v -> go (acc <> [ tf head v ]) e tail)
+
+floatArray atTop env arr hf tf ef = floatAppLets (pure $ pure $ ef) hf tf identity atTop env NeutPrimUndefined arr
+
+-- floatArray
+--   :: forall (a :: Type) (i :: Type) f
+--    . Foldable f
+--   => Env
+--   -> f a
+--   -> (a -> BackendSemantics)
+--   -> (a -> BackendSemantics -> i)
+--   -> (Env -> Array i -> BackendSemantics)
+--   -> BackendSemantics
+-- floatArray env arr hf tf ef =
 
 class Eval f where
   eval :: Env -> f -> BackendSemantics
@@ -293,10 +308,10 @@ instance Eval f => Eval (BackendSyntax f) where
         guardFailOver identity (eval env <$> eff) NeutPrimEffect
       PrimUndefined ->
         NeutPrimUndefined
-      Lit (LitArray arr)
-        | not atTop -> floatArray env (eval env <$> arr) identity (pure identity) $ pure (flip (guardFailOver identity) NeutLit <<< LitArray)
-      Lit (LitRecord arr)
-        | not atTop -> floatArray env (map (eval env) <$> arr) extract ($>) $ pure (flip (guardFailOver identity) NeutLit <<< LitRecord)
+      Lit (LitArray arr) ->
+        floatArray atTop env (eval env <$> arr) identity (pure identity) (flip (guardFailOver identity) NeutLit <<< LitArray)
+      Lit (LitRecord arr) ->
+        floatArray atTop env (map (eval env) <$> arr) extract ($>) (flip (guardFailOver identity) NeutLit <<< LitRecord)
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
@@ -304,7 +319,7 @@ instance Eval f => Eval (BackendSyntax f) where
       CtorDef ct ty tag fields ->
         NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
       CtorSaturated qual ct ty tag fields ->
-        floatAppLets (pure $ pure $ flip (guardFailOver extract) (NeutData qual ct ty tag)) extract ($>) identity atTop env NeutPrimUndefined (map (eval env) <$> fields)
+        floatArray atTop env (map (eval env) <$> fields) extract ($>) (flip (guardFailOver extract) (NeutData qual ct ty tag))
 
 instance Eval BackendExpr where
   eval = go
