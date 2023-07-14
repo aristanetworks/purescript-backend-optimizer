@@ -285,9 +285,9 @@ instance Eval f => Eval (BackendSyntax f) where
       NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
     CtorSaturated qual ct ty tag fields -> do
       let
-        go acc env = case _ of
+        go acc ee = case _ of
           List.Nil -> guardFailOver snd acc $ NeutData qual ct ty tag
-          List.Cons (Tuple k v) tail -> evalAssocLet env v (\e x -> go (acc <> [ Tuple k x ]) e tail)
+          List.Cons (Tuple k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Tuple k x ]) e tail)
       go [] env $ List.fromFoldable ((map <<< map) (eval env) fields)
 
 instance Eval BackendExpr where
