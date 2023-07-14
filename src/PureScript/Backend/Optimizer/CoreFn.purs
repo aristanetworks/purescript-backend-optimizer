@@ -2,6 +2,7 @@ module PureScript.Backend.Optimizer.CoreFn where
 
 import Prelude
 
+import Control.Comonad (class Comonad, class Extend)
 import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Maybe (Maybe(..))
@@ -143,6 +144,13 @@ derive instance functorGuard :: Functor Guard
 data Prop a = Prop String a
 
 derive instance functorProp :: Functor Prop
+
+instance Comonad Prop where
+  extract (Prop _ a) = a
+
+instance Extend Prop where
+  extend f p@(Prop k _) = Prop k (f p)
+
 
 instance foldableProp :: Foldable Prop where
   foldl k a (Prop _ b) = k a b

@@ -3,6 +3,7 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
+import Control.Comonad (extract)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -200,6 +201,41 @@ addStop (Env env) ref acc = Env env
 notAtTop :: Env -> Env
 notAtTop (Env e) = Env e { atTop = false }
 
+floatAppLets
+  :: forall a eval f
+   . Eval a
+  => Functor f
+  => Eval eval
+  => Foldable f
+  => (Env -> BackendSemantics -> Array BackendSemantics -> BackendSemantics)
+  -> (f BackendSemantics -> Array BackendSemantics)
+  -> Boolean
+  -> Env
+  -> a
+  -> f eval
+  -> BackendSemantics
+floatAppLets ef f atTop env hd tl = do
+  let h = eval env hd
+  let l = eval env <$> tl
+  if atTop then ef env h (f l)
+  else evalAssocLet env h \ex hd' -> floatArray ex l identity (pure identity) (flip ef hd')
+
+floatArray
+  :: forall (a :: Type) (i :: Type) f
+   . Foldable f
+  => Env
+  -> f a
+  -> (a -> BackendSemantics)
+  -> (a -> BackendSemantics -> i)
+  -> (Env -> Array i -> BackendSemantics)
+  -> BackendSemantics
+floatArray env arr hf tf ef =
+  go [] env $ List.fromFoldable arr
+  where
+  go acc ee = case _ of
+    List.Nil -> ef ee acc
+    List.Cons head tail -> evalAssocLet ee (hf head) (\e v -> go (acc <> [ tf head v ]) e tail)
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -216,18 +252,10 @@ instance Eval f => Eval (BackendSyntax f) where
             force sem
           _ ->
             unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-      App hd tl -> do
-        let h = eval env hd
-        let l = eval env <$> tl
-        if atTop then evalApp env h (NonEmptyArray.toArray l)
-        else evalAssocLet env h \ex hd' -> do
-          let
-            go acc ee = case _ of
-              List.Nil -> evalApp ee hd' acc
-              List.Cons v tail -> evalAssocLet ee v (\e x -> go (acc <> [ x ]) e tail)
-          go [] ex (List.fromFoldable l)
+      App hd tl ->
+        floatAppLets evalApp NonEmptyArray.toArray atTop env hd tl
       UncurriedApp hd tl ->
-        evalUncurriedApp env (eval env hd) (eval env <$> tl)
+        floatAppLets evalUncurriedApp identity atTop env hd tl
       UncurriedAbs idents body -> do
         let
           loop env' = case _ of
@@ -268,7 +296,8 @@ instance Eval f => Eval (BackendSyntax f) where
       EffectDefer val ->
         guardFail (eval env val) SemEffectDefer
       Accessor lhs accessor ->
-        evalAccessor env (eval env lhs) accessor
+        if atTop then evalAccessor env (eval env lhs) accessor
+        else evalAssocLet env (eval env lhs) \e v -> evalAccessor e v accessor
       Update lhs updates ->
         evalUpdate env (eval env lhs) (map (eval env) <$> updates)
       Branch branches def ->
@@ -280,19 +309,9 @@ instance Eval f => Eval (BackendSyntax f) where
       PrimUndefined ->
         NeutPrimUndefined
       Lit (LitArray arr)
-        | not atTop -> do
-            let
-              go acc ee = case _ of
-                List.Nil -> guardFailOver identity (LitArray acc) NeutLit
-                List.Cons head tail -> evalAssocLet ee head (\e v -> go (acc <> [ v ]) e tail)
-            go [] env $ List.fromFoldable (eval env <$> arr)
+        | not atTop -> floatArray env (eval env <$> arr) identity (pure identity) $ pure \acc -> guardFailOver identity (LitArray acc) NeutLit
       Lit (LitRecord arr)
-        | not atTop -> do
-            let
-              go acc ee = case _ of
-                List.Nil -> guardFailOver identity (LitRecord acc) NeutLit
-                List.Cons (Prop k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Prop k x ]) e tail)
-            go [] env $ List.fromFoldable ((map <<< map) (eval env) arr)
+        | not atTop -> floatArray env ((map <<< map) (eval env) arr) extract ($>) $ pure \acc -> guardFailOver identity (LitRecord acc) NeutLit
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
@@ -301,12 +320,8 @@ instance Eval f => Eval (BackendSyntax f) where
         NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
       CtorSaturated qual ct ty tag fields -> do
         let newFields = ((map <<< map) (eval env) fields)
-        if atTop then guardFailOver snd newFields $ NeutData qual ct ty tag else do
-          let
-            go acc ee = case _ of
-              List.Nil -> guardFailOver snd acc $ NeutData qual ct ty tag
-              List.Cons (Tuple k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Tuple k x ]) e tail)
-          go [] env $ List.fromFoldable newFields
+        if atTop then guardFailOver extract newFields $ NeutData qual ct ty tag
+        else floatArray env newFields extract ($>) $ pure \acc -> guardFailOver extract acc $ NeutData qual ct ty tag
 
 instance Eval BackendExpr where
   eval = go
