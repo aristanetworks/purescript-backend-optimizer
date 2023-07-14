@@ -231,6 +231,9 @@ isSafeToRecurse tl (Env { safeToRecurse }) = tl `Set.member` safeToRecurse
 addSafeToRecurse :: TryLevel -> Env -> Env
 addSafeToRecurse tl (Env e) = Env e { safeToRecurse = Set.insert tl e.safeToRecurse }
 
+clearSafeToRecurse :: Env -> Env
+clearSafeToRecurse (Env e) = Env e { safeToRecurse = Set.empty }
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -260,7 +263,7 @@ instance Eval f => Eval (BackendSyntax f) where
             List.Cons a as ->
               MkFnNext a \nextArg ->
                 loop (bindLocal env' (One nextArg)) as
-        SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
+        SemMkFn (loop (clearSafeToRecurse env) (Array.toUnfoldable $ map fst idents))
       UncurriedEffectApp hd tl ->
         evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
       UncurriedEffectAbs idents body -> do
@@ -271,13 +274,13 @@ instance Eval f => Eval (BackendSyntax f) where
             List.Cons a as ->
               MkFnNext a \nextArg ->
                 loop (bindLocal env' (One nextArg)) as
-        SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
+        SemMkEffectFn (loop (clearSafeToRecurse env) (Array.toUnfoldable $ map fst idents))
       Abs idents body -> do
         foldr1Array
           (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
           (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
           idents
-          env
+          (clearSafeToRecurse env)
       Let ident _ binding body -> do
         guardFail (eval env binding) \binding' -> do
           makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
@@ -1191,12 +1194,6 @@ quote = go
     SemTry tryLevel prevWasRewritten backup main -> do
       let newMain = quote (diseffectCtx ctx) main
       let BackendAnalysis { hasBranch } = getAnalysis newMain
-      -- todo: markAsSafeToRecurse is a potentially very expensive function
-      -- is there a more efficient way to do this?
-      -- or can we at least benchmark its impact?
-      -- if the tree is usually shallow at these points
-      -- then it's likely not that bad but if we're
-      -- dipping deep into the tree then it could be bad
       if not hasBranch then markAsSafeToRecurse tryLevel newMain
       else if prevWasRewritten then
         buildTry tryLevel (quote (diseffectCtx ctx) backup) newMain
