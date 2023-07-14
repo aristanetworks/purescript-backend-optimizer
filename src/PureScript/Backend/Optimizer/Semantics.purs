@@ -196,28 +196,6 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
-
-floatLetFromArr :: Env -> Array BackendSemantics -> BackendSemantics
-floatLetFromArr = go []
-  where
-  go acc env = Array.uncons >>> case _ of
-    Nothing -> guardFailOver identity (LitArray acc) NeutLit
-    Just { head, tail } -> evalAssocLet env head (\e v -> go (acc <> [ v ]) e tail)
-
-floatLetFromRec :: Env -> Array (Prop BackendSemantics) -> BackendSemantics
-floatLetFromRec = go []
-  where
-  go acc env = Array.uncons >>> case _ of
-    Nothing -> guardFailOver identity (LitRecord acc) NeutLit
-    Just { head: Prop k v, tail } -> evalAssocLet env v (\e x -> go (acc <> [ Prop k x ]) e tail)
-
-floatLetFromCtor :: Qualified Ident -> ConstructorType -> ProperName -> Ident -> Env -> Array (Tuple String BackendSemantics) -> BackendSemantics
-floatLetFromCtor qual ct ty tag = go []
-  where
-  go acc env = Array.uncons >>> case _ of
-    Nothing -> guardFailOver snd acc $ NeutData qual ct ty tag
-    Just { head: Tuple k v, tail } -> evalAssocLet env v (\e x -> go (acc <> [ Tuple k x ]) e tail)
-
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -287,18 +265,30 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
     PrimUndefined ->
       NeutPrimUndefined
-    Lit (LitArray arr) ->
-      floatLetFromArr env (eval env <$> arr)
-    Lit (LitRecord arr) ->
-      floatLetFromRec env ((map <<< map) (eval env) arr)
+    Lit (LitArray arr) -> do
+      let
+        go acc ee = case _ of
+          List.Nil -> guardFailOver identity (LitArray acc) NeutLit
+          List.Cons head tail -> evalAssocLet ee head (\e v -> go (acc <> [ v ]) e tail)
+      go [] env $ List.fromFoldable (eval env <$> arr)
+    Lit (LitRecord arr) -> do
+      let
+        go acc ee = case _ of
+          List.Nil -> guardFailOver identity (LitRecord acc) NeutLit
+          List.Cons (Prop k v) tail -> evalAssocLet ee v (\e x -> go (acc <> [ Prop k x ]) e tail)
+      go [] env $ List.fromFoldable ((map <<< map) (eval env) arr)
     Lit lit ->
       guardFailOver identity (eval env <$> lit) NeutLit
     Fail err ->
       NeutFail err
     CtorDef ct ty tag fields ->
       NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-    CtorSaturated qual ct ty tag fields ->
-      floatLetFromCtor qual ct ty tag env ((map <<< map) (eval env) fields)
+    CtorSaturated qual ct ty tag fields -> do
+      let
+        go acc env = case _ of
+          List.Nil -> guardFailOver snd acc $ NeutData qual ct ty tag
+          List.Cons (Tuple k v) tail -> evalAssocLet env v (\e x -> go (acc <> [ Tuple k x ]) e tail)
+      go [] env $ List.fromFoldable ((map <<< map) (eval env) fields)
 
 instance Eval BackendExpr where
   eval = go
