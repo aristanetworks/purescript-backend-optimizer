@@ -1137,8 +1137,8 @@ type Ctx =
   , effect :: Boolean
   }
 
-markAsSafeToRecurse ::  TryLevel -> BackendExpr -> BackendExpr
-markAsSafeToRecurse tl expr  = ExprRewrite (withRewrite (analysisOf expr)) $ RewriteSafeToRecurse tl expr 
+markAsSafeToRecurse :: TryLevel -> BackendExpr -> BackendExpr
+markAsSafeToRecurse tl expr = ExprRewrite (withRewrite (analysisOf expr)) $ RewriteSafeToRecurse tl expr
 
 nextLevel :: Ctx -> Tuple Level Ctx
 nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
