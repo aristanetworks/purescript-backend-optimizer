@@ -1,3 +1,5 @@
+// @inline Snapshot.Tco04.test1 always
+// @inline Snapshot.Tco04.test2 always
 const $test2test1 = ($test2test1$b$copy, $test2test1$a0$copy) => {
   let $test2test1$b = $test2test1$b$copy, $test2test1$a0 = $test2test1$a0$copy, $test2test1$c = true, $test2test1$r;
   while ($test2test1$c) {

@@ -1,3 +1,5 @@
+-- @inline Snapshot.Tco04.test1 always
+-- @inline Snapshot.Tco04.test2 always
 module Snapshot.Tco04 where
 
 import Prelude
