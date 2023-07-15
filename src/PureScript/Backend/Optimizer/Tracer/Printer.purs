@@ -290,6 +290,12 @@ printBackendRewriteCase :: BackendRewrite -> Doc Void
 printBackendRewriteCase = case _ of
   RewriteInline _ _ _ _ ->
     printRewrite "Inline"
+  RewriteTry _ _ _ ->
+    printRewrite "Try"
+  RewriteRecurse _ _ ->
+    printRewrite "Recurse"
+  RewriteSafeToRecurse _ _ ->
+    printRewrite "SafeToRecurse"
   RewriteUncurry _ _ _ _ _ ->
     printRewrite "Uncurry"
   RewriteLetAssoc _ _ ->
