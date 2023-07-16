@@ -1637,7 +1637,9 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
         let name = foldMap ((_ <> ".") <<< unwrap) mn <> id
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
+        let _ = setLogging (id == "test1")
         let expr2 = quote ctx (eval env expr1)
+        let _ = spy "ugh" { n, expr2 }
         let BackendAnalysis { rewrite } = analysisOf expr2
         Tuple rewrite expr2
 
@@ -1764,3 +1766,18 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
+
+spyu :: forall a. String -> a -> Unit
+spyu a b = const unit $ spy a b
+
+spyuc :: forall a. Boolean -> String -> a -> Unit
+spyuc cond a b = if cond then const unit $ spy a b else unit
+
+spyc :: forall a. String -> a -> Unit
+spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+
+foreign import setLogging :: Boolean -> Unit
+foreign import spyx :: forall a. String -> a -> a
+foreign import spyxx :: forall a b. String -> a -> b -> b
+foreign import spyy :: forall a. String -> a -> a
+spy = spyx :: forall a. String -> a -> a
