@@ -3,7 +3,6 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
-import Control.Comonad (extract)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -305,7 +304,7 @@ instance Eval f => Eval (BackendSyntax f) where
       Accessor lhs accessor ->
         floatHead atTop env (eval env lhs) \e h -> evalAccessor e h accessor
       Update lhs updates ->
-        floatAppLets evalUpdate extract ($>) identity atTop env (eval env lhs) (map (eval env) <$> updates)
+        floatAppLets evalUpdate propValue ($>) identity atTop env (eval env lhs) (map (eval env) <$> updates)
       Branch branches def ->
         evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
       PrimOp op ->
@@ -321,7 +320,7 @@ instance Eval f => Eval (BackendSyntax f) where
       Lit (LitArray arr) ->
         floatArray atTop env (eval env <$> arr) identity (pure identity) (flip (guardFailOver identity) NeutLit <<< LitArray)
       Lit (LitRecord arr) ->
-        floatArray atTop env (map (eval env) <$> arr) extract ($>) (flip (guardFailOver identity) NeutLit <<< LitRecord)
+        floatArray atTop env (map (eval env) <$> arr) propValue ($>) (flip (guardFailOver identity) NeutLit <<< LitRecord)
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
@@ -329,7 +328,7 @@ instance Eval f => Eval (BackendSyntax f) where
       CtorDef ct ty tag fields ->
         NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
       CtorSaturated qual ct ty tag fields ->
-        floatArray atTop env (map (eval env) <$> fields) extract ($>) (flip (guardFailOver extract) (NeutData qual ct ty tag))
+        floatArray atTop env (map (eval env) <$> fields) snd ($>) (flip (guardFailOver snd) (NeutData qual ct ty tag))
 
 instance Eval BackendExpr where
   eval = go
@@ -1140,7 +1139,7 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just $ deref binding)
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1154,7 +1153,7 @@ quote = go
     SemEffectBind ident binding k -> do
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
+      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just $ deref binding)
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemEffectDefer sem ->
