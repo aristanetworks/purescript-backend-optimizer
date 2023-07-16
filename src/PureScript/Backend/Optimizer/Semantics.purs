@@ -15,7 +15,7 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
@@ -658,9 +658,34 @@ makeLet ident binding go = case binding of
     SemLet ident binding go
 
 deref :: BackendSemantics -> BackendSemantics
-deref = case _ of
-  NeutLocal _ _ (Just expr) -> expr
-  expr -> expr
+deref = fromMaybe <*> go
+  where
+  go = case _ of
+    NeutAccessor expr' accessand -> go expr' >>=
+      case _, accessand of
+        NeutLit (LitArray arr), GetIndex i
+          | Just v <- Array.index arr i -> go v
+        NeutLit (LitRecord rec), GetProp p
+          | Just (Prop _ v) <- Array.find (\(Prop k _) -> k == p) rec -> go v
+        NeutData _ _ _ _ vals, GetCtorField _ _ _ _ _ i
+          | Just (Tuple _ v) <- Array.index vals i -> go v
+        _, _ -> Nothing
+    NeutLocal _ _ expr -> expr >>= go
+    e@(NeutLit (LitInt _)) -> Just e
+    e@(NeutLit (LitNumber _)) -> Just e
+    e@(NeutLit (LitString _)) -> Just e
+    e@(NeutLit (LitChar _)) -> Just e
+    e@(NeutLit (LitBoolean _)) -> Just e
+    -- in the following three cases, all we may need
+    -- is the object itself, meaning that we don't want to
+    -- give up on the whole thing if it doesn't work
+    -- so we call `deref` on the children
+    -- instead of calling `go`
+    NeutLit (LitArray arr) -> Just (NeutLit (LitArray (deref <$> arr)))
+    NeutLit (LitRecord rec) -> Just (NeutLit (LitRecord ((map <<< map) deref rec)))
+    NeutData qual ct ty tag vals -> Just (NeutData qual ct ty tag ((map <<< map) deref vals))
+    -- fail
+    _ -> Nothing
 
 -- TODO: Check for overflow in Int ops since backends may not handle it the
 -- same was as the JS backend.
@@ -1527,20 +1552,20 @@ shouldUncurryAbs ident level a b = do
       Nothing
 
 shouldInlineLet :: Level -> BackendExpr -> BackendExpr -> Boolean
-shouldInlineLet level a b = do
+shouldInlineLet level a b = let _ = spy "checking a" {a,b} in do
   let BackendAnalysis s1 = analysisOf a
   let BackendAnalysis s2 = analysisOf b
   case Map.lookup level s2.usages of
     Nothing ->
       true
     Just (Usage { captured, total, call }) ->
-      (s1.complexity == Trivial)
-        || (captured == CaptureNone && total == 1)
-        || (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5)
-        || (s1.complexity == Deref && call == total)
-        || (s1.complexity == KnownSize && total == 1)
-        || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
-        || (isKnownEffect a && total == 1)
+      (spy "isTrivial" (s1.complexity == Trivial))
+        || (spy "captureNone" (captured == CaptureNone && total == 1))
+        || (spy "captureBranch" (captured <= CaptureBranch && s1.complexity <= Deref && s1.size < 5))
+        || (spy "isDeref" (s1.complexity == Deref && call == total))
+        || (spy "isKnownSize" (s1.complexity == KnownSize && total == 1))
+        || (spy "isAbs" (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16)))
+        || (spy "isKnownEffect" (isKnownEffect a && total == 1))
 
 shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ =
@@ -1599,6 +1624,7 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
   go (if traceSteps then pure originalExpr else List.Nil) initN originalExpr
   where
   go steps n expr1 = do
+    let _ = setLogging (if id == "test1" then true else false) 
     let Tuple rewrite expr2 = goStep n expr1
     let newSteps = if traceSteps then List.Cons expr2 steps else steps
     if rewrite then
@@ -1613,6 +1639,7 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
         unsafeCrashWith $ name <> ": Possible infinite optimization loop."
     | otherwise = do
         let expr2 = quote ctx (eval env expr1)
+        let _ = spy "tick" { n, id, expr2 }
         let BackendAnalysis { rewrite } = analysisOf expr2
         Tuple rewrite expr2
 
@@ -1739,3 +1766,17 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
+
+spyu :: forall a. String -> a -> Unit
+spyu a b = const unit $ spy a b
+
+spyuc :: forall a. Boolean -> String -> a -> Unit
+spyuc cond a b = if cond then const unit $ spy a b else unit
+
+spyc :: forall a. String -> a -> Unit
+spyc a b = let _ = const unit $ spy a b in unsafeCrashWith a
+foreign import setLogging :: Boolean -> Unit
+foreign import spyx :: forall a. String -> a -> a
+foreign import spyxx :: forall a b. String -> a -> b -> b
+foreign import spyy :: forall a. String -> a -> a
+spy = spyx :: forall a. String -> a -> a
