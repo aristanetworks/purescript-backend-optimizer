@@ -692,96 +692,100 @@ deref = fromMaybe <*> go
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
   Op1 op1 x ->
-    case op1, x of
-      OpBooleanNot, NeutLit (LitBoolean bool) ->
-        liftBoolean (not bool)
-      OpBooleanNot, NeutPrimOp op ->
-        evalPrimOpNot op
-      OpIntBitNot, NeutLit (LitInt a) ->
-        liftInt (complement a)
-      OpIsTag a, _
+    case op1 of
+      OpBooleanNot
+        | NeutLit (LitBoolean bool) <- deref x ->
+            liftBoolean (not bool)
+      OpBooleanNot
+        | NeutPrimOp op <- x -> evalPrimOpNot op
+      OpIntBitNot
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (complement a)
+      OpIsTag a
         | NeutData b _ _ _ _ <- deref x ->
             liftBoolean (a == b)
-      OpArrayLength, _
+      OpArrayLength
         | NeutLit (LitArray arr) <- deref x ->
             liftInt (Array.length arr)
-      OpIntNegate, NeutLit (LitInt a) ->
-        liftInt (negate a)
-      OpNumberNegate, NeutLit (LitNumber a) ->
-        liftNumber (negate a)
-      _, SemExtern qual spine _ ->
-        evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
-      _, NeutFail err ->
-        NeutFail err
-      _, _ ->
+      OpIntNegate
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (negate a)
+      OpNumberNegate
+        | NeutLit (LitNumber a) <- deref x ->
+            liftNumber (negate a)
+      _
+        | SemExtern qual spine _ <- x -> evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+      _
+        | NeutFail err <- x -> NeutFail err
+      _ ->
         evalAssocLet env x \_ x' ->
           NeutPrimOp (Op1 op1 x')
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
-        | NeutLit (LitBoolean false) <- x ->
-            x
-        | NeutLit (LitBoolean false) <- y ->
+        | o@(NeutLit (LitBoolean false)) <- deref x ->
+            o
+        | o@(NeutLit (LitBoolean false)) <- deref y ->
+            o
+        | NeutLit (LitBoolean true) <- deref x ->
             y
-        | NeutLit (LitBoolean true) <- x ->
-            y
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             x
       OpBooleanOr
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             y
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             x
-        | NeutLit (LitBoolean true) <- x ->
-            x
-        | NeutLit (LitBoolean true) <- y ->
-            y
+        | o@(NeutLit (LitBoolean true)) <- deref x ->
+            o
+        | o@(NeutLit (LitBoolean true)) <- y ->
+            o
       OpBooleanOrd OpEq
-        | NeutLit (LitBoolean bool) <- x ->
+        | NeutLit (LitBoolean bool) <- deref x ->
             if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
-        | NeutLit (LitBoolean bool) <- y ->
+        | NeutLit (LitBoolean bool) <- deref y ->
             if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
       OpBooleanOrd op
-        | NeutLit (LitBoolean a) <- x
-        , NeutLit (LitBoolean b) <- y ->
+        | NeutLit (LitBoolean a) <- deref x
+        , NeutLit (LitBoolean b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpCharOrd op
-        | NeutLit (LitChar a) <- x
-        , NeutLit (LitChar b) <- y ->
+        | NeutLit (LitChar a) <- deref x
+        , NeutLit (LitChar b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpIntBitAnd
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .&. b)
       OpIntBitOr
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .|. b)
       OpIntBitShiftLeft
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shl a b)
       OpIntBitShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shr a b)
       OpIntBitXor
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (xor a b)
       OpIntBitZeroFillShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (zshr a b)
       OpIntNum OpSubtract
-        | NeutLit (LitInt 0) <- x ->
+        | NeutLit (LitInt 0) <- deref x ->
             evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
         | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
             result
       OpIntOrd op
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
         | NeutLit (LitNumber 0.0) <- x ->
@@ -790,18 +794,18 @@ evalPrimOp env = case _ of
         | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
             result
       OpNumberOrd op
-        | NeutLit (LitNumber a) <- x
-        , NeutLit (LitNumber b) <- y ->
+        | NeutLit (LitNumber a) <- deref x
+        , NeutLit (LitNumber b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringOrd op
-        | NeutLit (LitString a) <- x
-        , NeutLit (LitString b) <- y ->
+        | NeutLit (LitString a) <- deref x
+        , NeutLit (LitString b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
             result
       OpArrayIndex
-        | NeutLit (LitInt n) <- y ->
+        | NeutLit (LitInt n) <- deref y ->
             evalAccessor env x (GetIndex n)
       OpBooleanAnd -> -- Lazy operator should not be reassociated
 
