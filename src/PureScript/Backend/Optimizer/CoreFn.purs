@@ -2,7 +2,6 @@ module PureScript.Backend.Optimizer.CoreFn where
 
 import Prelude
 
-import Control.Comonad (class Comonad, class Extend)
 import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Maybe (Maybe(..))
