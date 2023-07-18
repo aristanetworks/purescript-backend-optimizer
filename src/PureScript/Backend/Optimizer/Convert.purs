@@ -73,7 +73,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternOutcome(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -336,18 +336,20 @@ toExternImpl env group expr = case expr of
 topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }
 
-makeExternEval :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+makeExternEval :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> ExternOutcome
 makeExternEval conv env qual spine = do
   let
-    result = do
-      fn <- Map.lookup qual conv.foreignSemantics
-      fn env qual spine
+    result =
+      case Map.lookup qual conv.foreignSemantics of
+        Just fn
+          | Just sem <- fn env qual spine -> ExternExpanded sem
+          | otherwise -> ExternUntreated
+        Nothing -> ExternUntreated
   case result of
-    Nothing -> do
-      impl <- Map.lookup qual conv.implementations
-      evalExternFromImpl (topEnv env) qual impl spine
-    _ ->
-      result
+    ExternUntreated
+      | Just impl <- Map.lookup qual conv.implementations -> evalExternFromImpl (topEnv env) qual impl spine
+      | otherwise -> ExternUntreated
+    _ -> result
 
 buildM :: BackendSyntax BackendExpr -> ConvertM BackendExpr
 buildM a env = build (getCtx env) a

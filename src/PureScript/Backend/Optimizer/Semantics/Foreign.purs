@@ -5,7 +5,6 @@ import Prelude
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Enum (fromEnum)
-import Data.Lazy as Lazy
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -464,14 +463,14 @@ assocBinaryOperatorL match op def env ident = case _ of
             Just $ op env lhs rhs
           Nothing ->
             case b of
-              SemExtern ident' [ ExternApp [ x, y ] ] _ | ident == ident' ->
+              SemExtern ident' _ [ ExternApp [ x, y ] ] _ | ident == ident' ->
                 case match x of
                   Just rhs -> do
                     let result = op env lhs rhs
                     Just $ externApp ident [ result, y ]
                   Nothing ->
                     case x of
-                      SemExtern ident'' [ ExternApp [ v, w ] ] _ | ident == ident'' ->
+                      SemExtern ident'' _ [ ExternApp [ v, w ] ] _ | ident == ident'' ->
                         case match v of
                           Just rhs -> do
                             let result = op env lhs rhs
@@ -486,14 +485,14 @@ assocBinaryOperatorL match op def env ident = case _ of
         case match b of
           Just rhs ->
             case a of
-              SemExtern ident' [ ExternApp [ v, w ] ] _ | ident == ident' ->
+              SemExtern ident' _ [ ExternApp [ v, w ] ] _ | ident == ident' ->
                 case match w of
                   Just lhs -> do
                     let result = op env lhs rhs
                     Just $ externApp ident [ v, result ]
                   Nothing ->
                     case w of
-                      SemExtern ident'' [ ExternApp [ x, y ] ] _ | ident == ident'' ->
+                      SemExtern ident'' _ [ ExternApp [ x, y ] ] _ | ident == ident'' ->
                         case match y of
                           Just lhs -> do
                             let result = op env lhs rhs
@@ -526,7 +525,7 @@ data_semigroup_concatString :: ForeignSemantics
 data_semigroup_concatString = Tuple (qualified "Data.Semigroup" "concatString") $ primBinaryOperator OpStringAppend
 
 externApp :: Qualified Ident -> Array BackendSemantics -> BackendSemantics
-externApp ident spine = SemExtern ident [ ExternApp spine ] (Lazy.defer \_ -> NeutApp (NeutVar ident) spine)
+externApp ident spine = SemExtern ident true [ ExternApp spine ] (NeutApp (NeutVar ident) spine)
 
 partial_unsafe_unsafePartial :: ForeignSemantics
 partial_unsafe_unsafePartial = Tuple (qualified "Partial.Unsafe" "_unsafePartial") go
@@ -597,7 +596,7 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
 
 viewCopyRecord :: BackendSemantics -> Maybe BackendSemantics
 viewCopyRecord = case _ of
-  SemExtern (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord")) [ ExternApp [ value ] ] _ ->
+  SemExtern (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord")) _ [ ExternApp [ value ] ] _ ->
     Just value
   _ ->
     Nothing

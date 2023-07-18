@@ -35,7 +35,7 @@ data MkFn a
   | MkFnNext (Maybe Ident) (a -> MkFn a)
 
 data BackendSemantics
-  = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
+  = SemExtern (Qualified Ident) Boolean (Array ExternSpine) BackendSemantics
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
@@ -162,7 +162,7 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
-  , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+  , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> ExternOutcome
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   , atTop :: Boolean
@@ -447,7 +447,7 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
-    SemExtern qual sp _, List.Cons arg args -> do
+    SemExtern qual _ sp _, List.Cons arg args -> do
       go env' (evalExtern env' qual (snocApp sp arg)) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
@@ -466,7 +466,7 @@ evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> Backend
 evalUncurriedApp env hd spine = case hd of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
-  SemExtern qual sp _ ->
+  SemExtern qual _ sp _ ->
     guardFailOver identity spine \spine' ->
       evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
   SemLet ident val k ->
@@ -546,7 +546,7 @@ neutralApp hd spine
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
 evalAccessor initEnv initLhs accessor =
   evalAssocLet initEnv initLhs \env lhs -> case lhs of
-    SemExtern qual spine _ ->
+    SemExtern qual _ spine _ ->
       evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
     NeutLit (LitRecord props)
       | GetProp prop <- accessor
@@ -645,7 +645,7 @@ evalAssocLet2 env sem1 sem2 go =
 
 makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
 makeLet ident binding go = case binding of
-  SemExtern _ [] _ ->
+  SemExtern _ _ [] _ ->
     go binding
   NeutLocal _ _ _ ->
     go binding
@@ -713,7 +713,7 @@ evalPrimOp env = case _ of
         | NeutLit (LitNumber a) <- deref x ->
             liftNumber (negate a)
       _
-        | SemExtern qual spine _ <- x -> evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+        | SemExtern qual _ spine _ <- x -> evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
       _
         | NeutFail err <- x -> NeutFail err
       _ ->
@@ -933,151 +933,168 @@ primOpOrdNot = case _ of
 
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
 evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
-  Nothing -> SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
-  Just sem -> sem
+  ExternUntreated -> SemExtern qual true spine (neutralSpine (NeutVar qual) spine)
+  ExternExpanded sem -> sem
+  ExternStopped deref -> SemExtern qual false spine deref
 
 envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
 envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
 
-evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
+data ExternOutcome
+  = ExternExpanded BackendSemantics
+  | ExternStopped BackendSemantics
+  | ExternUntreated
+
+evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> ExternOutcome
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [] ->
     case impl of
       ExternExpr group expr -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> eval (envForGroup env ref InlineRef group) expr
         case Map.lookup ref e.directives >>= Map.lookup InlineRef of
           Just InlineNever ->
-            Just $ NeutStop qual
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref InlineRef group) expr
+            expandExtern evaled
           Just (InlineArity _) ->
-            Nothing
+            ExternUntreated
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                expandExtern evaled
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                expandExtern evaled
               _ ->
-                Nothing
+                ExternUntreated
       ExternCtor _ ct ty tag [] ->
-        Just $ NeutData qual ct ty tag []
+        ExternExpanded (NeutData qual ct ty tag [])
       _ ->
-        Nothing
+        ExternUntreated
   [ ExternAccessor acc@(GetProp prop) ] ->
     case impl of
       ExternExpr group expr -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
+            expandExtern evaled
           _ ->
-            Nothing
+            ExternUntreated
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> eval (envForGroup env ref (InlineProp prop) group) body
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref (InlineProp prop) group) body
+            expandExtern evaled
           Just (InlineArity _) ->
-            Nothing
+            ExternUntreated
           _ | shouldInlineExternAccessor qual analysis' body acc ->
-            Just $ eval (envForGroup env ref (InlineProp prop) group) body
+            expandExtern evaled
           _ ->
-            Nothing
+            ExternUntreated
       _ ->
-        Nothing
+        ExternUntreated
   [ ExternAccessor (GetProp prop), ExternApp args ] ->
     case impl of
       ExternExpr group expr -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
+            expandExtern evaled
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
+                expandExtern evaled
             | otherwise ->
-                Nothing
+                ExternUntreated
           _ ->
-            Nothing
+            ExternUntreated
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
+            expandExtern evaled
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
+                expandExtern evaled
             | otherwise ->
-                Nothing
+                ExternUntreated
           _ | shouldInlineExternApp qual analysis' body args ->
-            Just $ evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
+            expandExtern evaled
           _ ->
-            Nothing
+            ExternUntreated
       _ ->
-        Nothing
+        ExternUntreated
   [ ExternApp args ] ->
     case impl of
       ExternExpr group expr -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> evalApp env (eval (envForGroup env ref InlineRef group) expr) args
         case Map.lookup ref e.directives >>= Map.lookup InlineRef of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+            expandExtern evaled
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+                expandExtern evaled
             | otherwise ->
-                Nothing
+                ExternUntreated
           _ | shouldInlineExternApp qual analysis expr args ->
-            Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+            expandExtern evaled
           _ ->
-            Nothing
+            ExternUntreated
       ExternCtor _ ct ty tag fields | Array.length fields == Array.length args ->
-        Just $ NeutData qual ct ty tag $ Array.zip fields args
+        ExternExpanded (NeutData qual ct ty tag $ Array.zip fields args)
       _ ->
-        Nothing
+        ExternUntreated
   [ ExternApp _, ExternAccessor (GetProp prop) ] ->
     case impl of
       ExternExpr group fn -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
         case Map.lookup ref e.directives >>= Map.lookup (InlineSpineProp prop) of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
+            expandExtern evaled
           _ ->
-            Nothing
+            ExternUntreated
       _ ->
-        Nothing
+        ExternUntreated
   [ ExternApp _, ExternAccessor (GetProp prop), ExternApp args2 ] ->
     case impl of
       ExternExpr group fn -> do
         let ref = EvalExtern qual
+        let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
         case Map.lookup ref e.directives >>= Map.lookup (InlineSpineProp prop) of
           Just InlineNever ->
-            Just $ neutralSpine (NeutStop qual) spine
+            stopExtern evaled
           Just InlineAlways ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
+            expandExtern evaled
           Just (InlineArity n) | Array.length args2 >= n ->
-            Just $ evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
+            expandExtern evaled
           _ ->
-            Nothing
+            ExternUntreated
       _ ->
-        Nothing
+        ExternUntreated
   _ ->
-    Nothing
+    ExternUntreated
+  where
+  expandExtern evaled = ExternExpanded $ force evaled
+  stopExtern evaled = ExternStopped $ force evaled
 
 analysisFromDirective :: BackendAnalysis -> InlineDirective -> BackendAnalysis
 analysisFromDirective (BackendAnalysis analysis) = case _ of
@@ -1165,8 +1182,8 @@ quote = go
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
-    SemExtern _ _ sem ->
-      go ctx (force sem)
+    SemExtern qual cont spine _ ->
+      go ctx (neutralSpine ((if cont then NeutVar else NeutStop) qual) spine)
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
       build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
