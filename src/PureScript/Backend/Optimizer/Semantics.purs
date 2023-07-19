@@ -911,7 +911,7 @@ runFloatLetsWithEnv atTop ee ff = go ff ee
     Right a -> a
 
 runFloatLets :: Boolean -> Env -> FreeFloatable -> BackendSemantics
-runFloatLets atTop ee ff = runFloatLetsWithEnv atTop ee (const <$> ff)
+runFloatLets atTop ee = runFloatLetsWithEnv atTop ee <<< map const
 
 data ExternOutcome
   = ExternExpanded BackendSemantics
