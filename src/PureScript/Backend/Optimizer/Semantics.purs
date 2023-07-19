@@ -911,7 +911,7 @@ runFloatLetsWithEnv atTop ee ff = go ff ee
     Right a -> a
 
 runFloatLets :: Boolean -> Env -> FreeFloatable -> BackendSemantics
-runFloatLets atTop ee ff = runFloatLetsWithEnv atTop ee (ff >>= liftF <<< flip FloatMe const)
+runFloatLets atTop ee ff = runFloatLetsWithEnv atTop ee (const <$> ff)
 
 data ExternOutcome
   = ExternExpanded BackendSemantics
