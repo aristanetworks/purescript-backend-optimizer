@@ -281,13 +281,7 @@ instance Eval f => Eval (BackendSyntax f) where
       Branch branches def ->
         evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
       PrimOp op ->
-        case op of
-          Op1 o a -> do
-            let evalPrimOp1 aa ee = evalPrimOp ee (Op1 o aa)
-            runFloatLetsWithEnv atTop env (evalPrimOp1 <$> floatMe (eval env a))
-          Op2 o a b -> do
-            let evalPrimOp2 aa bb ee = evalPrimOp ee (Op2 o aa bb)
-            runFloatLetsWithEnv atTop env (evalPrimOp2 <$> floatMe (eval env a) <*> floatMe (eval env b))
+        runFloatLetsWithEnv atTop env (flip evalPrimOp <$> traverse (eval env >>> floatMe) op)
       PrimEffect eff ->
         guardFailOver identity (eval env <$> eff) NeutPrimEffect
       PrimUndefined ->
