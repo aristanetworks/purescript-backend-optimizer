@@ -3,11 +3,9 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
-import Control.Monad.Free (Free, liftF, resume)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Either (Either(..))
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
@@ -21,7 +19,6 @@ import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
-import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
@@ -176,7 +173,6 @@ newtype Env = Env
   , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> ExternOutcome
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
-  , atTop :: Boolean
   }
 
 derive instance Newtype Env _
@@ -208,96 +204,83 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
-notAtTop :: Env -> Env
-notAtTop (Env e) = Env e { atTop = false }
-
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval iEnv@(Env { atTop }) = inner $ notAtTop iEnv
-    where
-    inner env = case _ of
-      Var qual ->
-        evalExtern env qual []
-      Local ident lvl -> do
-        case lookupLocal env lvl of
-          Just (One sem) -> sem
-          Just (Group group) | Just sem <- flip Tuple.lookup group =<< ident ->
-            force sem
-          _ ->
-            unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-      App hd tl -> do
-        let evalApp' h sp e = evalApp e h sp
-        runFloatLetsWithEnv atTop env (evalApp' <$> floatMe (eval env hd) <*> (NonEmptyArray.toArray <$> traverse (eval env >>> floatMe) tl))
-      UncurriedApp hd tl -> do
-        let evalUncurriedApp' h sp e = evalUncurriedApp e h sp
-        runFloatLetsWithEnv atTop env (evalUncurriedApp' <$> floatMe (eval env hd) <*> traverse (eval env >>> floatMe) tl)
-      UncurriedAbs idents body -> do
-        let
-          loop env' = case _ of
-            List.Nil ->
-              MkFnApplied (eval env' body)
-            List.Cons a as ->
-              MkFnNext a \nextArg ->
-                loop (bindLocal env' (One nextArg)) as
-        SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
-      UncurriedEffectApp hd tl ->
-        evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
-      UncurriedEffectAbs idents body -> do
-        let
-          loop env' = case _ of
-            List.Nil ->
-              MkFnApplied (eval env' body)
-            List.Cons a as ->
-              MkFnNext a \nextArg ->
-                loop (bindLocal env' (One nextArg)) as
-        SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
-      Abs idents body ->
-        foldr1Array
-          (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
-          (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
-          idents
-          env
-      Let ident _ binding body ->
-        guardFail (eval env binding) \binding' ->
-          makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
-      LetRec _ bindings body -> do
-        let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
-        SemLetRec (map bindGroup <$> bindings) (bindGroup body)
-      EffectBind ident _ binding body ->
-        guardFail (eval env binding) \binding' ->
-          SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
-      EffectPure val ->
-        guardFail (eval env val) SemEffectPure
-      EffectDefer val ->
-        guardFail (eval env val) SemEffectDefer
-      Accessor lhs accessor -> do
-        let evalAccessor' bs e = evalAccessor e bs accessor
-        runFloatLetsWithEnv atTop env (evalAccessor' <$> floatMe (eval env lhs))
-      Update lhs updates -> do
-        let evalUpdate' u vs e = evalUpdate e u vs
-        runFloatLetsWithEnv atTop env (evalUpdate' <$> floatMe (eval env lhs) <*> traverse (traverse (eval env >>> floatMe)) updates)
-      Branch branches def ->
-        evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
-      PrimOp op ->
-        runFloatLetsWithEnv atTop env (flip evalPrimOp <$> traverse (eval env >>> floatMe) op)
-      PrimEffect eff ->
-        guardFailOver identity (eval env <$> eff) NeutPrimEffect
-      PrimUndefined ->
-        NeutPrimUndefined
-      Lit (LitArray arr) ->
-        runFloatLets atTop env $ NeutLit <$> (LitArray <$> traverse (eval env >>> floatMe) arr)
-      Lit (LitRecord arr) ->
-        runFloatLets atTop env $ NeutLit <$> (LitRecord <$> traverse (traverse (eval env >>> floatMe)) arr)
-      Lit lit ->
-        guardFailOver identity (eval env <$> lit) NeutLit
-      Fail err ->
-        NeutFail err
-      CtorDef ct ty tag fields ->
-        NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-      CtorSaturated qual ct ty tag fields ->
-        runFloatLets atTop env $ NeutData qual ct ty tag <$> traverse (traverse (eval env >>> floatMe)) fields
+  eval env = case _ of
+    Var qual ->
+      evalExtern env qual []
+    Local ident lvl ->
+      case lookupLocal env lvl of
+        Just (One sem) -> sem
+        Just (Group group) | Just sem <- flip Tuple.lookup group =<< ident ->
+          force sem
+        _ ->
+          unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
+    App hd tl ->
+      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
+    UncurriedApp hd tl ->
+      evalUncurriedApp env (eval env hd) (eval env <$> tl)
+    UncurriedAbs idents body -> do
+      let
+        loop env' = case _ of
+          List.Nil ->
+            MkFnApplied (eval env' body)
+          List.Cons a as ->
+            MkFnNext a \nextArg ->
+              loop (bindLocal env' (One nextArg)) as
+      SemMkFn (loop env (Array.toUnfoldable $ map fst idents))
+    UncurriedEffectApp hd tl ->
+      evalUncurriedEffectApp env (eval env hd) (eval env <$> tl)
+    UncurriedEffectAbs idents body -> do
+      let
+        loop env' = case _ of
+          List.Nil ->
+            MkFnApplied (eval env' body)
+          List.Cons a as ->
+            MkFnNext a \nextArg ->
+              loop (bindLocal env' (One nextArg)) as
+      SemMkEffectFn (loop env (Array.toUnfoldable $ map fst idents))
+    Abs idents body ->
+      foldr1Array
+        (\(Tuple ident _) next env' -> SemLam ident (next <<< bindLocal env' <<< One))
+        (\(Tuple ident _) env' -> SemLam ident (flip eval body <<< bindLocal env' <<< One))
+        idents
+        env
+    Let ident _ binding body ->
+      guardFail (eval env binding) \binding' ->
+        makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
+    LetRec _ bindings body -> do
+      let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
+      SemLetRec (map bindGroup <$> bindings) (bindGroup body)
+    EffectBind ident _ binding body ->
+      guardFail (eval env binding) \binding' ->
+        SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
+    EffectPure val ->
+      guardFail (eval env val) SemEffectPure
+    EffectDefer val ->
+      guardFail (eval env val) SemEffectDefer
+    Accessor lhs accessor ->
+      evalAccessor env (eval env lhs) accessor
+    Update lhs updates ->
+      evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+    Branch branches def ->
+      evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
+    PrimOp op ->
+      evalPrimOp env (eval env <$> op)
+    PrimEffect eff ->
+      guardFailOver identity (eval env <$> eff) NeutPrimEffect
+    PrimUndefined ->
+      NeutPrimUndefined
+    Lit lit ->
+      guardFailOver identity (eval env <$> lit) NeutLit
+    Fail err ->
+      NeutFail err
+    CtorDef ct ty tag fields ->
+      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
+    CtorSaturated qual ct ty tag fields ->
+      guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
 instance Eval BackendExpr where
   eval = go
@@ -892,26 +875,6 @@ envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> En
 envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
-
-data Floatable a = FloatMe BackendSemantics (BackendSemantics -> a)
-
-derive instance Functor Floatable
-
-type FreeFloatableWithEnv = Free Floatable (Env -> BackendSemantics)
-type FreeFloatable = Free Floatable BackendSemantics
-
-floatMe :: BackendSemantics -> FreeFloatable
-floatMe a = liftF $ FloatMe a identity
-
-runFloatLetsWithEnv :: Boolean -> Env -> FreeFloatableWithEnv -> BackendSemantics
-runFloatLetsWithEnv atTop ee ff = go ff ee
-  where
-  go = resume >>> case _ of
-    Left (FloatMe sem f) -> \e1 -> if atTop then go (f sem) e1 else guardFail sem \sem' -> evalAssocLet e1 sem' \e2 v -> go (f v) e2
-    Right a -> a
-
-runFloatLets :: Boolean -> Env -> FreeFloatable -> BackendSemantics
-runFloatLets atTop ee = runFloatLetsWithEnv atTop ee <<< map const
 
 data ExternOutcome
   = ExternExpanded BackendSemantics

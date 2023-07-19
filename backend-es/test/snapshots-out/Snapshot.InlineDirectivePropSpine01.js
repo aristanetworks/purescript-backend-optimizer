@@ -3,10 +3,14 @@
 import * as Type$dEquality from "../Type.Equality/index.js";
 const wat = dict => dict.wat;
 const testImpl = x => x;
-const watUnit = dictTypeEquals => {
-  const $0 = dictTypeEquals.proof(a => a);
-  return {wat: x => testImpl($0(x))};
-};
+const watUnit = dictTypeEquals => (
+  {
+    wat: (() => {
+      const $0 = dictTypeEquals.proof(a => a);
+      return x => testImpl($0(x));
+    })()
+  }
+);
 const wat1 = /* #__PURE__ */ (() => watUnit(Type$dEquality.refl).wat)();
 const g = wat1;
 const test2 = /* #__PURE__ */ testImpl();
