@@ -5,6 +5,7 @@ import Prelude
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Enum (fromEnum)
+import Data.Lazy (defer)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -525,7 +526,7 @@ data_semigroup_concatString :: ForeignSemantics
 data_semigroup_concatString = Tuple (qualified "Data.Semigroup" "concatString") $ primBinaryOperator OpStringAppend
 
 externApp :: Qualified Ident -> Array BackendSemantics -> BackendSemantics
-externApp ident spine = SemRef (QuoteAsExtern ident QuoteAsVariable) [ ExternApp spine ] (NeutApp (NeutVar ident) spine)
+externApp ident spine = SemRef (QuoteAsExtern ident QuoteAsVariable) [ ExternApp spine ] (defer \_ -> NeutApp (NeutVar ident) spine)
 
 partial_unsafe_unsafePartial :: ForeignSemantics
 partial_unsafe_unsafePartial = Tuple (qualified "Partial.Unsafe" "_unsafePartial") go

@@ -56,6 +56,7 @@ import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
+import Data.Lazy (defer)
 import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust, fromMaybe, maybe)
@@ -73,7 +74,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternOutcome(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternOutcome(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, freeze, noExternForYou, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -342,13 +343,13 @@ makeExternEval conv env qual spine = do
     result =
       case Map.lookup qual conv.foreignSemantics of
         Just fn
-          | Just sem <- fn env qual spine -> ExternExpanded sem
-          | otherwise -> ExternUntreated
-        Nothing -> ExternUntreated
+          | Just sem <- fn env qual spine -> ExternExpanded $ defer \_ -> sem
+          | otherwise -> noExternForYou qual spine
+        Nothing -> noExternForYou qual spine
   case result of
-    ExternUntreated
+    ExternPunted _
       | Just impl <- Map.lookup qual conv.implementations -> evalExternFromImpl (topEnv env) qual impl spine
-      | otherwise -> ExternUntreated
+      | otherwise -> noExternForYou qual spine
     _ -> result
 
 buildM :: BackendSyntax BackendExpr -> ConvertM BackendExpr
