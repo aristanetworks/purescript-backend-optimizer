@@ -900,9 +900,6 @@ derive instance Functor Floatable
 type FreeFloatableWithEnv = Free Floatable (Env -> BackendSemantics)
 type FreeFloatable = Free Floatable BackendSemantics
 
-floatMeWithEnv :: BackendSemantics -> FreeFloatableWithEnv
-floatMeWithEnv a = liftF $ FloatMe a const
-
 floatMe :: BackendSemantics -> FreeFloatable
 floatMe a = liftF $ FloatMe a identity
 
@@ -914,7 +911,7 @@ runFloatLetsWithEnv atTop ee ff = go ff ee
     Right a -> a
 
 runFloatLets :: Boolean -> Env -> FreeFloatable -> BackendSemantics
-runFloatLets atTop ee ff = runFloatLetsWithEnv atTop ee (ff >>= floatMeWithEnv)
+runFloatLets atTop ee ff = runFloatLetsWithEnv atTop ee (ff >>= liftF <<< flip FloatMe const)
 
 data ExternOutcome
   = ExternExpanded BackendSemantics
