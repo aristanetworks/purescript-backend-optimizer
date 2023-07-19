@@ -3,9 +3,11 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
+import Control.Monad.Free (Free, liftF, resume)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
@@ -19,6 +21,7 @@ import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
@@ -208,48 +211,6 @@ addStop (Env env) ref acc = Env env
 notAtTop :: Env -> Env
 notAtTop (Env e) = Env e { atTop = false }
 
-floatAppLets
-  :: forall i o f
-   . Foldable f
-  => (Env -> BackendSemantics -> Array o -> BackendSemantics)
-  -> (i -> BackendSemantics)
-  -> (i -> BackendSemantics -> o)
-  -> (f i -> Array o)
-  -> Boolean
-  -> Env
-  -> BackendSemantics
-  -> f i
-  -> BackendSemantics
-floatAppLets ef hf tf f atTop env hd tl = do
-  if atTop then ef env hd (f tl)
-  else evalAssocLet env hd cont
-  where
-  cont ex hd' = go [] ex $ List.fromFoldable tl
-    where
-    ief = flip ef hd'
-    go acc ee = case _ of
-      List.Nil -> ief ee acc
-      List.Cons head tail -> evalAssocLet ee (hf head) (\e v -> go (acc <> [ tf head v ]) e tail)
-
-floatArray
-  :: forall o
-   . Boolean
-  -> Env
-  -> Array o
-  -> (o -> BackendSemantics)
-  -> (o -> BackendSemantics -> o)
-  -> (Array o -> BackendSemantics)
-  -> BackendSemantics
-floatArray atTop env arr hf tf ef = floatAppLets (pure $ pure $ ef) hf tf identity atTop env NeutPrimUndefined arr
-
-floatHead
-  :: Boolean
-  -> Env
-  -> BackendSemantics
-  -> (Env -> BackendSemantics -> BackendSemantics)
-  -> BackendSemantics
-floatHead atTop env hd ef = floatAppLets (\e a -> const (ef e a)) identity (pure identity) identity atTop env hd []
-
 class Eval f where
   eval :: Env -> f -> BackendSemantics
 
@@ -266,10 +227,12 @@ instance Eval f => Eval (BackendSyntax f) where
             force sem
           _ ->
             unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
-      App hd tl ->
-        floatAppLets evalApp identity (pure identity) NonEmptyArray.toArray atTop env (eval env hd) (eval env <$> tl)
-      UncurriedApp hd tl ->
-        floatAppLets evalUncurriedApp identity (pure identity) identity atTop env (eval env hd) (eval env <$> tl)
+      App hd tl -> do
+        let evalApp' h sp e = evalApp e h sp
+        runFloatLetsWithEnv atTop env (evalApp' <$> floatMe (eval env hd) <*> (NonEmptyArray.toArray <$> traverse (eval env >>> floatMe) tl))
+      UncurriedApp hd tl -> do
+        let evalUncurriedApp' h sp e = evalUncurriedApp e h sp
+        runFloatLetsWithEnv atTop env (evalUncurriedApp' <$> floatMe (eval env hd) <*> traverse (eval env >>> floatMe) tl)
       UncurriedAbs idents body -> do
         let
           loop env' = case _ of
@@ -309,26 +272,30 @@ instance Eval f => Eval (BackendSyntax f) where
         guardFail (eval env val) SemEffectPure
       EffectDefer val ->
         guardFail (eval env val) SemEffectDefer
-      Accessor lhs accessor ->
-        floatHead atTop env (eval env lhs) \e h -> evalAccessor e h accessor
-      Update lhs updates ->
-        floatAppLets evalUpdate propValue ($>) identity atTop env (eval env lhs) (map (eval env) <$> updates)
+      Accessor lhs accessor -> do
+        let evalAccessor' bs e = evalAccessor e bs accessor
+        runFloatLetsWithEnv atTop env (evalAccessor' <$> floatMe (eval env lhs))
+      Update lhs updates -> do
+        let evalUpdate' u vs e = evalUpdate e u vs
+        runFloatLetsWithEnv atTop env (evalUpdate' <$> floatMe (eval env lhs) <*> traverse (traverse (eval env >>> floatMe)) updates)
       Branch branches def ->
         evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
       PrimOp op ->
         case op of
-          Op1 o a -> floatHead atTop env (eval env a) \e -> evalPrimOp e <<< Op1 o
-          Op2 o a b -> floatHead atTop env (eval env a) \z x ->
-            floatHead atTop z (eval z b) \e y ->
-              evalPrimOp e $ Op2 o x y
+          Op1 o a -> do
+            let evalPrimOp1 aa ee = evalPrimOp ee (Op1 o aa)
+            runFloatLetsWithEnv atTop env (evalPrimOp1 <$> floatMe (eval env a))
+          Op2 o a b -> do
+            let evalPrimOp2 aa bb ee = evalPrimOp ee (Op2 o aa bb)
+            runFloatLetsWithEnv atTop env (evalPrimOp2 <$> floatMe (eval env a) <*> floatMe (eval env b))
       PrimEffect eff ->
         guardFailOver identity (eval env <$> eff) NeutPrimEffect
       PrimUndefined ->
         NeutPrimUndefined
       Lit (LitArray arr) ->
-        floatArray atTop env (eval env <$> arr) identity (pure identity) (flip (guardFailOver identity) NeutLit <<< LitArray)
+        runFloatLets atTop env $ NeutLit <$> (LitArray <$> traverse (eval env >>> floatMe) arr)
       Lit (LitRecord arr) ->
-        floatArray atTop env (map (eval env) <$> arr) propValue ($>) (flip (guardFailOver identity) NeutLit <<< LitRecord)
+        runFloatLets atTop env $ NeutLit <$> (LitRecord <$> traverse (traverse (eval env >>> floatMe)) arr)
       Lit lit ->
         guardFailOver identity (eval env <$> lit) NeutLit
       Fail err ->
@@ -336,7 +303,7 @@ instance Eval f => Eval (BackendSyntax f) where
       CtorDef ct ty tag fields ->
         NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
       CtorSaturated qual ct ty tag fields ->
-        floatArray atTop env (map (eval env) <$> fields) snd ($>) (flip (guardFailOver snd) (NeutData qual ct ty tag))
+        runFloatLets atTop env $ NeutData qual ct ty tag <$> traverse (traverse (eval env >>> floatMe)) fields
 
 instance Eval BackendExpr where
   eval = go
@@ -931,6 +898,29 @@ envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> En
 envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
+
+data Floatable a = FloatMe BackendSemantics (BackendSemantics -> a)
+
+derive instance Functor Floatable
+
+type FreeFloatableWithEnv = Free Floatable (Env -> BackendSemantics)
+type FreeFloatable = Free Floatable BackendSemantics
+
+floatMeWithEnv :: BackendSemantics -> FreeFloatableWithEnv
+floatMeWithEnv a = liftF $ FloatMe a const
+
+floatMe :: BackendSemantics -> FreeFloatable
+floatMe a = liftF $ FloatMe a identity
+
+runFloatLetsWithEnv :: Boolean -> Env -> FreeFloatableWithEnv -> BackendSemantics
+runFloatLetsWithEnv atTop ee ff = go ff ee
+  where
+  go = resume >>> case _ of
+    Left (FloatMe sem f) -> \e1 -> if atTop then go (f sem) e1 else guardFail sem \sem' -> evalAssocLet e1 sem' \e2 v -> go (f v) e2
+    Right a -> a
+
+runFloatLets :: Boolean -> Env -> FreeFloatable -> BackendSemantics
+runFloatLets atTop ee ff = runFloatLetsWithEnv atTop ee (ff >>= floatMeWithEnv)
 
 data ExternOutcome
   = ExternExpanded BackendSemantics

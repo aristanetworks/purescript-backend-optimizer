@@ -18,6 +18,7 @@ You can edit this file as you like.
   , "effect"
   , "either"
   , "enums"
+  , "free"
   , "filterable"
   , "foldable-traversable"
   , "foreign-object"
