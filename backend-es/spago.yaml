@@ -4,3 +4,13 @@ package:
     - "convertable-options"
     - "heterogeneous"
     - "variant"
+  test:
+    main: "Test.Main"
+    dependencies:
+      - "aff"
+      - "lib-backend-optimizer"
+      - "external-backend-optimizer"
+      - "test-backend-optimizer"
+      - "snapshots-backend-optimizer"
+    pursArgs:
+      - "-g corefn"

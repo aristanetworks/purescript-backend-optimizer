@@ -1,10 +1,19 @@
-module Test.Main where
+module Test.Main
+  ( TraceChoice(..)
+  , argParser
+  , hasFails
+  , main
+  , matchesFail
+  , runSnapshotTests
+  )
+  where
 
 import Prelude
 
 import Ansi.Codes (Color(..))
 import Ansi.Output (foreground, withGraphics)
 import ArgParse.Basic (ArgParser)
+import Data.List as List
 import ArgParse.Basic as ArgParser
 import Data.Array (findMap)
 import Data.Array as Array
@@ -100,23 +109,27 @@ main = do
 
 runSnapshotTests :: TestArgs -> Aff Unit
 runSnapshotTests { accept, filter, traceIdents } = do
-  liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
-  spawnFromParent "spago" [ "build -u \"-g corefn\"" ]
+  -- liftEffect $ Process.chdir $ Path.concat [ "test", "snapshots" ]
+  -- liftEffect $ Process.chdir $ Path.concat [ ".." ]
+  -- spawnFromParent "spago" [ "build --purs-args \"-g corefn\"" ]
+  liftEffect $ Process.chdir $ Path.concat [ ".." ]
+  baseDir <- liftEffect Process.cwd
+  liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots", "src" ]
   snapshotDir <- liftEffect Process.cwd
   snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
-  let snapshotsOut = Path.concat [ "..", "snapshots-out" ]
-  let testOut = Path.concat [ "..", "test-out" ]
+  let snapshotsOut = Path.concat [ "..", "..", "snapshots-out" ]
+  let testOut = Path.concat [ "..", "..", "test-out" ]
   mkdirp snapshotsOut
   mkdirp testOut
-  coreFnModulesFromOutput "output" filter >>= case _ of
+  coreFnModulesFromOutput (Path.concat [ "..", "..","..","..", "output" ]) filter >>= case _ of
     Left errors -> do
       for_ errors \(Tuple filePath err) -> do
         Console.error $ filePath <> " " <> err
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
+      copyFile (Path.concat [ "..", "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
@@ -131,10 +144,11 @@ runSnapshotTests { accept, filter, traceIdents } = do
             mkdirp testFileDir
             FS.writeTextFile UTF8 testFilePath formatted
             unless (Set.isEmpty backendMod.foreign) do
-              let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
+              let foreignSiblingPath = Path.concat [ "..","..","..","..",fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"]
               let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
               copyFile foreignSiblingPath foreignOutputPath
-            when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
+            -- Console.logShow { pth: Path.concat [ snapshotDir, path ], baseDir, path}
+            when (Set.member (Path.concat [ baseDir, path ]) snapshotPaths) do
               void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backendMod))) outputRef
             unless (Array.null optimizationSteps) do
               liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) stepsRef
