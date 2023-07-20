@@ -3,6 +3,8 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
+import Control.Comonad.Cofree (Cofree)
+import Control.Comonad.Cofree as Cofree
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -1539,17 +1541,23 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-optimize :: Boolean -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
-optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
-  go (if traceSteps then pure originalExpr else List.Nil) initN originalExpr
+type ProcessorInput = { qual :: Qualified Ident, n :: Int, env :: Env, expr :: BackendExpr }
+type Processors = Array (ProcessorInput -> Cofree (Function ProcessorInput) BackendExpr)
+
+optimize :: Boolean -> Processors -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
+optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) initN originalExpr =
+  go (if traceSteps then pure originalExpr else List.Nil) originalProcessors initN originalExpr
   where
-  go steps n expr1 = do
+  go :: List.List BackendExpr -> Processors -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
+  go steps processors' n expr1' = do
+    let process ee nn pp = foldr (\i p -> let res = i p.val in p { val { expr = Cofree.head res }, processors = p.processors <> [ Cofree.tail res ] }) { val: { expr: ee, env, qual, n: nn }, processors: [] } pp
+    let { val: { expr: expr1 }, processors } = process expr1' n processors'
     let Tuple rewrite expr2 = goStep n expr1
     let newSteps = if traceSteps then List.Cons expr2 steps else steps
     if rewrite then
-      go newSteps (n - 1) expr2
+      go newSteps processors (n - 1) expr2
     else
-      Tuple (Array.reverse (List.toUnfoldable steps)) expr2
+      Tuple (Array.reverse (List.toUnfoldable steps)) (process expr2 (n - 1) processors).val.expr
 
   goStep :: Int -> BackendExpr -> Tuple Boolean BackendExpr
   goStep n expr1

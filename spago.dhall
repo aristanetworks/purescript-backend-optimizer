@@ -21,6 +21,7 @@ You can edit this file as you like.
   , "filterable"
   , "foldable-traversable"
   , "foreign-object"
+  , "free"
   , "integers"
   , "language-cst-parser"
   , "lazy"
@@ -49,5 +50,5 @@ You can edit this file as you like.
   ]
 , packages = ./packages.dhall
 , sources =
-  [ "src/**/*.purs", "backend-es/src/**/*.purs", "backend-es/test/*.purs" ]
+  [ "src/**/*.purs", "external/**/*.purs", "backend-es/src/**/*.purs", "backend-es/test/*.purs" ]
 }

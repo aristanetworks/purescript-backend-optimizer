@@ -70,6 +70,7 @@ import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR
 import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Processors (processors)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
@@ -247,7 +248,7 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
   let enableTracing = Set.member qualifiedIdent env.traceIdents
-  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv qualifiedIdent env.rewriteLimit backendExpr
+  let Tuple mbSteps optimizedExpr = optimize enableTracing processors (getCtx env) evalEnv qualifiedIdent env.rewriteLimit backendExpr
   let Tuple impl expr' = toExternImpl env group optimizedExpr
   { accum: env
       { implementations = Map.insert qualifiedIdent impl env.implementations
