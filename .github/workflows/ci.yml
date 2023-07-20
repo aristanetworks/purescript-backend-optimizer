@@ -48,10 +48,10 @@ jobs:
         run: spago install
 
       - name: Build project
-        run: spago build --purs-args '--censor-lib --strict'
+        run: spago build --censor-build-warnings dependency --strict
 
       - name: Run snapshots
-        run: spago test --purs-args '--censor-lib'
+        run: spago test --censor-build-warnings dependency
 
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest'
