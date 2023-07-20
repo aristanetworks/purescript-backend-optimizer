@@ -1,0 +1,6 @@
+package:
+  name: "backend-optimizer"
+  dependencies:
+    - "convertable-options"
+    - "heterogeneous"
+    - "variant"

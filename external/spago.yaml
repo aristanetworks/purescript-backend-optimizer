@@ -1,0 +1,4 @@
+package:
+  name: "external-backend-optimizer"
+  dependencies:
+    - "free"
