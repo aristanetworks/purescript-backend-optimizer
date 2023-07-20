@@ -763,7 +763,7 @@ evalPrimOp env = case _ of
               NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
-evalPrimOpAssocL op match combine a' b' = case match a of
+evalPrimOpAssocL op match combine a b = case match a of
   Just lhs
     | Just rhs <- match b ->
         Just $ combine lhs rhs
@@ -792,8 +792,6 @@ evalPrimOpAssocL op match combine a' b' = case match a of
   _ ->
     Nothing
   where
-  a = deref a'
-  b = deref b'
   decompose = case _ of
     NeutPrimOp (Op2 op' x y) | op == op' ->
       Just (Tuple x y)
@@ -821,9 +819,9 @@ evalPrimOpNum
   -> Maybe BackendSemantics
 evalPrimOpNum injOp inj prj op x y = case op of
   OpAdd ->
-    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a + b)) x y
+    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a + b)) (deref x) (deref y)
   OpMultiply ->
-    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a * b)) x y
+    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a * b)) (deref x) (deref y)
   OpSubtract
     | Just a <- prj x
     , Just b <- prj y ->
