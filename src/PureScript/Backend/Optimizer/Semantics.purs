@@ -870,8 +870,8 @@ primOpOrdNot = case _ of
 evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
 evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
   ExternPunted dref -> SemRef (QuoteAsExtern qual QuoteAsVariable) spine dref
-  ExternExpanded sem -> force sem
-  ExternStopped dref -> SemRef (QuoteAsExtern qual QuoteAsStop) spine dref
+  ExternExpanded sem -> sem
+  ExternStopped -> SemRef (QuoteAsExtern qual QuoteAsStop) spine $ defer \_ -> neutralSpine (NeutStop qual) spine
 
 envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
 envForGroup env ref acc group
@@ -879,8 +879,8 @@ envForGroup env ref acc group
   | otherwise = addStop env ref acc
 
 data ExternOutcome
-  = ExternExpanded (Lazy BackendSemantics)
-  | ExternStopped (Lazy BackendSemantics)
+  = ExternExpanded BackendSemantics
+  | ExternStopped
   | ExternPunted (Lazy BackendSemantics)
 
 lookupOrWildcard :: InlineAccessor -> Map InlineAccessor ~> Maybe
@@ -907,7 +907,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> eval (envForGroup env ref InlineRef group) expr
         case Map.lookup ref e.directives >>= lookupOrWildcard InlineRef of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           Just (InlineArity _) ->
@@ -921,7 +921,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
               _ ->
                 puntExtern evaled
       ExternCtor _ ct ty tag [] ->
-        ExternExpanded $ defer \_ -> NeutData qual ct ty tag []
+        ExternExpanded $ NeutData qual ct ty tag []
       _ ->
         giveUp
   [ ExternAccessor acc@(GetProp prop) ] ->
@@ -931,7 +931,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           _ ->
@@ -941,7 +941,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> eval (envForGroup env ref (InlineProp prop) group) body
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           Just (InlineArity _) ->
@@ -959,7 +959,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           Just (InlineArity n)
@@ -974,7 +974,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           Just (InlineArity n)
@@ -995,7 +995,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> evalApp env (eval (envForGroup env ref InlineRef group) expr) args
         case Map.lookup ref e.directives >>= lookupOrWildcard InlineRef of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           Just (InlineArity n)
@@ -1008,7 +1008,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           _ ->
             puntExtern evaled
       ExternCtor _ ct ty tag fields | Array.length fields == Array.length args ->
-        ExternExpanded $ defer \_ -> NeutData qual ct ty tag $ Array.zip fields args
+        ExternExpanded $ NeutData qual ct ty tag $ Array.zip fields args
       _ ->
         giveUp
   [ ExternApp _, ExternAccessor (GetProp prop) ] ->
@@ -1018,7 +1018,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineSpineProp prop) of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           _ ->
@@ -1032,7 +1032,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineSpineProp prop) of
           Just InlineNever ->
-            stopExtern evaled
+            stopExtern
           Just InlineAlways ->
             expandExtern evaled
           Just (InlineArity n) | Array.length args2 >= n ->
@@ -1045,8 +1045,8 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
     giveUp
   where
   ref = EvalExtern qual
-  expandExtern evaled = ExternExpanded evaled
-  stopExtern evaled = ExternStopped evaled
+  expandExtern evaled = ExternExpanded $ force evaled
+  stopExtern = ExternStopped
   puntExtern evaled = ExternPunted evaled
   giveUp = ExternPunted $ defer \_ -> evalSpine env (semanticsFromImpl (envForGroup env ref InlineWildcard (groupFromImpl impl)) qual impl) spine
 

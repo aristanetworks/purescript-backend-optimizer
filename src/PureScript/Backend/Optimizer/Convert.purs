@@ -56,7 +56,6 @@ import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
-import Data.Lazy (defer)
 import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust, fromMaybe, maybe)
@@ -343,7 +342,7 @@ makeExternEval conv env qual spine = do
     result =
       case Map.lookup qual conv.foreignSemantics of
         Just fn
-          | Just sem <- fn env qual spine -> ExternExpanded $ defer \_ -> sem
+          | Just sem <- fn env qual spine -> ExternExpanded sem
           | otherwise -> noExternForYou qual spine
         Nothing -> noExternForYou qual spine
   case result of
