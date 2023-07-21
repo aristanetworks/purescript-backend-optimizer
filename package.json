@@ -7,6 +7,7 @@
     "purs-backend-es": "./backend-es/index.js"
   },
   "scripts": {
+    "postinstall": "cd postinstall && spago run",
     "preversion": "npm run test && npm run test:output-diff",
     "version": "echo 'export const version = \"v'$npm_package_version'\";' > ./src/Version.js && git add .",
     "postversion": "git commit -m \"Bump purs-backend-es version ($npm_package_version)\" && git tag purs-backend-es-v$npm_package_version",
@@ -37,5 +38,8 @@
     "purescript": "^0.15.10",
     "purs-tidy": "^0.10.0",
     "spago": "^0.93.8"
+  },
+  "dependencies": {
+    "rimraf": "^5.0.1"
   }
 }

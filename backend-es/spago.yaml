@@ -9,7 +9,7 @@ package:
     dependencies:
       - "aff"
       - "lib-backend-optimizer"
-      - "external-backend-optimizer"
+      - "processors-backend-optimizer"
       - "snapshots-backend-optimizer"
     pursArgs:
       - "-g corefn"

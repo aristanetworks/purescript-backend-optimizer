@@ -1,0 +1,5 @@
+package:
+  name: "processors-backend-optimizer"
+  dependencies:
+    - free
+    - hyrule
