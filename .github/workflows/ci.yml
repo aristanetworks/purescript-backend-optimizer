@@ -44,9 +44,6 @@ jobs:
             .spago
             output
 
-      - name: Install dependencies
-        run: spago install
-
       - name: Build project
         run: npm run build
 
