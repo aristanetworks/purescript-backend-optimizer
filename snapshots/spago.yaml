@@ -1,0 +1,33 @@
+package:
+  name: "snapshots-backend-optimizer"
+  dependencies:
+    - "arrays"
+    - "console"
+    - "convertable-options"
+    - "effect"
+    - "either"
+    - "exceptions"
+    - "exists"
+    - "foldable-traversable"
+    - "foreign-object"
+    - "functions"
+    - "heterogeneous"
+    - "identity"
+    - "integers"
+    - "lists"
+    - "maybe"
+    - "partial"
+    - "prelude"
+    - "profunctor-lenses"
+    - "record"
+    - "refs"
+    - "safe-coerce"
+    - "st"
+    - "strings"
+    - "tuples"
+    - "type-equality"
+    - "unsafe-coerce"
+    - "variant"
+workspace:
+  package_set:
+    registry: 11.10.0

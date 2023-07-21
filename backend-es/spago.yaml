@@ -10,7 +10,16 @@ package:
       - "aff"
       - "lib-backend-optimizer"
       - "external-backend-optimizer"
-      - "test-backend-optimizer"
       - "snapshots-backend-optimizer"
     pursArgs:
       - "-g corefn"
+  extra_packages:
+    "dodo-printer":
+        dependencies:
+          - "ansi"
+          - "foldable-traversable"
+          - "lists"
+          - "maybe"
+          - "strings"
+        repo: "https://github.com/natefaubion/purescript-dodo-printer.git"
+        version: "v2.2.1"

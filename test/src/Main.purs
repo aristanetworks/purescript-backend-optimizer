@@ -13,7 +13,6 @@ import Prelude
 import Ansi.Codes (Color(..))
 import Ansi.Output (foreground, withGraphics)
 import ArgParse.Basic (ArgParser)
-import Data.List as List
 import ArgParse.Basic as ArgParser
 import Data.Array (findMap)
 import Data.Array as Array
@@ -56,7 +55,7 @@ import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
 import PureScript.CST.Lexer (lexToken)
 import PureScript.CST.Types as CST
-import Test.Utils (bufferToUTF8, copyFile, execWithStdin, loadModuleMain, mkdirp, spawnFromParent)
+import Test.Utils (bufferToUTF8, copyFile, execWithStdin, loadModuleMain, mkdirp)
 
 type TestArgs =
   { accept :: Boolean
@@ -112,10 +111,10 @@ runSnapshotTests { accept, filter, traceIdents } = do
   -- liftEffect $ Process.chdir $ Path.concat [ "test", "snapshots" ]
   -- liftEffect $ Process.chdir $ Path.concat [ ".." ]
   -- spawnFromParent "spago" [ "build --purs-args \"-g corefn\"" ]
+  Console.log $ "MIKE LOOK HERE"
   liftEffect $ Process.chdir $ Path.concat [ ".." ]
   baseDir <- liftEffect Process.cwd
   liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots", "src" ]
-  snapshotDir <- liftEffect Process.cwd
   snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
   let snapshotsOut = Path.concat [ "..", "..", "snapshots-out" ]

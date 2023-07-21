@@ -1,0 +1,7 @@
+package:
+  name: test-backend-optimizer
+  dependencies:
+    - aff
+workspace:
+  package_set:
+    registry: 11.10.0
