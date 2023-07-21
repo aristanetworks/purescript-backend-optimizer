@@ -39,7 +39,7 @@ jobs:
       - name: Cache PureScript dependencies
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-spago-${{ hashFiles('**/*.dhall') }}
+          key: ${{ runner.os }}-spago-${{ hashFiles('**/*.yaml') }}
           path: |
             .spago
             output
@@ -51,7 +51,7 @@ jobs:
         run: spago build --censor-build-warnings dependency --strict
 
       - name: Run snapshots
-        run: spago test --censor-build-warnings dependency
+        run: cd test && spago test --censor-build-warnings dependency
 
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest'
