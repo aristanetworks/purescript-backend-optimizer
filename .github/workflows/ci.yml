@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Setup PureScript dependencies
-        run: npm i --global purescript@0.15.4 purs-tidy@latest spago@next purescript-psa@latest
+        run: npm ci
 
       - name: Cache PureScript dependencies
         uses: actions/cache@v2
@@ -48,10 +48,10 @@ jobs:
         run: spago install
 
       - name: Build project
-        run: spago build --censor-build-warnings dependency --strict
+        run: npm run build
 
       - name: Run snapshots
-        run: cd test && spago test --censor-build-warnings dependency
+        run: npm t
 
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest'
