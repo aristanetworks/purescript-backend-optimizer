@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import rimraf from 'rimraf'
+import * as rimraf from 'rimraf'
 
 export const rmRecursive = (path) => () => {
     rimraf.sync(path);
