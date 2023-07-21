@@ -3,14 +3,14 @@ package:
   dependencies:
     - aff
     - lib-backend-optimizer
-    - external-backend-optimizer
+    - processors-backend-optimizer
     - backend-optimizer
   test:
     main: "Test.Main"
     dependencies:
       - aff
       - lib-backend-optimizer
-      - external-backend-optimizer
+      - processors-backend-optimizer
       - backend-optimizer
 workspace:
   package_set:
@@ -18,8 +18,8 @@ workspace:
   extra_packages:
     lib-backend-optimizer:
       path: ../lib
-    external-backend-optimizer:
-      path: ../external
+    processors-backend-optimizer:
+      path: ../processors
     backend-optimizer:
       path: ../backend-es
     node-glob-basic:
