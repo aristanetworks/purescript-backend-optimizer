@@ -5,12 +5,13 @@ package:
     - lib-backend-optimizer
     - processors-backend-optimizer
     - backend-optimizer
+    - node-glob-basic
   test:
     main: "Test.Main"
     dependencies:
       - aff
-      - lib-backend-optimizer
       - processors-backend-optimizer
+      - lib-backend-optimizer
       - backend-optimizer
 workspace:
   package_set:
@@ -19,7 +20,7 @@ workspace:
     lib-backend-optimizer:
       path: ../lib
     processors-backend-optimizer:
-      path: ../processors
+      path: ../lib/processors
     backend-optimizer:
       path: ../backend-es
     node-glob-basic:

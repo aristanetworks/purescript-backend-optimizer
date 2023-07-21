@@ -1,3 +1,4 @@
-node_modules
 bundle
-test/test-out
+output
+.spago
+output-es

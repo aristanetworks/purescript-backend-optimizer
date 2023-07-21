@@ -4,14 +4,17 @@ package:
     - "convertable-options"
     - "heterogeneous"
     - "variant"
-  test:
-    main: "Test.Main"
-    dependencies:
-      - "aff"
-      - "lib-backend-optimizer"
-      - "processors-backend-optimizer"
-      - "snapshots-backend-optimizer"
+    - "lib-backend-optimizer"
+    - processors-backend-optimizer
+    - node-glob-basic
+workspace:
+  package_set:
+    registry: 11.10.0
   extra_packages:
+    lib-backend-optimizer:
+      path: ../lib
+    processors-backend-optimizer:
+      path: ../lib/processors
     "dodo-printer":
         dependencies:
           - "ansi"
@@ -21,3 +24,17 @@ package:
           - "strings"
         repo: "https://github.com/natefaubion/purescript-dodo-printer.git"
         version: "v2.2.1"
+    "node-glob-basic":
+      dependencies:
+        - "aff"
+        - "console"
+        - "effect"
+        - "lists"
+        - "maybe"
+        - "node-fs-aff"
+        - "node-path"
+        - "node-process"
+        - "ordered-collections"
+        - "strings"
+      repo: "https://github.com/natefaubion/purescript-node-glob-basic.git"
+      version: "v1.2.2"

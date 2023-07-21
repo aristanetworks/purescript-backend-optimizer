@@ -29,7 +29,6 @@ package:
     - "node-child-process"
     - "node-fs"
     - "node-fs-aff"
-    - "node-glob-basic"
     - "node-path"
     - "node-process"
     - "node-streams"
@@ -44,3 +43,6 @@ package:
     - "transformers"
     - "tuples"
     - "unsafe-coerce"
+workspace:
+  package_set:
+    registry: 11.10.0
