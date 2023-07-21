@@ -2,16 +2,9 @@
   "name": "purs-backend-es",
   "version": "1.3.2",
   "description": "A modern ECMAScript optimizing backend for PureScript",
-  "main": "index.js",
   "type": "module",
-  "files": [
-    "LICENSE",
-    "index.js",
-    "runtime.js",
-    "bundle/index.js"
-  ],
   "bin": {
-    "purs-backend-es": "./index.js"
+    "purs-backend-es": "./backend-es/index.js"
   },
   "scripts": {
     "preversion": "npm run test && npm run test:output-diff",
