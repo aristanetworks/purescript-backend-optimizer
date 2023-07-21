@@ -1,33 +1,31 @@
 package:
-  name: "snapshots-backend-optimizer"
+  name: snapshots-backend-optimizer
   dependencies:
-    - "arrays"
-    - "console"
-    - "convertable-options"
-    - "effect"
-    - "either"
-    - "exceptions"
-    - "exists"
-    - "foldable-traversable"
-    - "foreign-object"
-    - "functions"
-    - "heterogeneous"
-    - "identity"
-    - "integers"
-    - "lists"
-    - "maybe"
-    - "partial"
-    - "prelude"
-    - "profunctor-lenses"
-    - "record"
-    - "refs"
-    - "safe-coerce"
-    - "st"
-    - "strings"
-    - "tuples"
-    - "type-equality"
-    - "unsafe-coerce"
-    - "variant"
+    - aff
+    - lib-backend-optimizer
+    - external-backend-optimizer
+    - backend-optimizer
 workspace:
   package_set:
     registry: 11.10.0
+  extra_packages:
+    lib-backend-optimizer:
+      path: ../lib
+    external-backend-optimizer:
+      path: ../external
+    backend-optimizer:
+      path: ../backend-es
+    node-glob-basic:
+      dependencies:
+        - "aff"
+        - "console"
+        - "effect"
+        - "lists"
+        - "maybe"
+        - "node-fs-aff"
+        - "node-path"
+        - "node-process"
+        - "ordered-collections"
+        - "strings"
+      repo: "https://github.com/natefaubion/purescript-node-glob-basic.git"
+      version: "v1.2.2"
