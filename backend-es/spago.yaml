@@ -11,8 +11,6 @@ package:
       - "lib-backend-optimizer"
       - "processors-backend-optimizer"
       - "snapshots-backend-optimizer"
-    pursArgs:
-      - "-g corefn"
   extra_packages:
     "dodo-printer":
         dependencies:

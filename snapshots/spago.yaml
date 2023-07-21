@@ -5,6 +5,8 @@ package:
     - lib-backend-optimizer
     - processors-backend-optimizer
     - backend-optimizer
+  pursArgs:
+    - "-g corefn"
 workspace:
   package_set:
     registry: 11.10.0
