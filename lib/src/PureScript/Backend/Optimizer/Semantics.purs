@@ -1558,7 +1558,7 @@ optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) in
     let Tuple rewrite expr2 = goStep n expr1
     let newSteps = if traceSteps then List.Cons expr2 steps else steps
     if rewrite then
-      go newSteps processors (n - 1) pRuns shouldProcess expr2
+      go newSteps processors (n - 1) pRuns true expr2
     else if shouldProcess then do
       let { val: { expr }, processors } = process expr2 processors (ProcessorAtTail pRuns)
       go newSteps processors (n - 1) (pRuns + 1) false expr
