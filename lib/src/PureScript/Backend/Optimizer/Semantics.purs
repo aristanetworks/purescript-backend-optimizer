@@ -1540,7 +1540,7 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-type ProcessorInput = { qual :: Qualified Ident, env :: Env, expr :: BackendExpr, position :: ProcessorPosition }
+type ProcessorInput = { qual :: Qualified Ident, env :: Env, ctx :: Ctx, expr :: BackendExpr, position :: ProcessorPosition }
 type Processors = Array (ProcessorInput -> Cofree.Cofree (Function ProcessorInput) BackendExpr)
 
 data ProcessorPosition = ProcessorAtHead | ProcessorAtTail Int
@@ -1551,7 +1551,7 @@ optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) in
   go (if traceSteps then pure originalExpr else List.Nil) processors initN 0 true expr1
   where
   process :: BackendExpr -> Processors -> ProcessorPosition -> { val :: ProcessorInput, processors :: Processors }
-  process ee pp vv = foldr (\i p -> let res = i p.val in p { val { expr = Cofree.head res }, processors = p.processors <> [ Cofree.tail res ] }) { val: { expr: ee, env, qual, position: vv }, processors: [] } pp
+  process ee pp vv = foldr (\i p -> let res = i p.val in p { val { expr = Cofree.head res }, processors = p.processors <> [ Cofree.tail res ] }) { val: { expr: ee, env, ctx, qual, position: vv }, processors: [] } pp
 
   go :: List.List BackendExpr -> Array (ProcessorInput -> Cofree.Cofree (Function ProcessorInput) BackendExpr) -> Int -> Int -> Boolean -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
   go steps processors n pRuns shouldProcess expr1 = do
