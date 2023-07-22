@@ -20,7 +20,7 @@ workspace:
     lib-backend-optimizer:
       path: ../lib
     processors-backend-optimizer:
-      path: ../lib/processors
+      path: ../processors
     backend-optimizer:
       path: ../backend-es
     node-glob-basic:

@@ -14,7 +14,7 @@ workspace:
     lib-backend-optimizer:
       path: ../lib
     processors-backend-optimizer:
-      path: ../lib/processors
+      path: ../processors
     "dodo-printer":
         dependencies:
           - "ansi"

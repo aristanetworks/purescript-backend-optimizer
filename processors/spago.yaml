@@ -1,0 +1,10 @@
+package:
+  name: "processors-backend-optimizer"
+  dependencies:
+    - lib-backend-optimizer
+workspace:
+  package_set:
+    registry: 11.10.0
+  extra_packages:
+    lib-backend-optimizer:
+      path: ../lib

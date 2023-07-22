@@ -35,7 +35,7 @@ import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
-import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap)
+import PureScript.Backend.Optimizer.Semantics (Processors, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.CST.Errors (printParseError)
 
@@ -89,6 +89,7 @@ basicBuildMain
      , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> Aff Unit
      , onPrepareModule :: BuildEnv -> Module Ann -> Aff (Module Ann)
      , traceIdents :: Set (Qualified Ident)
+     , processors :: Processors
      }
   -> Aff Unit
 basicBuildMain options = do
@@ -111,5 +112,6 @@ basicBuildMain options = do
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule
         , traceIdents: options.traceIdents
+        , processors: options.processors
         }
       options.onCodegenAfter

@@ -16,7 +16,7 @@ import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
+import PureScript.Backend.Optimizer.Semantics (Processors, ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
 type BuildEnv =
@@ -27,6 +27,7 @@ type BuildEnv =
 
 type BuildOptions m =
   { directives :: InlineDirectiveMap
+  , processors :: Processors
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
@@ -51,6 +52,7 @@ buildModules options coreFnModules =
         , implementations
         , moduleImplementations: Map.empty
         , directives
+        , processors: options.processors
         , dataTypes: Map.empty
         , foreignSemantics: options.foreignSemantics
         , rewriteLimit: 10_000

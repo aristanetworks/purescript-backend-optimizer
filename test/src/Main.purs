@@ -36,6 +36,7 @@ import Node.Glob.Basic (expandGlobsCwd)
 import Node.Path as Path
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (buildModules)
+import PureScript.Backend.Optimizer.Processors (processors)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (coreFnModulesFromOutput)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
@@ -122,6 +123,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
       stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
+        , processors
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backendMod optimizationSteps -> do
             let

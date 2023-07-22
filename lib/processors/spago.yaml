@@ -1,4 +1,0 @@
-package:
-  name: "processors-backend-optimizer"
-  dependencies:
-    - lib-backend-optimizer
