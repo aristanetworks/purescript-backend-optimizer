@@ -1,7 +1,6 @@
 // @inline export testArrayIndex never
 import * as $runtime from "../runtime.js";
 import * as Assert from "../Assert/index.js";
-import * as Data$dArray from "../Data.Array/index.js";
 import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 const assertEqual = /* #__PURE__ */ Assert.assertEqual({
@@ -20,7 +19,10 @@ const assertEqual = /* #__PURE__ */ Assert.assertEqual({
     $runtime.fail();
   }
 });
-const testArrayIndex = arr => ix => Data$dArray.index(arr)(ix);
+const testArrayIndex = arr => ix => {
+  if (ix >= 0 && ix < arr.length) { return Data$dMaybe.$Maybe("Just", arr[ix]); }
+  return Data$dMaybe.Nothing;
+};
 const main = /* #__PURE__ */ (() => {
   const array = [1, 2, 3];
   const $0 = assertEqual("index -1")({expected: Data$dMaybe.Nothing, actual: testArrayIndex(array)(-1)});
