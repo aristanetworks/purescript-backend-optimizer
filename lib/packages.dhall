@@ -3,8 +3,6 @@ let upstream =
         sha256:8800ac7d0763826544ca3ed3ba61f9dcef761a9e2a1feee0346437d9b861e78f
 
 in  upstream
-  with lib-backend-optimizer = ../lib-backend-optimizer/spago.dhall as Location
-  with processors-backend-optimizer = ../processors-backend-optimizer/spago.dhall as Location
   with dodo-printer =
     { dependencies =
       [ "ansi", "foldable-traversable", "lists", "maybe", "strings" ]
