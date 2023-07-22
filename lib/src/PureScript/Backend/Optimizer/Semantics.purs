@@ -3,6 +3,7 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
+import Control.Comonad.Cofree as Cofree
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -1539,25 +1540,30 @@ newtype NeutralExpr = NeutralExpr (BackendSyntax NeutralExpr)
 
 derive instance Newtype NeutralExpr _
 
-type ProcessorInput = { qual :: Qualified Ident, env :: Env, expr :: BackendExpr }
-type Processors = Array (ProcessorInput -> Tuple BackendExpr (ProcessorInput -> BackendExpr))
+type ProcessorInput = { qual :: Qualified Ident, env :: Env, expr :: BackendExpr, position :: ProcessorPosition }
+type Processors = Array (ProcessorInput -> Cofree.Cofree (Function ProcessorInput) BackendExpr)
+
+data ProcessorPosition = ProcessorAtHead | ProcessorAtTail Int
 
 optimize :: Boolean -> Processors -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
 optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) initN originalExpr = do
-  let { val: { expr: expr1 }, processors } = process1 originalExpr originalProcessors
-  go (if traceSteps then pure originalExpr else List.Nil) processors initN expr1
+  let { val: { expr: expr1 }, processors } = process originalExpr originalProcessors ProcessorAtHead
+  go (if traceSteps then pure originalExpr else List.Nil) processors initN 0 true expr1
   where
-  process1 ee pp = foldr (\i p -> let res = i p.val in p { val { expr = fst res }, processors = p.processors <> [ snd res ] }) { val: { expr: ee, env, qual }, processors: [] } pp
-  process2 ee pp = foldr (\i p -> let res = i p.val in p { val { expr = res } }) { val: { expr: ee, env, qual } } pp
+  process :: BackendExpr -> Processors -> ProcessorPosition -> { val :: ProcessorInput, processors :: Processors }
+  process ee pp vv = foldr (\i p -> let res = i p.val in p { val { expr = Cofree.head res }, processors = p.processors <> [ Cofree.tail res ] }) { val: { expr: ee, env, qual, position: vv }, processors: [] } pp
 
-  go :: List.List BackendExpr -> Array (ProcessorInput -> BackendExpr) -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
-  go steps processors n expr1 = do
+  go :: List.List BackendExpr -> Array (ProcessorInput -> Cofree.Cofree (Function ProcessorInput) BackendExpr) -> Int -> Int -> Boolean -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
+  go steps processors n pRuns shouldProcess expr1 = do
     let Tuple rewrite expr2 = goStep n expr1
     let newSteps = if traceSteps then List.Cons expr2 steps else steps
     if rewrite then
-      go newSteps processors (n - 1) expr2
+      go newSteps processors (n - 1) pRuns shouldProcess expr2
+    else if shouldProcess then do
+      let { val: { expr }, processors } = process expr2 processors (ProcessorAtTail pRuns)
+      go newSteps processors (n - 1) (pRuns + 1) false expr
     else
-      Tuple (Array.reverse (List.toUnfoldable steps)) (process2 expr2 processors).val.expr
+      Tuple (Array.reverse (List.toUnfoldable steps)) expr2
 
   goStep :: Int -> BackendExpr -> Tuple Boolean BackendExpr
   goStep n expr1

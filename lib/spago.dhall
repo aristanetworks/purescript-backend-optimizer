@@ -12,6 +12,7 @@ You can edit this file as you like.
   , "dodo-printer"
   , "either"
   , "enums"
+  , "free"
   , "foldable-traversable"
   , "foreign-object"
   , "integers"
