@@ -35,7 +35,7 @@ import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
-import PureScript.Backend.Optimizer.Semantics (Processors, InlineDirectiveMap)
+import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap, Processors)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.CST.Errors (printParseError)
 

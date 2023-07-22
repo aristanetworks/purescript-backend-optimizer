@@ -42,9 +42,9 @@ import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModuleP
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Module(..), ModuleName(..), Qualified(..))
+import PureScript.Backend.Optimizer.Processors (processors)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
-import PureScript.Backend.Optimizer.Processors (processors)
 import PureScript.CST.Lexer (lexToken)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))

@@ -16,7 +16,7 @@ import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (Processors, ExternImpl, InlineDirectiveMap)
+import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap, Processors)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
 type BuildEnv =

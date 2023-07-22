@@ -1549,6 +1549,7 @@ optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) in
   where
   process1 ee pp = foldr (\i p -> let res = i p.val in p { val { expr = fst res }, processors = p.processors <> [ snd res ] }) { val: { expr: ee, env, qual }, processors: [] } pp
   process2 ee pp = foldr (\i p -> let res = i p.val in p { val { expr = res } }) { val: { expr: ee, env, qual } } pp
+
   go :: List.List BackendExpr -> Array (ProcessorInput -> BackendExpr) -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
   go steps processors n expr1 = do
     let Tuple rewrite expr2 = goStep n expr1
