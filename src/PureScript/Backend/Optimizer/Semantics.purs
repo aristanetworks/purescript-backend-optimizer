@@ -953,7 +953,6 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [ ExternAccessor (GetProp prop), ExternApp args ] ->
     case impl of
       ExternExpr group expr -> do
-
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
         case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
           Just InlineNever ->
