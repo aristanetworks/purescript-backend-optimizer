@@ -1548,22 +1548,24 @@ data ProcessorPosition = ProcessorAtHead | ProcessorAtTail Int
 optimize :: Boolean -> Processors -> Ctx -> Env -> Qualified Ident -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
 optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) initN originalExpr = do
   let { val: { expr: expr1 }, processors } = process originalExpr originalProcessors ProcessorAtHead
-  go (if traceSteps then pure originalExpr else List.Nil) processors initN 0 true expr1
+  go (if traceSteps then pure originalExpr else List.Nil) processors initN 0 expr1
   where
   process :: BackendExpr -> Processors -> ProcessorPosition -> { val :: ProcessorInput, processors :: Processors }
   process ee pp vv = foldr (\i p -> let res = i p.val in p { val { expr = Cofree.head res }, processors = p.processors <> [ Cofree.tail res ] }) { val: { expr: ee, env, ctx, qual, position: vv }, processors: [] } pp
 
-  go :: List.List BackendExpr -> Array (ProcessorInput -> Cofree.Cofree (Function ProcessorInput) BackendExpr) -> Int -> Int -> Boolean -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
-  go steps processors n pRuns shouldProcess expr1 = do
+  go :: List.List BackendExpr -> Array (ProcessorInput -> Cofree.Cofree (Function ProcessorInput) BackendExpr) -> Int -> Int -> BackendExpr -> Tuple (Array BackendExpr) BackendExpr
+  go steps processors n pRuns expr1 = do
     let Tuple rewrite expr2 = goStep n expr1
     let newSteps = if traceSteps then List.Cons expr2 steps else steps
     if rewrite then
-      go newSteps processors (n - 1) pRuns true expr2
-    else if shouldProcess then do
+      go newSteps processors (n - 1) pRuns expr2
+    else do
       let { val: { expr }, processors } = process expr2 processors (ProcessorAtTail pRuns)
-      go newSteps processors (n - 1) (pRuns + 1) false expr
-    else
-      Tuple (Array.reverse (List.toUnfoldable steps)) expr2
+      let BackendAnalysis { rewrite } = analysisOf expr
+      if rewrite then
+        go newSteps processors (n - 1) (pRuns + 1) expr
+      else
+        Tuple (Array.reverse (List.toUnfoldable steps)) expr
 
   goStep :: Int -> BackendExpr -> Tuple Boolean BackendExpr
   goStep n expr1
