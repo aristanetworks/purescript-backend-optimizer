@@ -2,7 +2,6 @@ module PureScript.Backend.Optimizer.Semantics where
 
 import Prelude
 
-import Control.Alt (alt)
 import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -157,7 +156,6 @@ data InlineAccessor
   = InlineProp String
   | InlineSpineProp String
   | InlineRef
-  | InlineWildcard
 
 derive instance Eq InlineAccessor
 derive instance Ord InlineAccessor
@@ -881,9 +879,6 @@ data ExternOutcome
   | ExternStopped
   | ExternPunted (Lazy BackendSemantics)
 
-lookupOrWildcard :: InlineAccessor -> Map InlineAccessor ~> Maybe
-lookupOrWildcard r = alt <$> Map.lookup r <*> Map.lookup InlineWildcard
-
 groupFromImpl :: ExternImpl -> Array (Qualified Ident)
 groupFromImpl = case _ of
   ExternExpr group _ -> group
@@ -903,7 +898,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternExpr group expr -> do
 
         let evaled = defer \_ -> eval (envForGroup env ref InlineRef group) expr
-        case Map.lookup ref e.directives >>= lookupOrWildcard InlineRef of
+        case Map.lookup ref e.directives >>= Map.lookup InlineRef of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -927,7 +922,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternExpr group expr -> do
 
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
-        case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
+        case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -937,7 +932,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
 
         let evaled = defer \_ -> eval (envForGroup env ref (InlineProp prop) group) body
-        case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
+        case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -954,7 +949,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
     case impl of
       ExternExpr group expr -> do
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineProp prop) group) expr) spine
-        case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
+        case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -969,7 +964,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
 
         let evaled = defer \_ -> evalApp env (eval (envForGroup env ref (InlineProp prop) group) body) args
-        case Map.lookup ref e.directives >>= lookupOrWildcard (InlineProp prop) of
+        case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -990,7 +985,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternExpr group expr -> do
 
         let evaled = defer \_ -> evalApp env (eval (envForGroup env ref InlineRef group) expr) args
-        case Map.lookup ref e.directives >>= lookupOrWildcard InlineRef of
+        case Map.lookup ref e.directives >>= Map.lookup InlineRef of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -1013,7 +1008,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternExpr group fn -> do
 
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
-        case Map.lookup ref e.directives >>= lookupOrWildcard (InlineSpineProp prop) of
+        case Map.lookup ref e.directives >>= Map.lookup (InlineSpineProp prop) of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -1027,7 +1022,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
       ExternExpr group fn -> do
 
         let evaled = defer \_ -> evalSpine env (eval (envForGroup env ref (InlineSpineProp prop) group) fn) spine
-        case Map.lookup ref e.directives >>= lookupOrWildcard (InlineSpineProp prop) of
+        case Map.lookup ref e.directives >>= Map.lookup (InlineSpineProp prop) of
           Just InlineNever ->
             stopExtern
           Just InlineAlways ->
@@ -1045,7 +1040,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   expandExtern evaled = ExternExpanded $ force evaled
   stopExtern = ExternStopped
   puntExtern evaled = ExternPunted evaled
-  giveUp = ExternPunted $ defer \_ -> evalSpine env (semanticsFromImpl (envForGroup env ref InlineWildcard (groupFromImpl impl)) qual impl) spine
+  giveUp = ExternPunted $ defer \_ -> evalSpine env (semanticsFromImpl (envForGroup env ref InlineRef (groupFromImpl impl)) qual impl) spine
 
 noExternForYou :: Qualified Ident -> Array ExternSpine -> ExternOutcome
 noExternForYou qual spine = ExternPunted $ defer \_ -> neutralSpine (NeutVar qual) spine
@@ -1744,4 +1739,3 @@ guardFailOver f as k =
   toFail expr = case expr of
     NeutFail _ -> Just expr
     _ -> Nothing
-
