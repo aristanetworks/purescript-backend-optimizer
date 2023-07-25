@@ -326,9 +326,15 @@ analyze externAnalysis expr = case expr of
         analysis
     where
     analysis =
-      withResult Unknown
-        $ complex NonTrivial
-        $ analyzeDefault expr
+      case op of
+        Op1 (OpIsTag qi) _ ->
+          withResult Unknown
+            $ complex NonTrivial
+            $ analyzeDefault expr <> usedDep qi
+        _ ->
+          withResult Unknown
+            $ complex NonTrivial
+            $ analyzeDefault expr
   PrimEffect _ ->
     withResult Unknown
       $ complex NonTrivial
