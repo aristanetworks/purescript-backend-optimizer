@@ -615,7 +615,7 @@ makeLet ident binding go = case binding of
 deref :: BackendSemantics -> BackendSemantics
 deref = case _ of
   SemRef _ _ sem ->
-    force sem
+    deref (force sem)
   sem ->
     sem
 
