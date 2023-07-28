@@ -873,7 +873,7 @@ evalRef env@(Env e) ref spine last sem = case ref of
   where
   spine' = snocSpine spine last
 
-evalRefSpine :: Env -> EvalRef -> Array ExternSpine -> Lazy BackendSemantics -> ExternSpine ->  BackendSemantics
+evalRefSpine :: Env -> EvalRef -> Array ExternSpine -> Lazy BackendSemantics -> ExternSpine -> BackendSemantics
 evalRefSpine env ref spine sem = case _ of
   ExternApp _ ->
     neutralSpine (evalEvalRef ref) spine
