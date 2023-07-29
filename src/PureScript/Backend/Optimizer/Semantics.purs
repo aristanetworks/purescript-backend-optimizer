@@ -860,16 +860,12 @@ primOpOrdNot = case _ of
 
 evalRef :: Env -> EvalRef -> Array ExternSpine -> ExternSpine -> Lazy BackendSemantics -> BackendSemantics
 evalRef env@(Env e) ref spine last sem = case ref of
-  EvalExtern qual ->
-    case e.evalExternSpine env qual spine' of
-      Just sem' ->
+  EvalExtern qual
+    | Just sem' <- e.evalExternSpine env qual spine' ->
         sem'
-      Nothing ->
-        SemRef (EvalExtern qual) spine' $ defer \_ ->
-          evalRefSpine env ref spine' sem last
-  EvalLocal _ _ ->
+  _ ->
     SemRef ref spine' $ defer \_ ->
-      evalSpine env (force sem) [ last ]
+      evalRefSpine env ref spine' sem last
   where
   spine' = snocSpine spine last
 
