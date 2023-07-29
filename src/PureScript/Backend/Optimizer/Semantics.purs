@@ -210,7 +210,7 @@ instance Eval f => Eval (BackendSyntax f) where
           SemRef (EvalExtern qual) [] $ defer \_ ->
             case e.evalExternRef env qual of
               Just sem ->
-                sem
+                deref sem
               Nothing ->
                 NeutVar qual
     Local ident lvl ->
@@ -615,7 +615,7 @@ makeLet ident binding go = case binding of
 deref :: BackendSemantics -> BackendSemantics
 deref = case _ of
   SemRef _ _ sem ->
-    deref (force sem)
+    force sem
   sem ->
     sem
 
@@ -902,7 +902,7 @@ evalRef env@(Env e) ref spine last sem = case ref of
         sem'
   _ ->
     SemRef ref spine' $ defer \_ ->
-      evalRefSpine env ref spine' sem last
+      deref $ evalRefSpine env ref spine' sem last
   where
   spine' = snocSpine spine last
 
@@ -1147,7 +1147,7 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ SemRef (EvalLocal ident level) [] $ defer \_ -> binding
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ SemRef (EvalLocal ident level) [] $ defer \_ -> deref binding
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references

@@ -23,7 +23,7 @@ test2 fn = do
 test3 :: (forall r. r -> List Int) -> List Int
 test3 fn = do
   let rec1 = { a: { b: { c: Cons 1 (fn {}) } } }
-  let rec2 = { d: rec1 }
+  let rec2 = { d: rec1, e: fn {} }
   case rec2.d.a.b.c of
     list@(Cons _ _) ->
       Cons 0 list
