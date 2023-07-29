@@ -2,6 +2,9 @@ module Snapshot.PrimOpNumber02 where
 
 import Prelude
 
+nan :: Number
+nan = 0.0/0.0
+
 numValues op =
   [ 1.5 `op` 1.0
   , 1.5 `op` 2.0
@@ -9,6 +12,7 @@ numValues op =
   , 1.5 `op` -2.0
   , -1.5 `op` 2.0
   , -1.5 `op` -1.0
+  , 1.0 `op` nan
   ]
 
 test1 = numValues (+)

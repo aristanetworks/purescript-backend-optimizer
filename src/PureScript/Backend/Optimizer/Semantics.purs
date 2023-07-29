@@ -709,7 +709,7 @@ evalPrimOp env = case _ of
         | NeutLit (LitInt 0) <- x ->
             evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
-        | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
+        | Just result <- evalPrimOpNumInt op x y ->
             result
       OpIntOrd op
         | NeutLit (LitInt a) <- x
@@ -719,18 +719,18 @@ evalPrimOp env = case _ of
         | NeutLit (LitNumber 0.0) <- x ->
             evalPrimOp env (Op1 OpNumberNegate y)
       OpNumberNum op
-        | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
+        | Just result <- evalPrimOpNumNumber op x y ->
             result
       OpNumberOrd op
         | NeutLit (LitNumber a) <- x
         , NeutLit (LitNumber b) <- y ->
-            liftBoolean (evalPrimOpOrd op a b)
+            liftBoolean (evalPrimOpOrdNumber op a b)
       OpStringOrd op
         | NeutLit (LitString a) <- x
         , NeutLit (LitString b) <- y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
-        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
+        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> Just $ liftString (a <> b)) x y ->
             result
       OpArrayIndex
         | NeutLit (LitInt n) <- y ->
@@ -755,19 +755,19 @@ evalPrimOp env = case _ of
             evalAssocLet2 env x y \_ x' y' ->
               NeutPrimOp (Op2 op2 x' y')
 
-evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
+evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> Maybe BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
 evalPrimOpAssocL op match combine a b = case match a of
   Just lhs
     | Just rhs <- match b ->
-        Just $ combine lhs rhs
+        combine lhs rhs
     | Just (Tuple x y) <- decompose b ->
         case match x of
           Just rhs ->
-            Just $ liftOp2 op (combine lhs rhs) y
+            (\x' -> liftOp2 op x' y) <$> combine lhs rhs
           Nothing
             | Just (Tuple v w) <- decompose x
             , Just rhs <- match v ->
-                Just $ liftOp2 op (liftOp2 op (combine lhs rhs) w) y
+                (\v' -> liftOp2 op (liftOp2 op v' w) y) <$> combine lhs rhs
           _ ->
             Nothing
   Nothing
@@ -775,11 +775,11 @@ evalPrimOpAssocL op match combine a b = case match a of
     , Just (Tuple v w) <- decompose a ->
         case match w of
           Just lhs ->
-            Just $ liftOp2 op v (combine lhs rhs)
+            liftOp2 op v <$> combine lhs rhs
           Nothing
             | Just (Tuple x y) <- decompose w
             , Just lhs <- match y ->
-                Just $ liftOp2 op (liftOp2 op v x) (combine lhs rhs)
+                liftOp2 op (liftOp2 op v x) <$> combine lhs rhs
           _ ->
             Nothing
   _ ->
@@ -800,29 +800,66 @@ evalPrimOpOrd op x y = case op of
   OpLt -> x < y
   OpLte -> x <= y
 
-evalPrimOpNum
-  :: forall a
-   . EuclideanRing a
-  => (BackendOperatorNum -> BackendOperator2)
-  -> (a -> BackendSemantics)
-  -> (BackendSemantics -> Maybe a)
-  -> BackendOperatorNum
-  -> BackendSemantics
-  -> BackendSemantics
-  -> Maybe BackendSemantics
-evalPrimOpNum injOp inj prj op x y = case op of
+-- Duplicate because inlined operators behave differently with NaN.
+-- This just ensures we get the same behavior for const eval.
+evalPrimOpOrdNumber :: BackendOperatorOrd -> Number -> Number -> Boolean
+evalPrimOpOrdNumber op x y = case op of
+  OpEq -> x == y
+  OpNotEq -> x /= y
+  OpGt -> x > y
+  OpGte -> x >= y
+  OpLt -> x < y
+  OpLte -> x <= y
+
+evalPrimOpNumNumber :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
+evalPrimOpNumNumber op x y = case op of
   OpAdd ->
-    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a + b)) x y
+    evalPrimOpAssocL (OpNumberNum OpAdd) caseNumber (\a b -> Just $ liftNumber (a + b)) x y
   OpMultiply ->
-    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a * b)) x y
+    evalPrimOpAssocL (OpNumberNum OpMultiply) caseNumber (\a b -> Just $ liftNumber (a * b)) x y
   OpSubtract
-    | Just a <- prj x
-    , Just b <- prj y ->
-        Just $ inj (a - b)
+    | NeutLit (LitNumber a) <- x
+    , NeutLit (LitNumber b) <- y ->
+        Just $ liftNumber (a - b)
   OpDivide
-    | Just a <- prj x
-    , Just b <- prj y ->
-        Just $ inj (a / b)
+    | NeutLit (LitNumber a) <- x
+    , NeutLit (LitNumber b) <- y ->
+        Just $ liftNumber (a / b)
+  _ ->
+    Nothing
+
+evalPrimOpNumInt :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
+evalPrimOpNumInt op x y = case op of
+  OpAdd ->
+    evalPrimOpAssocL (OpIntNum OpAdd) caseInt addOverflow x y
+    where
+    addOverflow a b = do
+      let res = a + b
+      if b > 0 && res < a || b < 0 && res > a then
+        Nothing
+      else
+        Just $ liftInt res
+  OpMultiply ->
+    evalPrimOpAssocL (OpIntNum OpMultiply) caseInt mulOverflow x y
+    where
+    mulOverflow a b = do
+      let res = a * b
+      if a /= (res / b) then
+        Nothing
+      else
+        Just $ liftInt res
+  OpSubtract
+    | NeutLit (LitInt a) <- x
+    , NeutLit (LitInt b) <- y -> do
+        let res = a - b
+        if b > 0 && res > a || b < 0 && res < a then
+          Nothing
+        else
+          Just $ liftInt res
+  OpDivide
+    | NeutLit (LitInt a) <- x
+    , NeutLit (LitInt b) <- y ->
+        Just $ liftInt (a / b)
   _ ->
     Nothing
 
@@ -1554,7 +1591,7 @@ shouldInlineExternReference _ (BackendAnalysis s) _ =
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity <= Deref && s.size < 16)
-    || (Map.isEmpty s.usages && Set.isEmpty s.deps && s.size < 64)
+    || (Map.isEmpty s.usages && not s.externs && s.size < 64)
     || (delayed && Array.length s.args <= Array.length args && s.size < 16)
     || (delayed && or (Array.zipWith shouldInlineExternAppArg s.args args) && s.size < 16)
   where
