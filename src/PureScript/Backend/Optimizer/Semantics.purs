@@ -843,7 +843,7 @@ evalPrimOpNumInt op x y = case op of
         if b > 0 && res > a || b < 0 && res < a then
           Nothing
         else
-          Just $ liftInt (a - b)
+          Just $ liftInt res
   OpDivide
     | NeutLit (LitInt a) <- x
     , NeutLit (LitInt b) <- y ->
