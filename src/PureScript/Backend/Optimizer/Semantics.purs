@@ -1494,7 +1494,7 @@ shouldInlineExternReference _ (BackendAnalysis s) _ =
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity <= Deref && s.size < 16)
-    || (Map.isEmpty s.usages && Set.isEmpty s.deps && s.size < 64)
+    || (Map.isEmpty s.usages && not s.externs && s.size < 64)
     || (delayed && Array.length s.args <= Array.length args && s.size < 16)
     || (delayed && or (Array.zipWith shouldInlineExternAppArg s.args args) && s.size < 16)
   where

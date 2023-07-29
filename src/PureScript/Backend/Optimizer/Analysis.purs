@@ -93,6 +93,7 @@ newtype BackendAnalysis = BackendAnalysis
   , rewrite :: Boolean
   , deps :: Set (Qualified Ident)
   , result :: ResultTerm
+  , externs :: Boolean
   }
 
 derive instance Newtype BackendAnalysis _
@@ -106,6 +107,7 @@ instance Semigroup BackendAnalysis where
     , rewrite: a.rewrite || b.rewrite
     , deps: Set.union a.deps b.deps
     , result: a.result <> b.result
+    , externs: a.externs || b.externs
     }
 
 instance Monoid BackendAnalysis where
@@ -117,6 +119,7 @@ instance Monoid BackendAnalysis where
     , rewrite: false
     , deps: Set.empty
     , result: KnownNeutral
+    , externs: false
     }
 
 bound :: Level -> BackendAnalysis -> BackendAnalysis
@@ -168,10 +171,8 @@ updated level (BackendAnalysis s) = do
     { usages = Map.update (Just <<< over Usage (\us -> us { update = us.update + 1 })) level s.usages
     }
 
-usedDep :: Qualified Ident -> BackendAnalysis
-usedDep dep = do
-  let BackendAnalysis s = mempty
-  BackendAnalysis s { deps = Set.singleton dep }
+usedDep :: Qualified Ident -> BackendAnalysis -> BackendAnalysis
+usedDep dep (BackendAnalysis s) = BackendAnalysis s { deps = Set.insert dep s.deps }
 
 bump :: BackendAnalysis -> BackendAnalysis
 bump (BackendAnalysis s) = BackendAnalysis s { size = s.size + 1 }
@@ -190,6 +191,9 @@ callArity lvl arity (BackendAnalysis s) = BackendAnalysis s
 withResult :: ResultTerm -> BackendAnalysis -> BackendAnalysis
 withResult r (BackendAnalysis s) = BackendAnalysis s { result = r }
 
+externs :: BackendAnalysis -> BackendAnalysis
+externs (BackendAnalysis s) = BackendAnalysis s { externs = true }
+
 class HasAnalysis a where
   analysisOf :: a -> BackendAnalysis
 
@@ -202,7 +206,8 @@ analyze externAnalysis expr = case expr of
     let BackendAnalysis { args } = externAnalysis (Tuple qi Nothing)
     withArgs args
       $ bump
-      $ usedDep qi
+      $ externs
+      $ usedDep qi mempty
   Local _ lvl ->
     bump
       $ used lvl
@@ -304,7 +309,8 @@ analyze externAnalysis expr = case expr of
   CtorSaturated qi _ _ _ cs ->
     withResult KnownNeutral
       $ bump
-      $ foldMap (foldMap analysisOf) cs <> usedDep qi
+      $ usedDep qi
+      $ foldMap (foldMap analysisOf) cs
   CtorDef _ _ _ _ ->
     complex NonTrivial $ analyzeDefault expr
   Branch bs def -> do
@@ -320,21 +326,18 @@ analyze externAnalysis expr = case expr of
       $ analyzeDefault expr
   PrimOp op ->
     case op of
-      Op1 (OpIsTag _) b | Just (Local _ lvl) <- syntaxOf b ->
-        cased lvl analysis
+      Op1 (OpIsTag qi) b
+        | Just (Local _ lvl) <- syntaxOf b ->
+            cased lvl $ usedDep qi $ analysis
+        | otherwise ->
+            usedDep qi analysis
       _ ->
         analysis
     where
     analysis =
-      case op of
-        Op1 (OpIsTag qi) _ ->
-          withResult Unknown
-            $ complex NonTrivial
-            $ analyzeDefault expr <> usedDep qi
-        _ ->
-          withResult Unknown
-            $ complex NonTrivial
-            $ analyzeDefault expr
+      withResult Unknown
+        $ complex NonTrivial
+        $ analyzeDefault expr
   PrimEffect _ ->
     withResult Unknown
       $ complex NonTrivial
@@ -357,8 +360,9 @@ analyze externAnalysis expr = case expr of
     analysis =
       case acc of
         GetCtorField qi _ _ _ _ _ -> do
-          withResult Unknown $ analyzeDefault expr <> usedDep qi
-        _ -> withResult Unknown $ analyzeDefault expr
+          withResult Unknown $ usedDep qi $ analyzeDefault expr
+        _ ->
+          withResult Unknown $ analyzeDefault expr
   Lit lit ->
     case lit of
       LitArray as | Array.length as > 0 ->
