@@ -47,7 +47,6 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_euclideanRing_numDiv
     , data_heytingAlgebra_boolConj
     , data_heytingAlgebra_boolDisj
-    , data_heytingAlgebra_boolImplies
     , data_heytingAlgebra_boolNot
     , data_int_bits_and
     , data_int_bits_complement
@@ -308,21 +307,6 @@ data_heytingAlgebra_boolDisj = Tuple (qualified "Data.HeytingAlgebra" "boolDisj"
 
 data_heytingAlgebra_boolNot :: ForeignSemantics
 data_heytingAlgebra_boolNot = Tuple (qualified "Data.HeytingAlgebra" "boolNot") $ primUnaryOperator OpBooleanNot
-
-data_heytingAlgebra_boolImplies :: ForeignSemantics
-data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolImplies") go
-  where
-  go _ _ = case _ of
-    [ ExternApp [ a, b ] ]
-      | NeutLit (LitBoolean false) <- a ->
-          Just $ NeutLit (LitBoolean true)
-      | NeutLit (LitBoolean true) <- b ->
-          Just $ NeutLit (LitBoolean true)
-      | NeutLit (LitBoolean x) <- a
-      , NeutLit (LitBoolean y) <- b ->
-          Just $ NeutLit (LitBoolean (not x || y))
-    _ ->
-      Nothing
 
 data_string_codePoints_toCodePointArray :: ForeignSemantics
 data_string_codePoints_toCodePointArray = Tuple (qualified "Data.String.CodePoints" "toCodePointArray") go

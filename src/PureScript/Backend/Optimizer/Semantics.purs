@@ -619,28 +619,31 @@ deref = case _ of
   sem ->
     sem
 
--- TODO: Check for overflow in Int ops since backends may not handle it the
--- same was as the JS backend.
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
   Op1 op1 x ->
     case op1, x of
-      OpBooleanNot, NeutLit (LitBoolean bool) ->
-        liftBoolean (not bool)
-      OpBooleanNot, NeutPrimOp op ->
-        evalPrimOpNot op
-      OpIntBitNot, NeutLit (LitInt a) ->
-        liftInt (complement a)
+      OpBooleanNot, _
+        | NeutLit (LitBoolean bool) <- deref x ->
+            liftBoolean (not bool)
+      OpBooleanNot, _
+        | NeutPrimOp op <- deref x ->
+            evalPrimOpNot op
+      OpIntBitNot, _
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (complement a)
       OpIsTag a, _
         | NeutData b _ _ _ _ <- deref x ->
             liftBoolean (a == b)
       OpArrayLength, _
         | NeutLit (LitArray arr) <- deref x ->
             liftInt (Array.length arr)
-      OpIntNegate, NeutLit (LitInt a) ->
-        liftInt (negate a)
-      OpNumberNegate, NeutLit (LitNumber a) ->
-        liftNumber (negate a)
+      OpIntNegate, _
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (negate a)
+      OpNumberNegate, _
+        | NeutLit (LitNumber a) <- deref x ->
+            liftNumber (negate a)
       _, SemRef ref spine sem ->
         evalRef env ref spine (ExternPrimOp op1) sem
       _, NeutFail err ->
@@ -651,83 +654,83 @@ evalPrimOp env = case _ of
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             x
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             y
-        | NeutLit (LitBoolean true) <- x ->
+        | NeutLit (LitBoolean true) <- deref x ->
             y
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             x
       OpBooleanOr
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             y
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             x
-        | NeutLit (LitBoolean true) <- x ->
+        | NeutLit (LitBoolean true) <- deref x ->
             x
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             y
       OpBooleanOrd OpEq
-        | NeutLit (LitBoolean bool) <- x ->
+        | NeutLit (LitBoolean bool) <- deref x ->
             if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
-        | NeutLit (LitBoolean bool) <- y ->
+        | NeutLit (LitBoolean bool) <- deref y ->
             if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
       OpBooleanOrd op
-        | NeutLit (LitBoolean a) <- x
-        , NeutLit (LitBoolean b) <- y ->
+        | NeutLit (LitBoolean a) <- deref x
+        , NeutLit (LitBoolean b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpCharOrd op
-        | NeutLit (LitChar a) <- x
-        , NeutLit (LitChar b) <- y ->
+        | NeutLit (LitChar a) <- deref x
+        , NeutLit (LitChar b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpIntBitAnd
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .&. b)
       OpIntBitOr
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .|. b)
       OpIntBitShiftLeft
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shl a b)
       OpIntBitShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shr a b)
       OpIntBitXor
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (xor a b)
       OpIntBitZeroFillShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (zshr a b)
       OpIntNum OpSubtract
-        | NeutLit (LitInt 0) <- x ->
+        | NeutLit (LitInt 0) <- deref x ->
             evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
         | Just result <- evalPrimOpNumInt op x y ->
             result
       OpIntOrd op
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
-        | NeutLit (LitNumber 0.0) <- x ->
+        | NeutLit (LitNumber 0.0) <- deref x ->
             evalPrimOp env (Op1 OpNumberNegate y)
       OpNumberNum op
         | Just result <- evalPrimOpNumNumber op x y ->
             result
       OpNumberOrd op
-        | NeutLit (LitNumber a) <- x
-        , NeutLit (LitNumber b) <- y ->
+        | NeutLit (LitNumber a) <- deref x
+        , NeutLit (LitNumber b) <- deref y ->
             liftBoolean (evalPrimOpOrdNumber op a b)
       OpStringOrd op
-        | NeutLit (LitString a) <- x
-        , NeutLit (LitString b) <- y ->
+        | NeutLit (LitString a) <- deref x
+        , NeutLit (LitString b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> Just $ liftString (a <> b)) x y ->
@@ -814,9 +817,9 @@ evalPrimOpOrdNumber op x y = case op of
 evalPrimOpNumNumber :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
 evalPrimOpNumNumber op x y = case op of
   OpAdd ->
-    evalPrimOpAssocL (OpNumberNum OpAdd) caseNumber (\a b -> Just $ liftNumber (a + b)) x y
+    evalPrimOpAssocL (OpNumberNum OpAdd) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a + b)) x y
   OpMultiply ->
-    evalPrimOpAssocL (OpNumberNum OpMultiply) caseNumber (\a b -> Just $ liftNumber (a * b)) x y
+    evalPrimOpAssocL (OpNumberNum OpMultiply) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a * b)) x y
   OpSubtract
     | NeutLit (LitNumber a) <- x
     , NeutLit (LitNumber b) <- y ->
@@ -831,7 +834,7 @@ evalPrimOpNumNumber op x y = case op of
 evalPrimOpNumInt :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
 evalPrimOpNumInt op x y = case op of
   OpAdd ->
-    evalPrimOpAssocL (OpIntNum OpAdd) caseInt addOverflow x y
+    evalPrimOpAssocL (OpIntNum OpAdd) (caseInt <<< deref) addOverflow x y
     where
     addOverflow a b = do
       let res = a + b
@@ -840,7 +843,7 @@ evalPrimOpNumInt op x y = case op of
       else
         Just $ liftInt res
   OpMultiply ->
-    evalPrimOpAssocL (OpIntNum OpMultiply) caseInt mulOverflow x y
+    evalPrimOpAssocL (OpIntNum OpMultiply) (caseInt <<< deref) mulOverflow x y
     where
     mulOverflow a b = do
       let res = a * b
