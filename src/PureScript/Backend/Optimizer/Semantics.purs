@@ -542,7 +542,7 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
       case head of
-        SemConditional c t -> case force c of
+        SemConditional c t -> case deref (force c) of
           NeutLit (LitBoolean didMatch)
             | didMatch -> go acc [] t
             | otherwise -> go acc tail def
