@@ -1080,7 +1080,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
 evalExternRefFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> BackendSemantics
 evalExternRefFromImpl env qual (Tuple _ impl) = case impl of
   ExternExpr group (NeutralExpr expr)
-    | isRefExpr expr->
+    | isRefExpr expr ->
         eval (envForGroup env (EvalExtern qual) InlineRef group) expr
   ExternDict group props ->
     NeutLit $ LitRecord $ map
