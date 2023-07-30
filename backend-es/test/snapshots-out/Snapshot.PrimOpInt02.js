@@ -1,15 +1,7 @@
-import * as Data$dEuclideanRing from "../Data.EuclideanRing/index.js";
 const test11 = [-1, 1];
 const intValues = op => [op(1)(1), op(1)(2), op(2)(1), op(1)(-2), op(-1)(2), op(-1)(-1)];
 const test1 = [2, 3, 3, -1, 1, -2];
-const test10 = [
-  /* #__PURE__ */ Data$dEuclideanRing.intDiv(1)(1),
-  /* #__PURE__ */ Data$dEuclideanRing.intDiv(1)(2),
-  /* #__PURE__ */ Data$dEuclideanRing.intDiv(2)(1),
-  /* #__PURE__ */ Data$dEuclideanRing.intDiv(1)(-2),
-  /* #__PURE__ */ Data$dEuclideanRing.intDiv(-1)(2),
-  /* #__PURE__ */ Data$dEuclideanRing.intDiv(-1)(-1)
-];
+const test10 = [1, 0, 2, 0, -1, 1];
 const test2 = [0, -1, 1, 3, -3, 0];
 const test3 = [true, false, false, false, false, true];
 const test4 = [false, true, true, true, true, false];
