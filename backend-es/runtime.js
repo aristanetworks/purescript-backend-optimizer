@@ -25,3 +25,9 @@ export function* range(lo, hi) {
 export function fail() {
   throw new Error("Failed pattern match");
 }
+
+export function intDiv(x, y) {
+  if (y > 0) return Math.floor(x / y);
+  if (y < 0) return -Math.floor(x / -y);
+  return 0;
+}

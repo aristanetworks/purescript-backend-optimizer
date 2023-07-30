@@ -821,12 +821,12 @@ evalPrimOpNumNumber op x y = case op of
   OpMultiply ->
     evalPrimOpAssocL (OpNumberNum OpMultiply) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a * b)) x y
   OpSubtract
-    | NeutLit (LitNumber a) <- x
-    , NeutLit (LitNumber b) <- y ->
+    | NeutLit (LitNumber a) <- deref x
+    , NeutLit (LitNumber b) <- deref y ->
         Just $ liftNumber (a - b)
   OpDivide
-    | NeutLit (LitNumber a) <- x
-    , NeutLit (LitNumber b) <- y ->
+    | NeutLit (LitNumber a) <- deref x
+    , NeutLit (LitNumber b) <- deref y ->
         Just $ liftNumber (a / b)
   _ ->
     Nothing
@@ -852,16 +852,16 @@ evalPrimOpNumInt op x y = case op of
       else
         Just $ liftInt res
   OpSubtract
-    | NeutLit (LitInt a) <- x
-    , NeutLit (LitInt b) <- y -> do
+    | NeutLit (LitInt a) <- deref x
+    , NeutLit (LitInt b) <- deref y -> do
         let res = a - b
         if b > 0 && res > a || b < 0 && res < a then
           Nothing
         else
           Just $ liftInt res
   OpDivide
-    | NeutLit (LitInt a) <- x
-    , NeutLit (LitInt b) <- y ->
+    | NeutLit (LitInt a) <- deref x
+    , NeutLit (LitInt b) <- deref y ->
         Just $ liftInt (a / b)
   _ ->
     Nothing

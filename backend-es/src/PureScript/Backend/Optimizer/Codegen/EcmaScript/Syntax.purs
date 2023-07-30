@@ -197,6 +197,7 @@ data EsRuntimeOp a
   = EsBinding a
   | EsRange a a
   | EsFail
+  | EsIntDiv a a
 
 derive instance Functor EsRuntimeOp
 
@@ -205,6 +206,7 @@ instance Foldable EsRuntimeOp where
     EsBinding a -> f a
     EsRange a b -> f a <> f b
     EsFail -> mempty
+    EsIntDiv a b -> f a <> f b
   foldr a = foldrDefault a
   foldl a = foldlDefault a
 
@@ -417,9 +419,16 @@ print opts syn = case syn of
   EsRuntime op ->
     Tuple EsPrecCall $ case op of
       EsBinding a ->
-        printPure opts $ esApp (Dodo.text "$runtime.binding") [ snd (print opts (syntaxOf a)) ]
+        printPure opts $ esApp (Dodo.text "$runtime.binding")
+          [ snd (print opts (syntaxOf a))
+          ]
       EsRange a b ->
         esApp (Dodo.text "$runtime.range")
+          [ snd (print opts (syntaxOf a))
+          , snd (print opts (syntaxOf b))
+          ]
+      EsIntDiv a b ->
+        printPure opts $ esApp (Dodo.text "$runtime.intDiv")
           [ snd (print opts (syntaxOf a))
           , snd (print opts (syntaxOf b))
           ]
