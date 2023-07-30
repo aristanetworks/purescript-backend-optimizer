@@ -35,7 +35,7 @@ data MkFn a
   | MkFnNext (Maybe Ident) (a -> MkFn a)
 
 data BackendSemantics
-  = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
+  = SemRef EvalRef (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
@@ -45,7 +45,7 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
-  | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
+  | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
   | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
@@ -162,7 +162,8 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
-  , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+  , evalExternRef :: Env -> Qualified Ident -> Maybe BackendSemantics
+  , evalExternSpine :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   }
@@ -200,9 +201,18 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env = case _ of
+  eval env@(Env e) = case _ of
     Var qual ->
-      evalExtern env qual []
+      case e.evalExternSpine env qual [] of
+        Just sem ->
+          sem
+        Nothing ->
+          SemRef (EvalExtern qual) [] $ defer \_ ->
+            case e.evalExternRef env qual of
+              Just sem ->
+                deref sem
+              Nothing ->
+                NeutVar qual
     Local ident lvl ->
       case lookupLocal env lvl of
         Just (One sem) -> sem
@@ -391,8 +401,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
-    SemExtern qual sp _, List.Cons arg args -> do
-      go env' (evalExtern env' qual (snocApp sp arg)) args
+    SemRef ref sp sem, List.Cons arg args ->
+      go env' (evalRef env' ref sp (ExternApp [ arg ]) sem) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
@@ -410,9 +420,9 @@ evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> Backend
 evalUncurriedApp env hd spine = case hd of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
-  SemExtern qual sp _ ->
+  SemRef ref sp sem ->
     guardFailOver identity spine \spine' ->
-      evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
+      evalRef env ref sp (ExternUncurriedApp spine') sem
   SemLet ident val k ->
     SemLet ident val \nextVal ->
       makeLet Nothing (k nextVal) \nextFn ->
@@ -490,8 +500,8 @@ neutralApp hd spine
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
 evalAccessor initEnv initLhs accessor =
   evalAssocLet initEnv initLhs \env lhs -> case lhs of
-    SemExtern qual spine _ ->
-      evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
+    SemRef ref spine sem ->
+      evalRef env ref spine (ExternAccessor accessor) sem
     NeutLit (LitRecord props)
       | GetProp prop <- accessor
       , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
@@ -532,7 +542,7 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
       case head of
-        SemConditional c t -> case force c of
+        SemConditional c t -> case deref (force c) of
           NeutLit (LitBoolean didMatch)
             | didMatch -> go acc [] t
             | otherwise -> go acc tail def
@@ -591,9 +601,9 @@ evalAssocLet2 env sem1 sem2 go =
 
 makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
 makeLet ident binding go = case binding of
-  SemExtern _ [] _ ->
+  SemRef _ [] _ ->
     go binding
-  NeutLocal _ _ _ ->
+  NeutLocal _ _ ->
     go binding
   NeutStop _ ->
     go binding
@@ -604,33 +614,38 @@ makeLet ident binding go = case binding of
 
 deref :: BackendSemantics -> BackendSemantics
 deref = case _ of
-  NeutLocal _ _ (Just expr) -> expr
-  expr -> expr
+  SemRef _ _ sem ->
+    force sem
+  sem ->
+    sem
 
--- TODO: Check for overflow in Int ops since backends may not handle it the
--- same was as the JS backend.
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
   Op1 op1 x ->
     case op1, x of
-      OpBooleanNot, NeutLit (LitBoolean bool) ->
-        liftBoolean (not bool)
-      OpBooleanNot, NeutPrimOp op ->
-        evalPrimOpNot op
-      OpIntBitNot, NeutLit (LitInt a) ->
-        liftInt (complement a)
+      OpBooleanNot, _
+        | NeutLit (LitBoolean bool) <- deref x ->
+            liftBoolean (not bool)
+      OpBooleanNot, _
+        | NeutPrimOp op <- deref x ->
+            evalPrimOpNot op
+      OpIntBitNot, _
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (complement a)
       OpIsTag a, _
         | NeutData b _ _ _ _ <- deref x ->
             liftBoolean (a == b)
       OpArrayLength, _
         | NeutLit (LitArray arr) <- deref x ->
             liftInt (Array.length arr)
-      OpIntNegate, NeutLit (LitInt a) ->
-        liftInt (negate a)
-      OpNumberNegate, NeutLit (LitNumber a) ->
-        liftNumber (negate a)
-      _, SemExtern qual spine _ ->
-        evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+      OpIntNegate, _
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (negate a)
+      OpNumberNegate, _
+        | NeutLit (LitNumber a) <- deref x ->
+            liftNumber (negate a)
+      _, SemRef ref spine sem ->
+        evalRef env ref spine (ExternPrimOp op1) sem
       _, NeutFail err ->
         NeutFail err
       _, _ ->
@@ -639,83 +654,83 @@ evalPrimOp env = case _ of
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             x
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             y
-        | NeutLit (LitBoolean true) <- x ->
+        | NeutLit (LitBoolean true) <- deref x ->
             y
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             x
       OpBooleanOr
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             y
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             x
-        | NeutLit (LitBoolean true) <- x ->
+        | NeutLit (LitBoolean true) <- deref x ->
             x
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             y
       OpBooleanOrd OpEq
-        | NeutLit (LitBoolean bool) <- x ->
+        | NeutLit (LitBoolean bool) <- deref x ->
             if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
-        | NeutLit (LitBoolean bool) <- y ->
+        | NeutLit (LitBoolean bool) <- deref y ->
             if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
       OpBooleanOrd op
-        | NeutLit (LitBoolean a) <- x
-        , NeutLit (LitBoolean b) <- y ->
+        | NeutLit (LitBoolean a) <- deref x
+        , NeutLit (LitBoolean b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpCharOrd op
-        | NeutLit (LitChar a) <- x
-        , NeutLit (LitChar b) <- y ->
+        | NeutLit (LitChar a) <- deref x
+        , NeutLit (LitChar b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpIntBitAnd
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .&. b)
       OpIntBitOr
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .|. b)
       OpIntBitShiftLeft
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shl a b)
       OpIntBitShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shr a b)
       OpIntBitXor
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (xor a b)
       OpIntBitZeroFillShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (zshr a b)
       OpIntNum OpSubtract
-        | NeutLit (LitInt 0) <- x ->
+        | NeutLit (LitInt 0) <- deref x ->
             evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
         | Just result <- evalPrimOpNumInt op x y ->
             result
       OpIntOrd op
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
-        | NeutLit (LitNumber 0.0) <- x ->
+        | NeutLit (LitNumber 0.0) <- deref x ->
             evalPrimOp env (Op1 OpNumberNegate y)
       OpNumberNum op
         | Just result <- evalPrimOpNumNumber op x y ->
             result
       OpNumberOrd op
-        | NeutLit (LitNumber a) <- x
-        , NeutLit (LitNumber b) <- y ->
+        | NeutLit (LitNumber a) <- deref x
+        , NeutLit (LitNumber b) <- deref y ->
             liftBoolean (evalPrimOpOrdNumber op a b)
       OpStringOrd op
-        | NeutLit (LitString a) <- x
-        , NeutLit (LitString b) <- y ->
+        | NeutLit (LitString a) <- deref x
+        , NeutLit (LitString b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
         | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> Just $ liftString (a <> b)) x y ->
@@ -802,16 +817,16 @@ evalPrimOpOrdNumber op x y = case op of
 evalPrimOpNumNumber :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
 evalPrimOpNumNumber op x y = case op of
   OpAdd ->
-    evalPrimOpAssocL (OpNumberNum OpAdd) caseNumber (\a b -> Just $ liftNumber (a + b)) x y
+    evalPrimOpAssocL (OpNumberNum OpAdd) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a + b)) x y
   OpMultiply ->
-    evalPrimOpAssocL (OpNumberNum OpMultiply) caseNumber (\a b -> Just $ liftNumber (a * b)) x y
+    evalPrimOpAssocL (OpNumberNum OpMultiply) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a * b)) x y
   OpSubtract
-    | NeutLit (LitNumber a) <- x
-    , NeutLit (LitNumber b) <- y ->
+    | NeutLit (LitNumber a) <- deref x
+    , NeutLit (LitNumber b) <- deref y ->
         Just $ liftNumber (a - b)
   OpDivide
-    | NeutLit (LitNumber a) <- x
-    , NeutLit (LitNumber b) <- y ->
+    | NeutLit (LitNumber a) <- deref x
+    , NeutLit (LitNumber b) <- deref y ->
         Just $ liftNumber (a / b)
   _ ->
     Nothing
@@ -819,7 +834,7 @@ evalPrimOpNumNumber op x y = case op of
 evalPrimOpNumInt :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
 evalPrimOpNumInt op x y = case op of
   OpAdd ->
-    evalPrimOpAssocL (OpIntNum OpAdd) caseInt addOverflow x y
+    evalPrimOpAssocL (OpIntNum OpAdd) (caseInt <<< deref) addOverflow x y
     where
     addOverflow a b = do
       let res = a + b
@@ -828,7 +843,7 @@ evalPrimOpNumInt op x y = case op of
       else
         Just $ liftInt res
   OpMultiply ->
-    evalPrimOpAssocL (OpIntNum OpMultiply) caseInt mulOverflow x y
+    evalPrimOpAssocL (OpIntNum OpMultiply) (caseInt <<< deref) mulOverflow x y
     where
     mulOverflow a b = do
       let res = a * b
@@ -837,16 +852,16 @@ evalPrimOpNumInt op x y = case op of
       else
         Just $ liftInt res
   OpSubtract
-    | NeutLit (LitInt a) <- x
-    , NeutLit (LitInt b) <- y -> do
+    | NeutLit (LitInt a) <- deref x
+    , NeutLit (LitInt b) <- deref y -> do
         let res = a - b
         if b > 0 && res > a || b < 0 && res < a then
           Nothing
         else
           Just $ liftInt res
   OpDivide
-    | NeutLit (LitInt a) <- x
-    , NeutLit (LitInt b) <- y ->
+    | NeutLit (LitInt a) <- deref x
+    , NeutLit (LitInt b) <- deref y ->
         Just $ liftInt (a / b)
   _ ->
     Nothing
@@ -883,10 +898,41 @@ primOpOrdNot = case _ of
   OpGt -> OpLte
   OpGte -> OpLt
 
-evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
-evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
-  Nothing -> SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
-  Just sem -> sem
+evalRef :: Env -> EvalRef -> Array ExternSpine -> ExternSpine -> Lazy BackendSemantics -> BackendSemantics
+evalRef env@(Env e) ref spine last sem = case ref of
+  EvalExtern qual
+    | Just sem' <- e.evalExternSpine env qual spine' ->
+        sem'
+  _ ->
+    SemRef ref spine' $ defer \_ ->
+      deref $ evalRefSpine env ref spine' sem last
+  where
+  spine' = snocSpine spine last
+
+evalRefSpine :: Env -> EvalRef -> Array ExternSpine -> Lazy BackendSemantics -> ExternSpine -> BackendSemantics
+evalRefSpine env ref spine sem = case _ of
+  ExternApp _ ->
+    neutralSpine (evalEvalRef ref) spine
+  ExternUncurriedApp _ ->
+    neutralSpine (evalEvalRef ref) spine
+  ExternAccessor acc ->
+    evalAccessor env (force sem) acc
+  ExternPrimOp op ->
+    evalPrimOp env (Op1 op (force sem))
+
+evalEvalRef :: EvalRef -> BackendSemantics
+evalEvalRef = case _ of
+  EvalExtern qual ->
+    NeutVar qual
+  EvalLocal ident lvl ->
+    NeutLocal ident lvl
+
+snocSpine :: Array ExternSpine -> ExternSpine -> Array ExternSpine
+snocSpine spine = case _ of
+  ExternApp apps ->
+    foldl snocApp spine apps
+  other ->
+    Array.snoc spine other
 
 envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
 envForGroup env ref acc group
@@ -1031,6 +1077,30 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   _ ->
     Nothing
 
+evalExternRefFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> BackendSemantics
+evalExternRefFromImpl env qual (Tuple _ impl) = case impl of
+  ExternExpr group (NeutralExpr expr)
+    | isRefExpr expr ->
+        eval (envForGroup env (EvalExtern qual) InlineRef group) expr
+  ExternDict group props ->
+    NeutLit $ LitRecord $ map
+      ( \(Prop prop (Tuple _ (NeutralExpr expr))) ->
+          Prop prop $ eval (envForGroup env (EvalExtern qual) (InlineProp prop) group) expr
+      )
+      props
+  _ ->
+    NeutVar qual
+
+isRefExpr :: forall a. BackendSyntax a -> Boolean
+isRefExpr = case _ of
+  Var _ -> true
+  Lit _ -> true
+  CtorSaturated _ _ _ _ _ -> true
+  Accessor _ _ -> true
+  Update _ _ -> true
+  PrimOp _ -> true
+  _ -> false
+
 analysisFromDirective :: BackendAnalysis -> InlineDirective -> BackendAnalysis
 analysisFromDirective (BackendAnalysis analysis) = case _ of
   InlineAlways ->
@@ -1091,21 +1161,21 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ SemRef (EvalLocal ident level) [] $ defer \_ -> deref binding
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
       -- to recursive bindings. The language requires
       -- a runtime check for strictly recursive bindings
       -- which we don't currently implement.
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
+      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemEffectDefer sem ->
@@ -1117,17 +1187,21 @@ quote = go
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
-    SemExtern _ _ sem ->
-      go ctx (force sem)
+    SemRef ref sp _ ->
+      case ref of
+        EvalExtern qual ->
+          go ctx $ neutralSpine (NeutVar qual) sp
+        EvalLocal ident lvl ->
+          go ctx $ neutralSpine (NeutLocal ident lvl) sp
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
@@ -1136,11 +1210,11 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
-    NeutLocal ident level _ ->
+    NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual

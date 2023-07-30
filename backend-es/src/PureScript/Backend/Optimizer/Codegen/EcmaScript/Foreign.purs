@@ -29,6 +29,8 @@ esForeignSemantics = Map.fromFoldable
   , data_bounded_bottomInt
   , data_bounded_topChar
   , data_bounded_bottomChar
+  , data_bounded_topNumber
+  , data_bounded_bottomNumber
   , data_enum_toCharCode
   , data_show_showCharImpl
   , data_show_showIntImpl
@@ -109,6 +111,16 @@ data_bounded_bottomInt :: ForeignSemantics
 data_bounded_bottomInt = Tuple (qualified "Data.Bounded" "bottomInt") go
   where
   go _ _ = const $ Just $ litInt bottom
+
+data_bounded_topNumber :: ForeignSemantics
+data_bounded_topNumber = Tuple (qualified "Data.Bounded" "topNumber") go
+  where
+  go _ _ = const $ Just $ litNumber top
+
+data_bounded_bottomNumber :: ForeignSemantics
+data_bounded_bottomNumber = Tuple (qualified "Data.Bounded" "bottomNumber") go
+  where
+  go _ _ = const $ Just $ litNumber bottom
 
 data_bounded_topChar :: ForeignSemantics
 data_bounded_topChar = Tuple (qualified "Data.Bounded" "topChar") go
@@ -294,6 +306,9 @@ whileLoop env qual = case _ of
 
 litInt :: Int -> BackendSemantics
 litInt = NeutLit <<< LitInt
+
+litNumber :: Number -> BackendSemantics
+litNumber = NeutLit <<< LitNumber
 
 litChar :: Char -> BackendSemantics
 litChar = NeutLit <<< LitChar
