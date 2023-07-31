@@ -7,7 +7,7 @@ import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dString$dCodeUnits from "../Data.String.CodeUnits/index.js";
 import * as Data$dUnfoldable from "../Data.Unfoldable/index.js";
 const toUnfoldable = /* #__PURE__ */ Data$dList.toUnfoldable(Data$dUnfoldable.unfoldableArray);
-const test = x => Data$dArray.reverse(toUnfoldable((() => {
+const test = x => {
   const loop = loop$a0$copy => loop$a1$copy => {
     let loop$a0 = loop$a0$copy, loop$a1 = loop$a1$copy, loop$c = true, loop$r;
     while (loop$c) {
@@ -17,9 +17,9 @@ const test = x => Data$dArray.reverse(toUnfoldable((() => {
         loop$r = acc;
         continue;
       }
+      const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[n] | 0));
       loop$a0 = n - 1 | 0;
       loop$a1 = (() => {
-        const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[n] | 0));
         if (v1.tag === "Just") {
           const $0 = "2" + v1._1;
           if ($0 !== "wat") { return Data$dList$dTypes.$List("Cons", $0 + "1", acc); }
@@ -31,6 +31,6 @@ const test = x => Data$dArray.reverse(toUnfoldable((() => {
     }
     return loop$r;
   };
-  return loop(x.length - 1 | 0)(Data$dList$dTypes.Nil);
-})()));
+  return Data$dArray.reverse(toUnfoldable(loop(x.length - 1 | 0)(Data$dList$dTypes.Nil)));
+};
 export {test, toUnfoldable};
