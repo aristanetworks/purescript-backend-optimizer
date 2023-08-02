@@ -6,6 +6,7 @@ import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
@@ -45,6 +46,7 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
+  | SemAssocOp (Either (Qualified Ident) BackendOperator2) (NonEmptyArray BackendSemantics)
   | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
@@ -733,8 +735,9 @@ evalPrimOp env = case _ of
         , NeutLit (LitString b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
-        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> Just $ liftString (a <> b)) x y ->
-            result
+        | NeutLit (LitString a) <- x
+        , NeutLit (LitString b) <- y ->
+            liftString (a <> b)
       OpArrayIndex
         | NeutLit (LitInt n) <- y ->
             evalAccessor env x (GetIndex n)
@@ -756,43 +759,10 @@ evalPrimOp env = case _ of
           _, NeutFail err -> NeutFail err
           _, _ ->
             evalAssocLet2 env x y \_ x' y' ->
-              NeutPrimOp (Op2 op2 x' y')
-
-evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> Maybe BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
-evalPrimOpAssocL op match combine a b = case match a of
-  Just lhs
-    | Just rhs <- match b ->
-        combine lhs rhs
-    | Just (Tuple x y) <- decompose b ->
-        case match x of
-          Just rhs ->
-            (\x' -> liftOp2 op x' y) <$> combine lhs rhs
-          Nothing
-            | Just (Tuple v w) <- decompose x
-            , Just rhs <- match v ->
-                (\v' -> liftOp2 op (liftOp2 op v' w) y) <$> combine lhs rhs
-          _ ->
-            Nothing
-  Nothing
-    | Just rhs <- match b
-    , Just (Tuple v w) <- decompose a ->
-        case match w of
-          Just lhs ->
-            liftOp2 op v <$> combine lhs rhs
-          Nothing
-            | Just (Tuple x y) <- decompose w
-            , Just lhs <- match y ->
-                liftOp2 op (liftOp2 op v x) <$> combine lhs rhs
-          _ ->
-            Nothing
-  _ ->
-    Nothing
-  where
-  decompose = case _ of
-    NeutPrimOp (Op2 op' x y) | op == op' ->
-      Just (Tuple x y)
-    _ ->
-      Nothing
+              if isAssocPrimOp op2 then
+                evalAssocOp env (Right op2) x' y'
+              else
+                NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
@@ -815,56 +785,38 @@ evalPrimOpOrdNumber op x y = case op of
   OpLte -> x <= y
 
 evalPrimOpNumNumber :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
-evalPrimOpNumNumber op x y = case op of
-  OpAdd ->
-    evalPrimOpAssocL (OpNumberNum OpAdd) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a + b)) x y
-  OpMultiply ->
-    evalPrimOpAssocL (OpNumberNum OpMultiply) (caseNumber <<< deref) (\a b -> Just $ liftNumber (a * b)) x y
-  OpSubtract
-    | NeutLit (LitNumber a) <- deref x
-    , NeutLit (LitNumber b) <- deref y ->
-        Just $ liftNumber (a - b)
-  OpDivide
-    | NeutLit (LitNumber a) <- deref x
-    , NeutLit (LitNumber b) <- deref y ->
-        Just $ liftNumber (a / b)
-  _ ->
-    Nothing
+evalPrimOpNumNumber op x y
+  | NeutLit (LitNumber a) <- deref x
+  , NeutLit (LitNumber b) <- deref y =
+      Just $ liftNumber case op of
+        OpAdd -> a + b
+        OpMultiply -> a * b
+        OpSubtract -> a - b
+        OpDivide -> a / b
+  | otherwise =
+      Nothing
 
 evalPrimOpNumInt :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
-evalPrimOpNumInt op x y = case op of
-  OpAdd ->
-    evalPrimOpAssocL (OpIntNum OpAdd) (caseInt <<< deref) addOverflow x y
-    where
-    addOverflow a b = do
-      let res = a + b
-      if b > 0 && res < a || b < 0 && res > a then
-        Nothing
-      else
-        Just $ liftInt res
-  OpMultiply ->
-    evalPrimOpAssocL (OpIntNum OpMultiply) (caseInt <<< deref) mulOverflow x y
-    where
-    mulOverflow a b = do
-      let res = a * b
-      if a /= (res / b) then
-        Nothing
-      else
-        Just $ liftInt res
-  OpSubtract
-    | NeutLit (LitInt a) <- deref x
-    , NeutLit (LitInt b) <- deref y -> do
-        let res = a - b
-        if b > 0 && res > a || b < 0 && res < a then
-          Nothing
-        else
-          Just $ liftInt res
-  OpDivide
-    | NeutLit (LitInt a) <- deref x
-    , NeutLit (LitInt b) <- deref y ->
-        Just $ liftInt (a / b)
-  _ ->
-    Nothing
+evalPrimOpNumInt op x y
+  | NeutLit (LitInt a) <- deref x
+  , NeutLit (LitInt b) <- deref y =
+      case op of
+        OpAdd -> do
+          let res = a + b
+          if b > 0 && res < a || b < 0 && res > a then Nothing
+          else Just $ liftInt res
+        OpMultiply -> do
+          let res = a * b
+          if a /= (res / b) then Nothing
+          else Just $ liftInt res
+        OpSubtract -> do
+          let res = a - b
+          if b > 0 && res > a || b < 0 && res < a then Nothing
+          else Just $ liftInt res
+        OpDivide ->
+          Just $ liftInt (a / b)
+  | otherwise =
+      Nothing
 
 evalPrimOpNot :: BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOpNot = case _ of
@@ -897,6 +849,56 @@ primOpOrdNot = case _ of
   OpLte -> OpGt
   OpGt -> OpLte
   OpGte -> OpLt
+
+isAssocPrimOp :: BackendOperator2 -> Boolean
+isAssocPrimOp = case _ of
+  OpIntNum OpAdd -> true
+  OpIntNum OpMultiply -> true
+  OpNumberNum OpAdd -> true
+  OpNumberNum OpMultiply -> true
+  OpStringAppend -> true
+  _ -> false
+
+evalAssocOp :: Env -> Either (Qualified Ident) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+evalAssocOp env op1 = case _, _ of
+  SemAssocOp op2 as, SemAssocOp op3 bs
+    | op1 == op2
+    , op2 == op3 ->
+        case evalAssocOp' env op1 (NonEmptyArray.last as) (NonEmptyArray.head bs) of
+          SemAssocOp op4 cs
+            | op3 == op4 ->
+                SemAssocOp op1 $ NonEmptyArray.prependArray (NonEmptyArray.init as) (NonEmptyArray.appendArray cs (NonEmptyArray.tail bs))
+          c ->
+            SemAssocOp op1 $ NonEmptyArray.prependArray (NonEmptyArray.init as) (NonEmptyArray.cons' c (NonEmptyArray.tail bs))
+  a, SemAssocOp op2 bs
+    | op1 == op2 ->
+        case evalAssocOp' env op1 a (NonEmptyArray.head bs) of
+          SemAssocOp op3 cs
+            | op2 == op3 ->
+                SemAssocOp op1 $ NonEmptyArray.appendArray cs (NonEmptyArray.tail bs)
+          a' ->
+            SemAssocOp op1 $ NonEmptyArray.cons' a' (NonEmptyArray.tail bs)
+  SemAssocOp op2 as, b
+    | op1 == op2 ->
+        case evalAssocOp' env op1 (NonEmptyArray.last as) b of
+          SemAssocOp op3 cs
+            | op2 == op3 ->
+                SemAssocOp op1 $ NonEmptyArray.prependArray (NonEmptyArray.init as) cs
+          b' ->
+            SemAssocOp op1 $ NonEmptyArray.snoc' (NonEmptyArray.init as) b'
+  a, b ->
+    SemAssocOp op1 $ NonEmptyArray.cons' a [ b ]
+
+evalAssocOp' :: Env -> Either (Qualified Ident) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+evalAssocOp' env@(Env e) op a b = case op of
+  Left qual ->
+    case e.evalExternSpine env qual [ ExternApp [ a, b ] ] of
+      Just res ->
+        res
+      Nothing ->
+        SemAssocOp op $ NonEmptyArray.cons' a [ b ]
+  Right primOp ->
+    evalPrimOp env (Op2 primOp a b)
 
 evalRef :: Env -> EvalRef -> Array ExternSpine -> ExternSpine -> Lazy BackendSemantics -> BackendSemantics
 evalRef env@(Env e) ref spine last sem = case ref of
@@ -1214,6 +1216,16 @@ quote = go
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
+    SemAssocOp op spine ->
+      foldl1Array
+        ( \a b -> case op of
+            Left qual ->
+              build ctx $ App (build ctx (Var qual)) $ NonEmptyArray.cons' a [ quote ctx b ]
+            Right primOp ->
+              build ctx $ PrimOp (Op2 primOp a (quote ctx b))
+        )
+        (quote ctx)
+        spine
     NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
