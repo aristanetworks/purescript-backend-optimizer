@@ -1,6 +1,5 @@
 import * as $runtime from "../runtime.js";
 import * as Data$dArray from "../Data.Array/index.js";
-import * as Data$dSemigroup from "../Data.Semigroup/index.js";
 const test1 = test1$a0$copy => test1$a1$copy => {
   let test1$a0 = test1$a0$copy, test1$a1 = test1$a1$copy, test1$c = true, test1$r;
   while (test1$c) {
@@ -14,7 +13,7 @@ const test1 = test1$a0$copy => test1$a1$copy => {
           return;
         }
         test1$a0 = b;
-        test1$a1 = Data$dSemigroup.concatArray([y, x, 3, y, 5, 6, 7, 8, 9, 10, x, 12, 13, 14, 15, 16, 17])(arr);
+        test1$a1 = [y, x, 3, y, 5, 6, 7, 8, 9, 10, x, 12, 13, 14, 15, 16, 17, ...arr];
       };
       if (v.tag === "Just") {
         if (v._1 === 2) {
@@ -31,7 +30,7 @@ const test1 = test1$a0$copy => test1$a1$copy => {
       }
       if (v.tag === "Nothing") {
         test1$c = false;
-        test1$r = Data$dSemigroup.concatArray(arr)([arr[0]]);
+        test1$r = [...arr, arr[0]];
         continue;
       }
       $runtime.fail();
@@ -39,11 +38,11 @@ const test1 = test1$a0$copy => test1$a1$copy => {
     if (v.tag === "Just") {
       if (v._1 === 2) {
         test1$c = false;
-        test1$r = Data$dSemigroup.concatArray(arr)([v._1]);
+        test1$r = [...arr, v._1];
         continue;
       }
       test1$c = false;
-      test1$r = Data$dSemigroup.concatArray(arr)([v._1]);
+      test1$r = [...arr, v._1];
       continue;
     }
     if (v.tag === "Nothing") {

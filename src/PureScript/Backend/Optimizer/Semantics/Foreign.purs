@@ -4,8 +4,8 @@ import Prelude
 
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Enum (fromEnum)
-import Data.Lazy (defer)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, EvalRef(..), ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, EvalRef(..), ExternSpine(..), evalAccessor, evalApp, evalAssocOp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
@@ -431,90 +431,19 @@ isQualified mod tag = case _ of
   _ ->
     false
 
-assocBinaryOperatorL
-  :: forall a
-   . (BackendSemantics -> Maybe a)
-  -> (Env -> a -> a -> BackendSemantics)
-  -> (Env -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics)
-  -> ForeignEval
-assocBinaryOperatorL match op def env ident = case _ of
-  [ ExternApp [ a, b ] ] ->
-    case rewrite of
-      Just _ ->
-        rewrite
-      Nothing ->
-        def env a b
-    where
-    rewrite = case match a of
-      Just lhs ->
-        case match b of
-          Just rhs ->
-            Just $ op env lhs rhs
-          Nothing ->
-            case b of
-              SemRef (EvalExtern ident') [ ExternApp [ x, y ] ] _ | ident == ident' ->
-                case match x of
-                  Just rhs -> do
-                    let result = op env lhs rhs
-                    Just $ externApp env ident [ result, y ]
-                  Nothing ->
-                    case x of
-                      SemRef (EvalExtern ident'') [ ExternApp [ v, w ] ] _ | ident == ident'' ->
-                        case match v of
-                          Just rhs -> do
-                            let result = op env lhs rhs
-                            Just $ externApp env ident [ externApp env ident [ result, w ], y ]
-                          Nothing ->
-                            Nothing
-                      _ ->
-                        Nothing
-              _ ->
-                Nothing
-      Nothing ->
-        case match b of
-          Just rhs ->
-            case a of
-              SemRef (EvalExtern ident') [ ExternApp [ v, w ] ] _ | ident == ident' ->
-                case match w of
-                  Just lhs -> do
-                    let result = op env lhs rhs
-                    Just $ externApp env ident [ v, result ]
-                  Nothing ->
-                    case w of
-                      SemRef (EvalExtern ident'') [ ExternApp [ x, y ] ] _ | ident == ident'' ->
-                        case match y of
-                          Just lhs -> do
-                            let result = op env lhs rhs
-                            Just $ externApp env ident [ externApp env ident [ v, x ], result ]
-                          Nothing ->
-                            Nothing
-                      _ ->
-                        Nothing
-              _ ->
-                Nothing
-          Nothing ->
-            Nothing
-  _ ->
-    Nothing
-
 data_semigroup_concatArray :: ForeignSemantics
-data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") $ assocBinaryOperatorL match op default
+data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") go
   where
-  match = case _ of
-    NeutLit (LitArray a) -> Just a
-    _ -> Nothing
-
-  op _ a b =
-    NeutLit (LitArray (a <> b))
-
-  default _ _ _ =
-    Nothing
+  go env qual = case _ of
+    [ ExternApp [ NeutLit (LitArray as), NeutLit (LitArray bs) ] ] ->
+      Just $ NeutLit (LitArray (as <> bs))
+    [ ExternApp [ a, b ] ] ->
+      Just $ evalAssocOp env (Left qual) a b
+    _ ->
+      Nothing
 
 data_semigroup_concatString :: ForeignSemantics
 data_semigroup_concatString = Tuple (qualified "Data.Semigroup" "concatString") $ primBinaryOperator OpStringAppend
-
-externApp :: Env -> Qualified Ident -> Array BackendSemantics -> BackendSemantics
-externApp env qual = evalApp env (SemRef (EvalExtern qual) [] (defer \_ -> NeutVar qual))
 
 partial_unsafe_unsafePartial :: ForeignSemantics
 partial_unsafe_unsafePartial = Tuple (qualified "Partial.Unsafe" "_unsafePartial") go
