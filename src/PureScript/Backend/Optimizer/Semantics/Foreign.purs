@@ -435,7 +435,7 @@ data_semigroup_concatArray :: ForeignSemantics
 data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") go
   where
   go env qual = case _ of
-    [ ExternApp [ NeutLit (LitArray as), NeutLit (LitArray bs)]] ->
+    [ ExternApp [ NeutLit (LitArray as), NeutLit (LitArray bs) ] ] ->
       Just $ NeutLit (LitArray (as <> bs))
     [ ExternApp [ a, b ] ] ->
       Just $ evalAssocOp env (Left qual) a b
