@@ -6,12 +6,15 @@ import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
 import Control.Plus (empty)
 import Data.Array as Array
+import Data.DateTime.Instant (Instant)
+import Data.DateTime.Instant as Instant
 import Data.Either (Either(..), isRight)
 import Data.Foldable (foldMap, for_, oneOf)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (guard, power)
 import Data.Newtype (unwrap)
+import Data.Number.Format as Number
 import Data.Posix.Signal (Signal(..))
 import Data.Set (Set)
 import Data.Set as Set
@@ -22,9 +25,11 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), uncurry)
 import Dodo as Dodo
 import Effect (Effect)
-import Effect.Aff (Aff, attempt, effectCanceler, error, launchAff_, makeAff, throwError)
+import Effect.Aff (Aff, Milliseconds(..), attempt, effectCanceler, error, launchAff_, makeAff, nonCanceler, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
+import Effect.Now (now)
+import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Node.ChildProcess (Exit(..), StdIOBehaviour(..), defaultSpawnOptions)
 import Node.ChildProcess as ChildProcess
@@ -41,6 +46,7 @@ import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
+import PureScript.Backend.Optimizer.Convert (OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Module(..), ModuleName(..), Qualified(..))
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
@@ -58,6 +64,7 @@ type BuildArgs =
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
   , traceIdents :: Set (Qualified Ident)
+  , printTiming :: Boolean
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -99,6 +106,11 @@ buildArgsParser =
                       Left $ "Unable to parse qualified name: " <> str
               )
           # ArgParser.folded
+    , printTiming:
+        ArgParser.flag [ "--timing" ]
+          "Print timing data for modules."
+          # ArgParser.boolean
+          # ArgParser.default false
     }
 
 data TargetPlatform = Browser | Node
@@ -196,6 +208,12 @@ parseArgs = do
     esArgParser
     cliArgs
 
+type BuildState =
+  { currentStartTime :: Ref (Maybe Instant)
+  , startTime :: Instant
+  , steps :: Ref (Array (Tuple ModuleName OptimizationSteps))
+  }
+
 main :: FilePath -> Effect Unit
 main cliRoot =
   parseArgs >>= case _ of
@@ -210,8 +228,15 @@ main cliRoot =
       unless bundleArgs.noBuild $ buildCmd args
       bundleCmd true bundleArgs args
   where
+  makeBuildState :: Effect BuildState
+  makeBuildState = do
+    startTime <- now
+    currentStartTime <- Ref.new Nothing
+    steps <- Ref.new []
+    pure { currentStartTime, startTime, steps }
+
   buildCmd :: BuildArgs -> Aff Unit
-  buildCmd args = liftEffect (Ref.new []) >>= \stepsRef -> basicBuildMain
+  buildCmd args = liftEffect makeBuildState >>= \state -> basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
@@ -220,7 +245,12 @@ main cliRoot =
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
     , onCodegenAfter: do
-        allSteps <- liftEffect (Ref.read stepsRef)
+        allSteps <- liftEffect (Ref.read state.steps)
+        when args.printTiming do
+          endTime <- liftEffect now
+          let Milliseconds startMillis = Instant.unInstant state.startTime
+          let Milliseconds endMillis = Instant.unInstant endTime
+          Console.log $ "Total build time: " <> Number.toString (endMillis - startMillis) <> "ms"
         unless (Array.null allSteps) do
           let allDoc = Dodo.foldWithSeparator (Dodo.break <> Dodo.break) $ uncurry printModuleSteps <$> allSteps
           FS.writeTextFile UTF8 "optimization-traces.txt" $ Dodo.print Dodo.plainText Dodo.twoSpaces allDoc
@@ -240,12 +270,24 @@ main cliRoot =
           unless (isRight res) do
             Console.log $ "  Foreign implementation missing."
         unless (Array.null optimizationSteps) do
-          liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) stepsRef
+          liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) state.steps
+        mbStartTime <- liftEffect $ Ref.read state.currentStartTime
+        for_ mbStartTime \startTime -> do
+          endTime <- liftEffect now
+          let Milliseconds startMillis = Instant.unInstant startTime
+          let Milliseconds endMillis = Instant.unInstant endTime
+          writeString (Number.toString (endMillis - startMillis) <> "ms\n") Process.stdout
+
     , onPrepareModule: \build coreFnMod@(Module { name }) -> do
         let total = show build.moduleCount
         let index = show (build.moduleIndex + 1)
         let padding = power " " (SCU.length total - SCU.length index)
-        Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
+        let msg = "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
+        if args.printTiming then do
+          liftEffect $ flip Ref.write state.currentStartTime <<< Just =<< now
+          writeString (msg <> "... ") Process.stdout
+        else
+          Console.log msg
         pure coreFnMod
     , traceIdents: args.traceIdents
     }
@@ -292,6 +334,11 @@ copyFile from to = do
       Stream.destroy res
       Stream.destroy dst
       Stream.destroy src
+
+writeString :: forall r. String -> Stream.Writable r -> Aff Unit
+writeString str stream = makeAff \k -> do
+  _ <- Stream.writeString stream UTF8 str (k <<< maybe (Right unit) Left)
+  pure nonCanceler
 
 mkdirp :: FilePath -> Aff Unit
 mkdirp = flip FS.mkdir' { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
