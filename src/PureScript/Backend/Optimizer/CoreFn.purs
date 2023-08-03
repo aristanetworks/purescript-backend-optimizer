@@ -142,6 +142,7 @@ derive instance functorGuard :: Functor Guard
 
 data Prop a = Prop String a
 
+derive instance Eq a => Eq (Prop a)
 derive instance functorProp :: Functor Prop
 
 instance foldableProp :: Foldable Prop where
@@ -171,7 +172,8 @@ data Literal a
   | LitArray (Array a)
   | LitRecord (Array (Prop a))
 
-derive instance functorLiteral :: Functor Literal
+derive instance Eq a => Eq (Literal a)
+derive instance Functor Literal
 
 instance foldableLiteral :: Foldable Literal where
   foldl k = foldlDefault k

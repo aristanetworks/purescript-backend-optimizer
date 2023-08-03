@@ -26,6 +26,7 @@ import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
+import Safe.Coerce (coerce)
 
 type Spine a = Array a
 
@@ -68,6 +69,29 @@ data SemConditional a = SemConditional (Lazy a) (Lazy a)
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
   | ExprRewrite BackendAnalysis BackendRewrite
+
+newtype EqBackendExpr = EqBackendExpr BackendExpr
+
+instance Eq EqBackendExpr where
+  eq (EqBackendExpr a) (EqBackendExpr b) =
+    case a, b of
+      ExprSyntax _ x, ExprSyntax _ y -> do
+        let co = coerce :: BackendSyntax BackendExpr -> BackendSyntax EqBackendExpr
+        co x == co y
+      _, _ ->
+        false
+
+eqBackendExpr :: BackendExpr -> BackendExpr -> Boolean
+eqBackendExpr a b = case a, b of
+  ExprSyntax (BackendAnalysis s1) x, ExprSyntax (BackendAnalysis s2) y -> do
+    let co = coerce :: BackendSyntax BackendExpr -> BackendSyntax EqBackendExpr
+    -- TODO: Compare rewrites for equality?
+    not s1.rewrite
+      && not s2.rewrite
+      && s1.size == s2.size
+      && co x == co y
+  _, _ ->
+    false
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -1379,17 +1403,12 @@ buildBranchCond ctx (Pair a b) c = case b of
   ExprSyntax _ (Lit (LitBoolean false))
     | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
         c
-    | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x1))) <- a
-    , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2))) <- c
-    , isSameVariable x1 x2 ->
+    | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x1)) <- a
+    , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x2)) <- c
+    , eqBackendExpr x1 x2 ->
         c
   _ ->
     build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
-  where
-  isSameVariable = case _, _ of
-    Local _ l, Local _ r -> l == r
-    Var l, Var r -> l == r
-    _, _ -> false
 
 isBooleanTail :: forall a. BackendSyntax a -> Boolean
 isBooleanTail = case _ of
@@ -1400,21 +1419,58 @@ isBooleanTail = case _ of
   _ -> false
 
 simplifyBranches :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs of
-  [ a ]
-    | Pair expr (ExprSyntax _ (Lit (LitBoolean true))) <- a
-    , ExprSyntax _ (Lit (LitBoolean false)) <- def ->
-        Just expr
-    | Pair expr (ExprSyntax _ (Lit (LitBoolean false))) <- a
-    , ExprSyntax _ (Lit (LitBoolean true)) <- def ->
-        Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
-  [ a, b ]
-    | Pair expr1@(ExprSyntax _ (Local _ lvl1)) body1 <- a
-    , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot (ExprSyntax _ (Local _ lvl2))))) body2 <- b
-    , ExprSyntax _ (Fail _) <- def
-    , lvl1 == lvl2 ->
-        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
-  _
+simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs, def of
+  -- if $expr then $body else $bool
+  [ Pair expr body ],
+  ExprSyntax _ (Lit (LitBoolean bool))
+    | bool ->
+        case body of
+          -- from: if $expr then false else true
+          -- to:   not $expr
+          ExprSyntax _ (Lit (LitBoolean false)) ->
+            Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+          -- from: if $expr then $body else true
+          -- to:   ($expr && body) || not $expr [duplicates $expr]
+          _ ->
+            Nothing
+    | otherwise ->
+        case body of
+          -- from: if $expr then true else false
+          -- to:   $expr
+          ExprSyntax _ (Lit (LitBoolean true)) ->
+            Just expr
+          -- from: if expr then body else false
+          -- to:   expr && body
+          _ ->
+            Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
+  -- from: if $expr then $body1
+  --       else if not $expr then $body2
+  --       else fail
+  -- to:   if $expr then $body1 else $body2
+  [ Pair expr1 body1
+  , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2
+  ],
+  ExprSyntax _ (Fail _) ->
+    if eqBackendExpr expr1 expr2 then
+      Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
+    else
+      Nothing
+  _, _
+    -- | xs <- NonEmptyArray.takeWhile (\(Pair _ b) -> not (eqBackendExpr def b)) pairs
+    -- , Array.length xs < NonEmptyArray.length pairs ->
+    --     if
+    -- from: if ...
+    --       else if $x then
+    --         if $y then $z else $def
+    --       else $def
+    -- to:   if ...
+    --       else if $x && $y then $z
+    --       else $def
+    | Pair x (ExprSyntax _ (Branch pairs2 def2)) <- NonEmptyArray.last pairs
+    , [ Pair y z ] <- NonEmptyArray.toArray pairs2
+    , eqBackendExpr def def2 ->
+        Just $ build ctx (Branch (NonEmptyArray.singleton (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z)) def)
+    -- Flatten right-associated branches
     | ExprSyntax _ (Branch pairs2 def2) <- def ->
         Just $ build ctx (Branch (pairs <> pairs2) def2)
     | otherwise ->
