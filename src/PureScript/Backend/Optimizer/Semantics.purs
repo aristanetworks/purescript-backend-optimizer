@@ -268,7 +268,7 @@ instance Eval f => Eval (BackendSyntax f) where
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
     Update lhs updates ->
-      evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+      evalUpdate (eval env lhs) (map (eval env) <$> updates)
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
@@ -500,43 +500,41 @@ neutralApp hd spine
         NeutApp hd spine
 
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
-evalAccessor initEnv initLhs accessor =
-  evalAssocLet initEnv initLhs \env lhs -> case lhs of
-    SemRef ref spine sem ->
-      evalRef env ref spine (ExternAccessor accessor) sem
-    NeutLit (LitRecord props)
-      | GetProp prop <- accessor
-      , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
-          sem
-    NeutUpdate rec props
-      | GetProp prop <- accessor ->
-          case Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props of
-            Just sem ->
-              sem
-            Nothing ->
-              evalAccessor env rec accessor
-    NeutLit (LitArray values)
-      | GetIndex n <- accessor
-      , Just sem <- Array.index values n ->
-          sem
-    NeutData _ _ _ _ fields
-      | GetCtorField _ _ _ _ _ n <- accessor
-      , Just (Tuple _ sem) <- Array.index fields n ->
-          sem
-    NeutFail err ->
-      NeutFail err
-    _ ->
-      NeutAccessor lhs accessor
+evalAccessor env lhs accessor = evalAssocLet lhs case _ of
+  SemRef ref spine sem ->
+    evalRef env ref spine (ExternAccessor accessor) sem
+  NeutLit (LitRecord props)
+    | GetProp prop <- accessor
+    , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
+        sem
+  NeutUpdate rec props
+    | GetProp prop <- accessor ->
+        case Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props of
+          Just sem ->
+            sem
+          Nothing ->
+            evalAccessor env rec accessor
+  NeutLit (LitArray values)
+    | GetIndex n <- accessor
+    , Just sem <- Array.index values n ->
+        sem
+  NeutData _ _ _ _ fields
+    | GetCtorField _ _ _ _ _ n <- accessor
+    , Just (Tuple _ sem) <- Array.index fields n ->
+        sem
+  NeutFail err ->
+    NeutFail err
+  lhs' ->
+    NeutAccessor lhs' accessor
 
-evalUpdate :: Env -> BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
-evalUpdate initEnv initLhs props =
-  evalAssocLet initEnv initLhs \_ lhs -> case lhs of
-    NeutLit (LitRecord props') ->
-      NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
-    NeutUpdate r props' ->
-      NeutUpdate r (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))
-    _ ->
-      NeutUpdate lhs props
+evalUpdate :: BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
+evalUpdate lhs props = evalAssocLet lhs case _ of
+  NeutLit (LitRecord props') ->
+    NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
+  NeutUpdate r props' ->
+    NeutUpdate r (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))
+  lhs' ->
+    NeutUpdate lhs' props
 
 evalBranches :: Env -> NonEmptyArray (SemConditional BackendSemantics) -> Lazy BackendSemantics -> BackendSemantics
 evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
@@ -575,31 +573,18 @@ rewriteBranches k = go
 evalPair :: forall f. Eval f => Env -> Pair f -> SemConditional BackendSemantics
 evalPair env (Pair a b) = SemConditional (defer \_ -> eval env a) (defer \_ -> eval env b)
 
-evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
-evalAssocLet env sem go = case sem of
+evalAssocLet :: BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+evalAssocLet sem go = case sem of
   SemLet ident val k ->
     SemLet ident val \nextVal1 ->
-      makeLet Nothing (k nextVal1) \nextVal2 ->
-        go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
+      makeLet Nothing (k nextVal1) go
   SemLetRec vals k ->
     SemLetRec vals \nextVals1 ->
-      makeLet Nothing (k nextVals1) \nextVal2 ->
-        go (bindLocal (bindLocal env (Group nextVals1)) (One nextVal2)) nextVal2
+      makeLet Nothing (k nextVals1) go
   NeutFail err ->
     NeutFail err
   _ ->
-    go env sem
-
-evalAssocLet2
-  :: Env
-  -> BackendSemantics
-  -> BackendSemantics
-  -> (Env -> BackendSemantics -> BackendSemantics -> BackendSemantics)
-  -> BackendSemantics
-evalAssocLet2 env sem1 sem2 go =
-  evalAssocLet env sem1 \env' sem1' ->
-    evalAssocLet env' sem2 \env'' sem2' ->
-      go env'' sem1' sem2'
+    go sem
 
 makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
 makeLet ident binding go = case binding of
@@ -651,8 +636,7 @@ evalPrimOp env = case _ of
       _, NeutFail err ->
         NeutFail err
       _, _ ->
-        evalAssocLet env x \_ x' ->
-          NeutPrimOp (Op1 op1 x')
+        evalAssocLet x (NeutPrimOp <<< Op1 op1)
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
@@ -758,11 +742,12 @@ evalPrimOp env = case _ of
           NeutFail err, _ -> NeutFail err
           _, NeutFail err -> NeutFail err
           _, _ ->
-            evalAssocLet2 env x y \_ x' y' ->
-              if isAssocPrimOp op2 then
-                evalAssocOp env (Right op2) x' y'
-              else
-                NeutPrimOp (Op2 op2 x' y')
+            evalAssocLet x \x' ->
+              evalAssocLet y \y' ->
+                if isAssocPrimOp op2 then
+                  evalAssocOp env (Right op2) x' y'
+                else
+                  NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
