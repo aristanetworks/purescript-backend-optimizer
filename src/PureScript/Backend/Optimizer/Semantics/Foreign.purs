@@ -468,13 +468,13 @@ record_builder_copyRecord = Tuple (qualified "Record.Builder" "copyRecord") go
 record_builder_unsafeInsert :: ForeignSemantics
 record_builder_unsafeInsert = Tuple (qualified "Record.Builder" "unsafeInsert") go
   where
-  go env _ = case _ of
+  go _ _ = case _ of
     [ ExternApp [ NeutLit (LitString prop), value, NeutLit (LitRecord props) ] ] ->
       Just $ NeutLit (LitRecord (Array.snoc props (Prop prop value)))
     [ ExternApp [ NeutLit (LitString prop), value, r@(NeutUpdate _ _) ] ] ->
-      Just $ evalUpdate env r [ Prop prop value ]
+      Just $ evalUpdate r [ Prop prop value ]
     [ ExternApp [ NeutLit (LitString prop), value, other ] ] | Just r <- viewCopyRecord other ->
-      Just $ evalUpdate env r [ Prop prop value ]
+      Just $ evalUpdate r [ Prop prop value ]
     _ ->
       Nothing
 
@@ -504,11 +504,11 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
       Just $ NeutLit (LitRecord props')
     [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _) _) ] ] -> do
       let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
-      Just $ evalUpdate env r [ update ]
+      Just $ evalUpdate r [ update ]
     [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
       Just $ makeLet Nothing r \r' -> do
         let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
-        evalUpdate env r [ update ]
+        evalUpdate r [ update ]
     _ ->
       Nothing
 
@@ -559,9 +559,9 @@ record_unsafe_unsafeHas = Tuple (qualified "Record.Unsafe" "unsafeHas") go
 record_unsafe_unsafeSet :: ForeignSemantics
 record_unsafe_unsafeSet = Tuple (qualified "Record.Unsafe" "unsafeSet") go
   where
-  go env _ = case _ of
+  go _ _ = case _ of
     [ ExternApp [ NeutLit (LitString prop), value, r ] ] ->
-      Just $ evalUpdate env r [ Prop prop value ]
+      Just $ evalUpdate r [ Prop prop value ]
     _ ->
       Nothing
 
