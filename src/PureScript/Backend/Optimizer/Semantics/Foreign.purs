@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, EvalRef(..), ExternSpine(..), evalAccessor, evalApp, evalAssocOp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, EvalRef(..), ExternSpine(..), evalAccessor, evalApp, evalAssocOp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeEffectBind, makeLet)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
@@ -362,11 +362,11 @@ effectBind :: ForeignEval
 effectBind env _ = case _ of
   [ ExternApp [ eff, SemLam ident next ] ] ->
     Just $ makeLet Nothing eff \nextEff ->
-      SemEffectBind ident nextEff next
+      makeEffectBind ident nextEff next
   [ ExternApp [ eff, k ] ] ->
     Just $ makeLet Nothing eff \nextEff ->
       makeLet Nothing k \nextK ->
-        SemEffectBind Nothing nextEff \a ->
+        makeEffectBind Nothing nextEff \a ->
           evalApp env nextK [ a ]
   _ -> Nothing
 
@@ -375,7 +375,7 @@ effectMap env _ = case _ of
   [ ExternApp [ fn ] ] ->
     Just $ makeLet Nothing fn \fn' ->
       SemLam Nothing \val ->
-        SemEffectBind Nothing val \nextVal ->
+        makeEffectBind Nothing val \nextVal ->
           SemEffectPure (evalApp env fn' [ nextVal ])
   _ -> Nothing
 
@@ -412,7 +412,7 @@ effectRefModify env _ = case _ of
   [ ExternApp [ fn, ref ] ] ->
     Just $ makeLet Nothing fn \fn' ->
       makeLet Nothing ref \ref' ->
-        SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
+        makeEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
           NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
   _ ->
     Nothing
