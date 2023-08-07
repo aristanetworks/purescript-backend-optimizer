@@ -18,6 +18,7 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (guard, power)
 import Data.Newtype (over2, unwrap)
 import Data.Number.Format as Number
+import Data.Ord.Down (Down(..))
 import Data.Posix.Signal (Signal(..))
 import Data.Set (Set)
 import Data.Set as Set
@@ -254,8 +255,8 @@ main cliRoot =
         allSteps <- liftEffect (Ref.read state.steps)
         when args.printTiming do
           endTime <- liftEffect now
-          timings <- Array.sortBy (comparing snd) <<< Map.toUnfoldable <$> liftEffect (Ref.read state.timings)
-          let topTimings = Array.take 20 $ Array.reverse timings
+          timings <- Array.sortBy (comparing (Down <<< snd)) <<< Map.toUnfoldable <$> liftEffect (Ref.read state.timings)
+          let topTimings = Array.take 20 timings
           Console.log $ "\nTop " <> show (Array.length topTimings) <> " slowest modules:"
           Console.log $ printTimings topTimings
           Console.log $ "\nTotal build time: " <> formatMs (timeDiff state.startTime endTime)
