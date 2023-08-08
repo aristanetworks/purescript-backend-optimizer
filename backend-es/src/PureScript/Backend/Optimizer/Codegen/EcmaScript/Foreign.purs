@@ -10,7 +10,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), SemConditional(..), evalApp, evalPrimOp, liftInt, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), SemConditional(..), evalApp, evalPrimOp, liftInt, makeEffectBind, makeLet)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSemantics, qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..))
 import PureScript.Backend.Optimizer.Utils (foldr1Array)
@@ -239,7 +239,7 @@ foreign_object_st_delete = Tuple (qualified "Foreign.Object.ST" "delete") go
       Just $
         makeLet Nothing a \a' ->
           SemLam Nothing \b ->
-            SemEffectBind Nothing (evalApp env (NeutStop qual) [ a', b ]) \_ ->
+            makeEffectBind Nothing (evalApp env (NeutStop qual) [ a', b ]) \_ ->
               SemEffectPure b
     _ ->
       Nothing
@@ -253,7 +253,7 @@ foreign_object_st_poke = Tuple (qualified "Foreign.Object.ST" "poke") go
         makeLet Nothing a \a' ->
           makeLet Nothing b \b' ->
             SemLam Nothing \c ->
-              SemEffectBind Nothing (evalApp env (NeutStop qual) [ a', b', c ]) \_ ->
+              makeEffectBind Nothing (evalApp env (NeutStop qual) [ a', b', c ]) \_ ->
                 SemEffectPure c
     _ ->
       Nothing
