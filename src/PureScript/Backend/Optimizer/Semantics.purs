@@ -26,7 +26,6 @@ import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
-import Safe.Coerce (coerce)
 
 type Spine a = Array a
 
@@ -68,30 +67,16 @@ data SemConditional a = SemConditional (Lazy a) (Lazy a)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
-  | ExprRewrite BackendAnalysis BackendRewrite
+  | ExprRewrite BackendAnalysis (BackendRewrite BackendExpr)
 
-newtype EqBackendExpr = EqBackendExpr BackendExpr
-
-instance Eq EqBackendExpr where
-  eq (EqBackendExpr a) (EqBackendExpr b) =
-    case a, b of
-      ExprSyntax _ x, ExprSyntax _ y -> do
-        let co = coerce :: BackendSyntax BackendExpr -> BackendSyntax EqBackendExpr
-        co x == co y
-      _, _ ->
-        false
-
-eqBackendExpr :: BackendExpr -> BackendExpr -> Boolean
-eqBackendExpr a b = case a, b of
-  ExprSyntax (BackendAnalysis s1) x, ExprSyntax (BackendAnalysis s2) y -> do
-    let co = coerce :: BackendSyntax BackendExpr -> BackendSyntax EqBackendExpr
-    -- TODO: Compare rewrites for equality?
-    not s1.rewrite
-      && not s2.rewrite
-      && s1.size == s2.size
-      && co x == co y
-  _, _ ->
-    false
+instance Eq BackendExpr where
+  eq = case _, _ of
+    ExprSyntax (BackendAnalysis s1) x, ExprSyntax (BackendAnalysis s2) y ->
+      s1.size == s2.size && x == y
+    ExprRewrite (BackendAnalysis s1) x, ExprRewrite (BackendAnalysis s2) y ->
+      s1.size == s2.size && x == y
+    _, _ ->
+      false
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -106,27 +91,33 @@ type EffectBindingAssoc a =
   , pure :: Boolean
   }
 
-data BackendRewrite
-  = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
+data BackendRewrite a
+  = RewriteInline (Maybe Ident) Level a a
+  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) a a
   | RewriteStop (Qualified Ident)
-  | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
-  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
-  | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
+  | RewriteUnpackOp (Maybe Ident) Level (UnpackOp a) a
+  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair a)) a a
+  | RewriteDistBranchesOp (NonEmptyArray (Pair a)) a (DistOp a)
 
-data UnpackOp
-  = UnpackRecord (Array (Prop BackendExpr))
-  | UnpackUpdate BackendExpr (Array (Prop BackendExpr))
-  | UnpackArray (Array BackendExpr)
-  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr))
+derive instance Eq a => Eq (BackendRewrite a)
 
-data DistOp
-  = DistApp (NonEmptyArray BackendExpr)
-  | DistUncurriedApp (Array BackendExpr)
+data UnpackOp a
+  = UnpackRecord (Array (Prop a))
+  | UnpackUpdate a (Array (Prop a))
+  | UnpackArray (Array a)
+  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
+
+derive instance Eq a => Eq (UnpackOp a)
+
+data DistOp a
+  = DistApp (NonEmptyArray a)
+  | DistUncurriedApp (Array a)
   | DistAccessor BackendAccessor
   | DistPrimOp1 BackendOperator1
-  | DistPrimOp2L BackendOperator2 BackendExpr
-  | DistPrimOp2R BackendExpr BackendOperator2
+  | DistPrimOp2L BackendOperator2 a
+  | DistPrimOp2R a BackendOperator2
+
+derive instance Eq a => Eq (DistOp a)
 
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
@@ -1360,7 +1351,7 @@ buildBranchCond ctx (Pair a b) c = case b of
         c
     | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x1)) <- a
     , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x2)) <- c
-    , eqBackendExpr x1 x2 ->
+    , x1 == x2 ->
         c
   _ ->
     build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
@@ -1406,7 +1397,7 @@ simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs, def of
   , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2
   ],
   ExprSyntax _ (Fail _) ->
-    if eqBackendExpr expr1 expr2 then
+    if expr1 == expr2 then
       Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
     else
       Nothing
@@ -1423,7 +1414,7 @@ simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs, def of
     --       else $def
     | Pair x (ExprSyntax _ (Branch pairs2 def2)) <- NonEmptyArray.last pairs
     , [ Pair y z ] <- NonEmptyArray.toArray pairs2
-    , eqBackendExpr def def2 ->
+    , def == def2 ->
         Just $ build ctx (Branch (NonEmptyArray.singleton (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z)) def)
     -- Flatten right-associated branches
     | ExprSyntax _ (Branch pairs2 def2) <- def ->
@@ -1698,7 +1689,7 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) $ foldBackendExpr NeutralExpr (\_ neutExpr -> neutExpr) init
 
-foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite -> a -> a) -> BackendExpr -> a
+foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite BackendExpr -> a -> a) -> BackendExpr -> a
 foldBackendExpr foldSyntax foldRewrite = go
   where
   go = case _ of

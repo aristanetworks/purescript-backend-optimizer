@@ -38,7 +38,6 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (class Foldable, fold, foldMap, foldl, foldlDefault, foldr, foldrDefault)
-import Data.Function (on)
 import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (class Newtype)
@@ -46,13 +45,12 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Data.Tuple (Tuple(..), fst, snd)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import Partial.Unsafe (unsafePartial)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esEscapeSpecial, esIndex, esInt, esModuleName, esNumber, esString, esTernary)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), ModuleName(..), Qualified(..))
-import Safe.Coerce (coerce)
 
 data EsModuleStatement a
   = EsImport (Array EsIdent) String
@@ -228,17 +226,9 @@ data EsExpr = EsExpr EsAnalysis (EsSyntax EsExpr)
 instance HasSyntax EsExpr where
   syntaxOf (EsExpr _ syn) = syn
 
-newtype EsExprEq = EsExprEq EsExpr
-
-instance Eq EsExprEq where
-  eq (EsExprEq (EsExpr _ a)) (EsExprEq (EsExpr _ b)) = do
-    let co = coerce :: EsSyntax EsExpr -> EsSyntax EsExprEq
-    co a == co b
-
-eqEsExpr :: EsExpr -> EsExpr -> Boolean
-eqEsExpr (EsExpr (EsAnalysis s1) a) (EsExpr (EsAnalysis s2) b) = do
-  let co = coerce :: EsSyntax EsExpr -> EsSyntax EsExprEq
-  s1.size == s2.size && co a == co b
+instance Eq EsExpr where
+  eq (EsExpr (EsAnalysis s1) a) (EsExpr (EsAnalysis s2) b) =
+    s1.size == s2.size && a == b
 
 newtype EsAnalysis = EsAnalysis
   { deps :: Set ModuleName
@@ -353,8 +343,8 @@ buildStatements = traverse go <<< mergeBranchTails
         | otherwise = case unsafePartial (Array.unsafeIndex as ix) of
             EsExpr _ (EsIfElse hd ds [])
               | Just ta <- Array.index as (ix + 1)
-              , Just fk <- Array.findIndex (eqEsExpr ta) ds
-              , eq2 (Array.drop (fk + 1) ds) (Array.drop (ix + 2) as) ->
+              , Just fk <- Array.findIndex (eq ta) ds
+              , Array.drop (fk + 1) ds == Array.drop (ix + 2) as ->
                   case Array.take fk ds of
                     [] ->
                       Array.take ix as <> Array.drop (ix + 1) as
@@ -369,19 +359,6 @@ buildStatements = traverse go <<< mergeBranchTails
             _ ->
               loop (ix + 1)
     loop 0
-
-  eq2 :: Array EsExpr -> Array EsExpr -> Boolean
-  eq2 xs ys = do
-    let
-      len = Array.length xs
-      loop ix
-        | ix == len = true
-        | unsafePartial (eqEsExpr (Array.unsafeIndex xs ix) (Array.unsafeIndex ys ix)) = loop (ix + 1)
-        | otherwise = false
-    if Array.length ys == len then
-      loop 0
-    else
-      false
 
 inlineReturnBlock :: EsExpr -> Maybe (Array EsExpr)
 inlineReturnBlock (EsExpr _ expr) = case expr of
