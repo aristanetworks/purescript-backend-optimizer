@@ -1367,9 +1367,9 @@ isBooleanTail = case _ of
 
 simplifyBranchBoolean :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
 simplifyBranchBoolean ctx pairs def = case NonEmptyArray.toArray pairs, def of
-  [ Pair expr body], ExprSyntax _ (Lit (LitBoolean false)) ->
+  [ Pair expr body ], ExprSyntax _ (Lit (LitBoolean false)) ->
     Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
-  [ Pair expr (ExprSyntax _ (Lit (LitBoolean body)))], ExprSyntax _ (Lit (LitBoolean other))
+  [ Pair expr (ExprSyntax _ (Lit (LitBoolean body))) ], ExprSyntax _ (Lit (LitBoolean other))
     | body && not other ->
         Just expr
     | not body && other ->
