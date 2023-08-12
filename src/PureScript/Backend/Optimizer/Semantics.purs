@@ -1281,7 +1281,6 @@ build ctx = case _ of
   Let ident level binding body
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
-  Let ident level binding body
     | Just expr <- shouldUncurryAbs ident level binding body ->
         expr
     | Just expr <- shouldUnpackRecord ident level binding body ->
@@ -1343,14 +1342,6 @@ buildBranchCond ctx pair def
       build ctx (Branch (NonEmptyArray.cons pair pairs) def')
   | otherwise =
       build ctx (Branch (NonEmptyArray.singleton pair) def)
-
-isBooleanTail :: forall a. BackendSyntax a -> Boolean
-isBooleanTail = case _ of
-  Lit _ -> true
-  Var _ -> true
-  Local _ _ -> true
-  PrimOp _ -> true
-  _ -> false
 
 simplifyCondIsTag :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
 simplifyCondIsTag _ = case _, _ of
