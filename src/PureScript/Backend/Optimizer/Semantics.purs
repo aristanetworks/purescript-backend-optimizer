@@ -1324,38 +1324,25 @@ build ctx = case _ of
     binding
   EffectDefer expr@(ExprSyntax _ (EffectDefer _)) ->
     expr
-  Branch pairs def
-    | ExprSyntax _ (Branch pairs2 def2) <- def ->
-        build ctx (Branch (pairs <> pairs2) def2)
-    | Just expr <- simplifyBranchBoolean ctx pairs def ->
-        expr
-    | Just expr <- simplifyBranchRedundantElse ctx pairs def ->
-        expr
-    | Just expr <- simplifyBranchLiftAnd ctx pairs def ->
-        expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr ->
     buildDefault ctx expr
 
 buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
-buildBranchCond ctx (Pair a b) c = case b of
-  ExprSyntax _ (Lit (LitBoolean true))
-    | ExprSyntax _ (Lit (LitBoolean true)) <- c ->
-        c
-    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
-        a
-    | ExprSyntax _ x <- c, isBooleanTail x ->
-        build ctx (PrimOp (Op2 OpBooleanOr a c))
-  ExprSyntax _ (Lit (LitBoolean false))
-    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
-        c
-    | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x1)) <- a
-    , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x2)) <- c
-    , x1 == x2 ->
-        c
-  _ ->
-    build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
+buildBranchCond ctx pair def
+  | Just expr <- simplifyCondIsTag ctx pair def =
+      expr
+  | Just expr <- simplifyCondBoolean ctx pair def =
+      expr
+  | Just expr <- simplifyCondLiftAnd ctx pair def =
+      expr
+  | Just expr <- simplifyCondRedundantElse ctx pair def =
+      expr
+  | ExprSyntax _ (Branch pairs def') <- def =
+      build ctx (Branch (NonEmptyArray.cons pair pairs) def')
+  | otherwise =
+      build ctx (Branch (NonEmptyArray.singleton pair) def)
 
 isBooleanTail :: forall a. BackendSyntax a -> Boolean
 isBooleanTail = case _ of
@@ -1365,32 +1352,43 @@ isBooleanTail = case _ of
   PrimOp _ -> true
   _ -> false
 
-simplifyBranchBoolean :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranchBoolean ctx pairs def = case NonEmptyArray.toArray pairs, def of
-  [ Pair expr body ], ExprSyntax _ (Lit (LitBoolean false)) ->
-    Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
-  [ Pair expr (ExprSyntax _ (Lit (LitBoolean body))) ], ExprSyntax _ (Lit (LitBoolean other))
-    | body && not other ->
-        Just expr
-    | not body && other ->
-        Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+simplifyCondIsTag :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondIsTag _ = case _, _ of
+  Pair (ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x1))) (ExprSyntax _ (Lit (LitBoolean false))), def@(ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x2)))
+    | x1 == x2 ->
+        Just def
   _, _ ->
     Nothing
 
-simplifyBranchRedundantElse :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranchRedundantElse ctx pairs _ = case NonEmptyArray.toArray pairs of
-  [ Pair expr1 body1, Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2 ]
-    | expr1 == expr2 ->
-        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
-  _ ->
+simplifyCondBoolean :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondBoolean ctx = case _, _ of
+  Pair expr body@(ExprSyntax _ (Lit (LitBoolean body'))), ExprSyntax _ (Lit (LitBoolean other))
+    | body' == other ->
+        Just body
+    | body' && not other ->
+        Just expr
+    | not body' && other ->
+        Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+  Pair expr body, ExprSyntax _ (Lit (LitBoolean false)) ->
+    Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
+  _, _ ->
     Nothing
 
-simplifyBranchLiftAnd :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranchLiftAnd ctx pairs1 def1 = case NonEmptyArray.last pairs1 of
-  Pair x (ExprSyntax _ (Branch pairs2 def2))
-    | [ Pair y z ] <- NonEmptyArray.toArray pairs2
+simplifyCondRedundantElse :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondRedundantElse ctx = case _, _ of
+  Pair expr1 body1, ExprSyntax _ (Branch pairs _)
+    | Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2 <- NonEmptyArray.head pairs
+    , expr1 == expr2 ->
+        Just $ buildBranchCond ctx (Pair expr1 body1) body2
+  _, _ ->
+    Nothing
+
+simplifyCondLiftAnd :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondLiftAnd ctx pair def1 = case pair of
+  Pair x (ExprSyntax _ (Branch pairs def2))
+    | [ Pair y z ] <- NonEmptyArray.toArray pairs
     , def1 == def2 ->
-        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z)) def1
+        Just $ buildBranchCond ctx (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z) def1
   _ ->
     Nothing
 
