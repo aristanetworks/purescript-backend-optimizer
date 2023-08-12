@@ -28,6 +28,7 @@ esInlineMap = Map.fromFoldable
   , data_array_st_new
   , data_array_st_pushAll
   , data_array_st_unshiftAll
+  , data_semigroup_concatArray
   , effect_forE
   , effect_foreachE
   , effect_whileE
@@ -84,6 +85,15 @@ arraySTAll method env _ = case _ of
     Just $ makeThunk $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ spreadConcatArray $ codegenExpr env vals
   _ ->
     Nothing
+
+data_semigroup_concatArray :: EsInline
+data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") go
+  where
+  go env _ = case _ of
+    InlineApp [ a, b ] ->
+      Just $ build $ EsArray $ spreadConcatArray (codegenExpr env a) <> spreadConcatArray (codegenExpr env b)
+    _ ->
+      Nothing
 
 effect_forE :: EsInline
 effect_forE = Tuple (qualified "Effect" "forE") forRangeLoop

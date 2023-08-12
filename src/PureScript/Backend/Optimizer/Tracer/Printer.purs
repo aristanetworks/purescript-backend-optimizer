@@ -292,10 +292,6 @@ printBackendRewriteCase = case _ of
     printRewrite "Inline"
   RewriteUncurry _ _ _ _ _ ->
     printRewrite "Uncurry"
-  RewriteLetAssoc _ _ ->
-    printRewrite "LetAssoc"
-  RewriteEffectBindAssoc _ _ ->
-    printRewrite "EffectBindAssoc"
   RewriteStop _ ->
     printRewrite "Stop"
   RewriteUnpackOp _ _ unpackOp _ ->
