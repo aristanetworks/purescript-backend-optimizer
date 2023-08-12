@@ -15,9 +15,7 @@ const genericTest = {
       if (x._1.tag === "Inr") {
         if (x._1._1.tag === "Inl") { return Baz; }
         if (x._1._1.tag === "Inr") { return Qux; }
-        $runtime.fail();
       }
-      $runtime.fail();
     }
     $runtime.fail();
   },

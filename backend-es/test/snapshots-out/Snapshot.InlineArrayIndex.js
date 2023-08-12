@@ -6,11 +6,7 @@ import * as Data$dShow from "../Data.Show/index.js";
 const assertEqual = /* #__PURE__ */ Assert.assertEqual({
   eq: x => y => {
     if (x.tag === "Nothing") { return y.tag === "Nothing"; }
-    if (x.tag === "Just") {
-      if (y.tag === "Just") { return x._1 === y._1; }
-      return false;
-    }
-    return false;
+    return x.tag === "Just" && y.tag === "Just" && x._1 === y._1;
   }
 })({
   show: v => {
