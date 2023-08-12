@@ -334,6 +334,11 @@ buildStatements = traverse go <<< mergeBranchTails
     _ ->
       Tuple (esAnalysisOf expr) expr
 
+  -- For nested if/else blocks, merges a duplicate tail of alternatives
+  -- via fallthrough. If an inner branch has a tail that matches the
+  -- parent's tail, we can just delete the tail from the inner branch.
+  -- We can't do this in BackendSyntax because it only has complete
+  -- if/else, but ES can exploit imperative control-flow.
   mergeBranchTails :: Array EsExpr -> Array EsExpr
   mergeBranchTails as = do
     let
@@ -343,9 +348,9 @@ buildStatements = traverse go <<< mergeBranchTails
         | otherwise = case unsafePartial (Array.unsafeIndex as ix) of
             EsExpr _ (EsIfElse hd ds [])
               | Just ta <- Array.index as (ix + 1)
-              , Just fk <- Array.findIndex (eq ta) ds
-              , Array.drop (fk + 1) ds == Array.drop (ix + 2) as ->
-                  case Array.take fk ds of
+              , Just tb <- Array.findIndex (eq ta) ds
+              , Array.drop (tb + 1) ds == Array.drop (ix + 2) as ->
+                  case Array.take tb ds of
                     [] ->
                       Array.take ix as <> Array.drop (ix + 1) as
                     [ EsExpr _ (EsIfElse bb cc []) ] ->

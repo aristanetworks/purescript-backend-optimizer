@@ -1282,26 +1282,20 @@ build ctx = case _ of
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
   Let ident level binding body
-    | Just expr' <- shouldUncurryAbs ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackRecord ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackUpdate ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackCtor ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackArray ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldDistributeBranches ident level binding body ->
-        expr'
-  Let _ level binding body
-    | Just expr' <- shouldEtaReduce level binding body ->
-        expr'
+    | Just expr <- shouldUncurryAbs ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackRecord ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackUpdate ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackCtor ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackArray ident level binding body ->
+        expr
+    | Just expr <- shouldDistributeBranches ident level binding body ->
+        expr
+    | Just expr <- shouldEtaReduce level binding body ->
+        expr
   App (ExprSyntax analysis (Branch bs def)) tl
     | Just expr' <- shouldDistributeBranchApps analysis bs def tl ->
         expr'
@@ -1330,8 +1324,15 @@ build ctx = case _ of
     binding
   EffectDefer expr@(ExprSyntax _ (EffectDefer _)) ->
     expr
-  Branch pairs def | Just expr <- simplifyBranches ctx pairs def ->
-    expr
+  Branch pairs def
+    | ExprSyntax _ (Branch pairs2 def2) <- def ->
+        build ctx (Branch (pairs <> pairs2) def2)
+    | Just expr <- simplifyBranchBoolean ctx pairs def ->
+        expr
+    | Just expr <- simplifyBranchRedundantElse ctx pairs def ->
+        expr
+    | Just expr <- simplifyBranchLiftAnd ctx pairs def ->
+        expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr ->
@@ -1364,63 +1365,34 @@ isBooleanTail = case _ of
   PrimOp _ -> true
   _ -> false
 
-simplifyBranches :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs, def of
-  -- if $expr then $body else $bool
-  [ Pair expr body ],
-  ExprSyntax _ (Lit (LitBoolean bool))
-    | bool ->
-        case body of
-          -- from: if $expr then false else true
-          -- to:   not $expr
-          ExprSyntax _ (Lit (LitBoolean false)) ->
-            Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
-          -- from: if $expr then $body else true
-          -- to:   ($expr && body) || not $expr [duplicates $expr]
-          _ ->
-            Nothing
-    | otherwise ->
-        case body of
-          -- from: if $expr then true else false
-          -- to:   $expr
-          ExprSyntax _ (Lit (LitBoolean true)) ->
-            Just expr
-          -- from: if expr then body else false
-          -- to:   expr && body
-          _ ->
-            Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
-  -- from: if $expr then $body1
-  --       else if not $expr then $body2
-  --       else fail
-  -- to:   if $expr then $body1 else $body2
-  [ Pair expr1 body1
-  , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2
-  ],
-  ExprSyntax _ (Fail _) ->
-    if expr1 == expr2 then
-      Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
-    else
-      Nothing
-  _, _
-    -- | xs <- NonEmptyArray.takeWhile (\(Pair _ b) -> not (eqBackendExpr def b)) pairs
-    -- , Array.length xs < NonEmptyArray.length pairs ->
-    --     if
-    -- from: if ...
-    --       else if $x then
-    --         if $y then $z else $def
-    --       else $def
-    -- to:   if ...
-    --       else if $x && $y then $z
-    --       else $def
-    | Pair x (ExprSyntax _ (Branch pairs2 def2)) <- NonEmptyArray.last pairs
-    , [ Pair y z ] <- NonEmptyArray.toArray pairs2
-    , def == def2 ->
-        Just $ build ctx (Branch (NonEmptyArray.singleton (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z)) def)
-    -- Flatten right-associated branches
-    | ExprSyntax _ (Branch pairs2 def2) <- def ->
-        Just $ build ctx (Branch (pairs <> pairs2) def2)
-    | otherwise ->
-        Nothing
+simplifyBranchBoolean :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
+simplifyBranchBoolean ctx pairs def = case NonEmptyArray.toArray pairs, def of
+  [ Pair expr body], ExprSyntax _ (Lit (LitBoolean false)) ->
+    Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
+  [ Pair expr (ExprSyntax _ (Lit (LitBoolean body)))], ExprSyntax _ (Lit (LitBoolean other))
+    | body && not other ->
+        Just expr
+    | not body && other ->
+        Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+  _, _ ->
+    Nothing
+
+simplifyBranchRedundantElse :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
+simplifyBranchRedundantElse ctx pairs _ = case NonEmptyArray.toArray pairs of
+  [ Pair expr1 body1, Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2 ]
+    | expr1 == expr2 ->
+        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
+  _ ->
+    Nothing
+
+simplifyBranchLiftAnd :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
+simplifyBranchLiftAnd ctx pairs1 def1 = case NonEmptyArray.last pairs1 of
+  Pair x (ExprSyntax _ (Branch pairs2 def2))
+    | [ Pair y z ] <- NonEmptyArray.toArray pairs2
+    , def1 == def2 ->
+        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z)) def1
+  _ ->
+    Nothing
 
 buildStop :: Ctx -> Qualified Ident -> BackendExpr
 buildStop ctx stop = ExprRewrite (analyzeDefault ctx (Var stop)) (RewriteStop stop)
