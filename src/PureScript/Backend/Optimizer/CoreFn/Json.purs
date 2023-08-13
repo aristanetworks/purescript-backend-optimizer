@@ -1,27 +1,51 @@
+-- @inline Data.Argonaut.Core.caseJson always
 module PureScript.Backend.Optimizer.CoreFn.Json
   ( decodeModule
   , decodeModule'
   , decodeAnn
   ) where
 
-import Prelude
+import Prelude hiding (bind)
 
-import Control.Alternative (guard, (<|>))
+import Control.Alternative (guard)
 import Control.Monad.Error.Class (throwError)
-import Data.Argonaut (Json, JsonDecodeError(..), decodeJson)
-import Data.Argonaut.Decode.Decoders (decodeArray, decodeBoolean, decodeInt, decodeJObject, decodeNumber, decodeString, decodeTuple, getField, getFieldOptional')
+import Control.Monad.ST as ST
+import Control.Monad.ST.Ref as STRef
+import Data.Argonaut (Json, JsonDecodeError(..), caseJson, decodeJson, isNull)
 import Data.Array as Array
-import Data.Either (Either, note)
+import Data.Array.ST as STArray
+import Data.Either (Either(..), note)
 import Data.Foldable (intercalate)
+import Data.Int as Int
+import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..))
 import Foreign.Object (Object)
 import Foreign.Object as Object
-import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment(..), ConstructorType(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), ReExport(..), SourcePos, SourceSpan)
+import Partial.Unsafe (unsafePartial)
+import Prelude as Prelude
+import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment(..), ConstructorType(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), ReExport(..), SourcePos, SourceSpan, emptySpan)
 import Safe.Coerce (coerce)
+import Unsafe.Coerce (unsafeCoerce)
 
 type JsonDecode = Either JsonDecodeError
+
+infixr 2 alt as <|>
+
+alt :: forall e a. Either e a -> (Unit -> Either e a) -> Either e a
+alt a k = case a of
+  Left _ -> k unit
+  Right _ -> a
+
+-- Either's bind implementation is not ideal from an optimization
+-- standpoint and generates awkward code.
+bind :: forall e a b. Either e a -> (a -> Either e b) -> Either e b
+bind a k = case a of
+  Left err ->
+    Left err
+  Right a' ->
+    k a'
 
 decodeSourcePos :: Json -> JsonDecode SourcePos
 decodeSourcePos json = do
@@ -82,11 +106,12 @@ decodeMeta json = do
       throwError $ TypeMismatch "Meta"
 
 decodeAnn :: String -> Json -> JsonDecode Ann
-decodeAnn path json = do
+decodeAnn _path json = do
   obj <- decodeJObject json
-  span <- getField (decodeSourceSpan path) obj "sourceSpan"
+  -- Currently disabled because spans are not used and are a performance drain.
+  -- span <- getField (decodeSourceSpan path) obj "sourceSpan"
   meta <- getFieldOptional' decodeMeta obj "meta"
-  pure $ Ann { span, meta }
+  pure $ Ann { span: emptySpan, meta }
 
 decodeImport :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Import a)
 decodeImport decodeAnn' json = do
@@ -255,10 +280,107 @@ decodeLiteral dec json = do
       throwError $ TypeMismatch "Literal"
 
 decodeRecord :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Array (Prop a))
-decodeRecord = decodeArray <<< map (map (uncurry Prop)) <<< decodeTuple decodeString
+decodeRecord = decodeArray <<< decodeProp
+  where
+  decodeProp decoder json = do
+    arr <- decodeJArray json
+    case arr of
+      [ a, b ] -> do
+        prop <- decodeString a
+        value <- decoder b
+        pure $ Prop prop value
+      _ ->
+        Left $ TypeMismatch "Tuple"
 
 decodeComment :: Json -> JsonDecode Comment
 decodeComment json = do
   obj <- decodeJObject json
   LineComment <$> getField decodeString obj "LineComment"
-    <|> BlockComment <$> getField decodeString obj "BlockComment"
+    <|> \_ -> BlockComment <$> getField decodeString obj "BlockComment"
+
+decodeArray :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Array a)
+decodeArray decoder json = case decodeJArray json of
+  Left err ->
+    Left err
+  Right arr -> ST.run Prelude.do
+    out <- STArray.new
+    ix <- STRef.new 0
+    con <- STRef.new true
+    res <- STRef.new (unsafeCoerce unit)
+    let len = Array.length arr
+    ST.while (STRef.read con) Prelude.do
+      ix' <- STRef.read ix
+      if ix' == len then Prelude.do
+        out' <- STArray.unsafeFreeze out
+        _ <- STRef.write false con
+        _ <- STRef.write (Right out') res
+        pure unit
+      else
+        case decoder (unsafePartial (Array.unsafeIndex arr ix')) of
+          Left err -> Prelude.do
+            _ <- STRef.write false con
+            _ <- STRef.write (Left (AtIndex ix' err)) res
+            pure unit
+          Right val -> Prelude.do
+            _ <- STArray.push val out
+            _ <- STRef.write (ix' + 1) ix
+            pure unit
+    STRef.read res
+
+getField :: forall a. (Json -> JsonDecode a) -> Object Json -> String -> JsonDecode a
+getField decode obj prop =
+  case Object.lookup prop obj of
+    Nothing ->
+      Left $ AtKey prop MissingValue
+    Just json ->
+      decode json
+
+getFieldOptional' :: forall a. (Json -> JsonDecode a) -> Object Json -> String -> JsonDecode (Maybe a)
+getFieldOptional' decode obj prop = do
+  case Object.lookup prop obj of
+    Nothing ->
+      Right Nothing
+    Just json
+      | isNull json ->
+          Right Nothing
+      | otherwise ->
+          Just <$> decode json
+
+decodeJObject :: Json -> JsonDecode (Object Json)
+decodeJObject = caseJson fail fail fail fail fail Right
+  where
+  fail :: forall a. a -> JsonDecode (Object Json)
+  fail _ = Left $ TypeMismatch "Object"
+
+decodeJArray :: Json -> JsonDecode (Array Json)
+decodeJArray = caseJson fail fail fail fail Right fail
+  where
+  fail :: forall a. a -> JsonDecode (Array Json)
+  fail _ = Left $ TypeMismatch "Array"
+
+decodeString :: Json -> JsonDecode String
+decodeString = caseJson fail fail fail Right fail fail
+  where
+  fail :: forall a. a -> JsonDecode String
+  fail _ = Left $ TypeMismatch "String"
+
+decodeNumber :: Json -> JsonDecode Number
+decodeNumber = caseJson fail fail Right fail fail fail
+  where
+  fail :: forall a. a -> JsonDecode Number
+  fail _ = Left $ TypeMismatch "Number"
+
+decodeBoolean :: Json -> JsonDecode Boolean
+decodeBoolean = caseJson fail Right fail fail fail fail
+  where
+  fail :: forall a. a -> JsonDecode Boolean
+  fail _ = Left $ TypeMismatch "Boolean"
+
+decodeInt :: Json -> JsonDecode Int
+decodeInt json = do
+  num <- decodeNumber json
+  case Int.fromNumber num of
+    Nothing ->
+      Left $ TypeMismatch "Int"
+    Just int ->
+      Right int
