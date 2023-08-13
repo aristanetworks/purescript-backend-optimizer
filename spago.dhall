@@ -46,6 +46,7 @@ You can edit this file as you like.
   , "prelude"
   , "refs"
   , "safe-coerce"
+  , "st"
   , "strings"
   , "transformers"
   , "tuples"
