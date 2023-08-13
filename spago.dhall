@@ -7,7 +7,6 @@ You can edit this file as you like.
   [ "aff"
   , "ansi"
   , "argonaut"
-  , "argonaut-codecs"
   , "argparse-basic"
   , "arrays"
   , "bifunctors"
