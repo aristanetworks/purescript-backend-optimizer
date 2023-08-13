@@ -7,7 +7,7 @@ module PureScript.Backend.Optimizer.CoreFn.Json
 
 import Prelude hiding (bind)
 
-import Control.Alternative (guard, (<|>))
+import Control.Alternative (guard)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.ST as ST
 import Control.Monad.ST.Ref as STRef
@@ -30,6 +30,13 @@ import Safe.Coerce (coerce)
 import Unsafe.Coerce (unsafeCoerce)
 
 type JsonDecode = Either JsonDecodeError
+
+infixr 2 alt as <|>
+
+alt :: forall e a. Either e a -> (Unit -> Either e a) -> Either e a
+alt a k = case a of
+  Left _ -> k unit
+  Right _ -> a
 
 -- Either's bind implementation is not ideal from an optimization
 -- standpoint and generates awkward code.
@@ -289,7 +296,7 @@ decodeComment :: Json -> JsonDecode Comment
 decodeComment json = do
   obj <- decodeJObject json
   LineComment <$> getField decodeString obj "LineComment"
-    <|> BlockComment <$> getField decodeString obj "BlockComment"
+    <|> \_ -> BlockComment <$> getField decodeString obj "BlockComment"
 
 decodeArray :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Array a)
 decodeArray decoder json = case decodeJArray json of
