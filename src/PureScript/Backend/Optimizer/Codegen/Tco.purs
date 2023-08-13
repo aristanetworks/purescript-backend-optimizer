@@ -18,6 +18,7 @@ import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName, Qualified(..))
+import PureScript.Backend.Optimizer.Interned (Interned, intern)
 import PureScript.Backend.Optimizer.Semantics (NeutralExpr(..))
 import PureScript.Backend.Optimizer.Syntax (BackendEffect(..), BackendSyntax(..), Level, Pair(..))
 
@@ -26,7 +27,7 @@ type TcoScope = List TcoScopeItem
 type TcoScopeItem = Tuple Ident (NonEmptyArray TcoRef)
 
 data TcoRef
-  = TcoTopLevel (Qualified Ident)
+  = TcoTopLevel (Interned (Qualified Ident))
   | TcoLocal (Maybe Ident) Level
 
 derive instance Eq TcoRef
@@ -127,7 +128,7 @@ type TcoRole =
   , isLoop :: Boolean
   }
 
-usedTopLevel :: TcoAnalysis -> Set (Qualified Ident)
+usedTopLevel :: TcoAnalysis -> Set (Interned (Qualified Ident))
 usedTopLevel (TcoAnalysis { usages }) = usages
   # Map.keys
   # Set.mapMaybe case _ of
@@ -212,10 +213,10 @@ localTcoEnvGroup :: Level -> NonEmptyArray (Tuple Ident NeutralExpr) -> TcoEnv
 localTcoEnvGroup level = tcoEnvGroup \ident -> TcoLocal (Just ident) level
 
 topLevelTcoRefBindings :: ModuleName -> NonEmptyArray (Tuple Ident TcoExpr) -> Maybe (NonEmptyArray TcoRefBinding)
-topLevelTcoRefBindings mod = tcoRefBindings (TcoTopLevel <<< Qualified (Just mod))
+topLevelTcoRefBindings mod = tcoRefBindings (TcoTopLevel <<< intern <<< Qualified (Just mod))
 
 topLevelTcoEnvGroup :: ModuleName -> NonEmptyArray (Tuple Ident NeutralExpr) -> TcoEnv
-topLevelTcoEnvGroup mod = tcoEnvGroup (TcoTopLevel <<< Qualified (Just mod))
+topLevelTcoEnvGroup mod = tcoEnvGroup (TcoTopLevel <<< intern <<< Qualified (Just mod))
 
 isTailCalledIn :: TcoAnalysis -> NonEmptyArray TcoRefBinding -> Boolean
 isTailCalledIn analysis group = do

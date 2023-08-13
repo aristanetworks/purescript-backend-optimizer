@@ -12,12 +12,13 @@ import PureScript.Backend.Optimizer.Codegen.EcmaScript.Convert (CodegenEnv, Code
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (EsArrayElement(..), EsBindingPattern(..), EsExpr(..), EsIdent(..), EsObjectElement(..), EsRuntimeOp(..), EsSyntax(..), EsUnaryOp(..), build, toEsIdent)
 import PureScript.Backend.Optimizer.Codegen.Tco (TcoExpr(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Prop(..), Qualified(..))
+import PureScript.Backend.Optimizer.Interned (Interned(..))
 import PureScript.Backend.Optimizer.Semantics.Foreign (qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendSyntax(..))
 
-type EsInline = Tuple (Qualified Ident) EsInlineCall
-type EsInlineCall = CodegenEnv -> Qualified Ident -> InlineSpine TcoExpr -> Maybe EsExpr
-type EsInlineMap = Map (Qualified Ident) EsInlineCall
+type EsInline = Tuple (Interned (Qualified Ident)) EsInlineCall
+type EsInlineCall = CodegenEnv -> Interned (Qualified Ident) -> InlineSpine TcoExpr -> Maybe EsExpr
+type EsInlineMap = Map (Interned (Qualified Ident)) EsInlineCall
 
 esInlineMap :: EsInlineMap
 esInlineMap = Map.fromFoldable
@@ -256,7 +257,7 @@ spreadConcatArray = go <=< flattenBinCall (qualified "Data.Semigroup" "concatArr
     expr ->
       [ EsArraySpread expr ]
 
-flattenBinCall :: Qualified Ident -> EsExpr -> Array EsExpr
+flattenBinCall :: Interned (Qualified Ident) -> EsExpr -> Array EsExpr
 flattenBinCall qual = go
   where
   go :: EsExpr -> Array EsExpr
@@ -267,8 +268,8 @@ flattenBinCall qual = go
     _ ->
       [ expr ]
 
-isEsIdent :: Qualified Ident -> EsExpr -> Boolean
-isEsIdent (Qualified qual1 a) = case _ of
+isEsIdent :: Interned (Qualified Ident) -> EsExpr -> Boolean
+isEsIdent (Interned _ (Qualified qual1 a)) = case _ of
   EsExpr _ (EsIdent (Qualified qual2 (Embedded b ""))) ->
     qual1 == qual2 && a == b
   _ ->

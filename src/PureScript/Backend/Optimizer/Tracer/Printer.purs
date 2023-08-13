@@ -18,6 +18,7 @@ import Dodo as D
 import Dodo.Common as DC
 import PureScript.Backend.Optimizer.Convert (OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..))
+import PureScript.Backend.Optimizer.Interned (unInterned)
 import PureScript.Backend.Optimizer.Semantics (BackendExpr, BackendRewrite(..), DistOp(..), UnpackOp(..), foldBackendExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 
@@ -210,7 +211,7 @@ printBackendExpr =
 printBackendSyntax :: BackendSyntax PrecDoc -> PrecDoc
 printBackendSyntax = case _ of
   Var qi ->
-    Tuple PrecAtom $ printQualifiedIdent qi
+    Tuple PrecAtom $ printQualifiedIdent $ unInterned qi
   Local mbIdent lvl ->
     Tuple PrecAtom $ printLocal mbIdent lvl
   Lit lit ->
@@ -239,7 +240,7 @@ printBackendSyntax = case _ of
       , D.indent $ printRecord (D.text " =") $ map snd <$> propArr
       ]
   CtorSaturated qi _ _ _ values ->
-    printUncurriedApp false (Tuple PrecAtom (printQualifiedIdent qi)) (snd <$> values)
+    printUncurriedApp false (Tuple PrecAtom (printQualifiedIdent (unInterned qi))) (snd <$> values)
   CtorDef _ (ProperName proper) ctorName args ->
     Tuple PrecBlock $ D.words
       [ D.text "constructor"
@@ -353,7 +354,7 @@ printBackendOperator1 = case _ of
   OpIntNegate -> primOp "int" "negate"
   OpNumberNegate -> primOp "number" "negate"
   OpArrayLength -> primOp "array" "length"
-  OpIsTag qi -> Tuple PrecAtom $ D.text "#[prim.istag " <> printQualifiedIdent qi <> D.text "]"
+  OpIsTag qi -> Tuple PrecAtom $ D.text "#[prim.istag " <> printQualifiedIdent (unInterned qi) <> D.text "]"
 
 printBackendOperator2 :: BackendOperator2 -> PrecDoc
 printBackendOperator2 = case _ of

@@ -19,6 +19,7 @@ import PureScript.Backend.Optimizer.Codegen.EcmaScript.Syntax (EsAnalysis(..), E
 import PureScript.Backend.Optimizer.Codegen.Tco (TcoExpr)
 import PureScript.Backend.Optimizer.Convert (BackendImplementations, BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ident, ModuleName(..), ProperName, Qualified)
+import PureScript.Backend.Optimizer.Interned (Interned)
 import PureScript.Backend.Optimizer.Semantics (DataTypeMeta)
 
 codegenModule :: forall a. CodegenOptions -> BackendImplementations -> BackendModule -> Dodo.Doc a
@@ -32,7 +33,7 @@ codegenModule options implementations mod = do
       (foldr (flip Map.insert 1) Map.empty mod.foreign)
       mod.bindings
 
-    inlineApp :: CodegenEnv -> Qualified Ident -> InlineSpine TcoExpr -> Maybe EsExpr
+    inlineApp :: CodegenEnv -> Interned (Qualified Ident) -> InlineSpine TcoExpr -> Maybe EsExpr
     inlineApp env qual spine = do
       fn <- Map.lookup qual esInlineMap
       fn env qual spine

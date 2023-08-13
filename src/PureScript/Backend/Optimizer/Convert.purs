@@ -73,10 +73,11 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
+import PureScript.Backend.Optimizer.Interned (Interned, intern, unInterned)
 import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
-import PureScript.Backend.Optimizer.Utils (foldl1Array)
+import PureScript.Backend.Optimizer.Utils (foldl1Array, lookupInterned)
 import Safe.Coerce (coerce)
 
 type BackendBindingGroup a b =
@@ -84,7 +85,7 @@ type BackendBindingGroup a b =
   , bindings :: Array (Tuple a b)
   }
 
-type BackendImplementations = Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+type BackendImplementations = Map (Interned (Qualified Ident)) (Tuple BackendAnalysis ExternImpl)
 
 type BackendModule =
   { name :: ModuleName
@@ -108,7 +109,7 @@ type ConvertEnv =
   , moduleImplementations :: BackendImplementations
   , optimizationSteps :: OptimizationSteps
   , directives :: InlineDirectiveMap
-  , foreignSemantics :: Map (Qualified Ident) ForeignEval
+  , foreignSemantics :: Map (Interned (Qualified Ident)) ForeignEval
   , rewriteLimit :: Int
   , traceIdents :: Set (Qualified Ident)
   }
@@ -159,10 +160,10 @@ toBackendModule (Module mod) env = do
     localExports :: Set Ident
     localExports = Set.fromFoldable mod.exports
 
-    isBindingUsed :: forall a. Set (Qualified Ident) -> Tuple Ident a -> Boolean
-    isBindingUsed deps (Tuple ident _) = Set.member ident localExports || Set.member (Qualified (Just mod.name) ident) deps
+    isBindingUsed :: forall a. Set (Interned (Qualified Ident)) -> Tuple Ident a -> Boolean
+    isBindingUsed deps (Tuple ident _) = Set.member ident localExports || Set.member (intern (Qualified (Just mod.name) ident)) deps
 
-    usedBindings :: Accum (Set (Qualified Ident)) (Array (BackendBindingGroup Ident NeutralExpr))
+    usedBindings :: Accum (Set (Interned (Qualified Ident))) (Array (BackendBindingGroup Ident NeutralExpr))
     usedBindings = mapAccumR
       ( \deps group -> do
           let
@@ -195,7 +196,7 @@ toBackendModule (Module mod) env = do
 
     usedImports :: Set ModuleName
     usedImports = usedBindings.accum # Set.mapMaybe \qi -> do
-      mn <- qualifiedModuleName qi
+      mn <- qualifiedModuleName (unInterned qi)
       mn <$ guard (mn /= mod.name && mn /= ModuleName "Prim")
 
   Tuple moduleBindings.accum.optimizationSteps $
@@ -211,7 +212,7 @@ toBackendModule (Module mod) env = do
     , foreign: Set.fromFoldable mod.foreign
     }
 
-type WithDeps = Tuple (Set (Qualified Ident))
+type WithDeps = Tuple (Set (Interned (Qualified Ident)))
 
 toBackendTopLevelBindingGroups :: Array (Bind Ann) -> ConvertM (Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr))))
 toBackendTopLevelBindingGroups binds env = do
@@ -250,8 +251,8 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
   let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv qualifiedIdent env.rewriteLimit backendExpr
   let Tuple impl expr' = toExternImpl env group optimizedExpr
   { accum: env
-      { implementations = Map.insert qualifiedIdent impl env.implementations
-      , moduleImplementations = Map.insert qualifiedIdent impl env.moduleImplementations
+      { implementations = Map.insert (intern qualifiedIdent) impl env.implementations
+      , moduleImplementations = Map.insert (intern qualifiedIdent) impl env.moduleImplementations
       , optimizationSteps = maybe env.optimizationSteps (Array.snoc env.optimizationSteps <<< Tuple qualifiedIdent) $ NonEmptyArray.fromArray mbSteps
       , directives =
           case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
@@ -262,7 +263,7 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
                     Just $ Map.union oldDirs dirs
                   Nothing ->
                     Just dirs
-                (EvalExtern (Qualified (Just env.currentModule) ident))
+                (EvalExtern (intern (Qualified (Just env.currentModule) ident)))
                 env.directives
             Nothing ->
               env.directives
@@ -336,22 +337,22 @@ toExternImpl env group expr = case expr of
 topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }
 
-makeExternEvalSpine :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+makeExternEvalSpine :: ConvertEnv -> Env -> Interned (Qualified Ident) -> Array ExternSpine -> Maybe BackendSemantics
 makeExternEvalSpine conv env qual spine = do
   let
     result = do
-      fn <- Map.lookup qual conv.foreignSemantics
+      fn <- lookupInterned qual conv.foreignSemantics
       fn env qual spine
   case result of
     Nothing -> do
-      impl <- Map.lookup qual conv.implementations
+      impl <- lookupInterned qual conv.implementations
       evalExternFromImpl (topEnv env) qual impl spine
     _ ->
       result
 
-makeExternEvalRef :: ConvertEnv -> Env -> Qualified Ident -> Maybe BackendSemantics
+makeExternEvalRef :: ConvertEnv -> Env -> Interned (Qualified Ident) -> Maybe BackendSemantics
 makeExternEvalRef conv env qual =
-  evalExternRefFromImpl env qual <$> Map.lookup qual conv.implementations
+  evalExternRefFromImpl env qual <$> lookupInterned qual conv.implementations
 
 buildM :: BackendSyntax BackendExpr -> ConvertM BackendExpr
 buildM a env = build (getCtx env) a
@@ -415,9 +416,9 @@ toBackendExpr = case _ of
       Qualified (Just (ModuleName "Prim")) (Ident "undefined") ->
         buildM PrimUndefined
       Qualified Nothing ident ->
-        buildM (Var (Qualified (Just currentModule) ident))
+        buildM (Var (intern (Qualified (Just currentModule) ident)))
       _ ->
-        buildM (Var qi)
+        buildM (Var (intern qi))
   ExprLit _ lit ->
     buildM <<< Lit =<< traverse toBackendExpr lit
   ExprConstructor _ ty name fields -> do
@@ -595,7 +596,7 @@ binderToPattern = case _ of
       ctorPattern
         (PatProduct tyName ctorName)
         argsWithNames
-        (\idx (Tuple _ fieldName) -> GetCtorField ctorName ProductType (unQualified tyName) (unQualified ctorName) fieldName idx)
+        (\idx (Tuple _ fieldName) -> GetCtorField (intern ctorName) ProductType (unQualified tyName) (unQualified ctorName) fieldName idx)
         fst
     Just (IsConstructor SumType _) -> do
       ctorFields <- lookupCtorFields tyName ctorName
@@ -603,7 +604,7 @@ binderToPattern = case _ of
       ctorPattern
         (PatSum tyName ctorName)
         argsWithNames
-        (\idx (Tuple _ fieldName) -> GetCtorField ctorName SumType (unQualified tyName) (unQualified ctorName) fieldName idx)
+        (\idx (Tuple _ fieldName) -> GetCtorField (intern ctorName) SumType (unQualified tyName) (unQualified ctorName) fieldName idx)
         fst
     _ ->
       unsafeCrashWith "binderToPattern - invalid meta"
@@ -639,7 +640,7 @@ binderToPattern = case _ of
       Just fields -> pure fields
       Nothing -> unsafeCrashWith "Invariant broken: could not determine pattern matched constructor's fields during conversion."
     where
-    importedCtorFields implementations = case Map.lookup ctor implementations of
+    importedCtorFields implementations = case Map.lookup (intern ctor) implementations of
       Just (Tuple _ (ExternCtor _ _ _ _ fields)) -> Just fields
       _ -> Nothing
 
@@ -811,7 +812,7 @@ buildCasePattern chosenColumn rows = case patternPatCase chosenColumn of
   PatProduct _ _ ->
     expandSubterms
   PatSum _ a ->
-    buildCaseBranch (guardTag a)
+    buildCaseBranch (guardTag (intern a))
   PatArray a ->
     buildCaseBranch (guardArrayLength a)
   PatInt a ->
@@ -971,7 +972,7 @@ guardBoolean n lhs = PrimOp (Op2 (OpBooleanOrd OpEq) lhs (make (Lit (LitBoolean 
 guardArrayLength :: Int -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
 guardArrayLength n lhs = guardInt n (make (PrimOp (Op1 OpArrayLength lhs)))
 
-guardTag :: Qualified Ident -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
+guardTag :: Interned (Qualified Ident) -> ConvertM BackendExpr -> BackendSyntax (ConvertM BackendExpr)
 guardTag n lhs = PrimOp (Op1 (OpIsTag n) lhs)
 
 makeGuard

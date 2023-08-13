@@ -8,6 +8,7 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.String.CodeUnits as SCU
 import Data.Traversable (class Traversable, sequenceDefault, traverse)
+import PureScript.Backend.Optimizer.Interned (class Internable, makeInternableInstance)
 
 newtype Ident = Ident String
 
@@ -31,6 +32,21 @@ data Qualified a = Qualified (Maybe ModuleName) a
 derive instance eqQualified :: Eq a => Eq (Qualified a)
 derive instance ordQualified :: Ord a => Ord (Qualified a)
 derive instance Functor Qualified
+
+instance Internable Ident where
+  intern = makeInternableInstance
+
+instance Internable ModuleName where
+  intern = makeInternableInstance
+
+instance Internable ProperName where
+  intern = makeInternableInstance
+
+instance Internable (Qualified Ident) where
+  intern = makeInternableInstance
+
+instance Internable (Qualified ProperName) where
+  intern = makeInternableInstance
 
 unQualified :: forall a. Qualified a -> a
 unQualified (Qualified _ a) = a

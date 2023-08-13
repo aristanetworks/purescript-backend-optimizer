@@ -30,6 +30,7 @@ import PureScript.Backend.Optimizer.Codegen.Tco (LocalRef, TcoAnalysis(..), TcoE
 import PureScript.Backend.Optimizer.Codegen.Tco as Tco
 import PureScript.Backend.Optimizer.Convert (BackendBindingGroup, BackendImplementations)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName, Prop(..), ProperName(..), Qualified(..), propValue, qualifiedModuleName, unQualified)
+import PureScript.Backend.Optimizer.Interned (Interned(..), intern, unInterned)
 import PureScript.Backend.Optimizer.Semantics (CtorMeta, DataTypeMeta, ExternImpl(..), NeutralExpr)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 
@@ -52,7 +53,7 @@ newtype CodegenEnv = CodegenEnv
   { bound :: Map Ident Int
   , currentModule :: ModuleName
   , implementations :: BackendImplementations
-  , inlineApp :: CodegenEnv -> Qualified Ident -> InlineSpine TcoExpr -> Maybe EsExpr
+  , inlineApp :: CodegenEnv -> Interned (Qualified Ident) -> InlineSpine TcoExpr -> Maybe EsExpr
   , names :: Map CodegenRef CodegenName
   , options :: CodegenOptions
   }
@@ -209,7 +210,7 @@ codegenTopLevelBindingGroup env@(CodegenEnv { currentModule }) { bindings, recur
         Just tco -> do
           let tcoNames = _.name <$> tco
           let tcoIdent = asTcoMutualIdent tcoNames
-          let tcoRefs = Tuple tcoIdent $ TcoTopLevel <<< Qualified (Just currentModule) <$> tcoNames
+          let tcoRefs = Tuple tcoIdent $ TcoTopLevel <<< intern <<< Qualified (Just currentModule) <$> tcoNames
           let mode = pushTcoScope tcoRefs pureMode
           let env' = foldr boundTopLevel env tcoNames
           codegenTcoMutualLoopBindings mode (boundTopLevel tcoIdent env') tcoIdent (NonEmptyArray.zip tcoNames tco)
@@ -227,13 +228,13 @@ codegenTopLevelBindingGroup env@(CodegenEnv { currentModule }) { bindings, recur
 
 codegenExpr :: CodegenEnv -> TcoExpr -> EsExpr
 codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ expr) = case expr of
-  Var (Qualified (Just mn) ident) | mn == currentModule ->
+  Var (Interned _ (Qualified (Just mn) ident)) | mn == currentModule ->
     codegenName $ renameTopLevel ident env
   Var qual
     | Just expr' <- inlineApp env qual (InlineApp []) ->
         expr'
     | otherwise ->
-        build $ EsIdent $ toEsIdent <$> qual
+        build $ EsIdent $ toEsIdent <$> unInterned qual
   Local ident lvl ->
     codegenName (renameLocal ident lvl env)
   Lit lit ->
@@ -291,7 +292,7 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
       [ build $ EsReturn $ Just $ codegenCtor env currentModule ct ty tag $
           (build <<< EsIdent <<< Qualified Nothing <<< toEsIdent <<< Ident) <$> fields
       ]
-  CtorSaturated (Qualified qual _) ct ty tag fields ->
+  CtorSaturated (Interned _ (Qualified qual _)) ct ty tag fields ->
     codegenCtor env (fromMaybe currentModule qual) ct ty tag (codegenExpr env <<< snd <$> fields)
   PrimOp op ->
     codegenPrimOp env op
@@ -621,7 +622,7 @@ codegenObjectElement env (Prop p1 expr) =
 codegenCtor :: CodegenEnv -> ModuleName -> ConstructorType -> ProperName -> Ident -> Array EsExpr -> EsExpr
 codegenCtor env@(CodegenEnv { currentModule, options }) mod ct name tag values = case ct of
   SumType -> do
-    let { ctorMeta } = lookupCtorInfo env (Qualified (Just mod) tag)
+    let { ctorMeta } = lookupCtorInfo env (intern (Qualified (Just mod) tag))
     build $ EsCall ctorName $ Array.cons (EsArrayValue (codegenTag options tag ctorMeta)) ctorValues
   ProductType ->
     build $ EsCall ctorName ctorValues
@@ -661,7 +662,7 @@ codegenPrimOp env@(CodegenEnv { options }) = case _ of
         build $ EsUnary EsNegate expr
       OpArrayLength ->
         build $ EsAccess expr "length"
-      OpIsTag qual@(Qualified _ tag) ->
+      OpIsTag qual@(Interned _ (Qualified _ tag)) ->
         case lookupCtorInfo env qual of
           { size, ctorMeta }
             | size == 0 ->
@@ -809,7 +810,7 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
       true
     EffectDefer _ ->
       true
-    Var (Qualified (Just mn) ident) | mn == currentModule ->
+    Var (Interned _ (Qualified (Just mn) ident)) | mn == currentModule ->
       not $ Array.elem (CodegenTopLevel ident) group
     Var _ ->
       true
@@ -844,16 +845,16 @@ isLazyBinding currentModule group (Tuple _ tcoExpr) = go tcoExpr
     UncurriedEffectApp _ _ ->
       false
 
-lookupCtorInfo :: CodegenEnv -> Qualified Ident -> { ctorMeta :: CtorMeta, size :: Int }
+lookupCtorInfo :: CodegenEnv -> Interned (Qualified Ident) -> { ctorMeta :: CtorMeta, size :: Int }
 lookupCtorInfo (CodegenEnv env) qual = case Map.lookup qual env.implementations of
   Just (Tuple _ (ExternCtor dm@{ size } _ _ tag _))
     | Just ctorMeta <- Map.lookup tag dm.constructors ->
         { ctorMeta, size }
   _ ->
     unsafeCrashWith $ "Constructor meta not found: "
-      <> foldMap unwrap (qualifiedModuleName qual)
+      <> foldMap unwrap (qualifiedModuleName (unInterned qual))
       <> "."
-      <> unwrap (unQualified qual)
+      <> unwrap (unQualified (unInterned qual))
 
 totalUsagesOf :: TcoRef -> TcoAnalysis -> Int
 totalUsagesOf ref (TcoAnalysis { usages }) = case Map.lookup ref usages of

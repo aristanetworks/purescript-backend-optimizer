@@ -14,6 +14,7 @@ import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
+import PureScript.Backend.Optimizer.Interned (Interned)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
@@ -91,7 +92,7 @@ newtype BackendAnalysis = BackendAnalysis
   , complexity :: Complexity
   , args :: Array Usage
   , rewrite :: Boolean
-  , deps :: Set (Qualified Ident)
+  , deps :: Set (Interned (Qualified Ident))
   , result :: ResultTerm
   , externs :: Boolean
   }
@@ -171,7 +172,7 @@ updated level (BackendAnalysis s) = do
     { usages = Map.update (Just <<< over Usage (\us -> us { update = us.update + 1 })) level s.usages
     }
 
-usedDep :: Qualified Ident -> BackendAnalysis -> BackendAnalysis
+usedDep :: Interned (Qualified Ident) -> BackendAnalysis -> BackendAnalysis
 usedDep dep (BackendAnalysis s) = BackendAnalysis s { deps = Set.insert dep s.deps }
 
 bump :: BackendAnalysis -> BackendAnalysis
@@ -200,7 +201,7 @@ class HasAnalysis a where
 resultOf :: forall a. HasAnalysis a => a -> ResultTerm
 resultOf = analysisOf >>> unwrap >>> _.result
 
-analyze :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+analyze :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Interned (Qualified Ident)) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyze externAnalysis expr = case expr of
   Var qi -> do
     let BackendAnalysis { args } = externAnalysis (Tuple qi Nothing)
@@ -381,7 +382,7 @@ analyze externAnalysis expr = case expr of
       withResult KnownNeutral
         $ analyzeDefault expr
 
-analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Interned (Qualified Ident)) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyzeEffectBlock externAnalysis expr = case expr of
   Let _ lvl a b ->
     withResult (resultOf b)

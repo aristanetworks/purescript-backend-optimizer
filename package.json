@@ -4,5 +4,8 @@
   "scripts": {
     "format": "purs-tidy format-in-place src backend-es/src backend-es/test/*.purs",
     "format:check": "purs-tidy check src backend-es/src backend-es/test/*.purs"
+  },
+  "dependencies": {
+    "psvm": "^0.1.6"
   }
 }

@@ -35,6 +35,7 @@ import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
+import PureScript.Backend.Optimizer.Interned (Interned)
 import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.CST.Errors (printParseError)
@@ -83,7 +84,7 @@ externalDirectivesFromFile filePath = do
 basicBuildMain
   :: { resolveCoreFnDirectory :: Aff FilePath
      , resolveExternalDirectives :: Aff InlineDirectiveMap
-     , foreignSemantics :: Map (Qualified Ident) ForeignEval
+     , foreignSemantics :: Map (Interned (Qualified Ident)) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit
      , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> Aff Unit

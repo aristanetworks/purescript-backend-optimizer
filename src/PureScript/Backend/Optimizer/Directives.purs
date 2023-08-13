@@ -20,6 +20,7 @@ import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
+import PureScript.Backend.Optimizer.Interned (intern)
 import PureScript.Backend.Optimizer.Semantics (EvalRef(..), InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, insertDirective)
 import PureScript.CST.Errors (ParseError(..))
 import PureScript.CST.Lexer (lex)
@@ -82,7 +83,7 @@ parseDirectiveExport moduleName =
       ident <- unqualified
       accessor <- parseInlineAccessor
       directive <- parseInlineDirective
-      in Tuple (EvalExtern (Qualified (Just moduleName) ident)) (Tuple accessor directive)
+      in Tuple (EvalExtern (intern (Qualified (Just moduleName) ident))) (Tuple accessor directive)
   ) <* eof
 
 parseDirective :: Parser (Tuple EvalRef (Tuple InlineAccessor InlineDirective))
@@ -91,7 +92,7 @@ parseDirective =
       qual <- qualified
       accessor <- parseInlineAccessor
       directive <- parseInlineDirective
-      in Tuple (EvalExtern qual) (Tuple accessor directive)
+      in Tuple (EvalExtern (intern qual)) (Tuple accessor directive)
   ) <* eof
 
 parseInlineAccessor :: Parser InlineAccessor

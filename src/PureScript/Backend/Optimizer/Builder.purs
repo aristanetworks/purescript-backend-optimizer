@@ -16,18 +16,19 @@ import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
+import PureScript.Backend.Optimizer.Interned (Interned)
 import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 
 type BuildEnv =
-  { implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
+  { implementations :: Map (Interned (Qualified Ident)) (Tuple BackendAnalysis ExternImpl)
   , moduleCount :: Int
   , moduleIndex :: Int
   }
 
 type BuildOptions m =
   { directives :: InlineDirectiveMap
-  , foreignSemantics :: Map (Qualified Ident) ForeignEval
+  , foreignSemantics :: Map (Interned (Qualified Ident)) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
   , traceIdents :: Set (Qualified Ident)

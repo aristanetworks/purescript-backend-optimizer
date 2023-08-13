@@ -6,26 +6,28 @@ import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Either (Either(..))
 import Data.Enum (fromEnum)
+import Data.Lazy (defer)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
-import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, EvalRef(..), ExternSpine(..), evalAccessor, evalApp, evalAssocOp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeEffectBind, makeLet)
+import PureScript.Backend.Optimizer.CoreFn (ConstructorType(..), Ident(..), Literal(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), propKey, unQualified)
+import PureScript.Backend.Optimizer.Interned (Interned(..), intern, unInterned)
+import PureScript.Backend.Optimizer.Semantics (class FromSemantics, BackendSemantics(..), Env(..), EvalRef(..), ExternSpine(..), InlineAccessor(..), InlineDirective(..), SemConditional(..), evalAccessor, evalApp, evalAssocOp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, fromSemantics, makeEffectBind, makeLet, toSemantics)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
-  Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+  Env -> Interned (Qualified Ident) -> Array ExternSpine -> Maybe BackendSemantics
 
 type ForeignSemantics =
-  Tuple (Qualified Ident) ForeignEval
+  Tuple (Interned (Qualified Ident)) ForeignEval
 
-qualified :: String -> String -> Qualified Ident
-qualified mod id = Qualified (Just (ModuleName mod)) (Ident id)
+qualified :: String -> String -> Interned (Qualified Ident)
+qualified mod id = intern $ Qualified (Just (ModuleName mod)) (Ident id)
 
-coreForeignSemantics :: Map (Qualified Ident) ForeignEval
+coreForeignSemantics :: Map (Interned (Qualified Ident)) ForeignEval
 coreForeignSemantics = Map.fromFoldable semantics
   where
   semantics =
@@ -179,19 +181,19 @@ data_eq_eqStringImpl :: ForeignSemantics
 data_eq_eqStringImpl = Tuple (qualified "Data.Eq" "eqStringImpl") $ primBinaryOperator (OpStringOrd OpEq)
 
 data_ord_ordBoolean :: ForeignSemantics
-data_ord_ordBoolean = Tuple (qualified "Data.Ord" "ordBoolean") $ primOrdOperator OpBooleanOrd
+data_ord_ordBoolean = Tuple (qualified "Data.Ord" "ordBoolean") $ primOrdOperator @Boolean OpBooleanOrd
 
 data_ord_ordInt :: ForeignSemantics
-data_ord_ordInt = Tuple (qualified "Data.Ord" "ordInt") $ primOrdOperator OpIntOrd
+data_ord_ordInt = Tuple (qualified "Data.Ord" "ordInt") $ primOrdOperator @Int OpIntOrd
 
 data_ord_ordNumber :: ForeignSemantics
-data_ord_ordNumber = Tuple (qualified "Data.Ord" "ordNumber") $ primOrdOperator OpNumberOrd
+data_ord_ordNumber = Tuple (qualified "Data.Ord" "ordNumber") $ primOrdOperator @Number OpNumberOrd
 
 data_ord_ordChar :: ForeignSemantics
-data_ord_ordChar = Tuple (qualified "Data.Ord" "ordChar") $ primOrdOperator OpCharOrd
+data_ord_ordChar = Tuple (qualified "Data.Ord" "ordChar") $ primOrdOperator @Char OpCharOrd
 
 data_ord_ordString :: ForeignSemantics
-data_ord_ordString = Tuple (qualified "Data.Ord" "ordString") $ primOrdOperator OpStringOrd
+data_ord_ordString = Tuple (qualified "Data.Ord" "ordString") $ primOrdOperator @String OpStringOrd
 
 data_semiring_intAdd :: ForeignSemantics
 data_semiring_intAdd = Tuple (qualified "Data.Semiring" "intAdd") $ primBinaryOperator (OpIntNum OpAdd)
@@ -346,17 +348,51 @@ primUnaryOperator op env _ = case _ of
   _ ->
     Nothing
 
-primOrdOperator :: (BackendOperatorOrd -> BackendOperator2) -> ForeignEval
-primOrdOperator op env _ = case _ of
+primOrdOperator :: forall @a. FromSemantics a => Ord a => (BackendOperatorOrd -> BackendOperator2) -> ForeignEval
+primOrdOperator op env@(Env e) qual = case _ of
+  [ ExternAccessor (GetProp "compare"), ExternApp [ a, b ] ]
+    | Just x <- fromSemantics @a a
+    , Just y <- fromSemantics @a b -> do
+        Just $ makeOrdering case compare x y of
+          LT -> data_ordering_lt
+          GT -> data_ordering_gt
+          EQ -> data_ordering_eq
+    | Just (InlineArity 2) <- Map.lookup (InlineProp "compare") =<< Map.lookup (EvalExtern qual) e.directives ->
+        Just $ makeLet Nothing a \a' ->
+          makeLet Nothing b \b' ->
+            SemBranch
+              ( NonEmptyArray.cons'
+                  ( SemConditional
+                      (defer \_ -> NeutPrimOp $ Op2 (OpNumberOrd OpLt) a' b')
+                      (defer \_ -> makeOrdering data_ordering_lt)
+                  )
+                  [ SemConditional
+                      (defer \_ -> NeutPrimOp $ Op2 (OpNumberOrd OpGt) a' b')
+                      (defer \_ -> makeOrdering data_ordering_gt)
+                  ]
+              )
+              (defer \_ -> makeOrdering data_ordering_eq)
   [ ExternAccessor (GetProp "compare"), ExternApp [ a, b ], ExternPrimOp (OpIsTag tag) ]
-    | isQualified "Data.Ordering" "LT" tag ->
+    | tag == data_ordering_lt ->
         Just $ evalPrimOp env $ Op2 (op OpLt) a b
-    | isQualified "Data.Ordering" "GT" tag ->
+    | tag == data_ordering_gt ->
         Just $ evalPrimOp env $ Op2 (op OpGt) a b
-    | isQualified "Data.Ordering" "EQ" tag ->
+    | tag == data_ordering_eq ->
         Just $ evalPrimOp env $ Op2 (op OpEq) a b
   _ ->
     Nothing
+
+makeOrdering :: Interned (Qualified Ident) -> BackendSemantics
+makeOrdering ident = NeutData ident SumType (ProperName "Ordering") (unQualified (unInterned ident)) []
+
+data_ordering_lt :: Interned (Qualified Ident)
+data_ordering_lt = qualified "Data.Ordering" "LT"
+
+data_ordering_gt :: Interned (Qualified Ident)
+data_ordering_gt = qualified "Data.Ordering" "GT"
+
+data_ordering_eq :: Interned (Qualified Ident)
+data_ordering_eq = qualified "Data.Ordering" "EQ"
 
 effectBind :: ForeignEval
 effectBind env _ = case _ of
@@ -423,13 +459,6 @@ effectUnsafePerform _ _ = case _ of
     Just a
   _ ->
     Nothing
-
-isQualified :: String -> String -> Qualified Ident -> Boolean
-isQualified mod tag = case _ of
-  Qualified (Just (ModuleName mod')) (Ident tag') ->
-    mod == mod' && tag == tag'
-  _ ->
-    false
 
 data_semigroup_concatArray :: ForeignSemantics
 data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") go
@@ -514,7 +543,7 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
 
 viewCopyRecord :: BackendSemantics -> Maybe BackendSemantics
 viewCopyRecord = case _ of
-  SemRef (EvalExtern (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord"))) [ ExternApp [ value ] ] _ ->
+  SemRef (EvalExtern (Interned _ (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord")))) [ ExternApp [ value ] ] _ ->
     Just value
   _ ->
     Nothing
@@ -552,7 +581,7 @@ record_unsafe_unsafeHas = Tuple (qualified "Record.Unsafe" "unsafeHas") go
   where
   go _ _ = case _ of
     [ ExternApp [ NeutLit (LitString prop), NeutLit (LitRecord props) ] ] ->
-      Just $ liftBoolean $ Array.any (eq prop <<< propKey) props
+      Just $ toSemantics $ Array.any (eq prop <<< propKey) props
     _ ->
       Nothing
 

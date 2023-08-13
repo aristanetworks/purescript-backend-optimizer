@@ -8,9 +8,10 @@ import Data.Newtype (class Newtype)
 import Data.Traversable (class Foldable, class Traversable, foldMap, foldlDefault, foldrDefault, sequenceDefault, traverse)
 import Data.Tuple (Tuple)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident, Literal(..), Prop, ProperName, Qualified)
+import PureScript.Backend.Optimizer.Interned (Interned)
 
 data BackendSyntax a
-  = Var (Qualified Ident)
+  = Var (Interned (Qualified Ident))
   | Local (Maybe Ident) Level
   | Lit (Literal a)
   | App a (NonEmptyArray a)
@@ -21,7 +22,7 @@ data BackendSyntax a
   | UncurriedEffectAbs (Array (Tuple (Maybe Ident) Level)) a
   | Accessor a BackendAccessor
   | Update a (Array (Prop a))
-  | CtorSaturated (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
+  | CtorSaturated (Interned (Qualified Ident)) ConstructorType ProperName Ident (Array (Tuple String a))
   | CtorDef ConstructorType ProperName Ident (Array String)
   | LetRec Level (NonEmptyArray (Tuple Ident a)) a
   | Let (Maybe Ident) Level a a
@@ -55,7 +56,7 @@ sndPair (Pair _ a) = a
 data BackendAccessor
   = GetProp String
   | GetIndex Int
-  | GetCtorField (Qualified Ident) ConstructorType ProperName Ident String Int
+  | GetCtorField (Interned (Qualified Ident)) ConstructorType ProperName Ident String Int
 
 derive instance Eq BackendAccessor
 derive instance Ord BackendAccessor
@@ -72,7 +73,7 @@ data BackendOperator1
   | OpIntNegate
   | OpNumberNegate
   | OpArrayLength
-  | OpIsTag (Qualified Ident)
+  | OpIsTag (Interned (Qualified Ident))
 
 derive instance Eq BackendOperator1
 derive instance Ord BackendOperator1

@@ -24,6 +24,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
+import PureScript.Backend.Optimizer.Interned (Interned, intern)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
@@ -46,12 +47,12 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
-  | SemAssocOp (Either (Qualified Ident) BackendOperator2) (NonEmptyArray BackendSemantics)
+  | SemAssocOp (Either (Interned (Qualified Ident)) BackendOperator2) (NonEmptyArray BackendSemantics)
   | NeutLocal (Maybe Ident) Level
-  | NeutVar (Qualified Ident)
-  | NeutStop (Qualified Ident)
-  | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
-  | NeutCtorDef (Qualified Ident) ConstructorType ProperName Ident (Array String)
+  | NeutVar (Interned (Qualified Ident))
+  | NeutStop (Interned (Qualified Ident))
+  | NeutData (Interned (Qualified Ident)) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
+  | NeutCtorDef (Interned (Qualified Ident)) ConstructorType ProperName Ident (Array String)
   | NeutApp BackendSemantics (Spine BackendSemantics)
   | NeutAccessor BackendSemantics BackendAccessor
   | NeutUpdate BackendSemantics (Array (Prop BackendSemantics))
@@ -94,7 +95,7 @@ type EffectBindingAssoc a =
 data BackendRewrite a
   = RewriteInline (Maybe Ident) Level a a
   | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) a a
-  | RewriteStop (Qualified Ident)
+  | RewriteStop (Interned (Qualified Ident))
   | RewriteUnpackOp (Maybe Ident) Level (UnpackOp a) a
   | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair a)) a a
   | RewriteDistBranchesOp (NonEmptyArray (Pair a)) a (DistOp a)
@@ -105,7 +106,7 @@ data UnpackOp a
   = UnpackRecord (Array (Prop a))
   | UnpackUpdate a (Array (Prop a))
   | UnpackArray (Array a)
-  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
+  | UnpackData (Interned (Qualified Ident)) ConstructorType ProperName Ident (Array (Tuple String a))
 
 derive instance Eq a => Eq (UnpackOp a)
 
@@ -153,7 +154,7 @@ data ExternSpine
   | ExternPrimOp BackendOperator1
 
 data EvalRef
-  = EvalExtern (Qualified Ident)
+  = EvalExtern (Interned (Qualified Ident))
   | EvalLocal (Maybe Ident) Level
 
 derive instance Eq EvalRef
@@ -177,8 +178,8 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
-  , evalExternRef :: Env -> Qualified Ident -> Maybe BackendSemantics
-  , evalExternSpine :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+  , evalExternRef :: Env -> Interned (Qualified Ident) -> Maybe BackendSemantics
+  , evalExternSpine :: Env -> Interned (Qualified Ident) -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   }
@@ -217,7 +218,7 @@ class Eval f where
 
 instance Eval f => Eval (BackendSyntax f) where
   eval env@(Env e) = case _ of
-    Var qual ->
+    Var qual -> do
       case e.evalExternSpine env qual [] of
         Just sem ->
           sem
@@ -293,7 +294,7 @@ instance Eval f => Eval (BackendSyntax f) where
     Fail err ->
       NeutFail err
     CtorDef ct ty tag fields ->
-      NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
+      NeutCtorDef (intern (Qualified (Just (unwrap env).currentModule) tag)) ct ty tag fields
     CtorSaturated qual ct ty tag fields ->
       guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
 
@@ -630,25 +631,25 @@ evalPrimOp env = case _ of
     case op1, x of
       OpBooleanNot, _
         | NeutLit (LitBoolean bool) <- deref x ->
-            liftBoolean (not bool)
+            toSemantics (not bool)
       OpBooleanNot, _
         | NeutPrimOp op <- deref x ->
             evalPrimOpNot op
       OpIntBitNot, _
         | NeutLit (LitInt a) <- deref x ->
-            liftInt (complement a)
+            toSemantics (complement a)
       OpIsTag a, _
         | NeutData b _ _ _ _ <- deref x ->
-            liftBoolean (a == b)
+            toSemantics (a == b)
       OpArrayLength, _
         | NeutLit (LitArray arr) <- deref x ->
-            liftInt (Array.length arr)
+            toSemantics (Array.length arr)
       OpIntNegate, _
         | NeutLit (LitInt a) <- deref x ->
-            liftInt (negate a)
+            toSemantics (negate a)
       OpNumberNegate, _
         | NeutLit (LitNumber a) <- deref x ->
-            liftNumber (negate a)
+            toSemantics (negate a)
       _, SemRef ref spine sem ->
         evalRef env ref spine (ExternPrimOp op1) sem
       _, NeutFail err ->
@@ -683,35 +684,35 @@ evalPrimOp env = case _ of
       OpBooleanOrd op
         | NeutLit (LitBoolean a) <- deref x
         , NeutLit (LitBoolean b) <- deref y ->
-            liftBoolean (evalPrimOpOrd op a b)
+            toSemantics (evalPrimOpOrd op a b)
       OpCharOrd op
         | NeutLit (LitChar a) <- deref x
         , NeutLit (LitChar b) <- deref y ->
-            liftBoolean (evalPrimOpOrd op a b)
+            toSemantics (evalPrimOpOrd op a b)
       OpIntBitAnd
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftInt (a .&. b)
+            toSemantics (a .&. b)
       OpIntBitOr
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftInt (a .|. b)
+            toSemantics (a .|. b)
       OpIntBitShiftLeft
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftInt (shl a b)
+            toSemantics (shl a b)
       OpIntBitShiftRight
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftInt (shr a b)
+            toSemantics (shr a b)
       OpIntBitXor
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftInt (xor a b)
+            toSemantics (xor a b)
       OpIntBitZeroFillShiftRight
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftInt (zshr a b)
+            toSemantics (zshr a b)
       OpIntNum OpSubtract
         | NeutLit (LitInt 0) <- deref x ->
             evalPrimOp env (Op1 OpIntNegate y)
@@ -721,7 +722,7 @@ evalPrimOp env = case _ of
       OpIntOrd op
         | NeutLit (LitInt a) <- deref x
         , NeutLit (LitInt b) <- deref y ->
-            liftBoolean (evalPrimOpOrd op a b)
+            toSemantics (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
         | NeutLit (LitNumber 0.0) <- deref x ->
             evalPrimOp env (Op1 OpNumberNegate y)
@@ -731,15 +732,15 @@ evalPrimOp env = case _ of
       OpNumberOrd op
         | NeutLit (LitNumber a) <- deref x
         , NeutLit (LitNumber b) <- deref y ->
-            liftBoolean (evalPrimOpOrdNumber op a b)
+            toSemantics (evalPrimOpOrdNumber op a b)
       OpStringOrd op
         | NeutLit (LitString a) <- deref x
         , NeutLit (LitString b) <- deref y ->
-            liftBoolean (evalPrimOpOrd op a b)
+            toSemantics (evalPrimOpOrd op a b)
       OpStringAppend
         | NeutLit (LitString a) <- x
         , NeutLit (LitString b) <- y ->
-            liftString (a <> b)
+            toSemantics (a <> b)
       OpArrayIndex
         | NeutLit (LitInt n) <- y ->
             evalAccessor env x (GetIndex n)
@@ -791,7 +792,7 @@ evalPrimOpNumNumber :: BackendOperatorNum -> BackendSemantics -> BackendSemantic
 evalPrimOpNumNumber op x y
   | NeutLit (LitNumber a) <- deref x
   , NeutLit (LitNumber b) <- deref y =
-      Just $ liftNumber case op of
+      Just $ toSemantics case op of
         OpAdd -> a + b
         OpMultiply -> a * b
         OpSubtract -> a - b
@@ -807,17 +808,17 @@ evalPrimOpNumInt op x y
         OpAdd -> do
           let res = a + b
           if b > 0 && res < a || b < 0 && res > a then Nothing
-          else Just $ liftInt res
+          else Just $ toSemantics res
         OpMultiply -> do
           let res = a * b
           if a /= (res / b) then Nothing
-          else Just $ liftInt res
+          else Just $ toSemantics res
         OpSubtract -> do
           let res = a - b
           if b > 0 && res > a || b < 0 && res < a then Nothing
-          else Just $ liftInt res
+          else Just $ toSemantics res
         OpDivide ->
-          Just $ liftInt (a / b)
+          Just $ toSemantics (a / b)
   | otherwise =
       Nothing
 
@@ -862,7 +863,7 @@ isAssocPrimOp = case _ of
   OpStringAppend -> true
   _ -> false
 
-evalAssocOp :: Env -> Either (Qualified Ident) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+evalAssocOp :: Env -> Either (Interned (Qualified Ident)) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
 evalAssocOp env op1 = case _, _ of
   SemAssocOp op2 as, SemAssocOp op3 bs
     | op1 == op2
@@ -892,7 +893,7 @@ evalAssocOp env op1 = case _, _ of
   a, b ->
     SemAssocOp op1 $ NonEmptyArray.cons' a [ b ]
 
-evalAssocOp' :: Env -> Either (Qualified Ident) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+evalAssocOp' :: Env -> Either (Interned (Qualified Ident)) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
 evalAssocOp' env@(Env e) op a b = case op of
   Left qual ->
     case e.evalExternSpine env qual [ ExternApp [ a, b ] ] of
@@ -944,7 +945,7 @@ envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
 
-evalExternFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
+evalExternFromImpl :: Env -> Interned (Qualified Ident) -> Tuple BackendAnalysis ExternImpl -> Array ExternSpine -> Maybe BackendSemantics
 evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [] ->
     case impl of
@@ -1082,7 +1083,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   _ ->
     Nothing
 
-evalExternRefFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> BackendSemantics
+evalExternRefFromImpl :: Env -> Interned (Qualified Ident) -> Tuple BackendAnalysis ExternImpl -> BackendSemantics
 evalExternRefFromImpl env qual (Tuple _ impl) = case impl of
   ExternExpr group (NeutralExpr expr)
     | isRefExpr expr ->
@@ -1117,42 +1118,15 @@ analysisFromDirective (BackendAnalysis analysis) = case _ of
   InlineDefault ->
     BackendAnalysis analysis
 
-liftBoolean :: Boolean -> BackendSemantics
-liftBoolean = NeutLit <<< LitBoolean
-
-liftInt :: Int -> BackendSemantics
-liftInt = NeutLit <<< LitInt
-
-liftNumber :: Number -> BackendSemantics
-liftNumber = NeutLit <<< LitNumber
-
-liftString :: String -> BackendSemantics
-liftString = NeutLit <<< LitString
-
 liftOp1 :: BackendOperator1 -> BackendSemantics -> BackendSemantics
 liftOp1 op a = NeutPrimOp (Op1 op a)
 
 liftOp2 :: BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
 liftOp2 op a b = NeutPrimOp (Op2 op a b)
 
-caseString :: BackendSemantics -> Maybe String
-caseString = case _ of
-  NeutLit (LitString a) -> Just a
-  _ -> Nothing
-
-caseInt :: BackendSemantics -> Maybe Int
-caseInt = case _ of
-  NeutLit (LitInt a) -> Just a
-  _ -> Nothing
-
-caseNumber :: BackendSemantics -> Maybe Number
-caseNumber = case _ of
-  NeutLit (LitNumber a) -> Just a
-  _ -> Nothing
-
 type Ctx =
   { currentLevel :: Int
-  , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
+  , lookupExtern :: Tuple (Interned (Qualified Ident)) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
   , effect :: Boolean
   }
 
@@ -1383,7 +1357,7 @@ simplifyCondLiftAnd ctx pair def1 = case pair of
   _ ->
     Nothing
 
-buildStop :: Ctx -> Qualified Ident -> BackendExpr
+buildStop :: Ctx -> Interned (Qualified Ident) -> BackendExpr
 buildStop ctx stop = ExprRewrite (analyzeDefault ctx (Var stop)) (RewriteStop stop)
 
 buildDefault :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
@@ -1573,11 +1547,11 @@ shouldInlineLet level a b = do
         || (isAbs a && (total == 1 || Map.isEmpty s1.usages || s1.size < 16))
         || (isKnownEffect a && total == 1)
 
-shouldInlineExternReference :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Boolean
+shouldInlineExternReference :: Interned (Qualified Ident) -> BackendAnalysis -> NeutralExpr -> Boolean
 shouldInlineExternReference _ (BackendAnalysis s) _ =
   s.complexity <= Deref && s.size < 16
 
-shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
+shouldInlineExternApp :: Interned (Qualified Ident) -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity <= Deref && s.size < 16)
     || (Map.isEmpty s.usages && not s.externs && s.size < 64)
@@ -1591,7 +1565,7 @@ shouldInlineExternAppArg (Usage u) = case _ of
   SemLam _ _ -> u.captured <= CaptureBranch && u.total > 0 && u.call == u.total
   _ -> false
 
-shouldInlineExternAccessor :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Boolean
+shouldInlineExternAccessor :: Interned (Qualified Ident) -> BackendAnalysis -> NeutralExpr -> BackendAccessor -> Boolean
 shouldInlineExternAccessor _ (BackendAnalysis s) _ _ =
   s.complexity <= Deref && s.size < 16
 
@@ -1736,4 +1710,50 @@ guardFailOver f as k =
   where
   toFail expr = case expr of
     NeutFail _ -> Just expr
+    _ -> Nothing
+
+class ToSemantics a where
+  toSemantics :: a -> BackendSemantics
+
+instance ToSemantics Int where
+  toSemantics = NeutLit <<< LitInt
+
+instance ToSemantics Number where
+  toSemantics = NeutLit <<< LitNumber
+
+instance ToSemantics String where
+  toSemantics = NeutLit <<< LitString
+
+instance ToSemantics Char where
+  toSemantics = NeutLit <<< LitChar
+
+instance ToSemantics Boolean where
+  toSemantics = NeutLit <<< LitBoolean
+
+class FromSemantics a where
+  fromSemantics :: BackendSemantics -> Maybe a
+
+instance FromSemantics Int where
+  fromSemantics = case _ of
+    NeutLit (LitInt a) -> Just a
+    _ -> Nothing
+
+instance FromSemantics Number where
+  fromSemantics = case _ of
+    NeutLit (LitNumber a) -> Just a
+    _ -> Nothing
+
+instance FromSemantics String where
+  fromSemantics = case _ of
+    NeutLit (LitString a) -> Just a
+    _ -> Nothing
+
+instance FromSemantics Char where
+  fromSemantics = case _ of
+    NeutLit (LitChar a) -> Just a
+    _ -> Nothing
+
+instance FromSemantics Boolean where
+  fromSemantics = case _ of
+    NeutLit (LitBoolean a) -> Just a
     _ -> Nothing

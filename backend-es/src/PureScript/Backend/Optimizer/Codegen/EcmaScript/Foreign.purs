@@ -10,12 +10,13 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), SemConditional(..), evalApp, evalPrimOp, liftInt, makeEffectBind, makeLet)
+import PureScript.Backend.Optimizer.Interned (Interned)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), SemConditional(..), evalApp, evalPrimOp, makeEffectBind, makeLet, toSemantics)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSemantics, qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..))
 import PureScript.Backend.Optimizer.Utils (foldr1Array)
 
-esForeignSemantics :: Map (Qualified Ident) ForeignEval
+esForeignSemantics :: Map (Interned (Qualified Ident)) ForeignEval
 esForeignSemantics = Map.fromFoldable
   [ control_monad_st_internal_for
   , control_monad_st_internal_foreach
@@ -59,7 +60,7 @@ data_array_indexImpl = Tuple (qualified "Data.Array" "indexImpl") go
             ( NonEmptyArray.singleton $ SemConditional
                 ( Lazy.defer \_ ->
                     evalPrimOp env $ Op2 OpBooleanAnd
-                      (evalPrimOp env (Op2 (OpIntOrd OpGte) ix' (liftInt 0)))
+                      (evalPrimOp env (Op2 (OpIntOrd OpGte) ix' (toSemantics 0)))
                       (evalPrimOp env (Op2 (OpIntOrd OpLt) ix' (evalPrimOp env (Op1 OpArrayLength arr'))))
                 )
                 ( Lazy.defer \_ ->
@@ -77,7 +78,7 @@ data_array_st_push = Tuple (qualified "Data.Array.ST" "push") $ arraySTAll (qual
 data_array_st_unshift :: ForeignSemantics
 data_array_st_unshift = Tuple (qualified "Data.Array.ST" "unshift") $ arraySTAll (qualified "Data.Array.ST" "unshiftAll")
 
-arraySTAll :: Qualified Ident -> ForeignEval
+arraySTAll :: Interned (Qualified Ident) -> ForeignEval
 arraySTAll ident env _ = case _ of
   [ ExternApp [ val ] ] ->
     Just $
@@ -105,32 +106,32 @@ unsafeSTCoerce _ _ = case _ of
 data_bounded_topInt :: ForeignSemantics
 data_bounded_topInt = Tuple (qualified "Data.Bounded" "topInt") go
   where
-  go _ _ = const $ Just $ litInt top
+  go _ _ = const $ Just $ toSemantics @Int top
 
 data_bounded_bottomInt :: ForeignSemantics
 data_bounded_bottomInt = Tuple (qualified "Data.Bounded" "bottomInt") go
   where
-  go _ _ = const $ Just $ litInt bottom
+  go _ _ = const $ Just $ toSemantics @Int bottom
 
 data_bounded_topNumber :: ForeignSemantics
 data_bounded_topNumber = Tuple (qualified "Data.Bounded" "topNumber") go
   where
-  go _ _ = const $ Just $ litNumber top
+  go _ _ = const $ Just $ toSemantics @Number top
 
 data_bounded_bottomNumber :: ForeignSemantics
 data_bounded_bottomNumber = Tuple (qualified "Data.Bounded" "bottomNumber") go
   where
-  go _ _ = const $ Just $ litNumber bottom
+  go _ _ = const $ Just $ toSemantics @Number bottom
 
 data_bounded_topChar :: ForeignSemantics
 data_bounded_topChar = Tuple (qualified "Data.Bounded" "topChar") go
   where
-  go _ _ = const $ Just $ litChar top
+  go _ _ = const $ Just $ toSemantics @Char top
 
 data_bounded_bottomChar :: ForeignSemantics
 data_bounded_bottomChar = Tuple (qualified "Data.Bounded" "bottomChar") go
   where
-  go _ _ = const $ Just $ litChar bottom
+  go _ _ = const $ Just $ toSemantics @Char bottom
 
 data_enum_toCharCode :: ForeignSemantics
 data_enum_toCharCode = Tuple (qualified "Data.Enum" "toCharCode") go
@@ -168,12 +169,12 @@ data_show_showArrayImpl = Tuple (qualified "Data.Show" "showArrayImpl") go
     [ ExternApp [ showDict, NeutLit (LitArray arr) ] ] ->
       Just case NonEmptyArray.fromArray arr of
         Nothing ->
-          litString "[]"
+          toSemantics "[]"
         Just nea -> do
           let appendStrings l r = evalPrimOp env (Op2 OpStringAppend l r)
           let showVal val = evalApp env showDict [ val ]
-          let foldFn next acc = appendStrings (showVal next) $ appendStrings (litString ",") acc
-          appendStrings (litString "[") $ foldr1Array foldFn (\last -> appendStrings (showVal last) (litString "]")) nea
+          let foldFn next acc = appendStrings (showVal next) $ appendStrings (toSemantics ",") acc
+          appendStrings (toSemantics "[") $ foldr1Array foldFn (\last -> appendStrings (showVal last) (toSemantics "]")) nea
     _ ->
       Nothing
 
@@ -303,15 +304,3 @@ whileLoop env qual = case _ of
           SemEffectDefer $ evalApp env (NeutStop qual) [ a', SemEffectDefer b' ]
   _ ->
     Nothing
-
-litInt :: Int -> BackendSemantics
-litInt = NeutLit <<< LitInt
-
-litNumber :: Number -> BackendSemantics
-litNumber = NeutLit <<< LitNumber
-
-litChar :: Char -> BackendSemantics
-litChar = NeutLit <<< LitChar
-
-litString :: String -> BackendSemantics
-litString = NeutLit <<< LitString

@@ -22,6 +22,7 @@ You can edit this file as you like.
   , "filterable"
   , "foldable-traversable"
   , "foreign-object"
+  , "functions"
   , "integers"
   , "language-cst-parser"
   , "lazy"
