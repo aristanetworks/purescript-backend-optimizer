@@ -216,6 +216,7 @@ parseArgs = do
 type BuildState =
   { currentStartTime :: Ref (Maybe Instant)
   , codegenStartTime :: Ref (Maybe Instant)
+  , codegenTotal :: Ref Milliseconds
   , startTime :: Instant
   , steps :: Ref (Array (Tuple ModuleName OptimizationSteps))
   , timings :: Ref (Map ModuleName Milliseconds)
@@ -240,9 +241,10 @@ main cliRoot =
     startTime <- now
     currentStartTime <- Ref.new Nothing
     codegenStartTime <- Ref.new Nothing
+    codegenTotal <- Ref.new mempty
     steps <- Ref.new []
     timings <- Ref.new Map.empty
-    pure { currentStartTime, codegenStartTime, startTime, steps, timings }
+    pure { currentStartTime, codegenStartTime, codegenTotal, startTime, steps, timings }
 
   buildCmd :: BuildArgs -> Aff Unit
   buildCmd args = liftEffect makeBuildState >>= \state -> basicBuildMain
@@ -259,20 +261,26 @@ main cliRoot =
         when args.printTiming do
           endTime <- liftEffect now
           codegenStartTime <- fromMaybe state.startTime <$> liftEffect (Ref.read state.codegenStartTime)
+          codegenTiming <- liftEffect $ Ref.read state.codegenTotal
           timings <- Array.sortBy (comparing (Down <<< snd)) <<< Map.toUnfoldable <$> liftEffect (Ref.read state.timings)
           let topTimings = Array.take 20 timings
+          let totalTiming = timeDiff state.startTime endTime
+          let parseTiming = timeDiff state.startTime codegenStartTime
+          let buildTiming = over2 Milliseconds (-) (timeDiff codegenStartTime endTime) codegenTiming
           Console.log $ "\nTop " <> show (Array.length topTimings) <> " slowest modules:"
           Console.log $ printTimings topTimings
           Console.log ""
           Console.log $ printTotals
-            [ Tuple "Parse time" (timeDiff state.startTime codegenStartTime)
-            , Tuple "Build time" (timeDiff codegenStartTime endTime)
-            , Tuple "Total time" (timeDiff state.startTime endTime)
+            [ Tuple "Parse time" parseTiming
+            , Tuple "Build time" buildTiming
+            , Tuple "Codegen time" codegenTiming
+            , Tuple "Total time" totalTiming
             ]
         unless (Array.null allSteps) do
           let allDoc = Dodo.foldWithSeparator (Dodo.break <> Dodo.break) $ uncurry printModuleSteps <$> allSteps
           FS.writeTextFile UTF8 "optimization-traces.txt" $ Dodo.print Dodo.plainText Dodo.twoSpaces allDoc
     , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } optimizationSteps -> do
+        optEndTime <- liftEffect now
         let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
@@ -291,9 +299,12 @@ main cliRoot =
           liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) state.steps
         mbStartTime <- liftEffect $ Ref.read state.currentStartTime
         for_ mbStartTime \startTime -> do
-          timing <- timeDiff startTime <$> liftEffect now
-          liftEffect $ Ref.modify_ (Map.insert backendMod.name timing) state.timings
-          writeString Process.stdout $ formatMs timing <> "\n"
+          moduleEndTime <- liftEffect now
+          let codegenTotal = timeDiff optEndTime moduleEndTime
+          let timingTotal = timeDiff startTime moduleEndTime
+          liftEffect $ Ref.modify_ (codegenTotal <> _) state.codegenTotal
+          liftEffect $ Ref.modify_ (Map.insert backendMod.name timingTotal) state.timings
+          writeString Process.stdout $ formatMs timingTotal <> "\n"
 
     , onPrepareModule: \build coreFnMod@(Module { name }) -> do
         let total = show build.moduleCount
