@@ -215,6 +215,7 @@ parseArgs = do
 
 type BuildState =
   { currentStartTime :: Ref (Maybe Instant)
+  , codegenStartTime :: Ref (Maybe Instant)
   , startTime :: Instant
   , steps :: Ref (Array (Tuple ModuleName OptimizationSteps))
   , timings :: Ref (Map ModuleName Milliseconds)
@@ -238,9 +239,10 @@ main cliRoot =
   makeBuildState = do
     startTime <- now
     currentStartTime <- Ref.new Nothing
+    codegenStartTime <- Ref.new Nothing
     steps <- Ref.new []
     timings <- Ref.new Map.empty
-    pure { currentStartTime, startTime, steps, timings }
+    pure { currentStartTime, codegenStartTime, startTime, steps, timings }
 
   buildCmd :: BuildArgs -> Aff Unit
   buildCmd args = liftEffect makeBuildState >>= \state -> basicBuildMain
@@ -248,6 +250,7 @@ main cliRoot =
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
+        liftEffect $ flip Ref.write state.codegenStartTime <<< Just =<< now
         mkdirp args.outputDir
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
@@ -255,11 +258,17 @@ main cliRoot =
         allSteps <- liftEffect (Ref.read state.steps)
         when args.printTiming do
           endTime <- liftEffect now
+          codegenStartTime <- fromMaybe state.startTime <$> liftEffect (Ref.read state.codegenStartTime)
           timings <- Array.sortBy (comparing (Down <<< snd)) <<< Map.toUnfoldable <$> liftEffect (Ref.read state.timings)
           let topTimings = Array.take 20 timings
           Console.log $ "\nTop " <> show (Array.length topTimings) <> " slowest modules:"
           Console.log $ printTimings topTimings
-          Console.log $ "\nTotal build time: " <> formatMs (timeDiff state.startTime endTime)
+          Console.log ""
+          Console.log $ printTotals
+            [ Tuple "Parse time" (timeDiff state.startTime codegenStartTime)
+            , Tuple "Build time" (timeDiff codegenStartTime endTime)
+            , Tuple "Total time" (timeDiff state.startTime endTime)
+            ]
         unless (Array.null allSteps) do
           let allDoc = Dodo.foldWithSeparator (Dodo.break <> Dodo.break) $ uncurry printModuleSteps <$> allSteps
           FS.writeTextFile UTF8 "optimization-traces.txt" $ Dodo.print Dodo.plainText Dodo.twoSpaces allDoc
@@ -382,10 +391,23 @@ formatMs :: Milliseconds -> String
 formatMs (Milliseconds m) = Number.toString m <> "ms"
 
 printTimings :: Array (Tuple ModuleName Milliseconds) -> String
-printTimings all = Dodo.print Dodo.plainText Dodo.twoSpaces $ Dodo.indent $ Dodo.Box.toDoc table
+printTimings =
+  Dodo.print Dodo.plainText Dodo.twoSpaces
+    <<< Dodo.indent
+    <<< printTable
+    <<< map (bimap (Dodo.text <<< append "* " <<< unwrap) (Dodo.text <<< formatMs))
+
+printTotals :: Array (Tuple String Milliseconds) -> String
+printTotals =
+  Dodo.print Dodo.plainText Dodo.twoSpaces
+    <<< printTable
+    <<< map (bimap Dodo.text (Dodo.text <<< formatMs))
+
+printTable :: forall a. Array (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a
+printTable all = Dodo.Box.toDoc table
   where
   toBox = Dodo.print Dodo.Box.docBox Dodo.twoSpaces
-  columns = bimap (toBox <<< Dodo.text <<< append "* " <<< unwrap) (toBox <<< Dodo.text <<< formatMs) <$> all
+  columns = bimap toBox toBox <$> all
   col1Width = fromMaybe 0 $ Array.last $ Array.sort $ (_.width <<< Dodo.Box.sizeOf <<< fst) <$> columns
   col2Width = fromMaybe 0 $ Array.last $ Array.sort $ (_.width <<< Dodo.Box.sizeOf <<< snd) <$> columns
   table = Dodo.Box.vertical $ printRow <$> columns
