@@ -6,12 +6,19 @@ import ArgParse.Basic (ArgParser)
 import ArgParse.Basic as ArgParser
 import Control.Plus (empty)
 import Data.Array as Array
+import Data.Bifunctor (bimap)
+import Data.DateTime.Instant (Instant)
+import Data.DateTime.Instant as Instant
 import Data.Either (Either(..), isRight)
 import Data.Foldable (foldMap, for_, oneOf)
+import Data.Function (on)
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (guard, power)
-import Data.Newtype (unwrap)
+import Data.Newtype (over2, unwrap)
+import Data.Number.Format as Number
+import Data.Ord.Down (Down(..))
 import Data.Posix.Signal (Signal(..))
 import Data.Set (Set)
 import Data.Set as Set
@@ -19,12 +26,15 @@ import Data.String (Pattern(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Dodo as Dodo
+import Dodo.Box as Dodo.Box
 import Effect (Effect)
-import Effect.Aff (Aff, attempt, effectCanceler, error, launchAff_, makeAff, throwError)
+import Effect.Aff (Aff, Milliseconds(..), attempt, effectCanceler, error, launchAff_, makeAff, nonCanceler, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
+import Effect.Now (now)
+import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Node.ChildProcess (Exit(..), StdIOBehaviour(..), defaultSpawnOptions)
 import Node.ChildProcess as ChildProcess
@@ -41,6 +51,7 @@ import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
+import PureScript.Backend.Optimizer.Convert (OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Module(..), ModuleName(..), Qualified(..))
 import PureScript.Backend.Optimizer.Processors (processors)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
@@ -59,6 +70,7 @@ type BuildArgs =
   , directivesFile :: Maybe FilePath
   , intTags :: Boolean
   , traceIdents :: Set (Qualified Ident)
+  , printTiming :: Boolean
   }
 
 buildArgsParser :: ArgParser BuildArgs
@@ -100,6 +112,11 @@ buildArgsParser =
                       Left $ "Unable to parse qualified name: " <> str
               )
           # ArgParser.folded
+    , printTiming:
+        ArgParser.flag [ "--timing" ]
+          "Print timing data for modules."
+          # ArgParser.boolean
+          # ArgParser.default false
     }
 
 data TargetPlatform = Browser | Node
@@ -197,6 +214,15 @@ parseArgs = do
     esArgParser
     cliArgs
 
+type BuildState =
+  { currentStartTime :: Ref (Maybe Instant)
+  , codegenStartTime :: Ref (Maybe Instant)
+  , codegenTotal :: Ref Milliseconds
+  , startTime :: Instant
+  , steps :: Ref (Array (Tuple ModuleName OptimizationSteps))
+  , timings :: Ref (Map ModuleName Milliseconds)
+  }
+
 main :: FilePath -> Effect Unit
 main cliRoot =
   parseArgs >>= case _ of
@@ -211,22 +237,52 @@ main cliRoot =
       unless bundleArgs.noBuild $ buildCmd args
       bundleCmd true bundleArgs args
   where
+  makeBuildState :: Effect BuildState
+  makeBuildState = do
+    startTime <- now
+    currentStartTime <- Ref.new Nothing
+    codegenStartTime <- Ref.new Nothing
+    codegenTotal <- Ref.new mempty
+    steps <- Ref.new []
+    timings <- Ref.new Map.empty
+    pure { currentStartTime, codegenStartTime, codegenTotal, startTime, steps, timings }
+
   buildCmd :: BuildArgs -> Aff Unit
-  buildCmd args = liftEffect (Ref.new []) >>= \stepsRef -> basicBuildMain
+  buildCmd args = liftEffect makeBuildState >>= \state -> basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , processors
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
+        liftEffect $ flip Ref.write state.codegenStartTime <<< Just =<< now
         mkdirp args.outputDir
         writeTextFile UTF8 (Path.concat [ args.outputDir, "package.json" ]) esModulePackageJson
         copyFile (Path.concat [ cliRoot, "runtime.js" ]) (Path.concat [ args.outputDir, "runtime.js" ])
     , onCodegenAfter: do
-        allSteps <- liftEffect (Ref.read stepsRef)
+        allSteps <- liftEffect (Ref.read state.steps)
+        when args.printTiming do
+          endTime <- liftEffect now
+          codegenStartTime <- fromMaybe state.startTime <$> liftEffect (Ref.read state.codegenStartTime)
+          codegenTiming <- liftEffect $ Ref.read state.codegenTotal
+          timings <- Array.sortBy (comparing (Down <<< snd)) <<< Map.toUnfoldable <$> liftEffect (Ref.read state.timings)
+          let topTimings = Array.take 20 timings
+          let totalTiming = timeDiff state.startTime endTime
+          let parseTiming = timeDiff state.startTime codegenStartTime
+          let buildTiming = over2 Milliseconds (-) (timeDiff codegenStartTime endTime) codegenTiming
+          Console.log $ "\nTop " <> show (Array.length topTimings) <> " slowest modules:"
+          Console.log $ printTimings topTimings
+          Console.log ""
+          Console.log $ printTotals
+            [ Tuple "Parse time" parseTiming
+            , Tuple "Build time" buildTiming
+            , Tuple "Codegen time" codegenTiming
+            , Tuple "Total time" totalTiming
+            ]
         unless (Array.null allSteps) do
           let allDoc = Dodo.foldWithSeparator (Dodo.break <> Dodo.break) $ uncurry printModuleSteps <$> allSteps
           FS.writeTextFile UTF8 "optimization-traces.txt" $ Dodo.print Dodo.plainText Dodo.twoSpaces allDoc
     , onCodegenModule: \build (Module coreFnMod) backendMod@{ name: ModuleName name } optimizationSteps -> do
+        optEndTime <- liftEffect now
         let formatted = Dodo.print Dodo.plainText (Dodo.twoSpaces { pageWidth = 180, ribbonRatio = 1.0 }) $ codegenModule { intTags: args.intTags } build.implementations backendMod
         let modPath = Path.concat [ args.outputDir, name ]
         mkdirp modPath
@@ -242,12 +298,26 @@ main cliRoot =
           unless (isRight res) do
             Console.log $ "  Foreign implementation missing."
         unless (Array.null optimizationSteps) do
-          liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) stepsRef
+          liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) state.steps
+        mbStartTime <- liftEffect $ Ref.read state.currentStartTime
+        for_ mbStartTime \startTime -> do
+          moduleEndTime <- liftEffect now
+          let codegenTotal = timeDiff optEndTime moduleEndTime
+          let timingTotal = timeDiff startTime moduleEndTime
+          liftEffect $ Ref.modify_ (codegenTotal <> _) state.codegenTotal
+          liftEffect $ Ref.modify_ (Map.insert backendMod.name timingTotal) state.timings
+          writeString Process.stdout $ formatMs timingTotal <> "\n"
+
     , onPrepareModule: \build coreFnMod@(Module { name }) -> do
         let total = show build.moduleCount
         let index = show (build.moduleIndex + 1)
         let padding = power " " (SCU.length total - SCU.length index)
-        Console.log $ "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
+        let msg = "[" <> padding <> index <> " of " <> total <> "] Building " <> unwrap name
+        if args.printTiming then do
+          liftEffect $ flip Ref.write state.currentStartTime <<< Just =<< now
+          writeString Process.stdout $ msg <> "... "
+        else
+          Console.log msg
         pure coreFnMod
     , traceIdents: args.traceIdents
     }
@@ -295,6 +365,11 @@ copyFile from to = do
       Stream.destroy dst
       Stream.destroy src
 
+writeString :: forall r. Stream.Writable r -> String -> Aff Unit
+writeString stream str = makeAff \k -> do
+  _ <- Stream.writeString stream UTF8 str (k <<< maybe (Right unit) Left)
+  pure nonCanceler
+
 mkdirp :: FilePath -> Aff Unit
 mkdirp = flip FS.mkdir' { recursive: true, mode: Perms.mkPerms Perms.all Perms.all Perms.all }
 
@@ -321,3 +396,36 @@ spawnFromParentWithStdin command args input = makeAff \k -> do
       Process.exit 1
   pure $ effectCanceler do
     ChildProcess.kill SIGABRT childProc
+
+timeDiff :: Instant -> Instant -> Milliseconds
+timeDiff = over2 Milliseconds (flip (-)) `on` Instant.unInstant
+
+formatMs :: Milliseconds -> String
+formatMs (Milliseconds m) = Number.toString m <> "ms"
+
+printTimings :: Array (Tuple ModuleName Milliseconds) -> String
+printTimings =
+  Dodo.print Dodo.plainText Dodo.twoSpaces
+    <<< Dodo.indent
+    <<< printTable
+    <<< map (bimap (Dodo.text <<< append "* " <<< unwrap) (Dodo.text <<< formatMs))
+
+printTotals :: Array (Tuple String Milliseconds) -> String
+printTotals =
+  Dodo.print Dodo.plainText Dodo.twoSpaces
+    <<< printTable
+    <<< map (bimap Dodo.text (Dodo.text <<< formatMs))
+
+printTable :: forall a. Array (Tuple (Dodo.Doc a) (Dodo.Doc a)) -> Dodo.Doc a
+printTable all = Dodo.Box.toDoc table
+  where
+  toBox = Dodo.print Dodo.Box.docBox Dodo.twoSpaces
+  columns = bimap toBox toBox <$> all
+  col1Width = fromMaybe 0 $ Array.last $ Array.sort $ (_.width <<< Dodo.Box.sizeOf <<< fst) <$> columns
+  col2Width = fromMaybe 0 $ Array.last $ Array.sort $ (_.width <<< Dodo.Box.sizeOf <<< snd) <$> columns
+  table = Dodo.Box.vertical $ printRow <$> columns
+  printRow (Tuple a b) = Dodo.Box.horizontal
+    [ Dodo.Box.resize { height: 1, width: col1Width } a
+    , Dodo.Box.hpadding 3
+    , Dodo.Box.resize { height: 1, width: col2Width } (Dodo.Box.halign Dodo.Box.End b)
+    ]

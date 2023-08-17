@@ -9,8 +9,7 @@ const eqTest = {
     if (x === "Foo") { return y === "Foo"; }
     if (x === "Bar") { return y === "Bar"; }
     if (x === "Baz") { return y === "Baz"; }
-    if (x === "Qux") { return y === "Qux"; }
-    return false;
+    return x === "Qux" && y === "Qux";
   }
 };
 const test1 = a => a === "Baz";

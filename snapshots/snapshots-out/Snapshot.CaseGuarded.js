@@ -3,24 +3,8 @@ const $Product3 = (_1, _2, _3) => ({tag: "Product3", _1, _2, _3});
 const Product3 = value0 => value1 => value2 => $Product3(value0, value1, value2);
 const NInt = x => x;
 const test5 = v => {
-  if (v.tag === "Just") {
-    if (v._1.tag === "Right") { return v._1._1; }
-    if (v.tag === "Just") {
-      if (v._1.tag === "Left") {
-        if (v._1._1 === 2) { return 4; }
-        return 5;
-      }
-      return 5;
-    }
-    return 5;
-  }
-  if (v.tag === "Just") {
-    if (v._1.tag === "Left") {
-      if (v._1._1 === 2) { return 4; }
-      return 5;
-    }
-    return 5;
-  }
+  if (v.tag === "Just" && v._1.tag === "Right") { return v._1._1; }
+  if (v.tag === "Just" && v._1.tag === "Left" && v._1._1 === 2) { return 4; }
   return 5;
 };
 const test4 = v => v1 => {
@@ -40,7 +24,6 @@ const test4 = v => v1 => {
       if (v.c === v1.e) { return 7; }
       if (v.c < v1.e) { return 8; }
       if (v.c > v1.e) { return 9; }
-      return (11 + v.c | 0) + v1.f | 0;
     }
     return (11 + v.c | 0) + v1.f | 0;
   }
@@ -50,13 +33,7 @@ const test4 = v => v1 => {
     if (v.c > v1.e) { return 9; }
     return (11 + v.c | 0) + v1.f | 0;
   }
-  if (v.b === 2) {
-    if (v1.d === 1) {
-      if (v1.f === 10) { return 10; }
-      return (11 + v.c | 0) + v1.f | 0;
-    }
-    return (11 + v.c | 0) + v1.f | 0;
-  }
+  if (v.b === 2 && v1.d === 1 && v1.f === 10) { return 10; }
   return (11 + v.c | 0) + v1.f | 0;
 };
 const test3 = v => {
@@ -73,18 +50,8 @@ const test2 = v => {
 };
 const test1 = v => {
   if (v < 1) { return "n: " + Data$dShow.showIntImpl(v); }
-  if (v > 1) {
-    if (v < 100) { return "1 < x < 100: " + Data$dShow.showIntImpl(v); }
-    if (v > 1) {
-      if (v < 50) { return "1 < x < 50: " + Data$dShow.showIntImpl(v); }
-      return "catch";
-    }
-    return "catch";
-  }
-  if (v > 1) {
-    if (v < 50) { return "1 < x < 50: " + Data$dShow.showIntImpl(v); }
-    return "catch";
-  }
+  if (v > 1 && v < 100) { return "1 < x < 100: " + Data$dShow.showIntImpl(v); }
+  if (v > 1 && v < 50) { return "1 < x < 50: " + Data$dShow.showIntImpl(v); }
   return "catch";
 };
 export {$Product3, NInt, Product3, test1, test2, test3, test4, test5};

@@ -102,8 +102,7 @@ main = do
 runSnapshotTests :: TestArgs -> Aff Unit
 runSnapshotTests { accept, filter, traceIdents } = do
   liftEffect $ Process.chdir $ Path.concat [ "..", "snapshots" ]
-  spawnFromParent "spago" [ "build --purs-args \"-g corefn\"" ]
-  liftEffect $ Process.chdir $ Path.concat [ "..", "snapshots" ]
+  spawnFromParent "spago" [ "build --purs-args \"-g corefn,js\"" ]
   snapshotDir <- liftEffect Process.cwd
   liftEffect $ Process.chdir $ Path.concat [ "src" ]
   snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]

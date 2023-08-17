@@ -4,10 +4,10 @@ import * as Data$dEq from "../Data.Eq/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Snapshot$dHalogenVDomST01 from "../Snapshot.HalogenVDomST01/index.js";
 const assertEqual = /* #__PURE__ */ Assert.assertEqual({eq: /* #__PURE__ */ Data$dEq.eqArrayImpl(ra => rb => ra.a === rb.a && ra.b === rb.b)})({
-  show: /* #__PURE__ */ Data$dShow.showArrayImpl(record => "{ a: " + Data$dShow.showStringImpl(record.a) + ", b: " + Data$dShow.showIntImpl(record.b) + " " + "}")
+  show: /* #__PURE__ */ Data$dShow.showArrayImpl(record => "{ a: " + Data$dShow.showStringImpl(record.a) + ", b: " + Data$dShow.showIntImpl(record.b) + " }")
 });
 const assertEqual3 = /* #__PURE__ */ Assert.assertEqual({eq: /* #__PURE__ */ Data$dEq.eqArrayImpl(ra => rb => ra.a === rb.a && ra.b === rb.b && ra.ix === rb.ix)})({
-  show: /* #__PURE__ */ Data$dShow.showArrayImpl(record => "{ a: " + Data$dShow.showStringImpl(record.a) + ", b: " + Data$dShow.showIntImpl(record.b) + ", ix: " + Data$dShow.showIntImpl(record.ix) + " " + "}")
+  show: /* #__PURE__ */ Data$dShow.showArrayImpl(record => "{ a: " + Data$dShow.showStringImpl(record.a) + ", b: " + Data$dShow.showIntImpl(record.b) + ", ix: " + Data$dShow.showIntImpl(record.ix) + " }")
 });
 const main = () => {
   const merged1 = [];

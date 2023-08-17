@@ -73,7 +73,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), Processors, build, evalExternFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), Processors, build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -244,7 +244,7 @@ type OptimizationSteps = Array (Tuple (Qualified Ident) (NonEmptyArray BackendEx
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
 toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let evalEnv = Env { currentModule: env.currentModule, evalExtern: makeExternEval env, locals: [], directives: env.directives }
+  let evalEnv = Env { currentModule: env.currentModule, evalExternRef: makeExternEvalRef env, evalExternSpine: makeExternEvalSpine env, locals: [], directives: env.directives }
   let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
   let enableTracing = Set.member qualifiedIdent env.traceIdents
@@ -337,8 +337,8 @@ toExternImpl env group expr = case expr of
 topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }
 
-makeExternEval :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
-makeExternEval conv env qual spine = do
+makeExternEvalSpine :: ConvertEnv -> Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+makeExternEvalSpine conv env qual spine = do
   let
     result = do
       fn <- Map.lookup qual conv.foreignSemantics
@@ -349,6 +349,10 @@ makeExternEval conv env qual spine = do
       evalExternFromImpl (topEnv env) qual impl spine
     _ ->
       result
+
+makeExternEvalRef :: ConvertEnv -> Env -> Qualified Ident -> Maybe BackendSemantics
+makeExternEvalRef conv env qual =
+  evalExternRefFromImpl env qual <$> Map.lookup qual conv.implementations
 
 buildM :: BackendSyntax BackendExpr -> ConvertM BackendExpr
 buildM a env = build (getCtx env) a

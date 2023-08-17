@@ -695,7 +695,11 @@ codegenPrimOp env@(CodegenEnv { options }) = case _ of
       OpIntBitZeroFillShiftRight ->
         build $ EsBinary EsZeroFillShiftRight expr1 expr2
       OpIntNum num ->
-        build $ EsBinary EsBitOr (build (EsBinary (numOp num) expr1 expr2)) (build (EsInt 0))
+        case num of
+          OpDivide ->
+            build $ EsRuntime $ EsIntDiv expr1 expr2
+          _ ->
+            build $ EsBinary EsBitOr (build (EsBinary (numOp num) expr1 expr2)) (build (EsInt 0))
       OpIntOrd ord ->
         build $ EsBinary (ordOp ord) expr1 expr2
       OpNumberNum num ->

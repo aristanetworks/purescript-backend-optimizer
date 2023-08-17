@@ -4,8 +4,8 @@ import Prelude
 
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Enum (fromEnum)
-import Data.Lazy as Lazy
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ModuleName(..), Prop(..), Qualified(..), propKey)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, ExternSpine(..), evalAccessor, evalApp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), Env, EvalRef(..), ExternSpine(..), evalAccessor, evalApp, evalAssocOp, evalMkFn, evalPrimOp, evalUncurriedApp, evalUncurriedEffectApp, evalUpdate, liftBoolean, makeEffectBind, makeLet)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendEffect(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..))
 
 type ForeignEval =
@@ -44,10 +44,10 @@ coreForeignSemantics = Map.fromFoldable semantics
     , data_eq_eqIntImpl
     , data_eq_eqNumberImpl
     , data_eq_eqStringImpl
+    , data_euclideanRing_intDiv
     , data_euclideanRing_numDiv
     , data_heytingAlgebra_boolConj
     , data_heytingAlgebra_boolDisj
-    , data_heytingAlgebra_boolImplies
     , data_heytingAlgebra_boolNot
     , data_int_bits_and
     , data_int_bits_complement
@@ -211,6 +211,9 @@ data_ring_intSub = Tuple (qualified "Data.Ring" "intSub") $ primBinaryOperator (
 data_ring_numSub :: ForeignSemantics
 data_ring_numSub = Tuple (qualified "Data.Ring" "numSub") $ primBinaryOperator (OpNumberNum OpSubtract)
 
+data_euclideanRing_intDiv :: ForeignSemantics
+data_euclideanRing_intDiv = Tuple (qualified "Data.EuclideanRing" "intDiv") $ primBinaryOperator (OpIntNum OpDivide)
+
 data_euclideanRing_numDiv :: ForeignSemantics
 data_euclideanRing_numDiv = Tuple (qualified "Data.EuclideanRing" "numDiv") $ primBinaryOperator (OpNumberNum OpDivide)
 
@@ -309,21 +312,6 @@ data_heytingAlgebra_boolDisj = Tuple (qualified "Data.HeytingAlgebra" "boolDisj"
 data_heytingAlgebra_boolNot :: ForeignSemantics
 data_heytingAlgebra_boolNot = Tuple (qualified "Data.HeytingAlgebra" "boolNot") $ primUnaryOperator OpBooleanNot
 
-data_heytingAlgebra_boolImplies :: ForeignSemantics
-data_heytingAlgebra_boolImplies = Tuple (qualified "Data.HeytingAlgebra" "boolImplies") go
-  where
-  go _ _ = case _ of
-    [ ExternApp [ a, b ] ]
-      | NeutLit (LitBoolean false) <- a ->
-          Just $ NeutLit (LitBoolean true)
-      | NeutLit (LitBoolean true) <- b ->
-          Just $ NeutLit (LitBoolean true)
-      | NeutLit (LitBoolean x) <- a
-      , NeutLit (LitBoolean y) <- b ->
-          Just $ NeutLit (LitBoolean (not x || y))
-    _ ->
-      Nothing
-
 data_string_codePoints_toCodePointArray :: ForeignSemantics
 data_string_codePoints_toCodePointArray = Tuple (qualified "Data.String.CodePoints" "toCodePointArray") go
   where
@@ -374,11 +362,11 @@ effectBind :: ForeignEval
 effectBind env _ = case _ of
   [ ExternApp [ eff, SemLam ident next ] ] ->
     Just $ makeLet Nothing eff \nextEff ->
-      SemEffectBind ident nextEff next
+      makeEffectBind ident nextEff next
   [ ExternApp [ eff, k ] ] ->
     Just $ makeLet Nothing eff \nextEff ->
       makeLet Nothing k \nextK ->
-        SemEffectBind Nothing nextEff \a ->
+        makeEffectBind Nothing nextEff \a ->
           evalApp env nextK [ a ]
   _ -> Nothing
 
@@ -387,7 +375,7 @@ effectMap env _ = case _ of
   [ ExternApp [ fn ] ] ->
     Just $ makeLet Nothing fn \fn' ->
       SemLam Nothing \val ->
-        SemEffectBind Nothing val \nextVal ->
+        makeEffectBind Nothing val \nextVal ->
           SemEffectPure (evalApp env fn' [ nextVal ])
   _ -> Nothing
 
@@ -424,7 +412,7 @@ effectRefModify env _ = case _ of
   [ ExternApp [ fn, ref ] ] ->
     Just $ makeLet Nothing fn \fn' ->
       makeLet Nothing ref \ref' ->
-        SemEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
+        makeEffectBind Nothing (NeutPrimEffect (EffectRefRead ref')) \val ->
           NeutPrimEffect $ EffectRefWrite ref' (evalApp env fn' [ val ])
   _ ->
     Nothing
@@ -443,90 +431,19 @@ isQualified mod tag = case _ of
   _ ->
     false
 
-assocBinaryOperatorL
-  :: forall a
-   . (BackendSemantics -> Maybe a)
-  -> (Env -> a -> a -> BackendSemantics)
-  -> (Env -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics)
-  -> ForeignEval
-assocBinaryOperatorL match op def env ident = case _ of
-  [ ExternApp [ a, b ] ] ->
-    case rewrite of
-      Just _ ->
-        rewrite
-      Nothing ->
-        def env a b
-    where
-    rewrite = case match a of
-      Just lhs ->
-        case match b of
-          Just rhs ->
-            Just $ op env lhs rhs
-          Nothing ->
-            case b of
-              SemExtern ident' [ ExternApp [ x, y ] ] _ | ident == ident' ->
-                case match x of
-                  Just rhs -> do
-                    let result = op env lhs rhs
-                    Just $ externApp ident [ result, y ]
-                  Nothing ->
-                    case x of
-                      SemExtern ident'' [ ExternApp [ v, w ] ] _ | ident == ident'' ->
-                        case match v of
-                          Just rhs -> do
-                            let result = op env lhs rhs
-                            Just $ externApp ident [ externApp ident [ result, w ], y ]
-                          Nothing ->
-                            Nothing
-                      _ ->
-                        Nothing
-              _ ->
-                Nothing
-      Nothing ->
-        case match b of
-          Just rhs ->
-            case a of
-              SemExtern ident' [ ExternApp [ v, w ] ] _ | ident == ident' ->
-                case match w of
-                  Just lhs -> do
-                    let result = op env lhs rhs
-                    Just $ externApp ident [ v, result ]
-                  Nothing ->
-                    case w of
-                      SemExtern ident'' [ ExternApp [ x, y ] ] _ | ident == ident'' ->
-                        case match y of
-                          Just lhs -> do
-                            let result = op env lhs rhs
-                            Just $ externApp ident [ externApp ident [ v, x ], result ]
-                          Nothing ->
-                            Nothing
-                      _ ->
-                        Nothing
-              _ ->
-                Nothing
-          Nothing ->
-            Nothing
-  _ ->
-    Nothing
-
 data_semigroup_concatArray :: ForeignSemantics
-data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") $ assocBinaryOperatorL match op default
+data_semigroup_concatArray = Tuple (qualified "Data.Semigroup" "concatArray") go
   where
-  match = case _ of
-    NeutLit (LitArray a) -> Just a
-    _ -> Nothing
-
-  op _ a b =
-    NeutLit (LitArray (a <> b))
-
-  default _ _ _ =
-    Nothing
+  go env qual = case _ of
+    [ ExternApp [ NeutLit (LitArray as), NeutLit (LitArray bs) ] ] ->
+      Just $ NeutLit (LitArray (as <> bs))
+    [ ExternApp [ a, b ] ] ->
+      Just $ evalAssocOp env (Left qual) a b
+    _ ->
+      Nothing
 
 data_semigroup_concatString :: ForeignSemantics
 data_semigroup_concatString = Tuple (qualified "Data.Semigroup" "concatString") $ primBinaryOperator OpStringAppend
-
-externApp :: Qualified Ident -> Array BackendSemantics -> BackendSemantics
-externApp ident spine = SemExtern ident [ ExternApp spine ] (Lazy.defer \_ -> NeutApp (NeutVar ident) spine)
 
 partial_unsafe_unsafePartial :: ForeignSemantics
 partial_unsafe_unsafePartial = Tuple (qualified "Partial.Unsafe" "_unsafePartial") go
@@ -551,13 +468,13 @@ record_builder_copyRecord = Tuple (qualified "Record.Builder" "copyRecord") go
 record_builder_unsafeInsert :: ForeignSemantics
 record_builder_unsafeInsert = Tuple (qualified "Record.Builder" "unsafeInsert") go
   where
-  go env _ = case _ of
+  go _ _ = case _ of
     [ ExternApp [ NeutLit (LitString prop), value, NeutLit (LitRecord props) ] ] ->
       Just $ NeutLit (LitRecord (Array.snoc props (Prop prop value)))
     [ ExternApp [ NeutLit (LitString prop), value, r@(NeutUpdate _ _) ] ] ->
-      Just $ evalUpdate env r [ Prop prop value ]
+      Just $ evalUpdate r [ Prop prop value ]
     [ ExternApp [ NeutLit (LitString prop), value, other ] ] | Just r <- viewCopyRecord other ->
-      Just $ evalUpdate env r [ Prop prop value ]
+      Just $ evalUpdate r [ Prop prop value ]
     _ ->
       Nothing
 
@@ -585,19 +502,19 @@ record_builder_unsafeModify = Tuple (qualified "Record.Builder" "unsafeModify") 
           )
           props
       Just $ NeutLit (LitRecord props')
-    [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _ _) _) ] ] -> do
+    [ ExternApp [ NeutLit (LitString prop), fn, r@(NeutUpdate r'@(NeutLocal _ _) _) ] ] -> do
       let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
-      Just $ evalUpdate env r [ update ]
+      Just $ evalUpdate r [ update ]
     [ ExternApp [ NeutLit (LitString prop), fn, other ] ] | Just r <- viewCopyRecord other ->
       Just $ makeLet Nothing r \r' -> do
         let update = Prop prop (evalApp env fn [ (evalAccessor env r' (GetProp prop)) ])
-        evalUpdate env r [ update ]
+        evalUpdate r [ update ]
     _ ->
       Nothing
 
 viewCopyRecord :: BackendSemantics -> Maybe BackendSemantics
 viewCopyRecord = case _ of
-  SemExtern (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord")) [ ExternApp [ value ] ] _ ->
+  SemRef (EvalExtern (Qualified (Just (ModuleName "Record.Builder")) (Ident "copyRecord"))) [ ExternApp [ value ] ] _ ->
     Just value
   _ ->
     Nothing
@@ -642,9 +559,9 @@ record_unsafe_unsafeHas = Tuple (qualified "Record.Unsafe" "unsafeHas") go
 record_unsafe_unsafeSet :: ForeignSemantics
 record_unsafe_unsafeSet = Tuple (qualified "Record.Unsafe" "unsafeSet") go
   where
-  go env _ = case _ of
+  go _ _ = case _ of
     [ ExternApp [ NeutLit (LitString prop), value, r ] ] ->
-      Just $ evalUpdate env r [ Prop prop value ]
+      Just $ evalUpdate r [ Prop prop value ]
     _ ->
       Nothing
 

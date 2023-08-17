@@ -10,7 +10,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), SemConditional(..), evalApp, evalPrimOp, liftInt, makeLet)
+import PureScript.Backend.Optimizer.Semantics (BackendSemantics(..), ExternSpine(..), SemConditional(..), evalApp, evalPrimOp, liftInt, makeEffectBind, makeLet)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSemantics, qualified)
 import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..))
 import PureScript.Backend.Optimizer.Utils (foldr1Array)
@@ -29,6 +29,8 @@ esForeignSemantics = Map.fromFoldable
   , data_bounded_bottomInt
   , data_bounded_topChar
   , data_bounded_bottomChar
+  , data_bounded_topNumber
+  , data_bounded_bottomNumber
   , data_enum_toCharCode
   , data_show_showCharImpl
   , data_show_showIntImpl
@@ -109,6 +111,16 @@ data_bounded_bottomInt :: ForeignSemantics
 data_bounded_bottomInt = Tuple (qualified "Data.Bounded" "bottomInt") go
   where
   go _ _ = const $ Just $ litInt bottom
+
+data_bounded_topNumber :: ForeignSemantics
+data_bounded_topNumber = Tuple (qualified "Data.Bounded" "topNumber") go
+  where
+  go _ _ = const $ Just $ litNumber top
+
+data_bounded_bottomNumber :: ForeignSemantics
+data_bounded_bottomNumber = Tuple (qualified "Data.Bounded" "bottomNumber") go
+  where
+  go _ _ = const $ Just $ litNumber bottom
 
 data_bounded_topChar :: ForeignSemantics
 data_bounded_topChar = Tuple (qualified "Data.Bounded" "topChar") go
@@ -227,7 +239,7 @@ foreign_object_st_delete = Tuple (qualified "Foreign.Object.ST" "delete") go
       Just $
         makeLet Nothing a \a' ->
           SemLam Nothing \b ->
-            SemEffectBind Nothing (evalApp env (NeutStop qual) [ a', b ]) \_ ->
+            makeEffectBind Nothing (evalApp env (NeutStop qual) [ a', b ]) \_ ->
               SemEffectPure b
     _ ->
       Nothing
@@ -241,7 +253,7 @@ foreign_object_st_poke = Tuple (qualified "Foreign.Object.ST" "poke") go
         makeLet Nothing a \a' ->
           makeLet Nothing b \b' ->
             SemLam Nothing \c ->
-              SemEffectBind Nothing (evalApp env (NeutStop qual) [ a', b', c ]) \_ ->
+              makeEffectBind Nothing (evalApp env (NeutStop qual) [ a', b', c ]) \_ ->
                 SemEffectPure c
     _ ->
       Nothing
@@ -294,6 +306,9 @@ whileLoop env qual = case _ of
 
 litInt :: Int -> BackendSemantics
 litInt = NeutLit <<< LitInt
+
+litNumber :: Number -> BackendSemantics
+litNumber = NeutLit <<< LitNumber
 
 litChar :: Char -> BackendSemantics
 litChar = NeutLit <<< LitChar

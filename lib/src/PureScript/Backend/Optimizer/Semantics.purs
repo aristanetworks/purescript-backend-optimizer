@@ -7,6 +7,7 @@ import Control.Comonad.Cofree as Cofree
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (Either(..))
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
@@ -36,7 +37,7 @@ data MkFn a
   | MkFnNext (Maybe Ident) (a -> MkFn a)
 
 data BackendSemantics
-  = SemExtern (Qualified Ident) (Array ExternSpine) (Lazy BackendSemantics)
+  = SemRef EvalRef (Array ExternSpine) (Lazy BackendSemantics)
   | SemLam (Maybe Ident) (BackendSemantics -> BackendSemantics)
   | SemMkFn (MkFn BackendSemantics)
   | SemMkEffectFn (MkFn BackendSemantics)
@@ -46,7 +47,8 @@ data BackendSemantics
   | SemEffectPure BackendSemantics
   | SemEffectDefer BackendSemantics
   | SemBranch (NonEmptyArray (SemConditional BackendSemantics)) (Lazy BackendSemantics)
-  | NeutLocal (Maybe Ident) Level (Maybe BackendSemantics)
+  | SemAssocOp (Either (Qualified Ident) BackendOperator2) (NonEmptyArray BackendSemantics)
+  | NeutLocal (Maybe Ident) Level
   | NeutVar (Qualified Ident)
   | NeutStop (Qualified Ident)
   | NeutData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendSemantics))
@@ -66,7 +68,16 @@ data SemConditional a = SemConditional (Lazy a) (Lazy a)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
-  | ExprRewrite BackendAnalysis BackendRewrite
+  | ExprRewrite BackendAnalysis (BackendRewrite BackendExpr)
+
+instance Eq BackendExpr where
+  eq = case _, _ of
+    ExprSyntax (BackendAnalysis s1) x, ExprSyntax (BackendAnalysis s2) y ->
+      s1.size == s2.size && x == y
+    ExprRewrite (BackendAnalysis s1) x, ExprRewrite (BackendAnalysis s2) y ->
+      s1.size == s2.size && x == y
+    _, _ ->
+      false
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -81,29 +92,33 @@ type EffectBindingAssoc a =
   , pure :: Boolean
   }
 
-data BackendRewrite
-  = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
-  | RewriteLetAssoc (Array (LetBindingAssoc BackendExpr)) BackendExpr
-  | RewriteEffectBindAssoc (Array (EffectBindingAssoc BackendExpr)) BackendExpr
+data BackendRewrite a
+  = RewriteInline (Maybe Ident) Level a a
+  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) a a
   | RewriteStop (Qualified Ident)
-  | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
-  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
-  | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
+  | RewriteUnpackOp (Maybe Ident) Level (UnpackOp a) a
+  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair a)) a a
+  | RewriteDistBranchesOp (NonEmptyArray (Pair a)) a (DistOp a)
 
-data UnpackOp
-  = UnpackRecord (Array (Prop BackendExpr))
-  | UnpackUpdate BackendExpr (Array (Prop BackendExpr))
-  | UnpackArray (Array BackendExpr)
-  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr))
+derive instance Eq a => Eq (BackendRewrite a)
 
-data DistOp
-  = DistApp (NonEmptyArray BackendExpr)
-  | DistUncurriedApp (Array BackendExpr)
+data UnpackOp a
+  = UnpackRecord (Array (Prop a))
+  | UnpackUpdate a (Array (Prop a))
+  | UnpackArray (Array a)
+  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
+
+derive instance Eq a => Eq (UnpackOp a)
+
+data DistOp a
+  = DistApp (NonEmptyArray a)
+  | DistUncurriedApp (Array a)
   | DistAccessor BackendAccessor
   | DistPrimOp1 BackendOperator1
-  | DistPrimOp2L BackendOperator2 BackendExpr
-  | DistPrimOp2R BackendExpr BackendOperator2
+  | DistPrimOp2L BackendOperator2 a
+  | DistPrimOp2R a BackendOperator2
+
+derive instance Eq a => Eq (DistOp a)
 
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
@@ -163,7 +178,8 @@ type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
-  , evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
+  , evalExternRef :: Env -> Qualified Ident -> Maybe BackendSemantics
+  , evalExternSpine :: Env -> Qualified Ident -> Array ExternSpine -> Maybe BackendSemantics
   , locals :: Array (LocalBinding BackendSemantics)
   , directives :: InlineDirectiveMap
   }
@@ -201,9 +217,18 @@ class Eval f where
   eval :: Env -> f -> BackendSemantics
 
 instance Eval f => Eval (BackendSyntax f) where
-  eval env = case _ of
+  eval env@(Env e) = case _ of
     Var qual ->
-      evalExtern env qual []
+      case e.evalExternSpine env qual [] of
+        Just sem ->
+          sem
+        Nothing ->
+          SemRef (EvalExtern qual) [] $ defer \_ ->
+            case e.evalExternRef env qual of
+              Just sem ->
+                deref sem
+              Nothing ->
+                NeutVar qual
     Local ident lvl ->
       case lookupLocal env lvl of
         Just (One sem) -> sem
@@ -242,14 +267,12 @@ instance Eval f => Eval (BackendSyntax f) where
         idents
         env
     Let ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        makeLet ident binding' (flip eval body <<< bindLocal env <<< One)
+      makeLet ident (eval env binding) (flip eval body <<< bindLocal env <<< One)
     LetRec _ bindings body -> do
       let bindGroup sem = flip eval sem <<< bindLocal env <<< Group
       SemLetRec (map bindGroup <$> bindings) (bindGroup body)
     EffectBind ident _ binding body ->
-      guardFail (eval env binding) \binding' ->
-        SemEffectBind ident binding' (flip eval body <<< bindLocal env <<< One)
+      makeEffectBind ident (eval env binding) (flip eval body <<< bindLocal env <<< One)
     EffectPure val ->
       guardFail (eval env val) SemEffectPure
     EffectDefer val ->
@@ -257,7 +280,7 @@ instance Eval f => Eval (BackendSyntax f) where
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
     Update lhs updates ->
-      evalUpdate env (eval env lhs) (map (eval env) <$> updates)
+      evalUpdate (eval env lhs) (map (eval env) <$> updates)
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
@@ -286,28 +309,6 @@ instance Eval BackendExpr where
           RewriteUncurry ident _ args binding body ->
             SemLet ident (mkFnFromArgs env (NonEmptyArray.toArray args) binding) \newFn -> do
               eval (bindLocal env (One (mkUncurriedAppRewrite env newFn (NonEmptyArray.length args)))) body
-          RewriteLetAssoc bindings body -> do
-            let
-              goBinding env' = case _ of
-                List.Nil ->
-                  eval env' body
-                List.Cons b bs ->
-                  makeLet b.ident (eval env' b.binding) \nextBinding ->
-                    goBinding (bindLocal env (One nextBinding)) bs
-            goBinding env (List.fromFoldable bindings)
-          RewriteEffectBindAssoc bindings body -> do
-            let
-              goBinding env' = case _ of
-                List.Nil ->
-                  eval env' body
-                List.Cons b bs
-                  | b.pure ->
-                      makeLet b.ident (eval env' b.binding) \nextBinding ->
-                        goBinding (bindLocal env (One nextBinding)) bs
-                  | otherwise ->
-                      SemEffectBind b.ident (eval env' b.binding) \nextBinding ->
-                        goBinding (bindLocal env (One nextBinding)) bs
-            goBinding env (List.fromFoldable bindings)
           RewriteStop qual ->
             NeutStop qual
           RewriteUnpackOp _ _ op body ->
@@ -392,8 +393,8 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
     SemLam _ k, List.Cons arg args ->
       makeLet Nothing arg \nextArg ->
         go env' (k nextArg) args
-    SemExtern qual sp _, List.Cons arg args -> do
-      go env' (evalExtern env' qual (snocApp sp arg)) args
+    SemRef ref sp sem, List.Cons arg args ->
+      go env' (evalRef env' ref sp (ExternApp [ arg ]) sem) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
@@ -411,9 +412,9 @@ evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> Backend
 evalUncurriedApp env hd spine = case hd of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
-  SemExtern qual sp _ ->
+  SemRef ref sp sem ->
     guardFailOver identity spine \spine' ->
-      evalExtern env qual (Array.snoc sp (ExternUncurriedApp spine'))
+      evalRef env ref sp (ExternUncurriedApp spine') sem
   SemLet ident val k ->
     SemLet ident val \nextVal ->
       makeLet Nothing (k nextVal) \nextFn ->
@@ -489,43 +490,41 @@ neutralApp hd spine
         NeutApp hd spine
 
 evalAccessor :: Env -> BackendSemantics -> BackendAccessor -> BackendSemantics
-evalAccessor initEnv initLhs accessor =
-  evalAssocLet initEnv initLhs \env lhs -> case lhs of
-    SemExtern qual spine _ ->
-      evalExtern env qual $ Array.snoc spine (ExternAccessor accessor)
-    NeutLit (LitRecord props)
-      | GetProp prop <- accessor
-      , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
-          sem
-    NeutUpdate rec props
-      | GetProp prop <- accessor ->
-          case Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props of
-            Just sem ->
-              sem
-            Nothing ->
-              evalAccessor env rec accessor
-    NeutLit (LitArray values)
-      | GetIndex n <- accessor
-      , Just sem <- Array.index values n ->
-          sem
-    NeutData _ _ _ _ fields
-      | GetCtorField _ _ _ _ _ n <- accessor
-      , Just (Tuple _ sem) <- Array.index fields n ->
-          sem
-    NeutFail err ->
-      NeutFail err
-    _ ->
-      NeutAccessor lhs accessor
+evalAccessor env lhs accessor = floatLet lhs case _ of
+  SemRef ref spine sem ->
+    evalRef env ref spine (ExternAccessor accessor) sem
+  NeutLit (LitRecord props)
+    | GetProp prop <- accessor
+    , Just sem <- Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props ->
+        sem
+  NeutUpdate rec props
+    | GetProp prop <- accessor ->
+        case Array.findMap (\(Prop p v) -> guard (p == prop) $> v) props of
+          Just sem ->
+            sem
+          Nothing ->
+            evalAccessor env rec accessor
+  NeutLit (LitArray values)
+    | GetIndex n <- accessor
+    , Just sem <- Array.index values n ->
+        sem
+  NeutData _ _ _ _ fields
+    | GetCtorField _ _ _ _ _ n <- accessor
+    , Just (Tuple _ sem) <- Array.index fields n ->
+        sem
+  NeutFail err ->
+    NeutFail err
+  lhs' ->
+    NeutAccessor lhs' accessor
 
-evalUpdate :: Env -> BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
-evalUpdate initEnv initLhs props =
-  evalAssocLet initEnv initLhs \_ lhs -> case lhs of
-    NeutLit (LitRecord props') ->
-      NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
-    NeutUpdate r props' ->
-      NeutUpdate r (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))
-    _ ->
-      NeutUpdate lhs props
+evalUpdate :: BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
+evalUpdate lhs props = floatLet lhs case _ of
+  NeutLit (LitRecord props') ->
+    NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
+  NeutUpdate r props' ->
+    NeutUpdate r (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props'))
+  lhs' ->
+    NeutUpdate lhs' props
 
 evalBranches :: Env -> NonEmptyArray (SemConditional BackendSemantics) -> Lazy BackendSemantics -> BackendSemantics
 evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initDef
@@ -533,7 +532,7 @@ evalBranches _ initConds initDef = go [] (NonEmptyArray.toArray initConds) initD
   go acc conds def = case Array.uncons conds of
     Just { head, tail } ->
       case head of
-        SemConditional c t -> case force c of
+        SemConditional c t -> case deref (force c) of
           NeutLit (LitBoolean didMatch)
             | didMatch -> go acc [] t
             | otherwise -> go acc tail def
@@ -564,163 +563,184 @@ rewriteBranches k = go
 evalPair :: forall f. Eval f => Env -> Pair f -> SemConditional BackendSemantics
 evalPair env (Pair a b) = SemConditional (defer \_ -> eval env a) (defer \_ -> eval env b)
 
-evalAssocLet :: Env -> BackendSemantics -> (Env -> BackendSemantics -> BackendSemantics) -> BackendSemantics
-evalAssocLet env sem go = case sem of
-  SemLet ident val k ->
-    SemLet ident val \nextVal1 ->
-      makeLet Nothing (k nextVal1) \nextVal2 ->
-        go (bindLocal (bindLocal env (One nextVal1)) (One nextVal2)) nextVal2
-  SemLetRec vals k ->
-    SemLetRec vals \nextVals1 ->
-      makeLet Nothing (k nextVals1) \nextVal2 ->
-        go (bindLocal (bindLocal env (Group nextVals1)) (One nextVal2)) nextVal2
-  NeutFail err ->
-    NeutFail err
-  _ ->
-    go env sem
-
-evalAssocLet2
-  :: Env
-  -> BackendSemantics
-  -> BackendSemantics
-  -> (Env -> BackendSemantics -> BackendSemantics -> BackendSemantics)
-  -> BackendSemantics
-evalAssocLet2 env sem1 sem2 go =
-  evalAssocLet env sem1 \env' sem1' ->
-    evalAssocLet env' sem2 \env'' sem2' ->
-      go env'' sem1' sem2'
+makeEffectBind :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+makeEffectBind = go
+  where
+  go ident1 binding1 k1 = case binding1 of
+    SemLet ident2 binding2 k2 ->
+      makeLet ident2 binding2 \nextBinding2 ->
+        makeEffectBind ident1 (k2 nextBinding2) k1
+    SemEffectBind ident2 binding2 k2 ->
+      go ident2 binding2 \nextBinding2 ->
+        makeEffectBind ident1 (k2 nextBinding2) k1
+    SemEffectDefer binding2 ->
+      SemEffectDefer $ floatLet binding2 \nextBinding2 ->
+        makeEffectBind ident1 nextBinding2 k1
+    _ ->
+      floatLet binding1 \nextBinding2 ->
+        SemEffectBind ident1 nextBinding2 k1
 
 makeLet :: Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
-makeLet ident binding go = case binding of
-  SemExtern _ [] _ ->
-    go binding
-  NeutLocal _ _ _ ->
-    go binding
-  NeutStop _ ->
-    go binding
-  NeutVar _ ->
-    go binding
-  _ ->
-    SemLet ident binding go
+makeLet = floatLetWith go
+  where
+  go ident binding k = case binding of
+    SemRef _ [] _ ->
+      k binding
+    NeutLocal _ _ ->
+      k binding
+    NeutStop _ ->
+      k binding
+    NeutVar _ ->
+      k binding
+    _ ->
+      SemLet ident binding k
+
+floatLet :: BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+floatLet = floatLetWith (const (#)) Nothing
+
+floatLetWith
+  :: (Maybe Ident -> BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics)
+  -> Maybe Ident
+  -> BackendSemantics
+  -> (BackendSemantics -> BackendSemantics)
+  -> BackendSemantics
+floatLetWith = go
+  where
+  go f ident1 binding1 k1 = case binding1 of
+    SemLet ident2 binding2 k2 ->
+      go f ident2 binding2 \nextBinding2 ->
+        makeLet ident1 (k2 nextBinding2) k1
+    SemLetRec bindings k2 ->
+      SemLetRec bindings \nextBindings ->
+        makeLet ident1 (k2 nextBindings) k1
+    NeutFail _ ->
+      binding1
+    _ ->
+      f ident1 binding1 k1
 
 deref :: BackendSemantics -> BackendSemantics
 deref = case _ of
-  NeutLocal _ _ (Just expr) -> expr
-  expr -> expr
+  SemRef _ _ sem ->
+    force sem
+  sem ->
+    sem
 
--- TODO: Check for overflow in Int ops since backends may not handle it the
--- same was as the JS backend.
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
   Op1 op1 x ->
     case op1, x of
-      OpBooleanNot, NeutLit (LitBoolean bool) ->
-        liftBoolean (not bool)
-      OpBooleanNot, NeutPrimOp op ->
-        evalPrimOpNot op
-      OpIntBitNot, NeutLit (LitInt a) ->
-        liftInt (complement a)
+      OpBooleanNot, _
+        | NeutLit (LitBoolean bool) <- deref x ->
+            liftBoolean (not bool)
+      OpBooleanNot, _
+        | NeutPrimOp op <- deref x ->
+            evalPrimOpNot op
+      OpIntBitNot, _
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (complement a)
       OpIsTag a, _
         | NeutData b _ _ _ _ <- deref x ->
             liftBoolean (a == b)
       OpArrayLength, _
         | NeutLit (LitArray arr) <- deref x ->
             liftInt (Array.length arr)
-      OpIntNegate, NeutLit (LitInt a) ->
-        liftInt (negate a)
-      OpNumberNegate, NeutLit (LitNumber a) ->
-        liftNumber (negate a)
-      _, SemExtern qual spine _ ->
-        evalExtern env qual $ Array.snoc spine (ExternPrimOp op1)
+      OpIntNegate, _
+        | NeutLit (LitInt a) <- deref x ->
+            liftInt (negate a)
+      OpNumberNegate, _
+        | NeutLit (LitNumber a) <- deref x ->
+            liftNumber (negate a)
+      _, SemRef ref spine sem ->
+        evalRef env ref spine (ExternPrimOp op1) sem
       _, NeutFail err ->
         NeutFail err
       _, _ ->
-        evalAssocLet env x \_ x' ->
-          NeutPrimOp (Op1 op1 x')
+        floatLet x (NeutPrimOp <<< Op1 op1)
   Op2 op2 x y ->
     case op2 of
       OpBooleanAnd
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             x
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             y
-        | NeutLit (LitBoolean true) <- x ->
+        | NeutLit (LitBoolean true) <- deref x ->
             y
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             x
       OpBooleanOr
-        | NeutLit (LitBoolean false) <- x ->
+        | NeutLit (LitBoolean false) <- deref x ->
             y
-        | NeutLit (LitBoolean false) <- y ->
+        | NeutLit (LitBoolean false) <- deref y ->
             x
-        | NeutLit (LitBoolean true) <- x ->
+        | NeutLit (LitBoolean true) <- deref x ->
             x
-        | NeutLit (LitBoolean true) <- y ->
+        | NeutLit (LitBoolean true) <- deref y ->
             y
       OpBooleanOrd OpEq
-        | NeutLit (LitBoolean bool) <- x ->
+        | NeutLit (LitBoolean bool) <- deref x ->
             if bool then y else evalPrimOp env (Op1 OpBooleanNot y)
-        | NeutLit (LitBoolean bool) <- y ->
+        | NeutLit (LitBoolean bool) <- deref y ->
             if bool then x else evalPrimOp env (Op1 OpBooleanNot x)
       OpBooleanOrd op
-        | NeutLit (LitBoolean a) <- x
-        , NeutLit (LitBoolean b) <- y ->
+        | NeutLit (LitBoolean a) <- deref x
+        , NeutLit (LitBoolean b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpCharOrd op
-        | NeutLit (LitChar a) <- x
-        , NeutLit (LitChar b) <- y ->
+        | NeutLit (LitChar a) <- deref x
+        , NeutLit (LitChar b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpIntBitAnd
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .&. b)
       OpIntBitOr
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (a .|. b)
       OpIntBitShiftLeft
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shl a b)
       OpIntBitShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (shr a b)
       OpIntBitXor
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (xor a b)
       OpIntBitZeroFillShiftRight
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftInt (zshr a b)
       OpIntNum OpSubtract
-        | NeutLit (LitInt 0) <- x ->
+        | NeutLit (LitInt 0) <- deref x ->
             evalPrimOp env (Op1 OpIntNegate y)
       OpIntNum op
-        | Just result <- evalPrimOpNum OpIntNum liftInt caseInt op x y ->
+        | Just result <- evalPrimOpNumInt op x y ->
             result
       OpIntOrd op
-        | NeutLit (LitInt a) <- x
-        , NeutLit (LitInt b) <- y ->
+        | NeutLit (LitInt a) <- deref x
+        , NeutLit (LitInt b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpNumberNum OpSubtract
-        | NeutLit (LitNumber 0.0) <- x ->
+        | NeutLit (LitNumber 0.0) <- deref x ->
             evalPrimOp env (Op1 OpNumberNegate y)
       OpNumberNum op
-        | Just result <- evalPrimOpNum OpNumberNum liftNumber caseNumber op x y ->
+        | Just result <- evalPrimOpNumNumber op x y ->
             result
       OpNumberOrd op
-        | NeutLit (LitNumber a) <- x
-        , NeutLit (LitNumber b) <- y ->
-            liftBoolean (evalPrimOpOrd op a b)
+        | NeutLit (LitNumber a) <- deref x
+        , NeutLit (LitNumber b) <- deref y ->
+            liftBoolean (evalPrimOpOrdNumber op a b)
       OpStringOrd op
-        | NeutLit (LitString a) <- x
-        , NeutLit (LitString b) <- y ->
+        | NeutLit (LitString a) <- deref x
+        , NeutLit (LitString b) <- deref y ->
             liftBoolean (evalPrimOpOrd op a b)
       OpStringAppend
-        | Just result <- evalPrimOpAssocL OpStringAppend caseString (\a b -> liftString (a <> b)) x y ->
-            result
+        | NeutLit (LitString a) <- x
+        , NeutLit (LitString b) <- y ->
+            liftString (a <> b)
       OpArrayIndex
         | NeutLit (LitInt n) <- y ->
             evalAccessor env x (GetIndex n)
@@ -741,44 +761,12 @@ evalPrimOp env = case _ of
           NeutFail err, _ -> NeutFail err
           _, NeutFail err -> NeutFail err
           _, _ ->
-            evalAssocLet2 env x y \_ x' y' ->
-              NeutPrimOp (Op2 op2 x' y')
-
-evalPrimOpAssocL :: forall a. BackendOperator2 -> (BackendSemantics -> Maybe a) -> (a -> a -> BackendSemantics) -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
-evalPrimOpAssocL op match combine a b = case match a of
-  Just lhs
-    | Just rhs <- match b ->
-        Just $ combine lhs rhs
-    | Just (Tuple x y) <- decompose b ->
-        case match x of
-          Just rhs ->
-            Just $ liftOp2 op (combine lhs rhs) y
-          Nothing
-            | Just (Tuple v w) <- decompose x
-            , Just rhs <- match v ->
-                Just $ liftOp2 op (liftOp2 op (combine lhs rhs) w) y
-          _ ->
-            Nothing
-  Nothing
-    | Just rhs <- match b
-    , Just (Tuple v w) <- decompose a ->
-        case match w of
-          Just lhs ->
-            Just $ liftOp2 op v (combine lhs rhs)
-          Nothing
-            | Just (Tuple x y) <- decompose w
-            , Just lhs <- match y ->
-                Just $ liftOp2 op (liftOp2 op v x) (combine lhs rhs)
-          _ ->
-            Nothing
-  _ ->
-    Nothing
-  where
-  decompose = case _ of
-    NeutPrimOp (Op2 op' x y) | op == op' ->
-      Just (Tuple x y)
-    _ ->
-      Nothing
+            floatLet x \x' ->
+              floatLet y \y' ->
+                if isAssocPrimOp op2 then
+                  evalAssocOp env (Right op2) x' y'
+                else
+                  NeutPrimOp (Op2 op2 x' y')
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
@@ -789,31 +777,50 @@ evalPrimOpOrd op x y = case op of
   OpLt -> x < y
   OpLte -> x <= y
 
-evalPrimOpNum
-  :: forall a
-   . EuclideanRing a
-  => (BackendOperatorNum -> BackendOperator2)
-  -> (a -> BackendSemantics)
-  -> (BackendSemantics -> Maybe a)
-  -> BackendOperatorNum
-  -> BackendSemantics
-  -> BackendSemantics
-  -> Maybe BackendSemantics
-evalPrimOpNum injOp inj prj op x y = case op of
-  OpAdd ->
-    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a + b)) x y
-  OpMultiply ->
-    evalPrimOpAssocL (injOp op) prj (\a b -> inj (a * b)) x y
-  OpSubtract
-    | Just a <- prj x
-    , Just b <- prj y ->
-        Just $ inj (a - b)
-  OpDivide
-    | Just a <- prj x
-    , Just b <- prj y ->
-        Just $ inj (a / b)
-  _ ->
-    Nothing
+-- Duplicate because inlined operators behave differently with NaN.
+-- This just ensures we get the same behavior for const eval.
+evalPrimOpOrdNumber :: BackendOperatorOrd -> Number -> Number -> Boolean
+evalPrimOpOrdNumber op x y = case op of
+  OpEq -> x == y
+  OpNotEq -> x /= y
+  OpGt -> x > y
+  OpGte -> x >= y
+  OpLt -> x < y
+  OpLte -> x <= y
+
+evalPrimOpNumNumber :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
+evalPrimOpNumNumber op x y
+  | NeutLit (LitNumber a) <- deref x
+  , NeutLit (LitNumber b) <- deref y =
+      Just $ liftNumber case op of
+        OpAdd -> a + b
+        OpMultiply -> a * b
+        OpSubtract -> a - b
+        OpDivide -> a / b
+  | otherwise =
+      Nothing
+
+evalPrimOpNumInt :: BackendOperatorNum -> BackendSemantics -> BackendSemantics -> Maybe BackendSemantics
+evalPrimOpNumInt op x y
+  | NeutLit (LitInt a) <- deref x
+  , NeutLit (LitInt b) <- deref y =
+      case op of
+        OpAdd -> do
+          let res = a + b
+          if b > 0 && res < a || b < 0 && res > a then Nothing
+          else Just $ liftInt res
+        OpMultiply -> do
+          let res = a * b
+          if a /= (res / b) then Nothing
+          else Just $ liftInt res
+        OpSubtract -> do
+          let res = a - b
+          if b > 0 && res > a || b < 0 && res < a then Nothing
+          else Just $ liftInt res
+        OpDivide ->
+          Just $ liftInt (a / b)
+  | otherwise =
+      Nothing
 
 evalPrimOpNot :: BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOpNot = case _ of
@@ -847,10 +854,91 @@ primOpOrdNot = case _ of
   OpGt -> OpLte
   OpGte -> OpLt
 
-evalExtern :: Env -> Qualified Ident -> Array ExternSpine -> BackendSemantics
-evalExtern env@(Env e) qual spine = case e.evalExtern env qual spine of
-  Nothing -> SemExtern qual spine (defer \_ -> neutralSpine (NeutVar qual) spine)
-  Just sem -> sem
+isAssocPrimOp :: BackendOperator2 -> Boolean
+isAssocPrimOp = case _ of
+  OpIntNum OpAdd -> true
+  OpIntNum OpMultiply -> true
+  OpNumberNum OpAdd -> true
+  OpNumberNum OpMultiply -> true
+  OpStringAppend -> true
+  _ -> false
+
+evalAssocOp :: Env -> Either (Qualified Ident) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+evalAssocOp env op1 = case _, _ of
+  SemAssocOp op2 as, SemAssocOp op3 bs
+    | op1 == op2
+    , op2 == op3 ->
+        case evalAssocOp' env op1 (NonEmptyArray.last as) (NonEmptyArray.head bs) of
+          SemAssocOp op4 cs
+            | op3 == op4 ->
+                SemAssocOp op1 $ NonEmptyArray.prependArray (NonEmptyArray.init as) (NonEmptyArray.appendArray cs (NonEmptyArray.tail bs))
+          c ->
+            SemAssocOp op1 $ NonEmptyArray.prependArray (NonEmptyArray.init as) (NonEmptyArray.cons' c (NonEmptyArray.tail bs))
+  a, SemAssocOp op2 bs
+    | op1 == op2 ->
+        case evalAssocOp' env op1 a (NonEmptyArray.head bs) of
+          SemAssocOp op3 cs
+            | op2 == op3 ->
+                SemAssocOp op1 $ NonEmptyArray.appendArray cs (NonEmptyArray.tail bs)
+          a' ->
+            SemAssocOp op1 $ NonEmptyArray.cons' a' (NonEmptyArray.tail bs)
+  SemAssocOp op2 as, b
+    | op1 == op2 ->
+        case evalAssocOp' env op1 (NonEmptyArray.last as) b of
+          SemAssocOp op3 cs
+            | op2 == op3 ->
+                SemAssocOp op1 $ NonEmptyArray.prependArray (NonEmptyArray.init as) cs
+          b' ->
+            SemAssocOp op1 $ NonEmptyArray.snoc' (NonEmptyArray.init as) b'
+  a, b ->
+    SemAssocOp op1 $ NonEmptyArray.cons' a [ b ]
+
+evalAssocOp' :: Env -> Either (Qualified Ident) BackendOperator2 -> BackendSemantics -> BackendSemantics -> BackendSemantics
+evalAssocOp' env@(Env e) op a b = case op of
+  Left qual ->
+    case e.evalExternSpine env qual [ ExternApp [ a, b ] ] of
+      Just res ->
+        res
+      Nothing ->
+        SemAssocOp op $ NonEmptyArray.cons' a [ b ]
+  Right primOp ->
+    evalPrimOp env (Op2 primOp a b)
+
+evalRef :: Env -> EvalRef -> Array ExternSpine -> ExternSpine -> Lazy BackendSemantics -> BackendSemantics
+evalRef env@(Env e) ref spine last sem = case ref of
+  EvalExtern qual
+    | Just sem' <- e.evalExternSpine env qual spine' ->
+        sem'
+  _ ->
+    SemRef ref spine' $ defer \_ ->
+      deref $ evalRefSpine env ref spine' sem last
+  where
+  spine' = snocSpine spine last
+
+evalRefSpine :: Env -> EvalRef -> Array ExternSpine -> Lazy BackendSemantics -> ExternSpine -> BackendSemantics
+evalRefSpine env ref spine sem = case _ of
+  ExternApp _ ->
+    neutralSpine (evalEvalRef ref) spine
+  ExternUncurriedApp _ ->
+    neutralSpine (evalEvalRef ref) spine
+  ExternAccessor acc ->
+    evalAccessor env (force sem) acc
+  ExternPrimOp op ->
+    evalPrimOp env (Op1 op (force sem))
+
+evalEvalRef :: EvalRef -> BackendSemantics
+evalEvalRef = case _ of
+  EvalExtern qual ->
+    NeutVar qual
+  EvalLocal ident lvl ->
+    NeutLocal ident lvl
+
+snocSpine :: Array ExternSpine -> ExternSpine -> Array ExternSpine
+snocSpine spine = case _ of
+  ExternApp apps ->
+    foldl snocApp spine apps
+  other ->
+    Array.snoc spine other
 
 envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
 envForGroup env ref acc group
@@ -995,6 +1083,30 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   _ ->
     Nothing
 
+evalExternRefFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternImpl -> BackendSemantics
+evalExternRefFromImpl env qual (Tuple _ impl) = case impl of
+  ExternExpr group (NeutralExpr expr)
+    | isRefExpr expr ->
+        eval (envForGroup env (EvalExtern qual) InlineRef group) expr
+  ExternDict group props ->
+    NeutLit $ LitRecord $ map
+      ( \(Prop prop (Tuple _ (NeutralExpr expr))) ->
+          Prop prop $ eval (envForGroup env (EvalExtern qual) (InlineProp prop) group) expr
+      )
+      props
+  _ ->
+    NeutVar qual
+
+isRefExpr :: forall a. BackendSyntax a -> Boolean
+isRefExpr = case _ of
+  Var _ -> true
+  Lit _ -> true
+  CtorSaturated _ _ _ _ _ -> true
+  Accessor _ _ -> true
+  Update _ _ -> true
+  PrimOp _ -> true
+  _ -> false
+
 analysisFromDirective :: BackendAnalysis -> InlineDirective -> BackendAnalysis
 analysisFromDirective (BackendAnalysis analysis) = case _ of
   InlineAlways ->
@@ -1055,21 +1167,21 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ NeutLocal ident level (Just binding)
+      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ SemRef (EvalLocal ident level) [] $ defer \_ -> deref binding
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
       -- to recursive bindings. The language requires
       -- a runtime check for strictly recursive bindings
       -- which we don't currently implement.
-      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level Nothing) <$> bindings
+      let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
       build ctx $ LetRec level
         (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
       let ctx' = ctx { effect = true }
       let Tuple level ctx'' = nextLevel ctx'
-      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level (Just binding)
+      build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level
     SemEffectPure sem ->
       build ctx $ EffectPure (quote (ctx { effect = false }) sem)
     SemEffectDefer sem ->
@@ -1081,17 +1193,21 @@ quote = go
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
 
     -- Non-block constructors
-    SemExtern _ _ sem ->
-      go ctx (force sem)
+    SemRef ref sp _ ->
+      case ref of
+        EvalExtern qual ->
+          go ctx $ neutralSpine (NeutVar qual) sp
+        EvalLocal ident lvl ->
+          go ctx $ neutralSpine (NeutLocal ident lvl) sp
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level Nothing
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
             build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
@@ -1100,11 +1216,21 @@ quote = go
         loop ctx' idents = case _ of
           MkFnNext ident k -> do
             let Tuple lvl ctx'' = nextLevel ctx'
-            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl Nothing))
+            loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
             build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
       loop ctx [] pro
-    NeutLocal ident level _ ->
+    SemAssocOp op spine ->
+      foldl1Array
+        ( \a b -> case op of
+            Left qual ->
+              build ctx $ App (build ctx (Var qual)) $ NonEmptyArray.cons' a [ quote ctx b ]
+            Right primOp ->
+              build ctx $ PrimOp (Op2 primOp a (quote ctx b))
+        )
+        (quote ctx)
+        spine
+    NeutLocal ident level ->
       build ctx $ Local ident level
     NeutVar qual ->
       build ctx $ Var qual
@@ -1153,40 +1279,23 @@ build ctx = case _ of
     build ctx $ App hd (tl1 <> tl2)
   Abs ids1 (ExprSyntax _ (Abs ids2 body)) ->
     build ctx $ Abs (ids1 <> ids2) body
-  expr@(Let ident1 level1 (ExprSyntax _ (Let ident2 level2 binding2 body2)) body1) ->
-    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
-      [ { ident: ident2, level: level2, binding: binding2 }
-      , { ident: ident1, level: level1, binding: body2 }
-      ]
-      body1
-  expr@(Let ident1 level1 (ExprRewrite _ (RewriteLetAssoc bindings body2)) body1) ->
-    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteLetAssoc
-      (Array.snoc bindings { ident: ident1, level: level1, binding: body2 })
-      body1
   Let ident level binding body
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
-  Let ident level binding body
-    | Just expr' <- shouldUncurryAbs ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackRecord ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackUpdate ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackCtor ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackArray ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldDistributeBranches ident level binding body ->
-        expr'
-  Let _ level binding body
-    | Just expr' <- shouldEtaReduce level binding body ->
-        expr'
+    | Just expr <- shouldUncurryAbs ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackRecord ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackUpdate ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackCtor ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackArray ident level binding body ->
+        expr
+    | Just expr <- shouldDistributeBranches ident level binding body ->
+        expr
+    | Just expr <- shouldEtaReduce level binding body ->
+        expr
   App (ExprSyntax analysis (Branch bs def)) tl
     | Just expr' <- shouldDistributeBranchApps analysis bs def tl ->
         expr'
@@ -1205,29 +1314,6 @@ build ctx = case _ of
   PrimOp (Op2 op2 lhs (ExprSyntax analysis (Branch bs def)))
     | Just expr' <- shouldDistributeBranchPrimOp2R analysis bs def lhs op2 ->
         expr'
-  expr@(EffectBind ident1 level1 (ExprSyntax _ (EffectBind ident2 level2 binding2 body2)) body1) ->
-    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
-      [ { ident: ident2, level: level2, binding: binding2, pure: false }
-      , { ident: ident1, level: level1, binding: body2, pure: false }
-      ]
-      body1
-  expr@(EffectBind ident1 level1 (ExprSyntax _ (Let ident2 level2 binding2 body2)) body1) ->
-    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
-      [ { ident: ident2, level: level2, binding: binding2, pure: true }
-      , { ident: ident1, level: level1, binding: body2, pure: false }
-      ]
-      body1
-  expr@(EffectBind ident1 level1 (ExprRewrite _ (RewriteEffectBindAssoc bindings body2)) body1) ->
-    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
-      (Array.snoc bindings { ident: ident1, level: level1, binding: body2, pure: false })
-      body1
-  expr@(EffectBind ident1 level1 (ExprRewrite _ (RewriteLetAssoc bindings body2)) body1) ->
-    ExprRewrite (withRewrite (analyzeDefault ctx expr)) $ RewriteEffectBindAssoc
-      (Array.snoc (withPure <$> bindings) { ident: ident1, level: level1, binding: body2, pure: false })
-      body1
-    where
-    withPure { ident, level, binding } =
-      { ident, level, binding, pure: true }
   EffectBind ident level (ExprSyntax _ (EffectPure binding)) body ->
     build ctx $ EffectDefer $ build ctx $ Let ident level binding body
   EffectBind ident level (ExprSyntax _ (EffectDefer binding)) body ->
@@ -1238,65 +1324,65 @@ build ctx = case _ of
     binding
   EffectDefer expr@(ExprSyntax _ (EffectDefer _)) ->
     expr
-  Branch pairs def | Just expr <- simplifyBranches ctx pairs def ->
-    expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr ->
     buildDefault ctx expr
 
 buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
-buildBranchCond ctx (Pair a b) c = case b of
-  ExprSyntax _ (Lit (LitBoolean true))
-    | ExprSyntax _ (Lit (LitBoolean true)) <- c ->
-        c
-    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
-        a
-    | ExprSyntax _ x <- c, isBooleanTail x ->
-        build ctx (PrimOp (Op2 OpBooleanOr a c))
-  ExprSyntax _ (Lit (LitBoolean false))
-    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
-        c
-    | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x1))) <- a
-    , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2))) <- c
-    , isSameVariable x1 x2 ->
-        c
-  _ ->
-    build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
-  where
-  isSameVariable = case _, _ of
-    Local _ l, Local _ r -> l == r
-    Var l, Var r -> l == r
-    _, _ -> false
+buildBranchCond ctx pair def
+  | Just expr <- simplifyCondIsTag ctx pair def =
+      expr
+  | Just expr <- simplifyCondBoolean ctx pair def =
+      expr
+  | Just expr <- simplifyCondLiftAnd ctx pair def =
+      expr
+  | Just expr <- simplifyCondRedundantElse ctx pair def =
+      expr
+  | ExprSyntax _ (Branch pairs def') <- def =
+      build ctx (Branch (NonEmptyArray.cons pair pairs) def')
+  | otherwise =
+      build ctx (Branch (NonEmptyArray.singleton pair) def)
 
-isBooleanTail :: forall a. BackendSyntax a -> Boolean
-isBooleanTail = case _ of
-  Lit _ -> true
-  Var _ -> true
-  Local _ _ -> true
-  PrimOp _ -> true
-  _ -> false
+simplifyCondIsTag :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondIsTag _ = case _, _ of
+  Pair (ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x1))) (ExprSyntax _ (Lit (LitBoolean false))), def@(ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x2)))
+    | x1 == x2 ->
+        Just def
+  _, _ ->
+    Nothing
 
-simplifyBranches :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs of
-  [ a ]
-    | Pair expr (ExprSyntax _ (Lit (LitBoolean true))) <- a
-    , ExprSyntax _ (Lit (LitBoolean false)) <- def ->
+simplifyCondBoolean :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondBoolean ctx = case _, _ of
+  Pair expr body@(ExprSyntax _ (Lit (LitBoolean body'))), ExprSyntax _ (Lit (LitBoolean other))
+    | body' == other ->
+        Just body
+    | body' && not other ->
         Just expr
-    | Pair expr (ExprSyntax _ (Lit (LitBoolean false))) <- a
-    , ExprSyntax _ (Lit (LitBoolean true)) <- def ->
+    | not body' && other ->
         Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
-  [ a, b ]
-    | Pair expr1@(ExprSyntax _ (Local _ lvl1)) body1 <- a
-    , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot (ExprSyntax _ (Local _ lvl2))))) body2 <- b
-    , ExprSyntax _ (Fail _) <- def
-    , lvl1 == lvl2 ->
-        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
-  _
-    | ExprSyntax _ (Branch pairs2 def2) <- def ->
-        Just $ build ctx (Branch (pairs <> pairs2) def2)
-    | otherwise ->
-        Nothing
+  Pair expr body, ExprSyntax _ (Lit (LitBoolean false)) ->
+    Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
+  _, _ ->
+    Nothing
+
+simplifyCondRedundantElse :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondRedundantElse ctx = case _, _ of
+  Pair expr1 body1, ExprSyntax _ (Branch pairs _)
+    | Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2 <- NonEmptyArray.head pairs
+    , expr1 == expr2 ->
+        Just $ buildBranchCond ctx (Pair expr1 body1) body2
+  _, _ ->
+    Nothing
+
+simplifyCondLiftAnd :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondLiftAnd ctx pair def1 = case pair of
+  Pair x (ExprSyntax _ (Branch pairs def2))
+    | [ Pair y z ] <- NonEmptyArray.toArray pairs
+    , def1 == def2 ->
+        Just $ buildBranchCond ctx (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z) def1
+  _ ->
+    Nothing
 
 buildStop :: Ctx -> Qualified Ident -> BackendExpr
 buildStop ctx stop = ExprRewrite (analyzeDefault ctx (Var stop)) (RewriteStop stop)
@@ -1495,7 +1581,7 @@ shouldInlineExternReference _ (BackendAnalysis s) _ =
 shouldInlineExternApp :: Qualified Ident -> BackendAnalysis -> NeutralExpr -> Spine BackendSemantics -> Boolean
 shouldInlineExternApp _ (BackendAnalysis s) _ args =
   (s.complexity <= Deref && s.size < 16)
-    || (Map.isEmpty s.usages && Set.isEmpty s.deps && s.size < 64)
+    || (Map.isEmpty s.usages && not s.externs && s.size < 64)
     || (delayed && Array.length s.args <= Array.length args && s.size < 16)
     || (delayed && or (Array.zipWith shouldInlineExternAppArg s.args args) && s.size < 16)
   where
@@ -1580,7 +1666,7 @@ optimize traceSteps originalProcessors ctx env qual@(Qualified mn (Ident id)) in
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) $ foldBackendExpr NeutralExpr (\_ neutExpr -> neutExpr) init
 
-foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite -> a -> a) -> BackendExpr -> a
+foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite BackendExpr -> a -> a) -> BackendExpr -> a
 foldBackendExpr foldSyntax foldRewrite = go
   where
   go = case _ of
@@ -1594,39 +1680,6 @@ foldBackendExpr foldSyntax foldRewrite = go
           foldSyntax $ Let ident level (foldSyntax (Abs args (go binding))) (go body)
         RewriteStop qual ->
           foldSyntax $ Var qual
-        RewriteLetAssoc bindings body ->
-          case NonEmptyArray.fromArray bindings of
-            Just bindings' -> do
-              let
-                { ident, level, binding } = foldl1Array
-                  ( \inner outer -> outer
-                      { binding =
-                          foldSyntax $ Let inner.ident inner.level inner.binding (go outer.binding)
-                      }
-                  )
-                  (\outer -> outer { binding = go outer.binding })
-                  bindings'
-              foldSyntax $ Let ident level binding (go body)
-            Nothing ->
-              go body
-        RewriteEffectBindAssoc bindings body ->
-          case NonEmptyArray.fromArray bindings of
-            Just bindings' -> do
-              let
-                { ident, level, binding } = foldl1Array
-                  ( \inner outer -> outer
-                      { binding =
-                          if inner.pure then
-                            foldSyntax $ Let inner.ident inner.level inner.binding (go outer.binding)
-                          else
-                            foldSyntax $ EffectBind inner.ident inner.level inner.binding (go outer.binding)
-                      }
-                  )
-                  (\outer -> outer { binding = go outer.binding })
-                  bindings'
-              foldSyntax $ Let ident level binding (go body)
-            Nothing ->
-              go body
         RewriteUnpackOp ident level op body ->
           case op of
             UnpackRecord props ->

@@ -27,7 +27,6 @@ const test1 = v => {
     if (v._1.tag === "Zero") { return "e2: " + showExpr.show(v._2); }
     if (v._2.tag === "Zero") { return "e4: " + showExpr.show(v._1); }
     if (v._1.tag === "Add") { return "e5: " + showExpr.show(v._1._1) + " " + showExpr.show(v._1._2) + " " + showExpr.show(v._2); }
-    return "e7: " + showExpr.show(v);
   }
   return "e7: " + showExpr.show(v);
 };

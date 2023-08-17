@@ -2,8 +2,8 @@ module PureScript.Backend.Optimizer.Utils where
 
 import Prelude
 
-import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Array.NonEmpty.Internal (NonEmptyArray)
 import Partial.Unsafe (unsafePartial)
 
 foldl1Array :: forall a b. (b -> a -> b) -> (a -> b) -> NonEmptyArray a -> b

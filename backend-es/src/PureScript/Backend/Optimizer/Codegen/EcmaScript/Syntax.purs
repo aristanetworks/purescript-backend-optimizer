@@ -48,6 +48,7 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
+import Partial.Unsafe (unsafePartial)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Common (esAccessor, esApp, esAssign, esBoolean, esEscapeIdent, esEscapeProp, esEscapeSpecial, esIndex, esInt, esModuleName, esNumber, esString, esTernary)
 import PureScript.Backend.Optimizer.CoreFn (Ident(..), ModuleName(..), Qualified(..))
 
@@ -92,6 +93,7 @@ data EsSyntax a
   | EsContinue
   | EsUndefined
 
+derive instance Eq a => Eq (EsSyntax a)
 derive instance Functor EsSyntax
 
 instance Foldable EsSyntax where
@@ -128,6 +130,7 @@ data EsArrayElement a
   = EsArrayValue a
   | EsArraySpread a
 
+derive instance Eq a => Eq (EsArrayElement a)
 derive instance Functor EsArrayElement
 
 instance Foldable EsArrayElement where
@@ -142,9 +145,12 @@ data EsObjectElement a
   | EsObjectField String a
   | EsObjectSpread a
 
+derive instance Eq a => Eq (EsObjectElement a)
 derive instance Functor EsObjectElement
 
 data EsBindingPattern = EsBindingIdent EsIdent
+
+derive instance Eq EsBindingPattern
 
 instance Foldable EsObjectElement where
   foldr a = foldrDefault a
@@ -174,11 +180,15 @@ data EsBinaryOp
   | EsEquals
   | EsNotEquals
 
+derive instance Eq EsBinaryOp
+
 data EsUnaryOp
   = EsNot
   | EsNegate
   | EsBitNegate
   | EsDelete
+
+derive instance Eq EsUnaryOp
 
 data EsPrec
   = EsPrecStatement
@@ -197,7 +207,9 @@ data EsRuntimeOp a
   = EsBinding a
   | EsRange a a
   | EsFail
+  | EsIntDiv a a
 
+derive instance Eq a => Eq (EsRuntimeOp a)
 derive instance Functor EsRuntimeOp
 
 instance Foldable EsRuntimeOp where
@@ -205,6 +217,7 @@ instance Foldable EsRuntimeOp where
     EsBinding a -> f a
     EsRange a b -> f a <> f b
     EsFail -> mempty
+    EsIntDiv a b -> f a <> f b
   foldr a = foldrDefault a
   foldl a = foldlDefault a
 
@@ -213,10 +226,15 @@ data EsExpr = EsExpr EsAnalysis (EsSyntax EsExpr)
 instance HasSyntax EsExpr where
   syntaxOf (EsExpr _ syn) = syn
 
+instance Eq EsExpr where
+  eq (EsExpr (EsAnalysis s1) a) (EsExpr (EsAnalysis s2) b) =
+    s1.size == s2.size && a == b
+
 newtype EsAnalysis = EsAnalysis
   { deps :: Set ModuleName
   , runtime :: Boolean
   , pure :: Boolean
+  , size :: Int
   }
 
 derive instance Newtype EsAnalysis _
@@ -226,10 +244,11 @@ instance Semigroup EsAnalysis where
     { deps: a.deps <> b.deps
     , runtime: a.runtime || b.runtime
     , pure: a.pure && b.pure
+    , size: a.size + b.size
     }
 
 instance Monoid EsAnalysis where
-  mempty = EsAnalysis { deps: mempty, runtime: false, pure: true }
+  mempty = EsAnalysis { deps: mempty, runtime: false, pure: true, size: 0 }
 
 needsDep :: ModuleName -> EsAnalysis -> EsAnalysis
 needsDep mn (EsAnalysis a) = EsAnalysis a { deps = Set.insert mn a.deps }
@@ -243,15 +262,18 @@ notPure (EsAnalysis a) = EsAnalysis a { pure = false }
 alwaysPure :: EsAnalysis -> EsAnalysis
 alwaysPure (EsAnalysis a) = EsAnalysis a { pure = true }
 
+bumpSize :: EsAnalysis -> EsAnalysis
+bumpSize (EsAnalysis a) = EsAnalysis a { size = a.size + 1 }
+
 esAnalysisOf :: EsExpr -> EsAnalysis
 esAnalysisOf (EsExpr a _) = a
 
 build :: EsSyntax EsExpr -> EsExpr
 build syn = case syn of
   EsIdent (Qualified (Just mn) _) ->
-    EsExpr (needsDep mn mempty) syn
+    EsExpr (needsDep mn (bumpSize mempty)) syn
   EsRuntime op ->
-    EsExpr (needsRuntime (foldMap esAnalysisOf op)) syn
+    EsExpr (needsRuntime (bumpSize (foldMap esAnalysisOf op))) syn
   EsCall (EsExpr _ (EsArrowFunction [] bs)) []
     | Just expr <- inlineCallBlock bs ->
         expr
@@ -268,7 +290,7 @@ build syn = case syn of
         esArrowFunction as bs
   EsArrowFunction as bs -> do
     let Tuple s bs' = buildStatements bs
-    EsExpr (alwaysPure s) $ EsArrowFunction as bs'
+    EsExpr (alwaysPure (bumpSize s)) $ EsArrowFunction as bs'
   EsIfElse a [ block ] cs
     | Just bs <- inlineReturnBlock block ->
         build $ EsIfElse a bs cs
@@ -278,21 +300,21 @@ build syn = case syn of
   EsIfElse a bs cs -> do
     let Tuple s1 bs' = buildStatements bs
     let Tuple s2 cs' = buildStatements cs
-    EsExpr (esAnalysisOf a <> s1 <> s2) $ EsIfElse a bs' cs'
+    EsExpr (bumpSize (esAnalysisOf a <> s1 <> s2)) $ EsIfElse a bs' cs'
   EsWhile a bs
     | Just bs' <- removeTrailingContinue bs ->
         build $ EsWhile a bs'
     | otherwise -> do
         let Tuple s bs' = buildStatements bs
-        EsExpr (esAnalysisOf a <> s) $ EsWhile a bs'
+        EsExpr (bumpSize (esAnalysisOf a <> s)) $ EsWhile a bs'
   EsForOf a b cs
     | Just cs' <- removeTrailingContinue cs ->
         build $ EsForOf a b cs'
     | otherwise -> do
         let Tuple s cs' = buildStatements cs
-        EsExpr (esAnalysisOf b <> s) $ EsForOf a b cs'
+        EsExpr (bumpSize (esAnalysisOf b <> s)) $ EsForOf a b cs'
   _ ->
-    EsExpr (pureAnn (foldMap esAnalysisOf syn)) syn
+    EsExpr (pureAnn (bumpSize (foldMap esAnalysisOf syn))) syn
     where
     pureAnn = case syn of
       EsAccess _ _ -> notPure
@@ -304,13 +326,44 @@ build syn = case syn of
       _ -> identity
 
 buildStatements :: Array EsExpr -> Tuple EsAnalysis (Array EsExpr)
-buildStatements = traverse go
+buildStatements = traverse go <<< mergeBranchTails
   where
   go expr = case expr of
     _ | Just expr' <- inlineLoopBlockStatement expr ->
       go expr'
     _ ->
       Tuple (esAnalysisOf expr) expr
+
+  -- For nested if/else blocks, merges a duplicate tail of alternatives
+  -- via fallthrough. If an inner branch has a tail that matches the
+  -- parent's tail, we can just delete the tail from the inner branch.
+  -- We can't do this in BackendSyntax because it only has complete
+  -- if/else, but ES can exploit imperative control-flow.
+  mergeBranchTails :: Array EsExpr -> Array EsExpr
+  mergeBranchTails as = do
+    let
+      len = Array.length as
+      loop ix
+        | ix == len = as
+        | otherwise = case unsafePartial (Array.unsafeIndex as ix) of
+            EsExpr _ (EsIfElse hd ds [])
+              | Just ta <- Array.index as (ix + 1)
+              , Just tb <- Array.findIndex (eq ta) ds
+              , Array.drop (tb + 1) ds == Array.drop (ix + 2) as ->
+                  case Array.take tb ds of
+                    [] ->
+                      Array.take ix as <> Array.drop (ix + 1) as
+                    [ EsExpr _ (EsIfElse bb cc []) ] ->
+                      Array.take ix as
+                        <> [ build $ EsIfElse (build (EsBinary EsAnd hd bb)) cc [] ]
+                        <> Array.drop (ix + 1) as
+                    ds' ->
+                      Array.take ix as
+                        <> [ build $ EsIfElse hd ds' [] ]
+                        <> Array.drop (ix + 1) as
+            _ ->
+              loop (ix + 1)
+    loop 0
 
 inlineReturnBlock :: EsExpr -> Maybe (Array EsExpr)
 inlineReturnBlock (EsExpr _ expr) = case expr of
@@ -417,9 +470,16 @@ print opts syn = case syn of
   EsRuntime op ->
     Tuple EsPrecCall $ case op of
       EsBinding a ->
-        printPure opts $ esApp (Dodo.text "$runtime.binding") [ snd (print opts (syntaxOf a)) ]
+        printPure opts $ esApp (Dodo.text "$runtime.binding")
+          [ snd (print opts (syntaxOf a))
+          ]
       EsRange a b ->
         esApp (Dodo.text "$runtime.range")
+          [ snd (print opts (syntaxOf a))
+          , snd (print opts (syntaxOf b))
+          ]
+      EsIntDiv a b ->
+        printPure opts $ esApp (Dodo.text "$runtime.intDiv")
           [ snd (print opts (syntaxOf a))
           , snd (print opts (syntaxOf b))
           ]
