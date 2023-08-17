@@ -12,7 +12,6 @@ const test1 = /* #__PURE__ */ Data$dTuple.$Tuple(
       if (a.tag === "Right") {
         if (b$1.tag === "Left") { return Data$dEither.$Either("Left", b$1._1); }
         if (b$1.tag === "Right") { return Data$dEither.$Either("Right", a._1 + b$1._1 | 0); }
-        $runtime.fail();
       }
       $runtime.fail();
     })(Data$dEither.$Either("Right", 3))([Data$dEither.$Either("Left", b), Data$dEither.$Either("Right", 4), Data$dEither.$Either("Left", b)]);

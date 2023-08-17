@@ -27,7 +27,7 @@ const test2 = lo => hi => {
       Effect$dConsole.log(Data$dShow.showIntImpl($2))();
     }
     const $2 = Effect$dConsole.log("wat");
-    for (const v of $runtime.range(lo + 1 | 0, hi + 1 | 0)) {
+    for (const $3 of $runtime.range(lo + 1 | 0, hi + 1 | 0)) {
       $2();
     }
   };
