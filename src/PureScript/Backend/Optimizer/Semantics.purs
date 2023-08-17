@@ -607,8 +607,8 @@ floatLetWith = go
   where
   go f ident1 binding1 k1 = case binding1 of
     SemLet ident2 binding2 k2 ->
-      go f ident2 binding2 \nextBinding2 ->
-        makeLet ident1 (k2 nextBinding2) k1
+      go makeLet ident2 binding2 \nextBinding2 ->
+        f ident1 (k2 nextBinding2) k1
     SemLetRec bindings k2 ->
       SemLetRec bindings \nextBindings ->
         makeLet ident1 (k2 nextBindings) k1
