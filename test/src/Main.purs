@@ -43,6 +43,7 @@ import PureScript.Backend.Optimizer.Convert (BackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), Module(..), ModuleName(..), Qualified(..))
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults (defaultDirectives)
+import PureScript.Backend.Optimizer.Processors (processors)
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
 import PureScript.CST.Lexer (lexToken)
@@ -100,26 +101,28 @@ main = do
 
 runSnapshotTests :: TestArgs -> Aff Unit
 runSnapshotTests { accept, filter, traceIdents } = do
-  liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
-  spawnFromParent "spago" [ "build -u \"-g corefn,js\"" ]
+  liftEffect $ Process.chdir $ Path.concat [ "..", "snapshots" ]
+  spawnFromParent "spago" [ "build --purs-args \"-g corefn,js\"" ]
   snapshotDir <- liftEffect Process.cwd
+  liftEffect $ Process.chdir $ Path.concat [ "src" ]
   snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
   let snapshotsOut = Path.concat [ "..", "snapshots-out" ]
-  let testOut = Path.concat [ "..", "test-out" ]
+  let testOut = Path.concat [ "..", "..", "test", "test-out" ]
   mkdirp snapshotsOut
   mkdirp testOut
-  coreFnModulesFromOutput "output" filter >>= case _ of
+  coreFnModulesFromOutput (Path.concat [ "..", "output" ]) filter >>= case _ of
     Left errors -> do
       for_ errors \(Tuple filePath err) -> do
         Console.error $ filePath <> " " <> err
       liftEffect $ Process.exit 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
+      copyFile (Path.concat [ "..", "..", "backend-es", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
+        , processors
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backendMod optimizationSteps -> do
             let
@@ -131,7 +134,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
             mkdirp testFileDir
             FS.writeTextFile UTF8 testFilePath formatted
             unless (Set.isEmpty backendMod.foreign) do
-              let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
+              let foreignSiblingPath = Path.concat [ "..", fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js" ]
               let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
               copyFile foreignSiblingPath foreignOutputPath
             when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do

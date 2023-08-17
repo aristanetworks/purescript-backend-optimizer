@@ -2,29 +2,21 @@
 Welcome to a Spago project!
 You can edit this file as you like.
 -}
-{ name = "backend-optimizer"
+{ name = "tests-backend-optimizer"
 , dependencies =
   [ "aff"
   , "ansi"
-  , "argonaut"
+  , "backend-optimizer"
   , "argparse-basic"
   , "arrays"
-  , "bifunctors"
+  , "lib-backend-optimizer"
+  , "processors-backend-optimizer"
   , "console"
-  , "control"
-  , "datetime"
-  , "debug"
   , "dodo-printer"
   , "effect"
   , "either"
-  , "enums"
-  , "filterable"
   , "foldable-traversable"
-  , "foreign-object"
-  , "integers"
   , "language-cst-parser"
-  , "lazy"
-  , "lists"
   , "maybe"
   , "newtype"
   , "node-buffer"
@@ -35,23 +27,14 @@ You can edit this file as you like.
   , "node-path"
   , "node-process"
   , "node-streams"
-  , "now"
-  , "numbers"
   , "ordered-collections"
-  , "orders"
-  , "parallel"
-  , "partial"
   , "posix-types"
   , "prelude"
   , "refs"
-  , "safe-coerce"
-  , "st"
   , "strings"
-  , "transformers"
   , "tuples"
-  , "unsafe-coerce"
   ]
 , packages = ./packages.dhall
 , sources =
-  [ "src/**/*.purs", "backend-es/src/**/*.purs", "backend-es/test/*.purs" ]
+  [ "src/**/*.purs" ]
 }

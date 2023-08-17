@@ -1,7 +1,9 @@
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20221018/packages.dhall
-        sha256:b1db2e4a17260ace8d17858602f8c56f460982d6e404818d7f6cb9f053324bb1
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.10-20230721/packages.dhall
+        sha256:8800ac7d0763826544ca3ed3ba61f9dcef761a9e2a1feee0346437d9b861e78f
+
 in  upstream
+  with lib-backend-optimizer = ../lib/spago.dhall as Location
   with dodo-printer =
     { dependencies =
       [ "ansi", "foldable-traversable", "lists", "maybe", "strings" ]
@@ -24,5 +26,3 @@ in  upstream
     , repo = "https://github.com/natefaubion/purescript-node-glob-basic.git"
     , version = "v1.2.2"
     }
-  with arrays.version = "v7.2.1"
-  with ordered-collections.version = "v3.1.0"

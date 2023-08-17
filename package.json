@@ -1,8 +1,47 @@
 {
-  "private": true,
+  "name": "purs-backend-es",
+  "version": "1.3.2",
+  "description": "A modern ECMAScript optimizing backend for PureScript",
   "type": "module",
+  "bin": {
+    "purs-backend-es": "./backend-es/index.js"
+  },
   "scripts": {
-    "format": "purs-tidy format-in-place src backend-es/src backend-es/test/*.purs",
-    "format:check": "purs-tidy check src backend-es/src backend-es/test/*.purs"
+    "clean": "cd backend-es && rm -rf .spago output && cd ../lib && rm -rf .spago output && cd ../processors && rm -rf .spago output && cd ../snapshots && rm -rf .spago output && cd ../test && rm -rf .spago output",
+    "postinstall": "cd postinstall && spago run",
+    "preversion": "npm run test && npm run test:output-diff",
+    "version": "echo 'export const version = \"v'$npm_package_version'\";' > ./src/Version.js && git add .",
+    "postversion": "git commit -m \"Bump purs-backend-es version ($npm_package_version)\" && git tag purs-backend-es-v$npm_package_version",
+    "test": "cd test && spago test",
+    "test:output-diff": "npm run build && ./backend-es/index.js build --timing --int-tags --output-dir=output-es2 && diff -r output-es output-es2 && rm -r output-es2",
+    "build": "cd backend-es && spago build --purs-args \"-g corefn,js\" && node ./index.dev.js build && node ./index.dev.js bundle-module -m Main --int-tags --platform=node --minify --to=./bundle/index.js",
+    "prepublishOnly": "rm -rf backend-es/bundle output output-es && npm run build",
+    "format": "purs-tidy format-in-place lib/src backend-es/src test/src snapshot/src extern/src postinstall/src",
+    "format:check": "purs-tidy check lib/src backend-es/src test/src snapshot/src extern/src postinstall/src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aristanetworks/purescript-backend-optimizer.git"
+  },
+  "keywords": [
+    "PureScript",
+    "backend",
+    "optimizer"
+  ],
+  "author": "Arista Networks",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aristanetworks/purescript-backend-optimizer/issues"
+  },
+  "homepage": "https://github.com/aristanetworks/purescript-backend-optimizer#readme",
+  "devDependencies": {
+    "esbuild": "^0.15.5",
+    "purescript": "^0.15.10",
+    "purescript-psa": "^0.8.2",
+    "purs-tidy": "^0.10.0",
+    "spago": "^0.21.0"
+  },
+  "dependencies": {
+    "rimraf": "^5.0.1"
   }
 }

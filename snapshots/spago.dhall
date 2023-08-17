@@ -1,4 +1,8 @@
-{ name = "snapshots"
+{-
+Welcome to a Spago project!
+You can edit this file as you like.
+-}
+{ name = "snapshots-backend-optimizer"
 , dependencies =
   [ "arrays"
   , "console"
@@ -28,6 +32,6 @@
   , "unsafe-coerce"
   , "variant"
   ]
-, packages = ../../../packages.dhall
-, sources = [ "./*.purs", "./*/*.purs" ]
+, packages = ./packages.dhall
+, sources = [ "src/**/*.purs" ]
 }
