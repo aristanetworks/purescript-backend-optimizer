@@ -34,6 +34,8 @@ data BackendSyntax a
   | PrimUndefined
   | Fail String
 
+derive instance Eq a => Eq (BackendSyntax a)
+
 newtype Level = Level Int
 
 derive newtype instance Eq Level
@@ -41,6 +43,8 @@ derive newtype instance Ord Level
 derive instance Newtype Level _
 
 data Pair a = Pair a a
+
+derive instance Eq a => Eq (Pair a)
 
 fstPair :: forall a. Pair a -> a
 fstPair (Pair a _) = a
@@ -59,6 +63,8 @@ derive instance Ord BackendAccessor
 data BackendOperator a
   = Op1 BackendOperator1 a
   | Op2 BackendOperator2 a a
+
+derive instance Eq a => Eq (BackendOperator a)
 
 data BackendOperator1
   = OpBooleanNot
@@ -118,6 +124,7 @@ data BackendEffect a
   | EffectRefRead a
   | EffectRefWrite a a
 
+derive instance Eq a => Eq (BackendEffect a)
 derive instance Functor BackendSyntax
 
 instance Foldable BackendSyntax where

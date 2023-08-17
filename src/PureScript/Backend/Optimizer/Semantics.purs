@@ -85,7 +85,16 @@ data SemConditional a = SemConditional (Lazy a) (Lazy a)
 
 data BackendExpr
   = ExprSyntax BackendAnalysis (BackendSyntax BackendExpr)
-  | ExprRewrite BackendAnalysis BackendRewrite
+  | ExprRewrite BackendAnalysis (BackendRewrite BackendExpr)
+
+instance Eq BackendExpr where
+  eq = case _, _ of
+    ExprSyntax (BackendAnalysis s1) x, ExprSyntax (BackendAnalysis s2) y ->
+      s1.size == s2.size && x == y
+    ExprRewrite (BackendAnalysis s1) x, ExprRewrite (BackendAnalysis s2) y ->
+      s1.size == s2.size && x == y
+    _, _ ->
+      false
 
 type LetBindingAssoc a =
   { ident :: Maybe Ident
@@ -100,27 +109,33 @@ type EffectBindingAssoc a =
   , pure :: Boolean
   }
 
-data BackendRewrite
-  = RewriteInline (Maybe Ident) Level BackendExpr BackendExpr
-  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) BackendExpr BackendExpr
+data BackendRewrite a
+  = RewriteInline (Maybe Ident) Level a a
+  | RewriteUncurry (Maybe Ident) Level (NonEmptyArray (Tuple (Maybe Ident) Level)) a a
   | RewriteStop (Qualified Ident)
-  | RewriteUnpackOp (Maybe Ident) Level UnpackOp BackendExpr
-  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair BackendExpr)) BackendExpr BackendExpr
-  | RewriteDistBranchesOp (NonEmptyArray (Pair BackendExpr)) BackendExpr DistOp
+  | RewriteUnpackOp (Maybe Ident) Level (UnpackOp a) a
+  | RewriteDistBranchesLet (Maybe Ident) Level (NonEmptyArray (Pair a)) a a
+  | RewriteDistBranchesOp (NonEmptyArray (Pair a)) a (DistOp a)
 
-data UnpackOp
-  = UnpackRecord (Array (Prop BackendExpr))
-  | UnpackUpdate BackendExpr (Array (Prop BackendExpr))
-  | UnpackArray (Array BackendExpr)
-  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String BackendExpr))
+derive instance Eq a => Eq (BackendRewrite a)
 
-data DistOp
-  = DistApp (NonEmptyArray BackendExpr)
-  | DistUncurriedApp (Array BackendExpr)
+data UnpackOp a
+  = UnpackRecord (Array (Prop a))
+  | UnpackUpdate a (Array (Prop a))
+  | UnpackArray (Array a)
+  | UnpackData (Qualified Ident) ConstructorType ProperName Ident (Array (Tuple String a))
+
+derive instance Eq a => Eq (UnpackOp a)
+
+data DistOp a
+  = DistApp (NonEmptyArray a)
+  | DistUncurriedApp (Array a)
   | DistAccessor BackendAccessor
   | DistPrimOp1 BackendOperator1
-  | DistPrimOp2L BackendOperator2 BackendExpr
-  | DistPrimOp2R BackendExpr BackendOperator2
+  | DistPrimOp2L BackendOperator2 a
+  | DistPrimOp2R a BackendOperator2
+
+derive instance Eq a => Eq (DistOp a)
 
 data ExternImpl
   = ExternExpr (Array (Qualified Ident)) NeutralExpr
@@ -1294,27 +1309,20 @@ build ctx = case _ of
   Let ident level binding body
     | shouldInlineLet level binding body ->
         rewriteInline ident level binding body
-  Let ident level binding body
-    | Just expr' <- shouldUncurryAbs ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackRecord ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackUpdate ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackCtor ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldUnpackArray ident level binding body ->
-        expr'
-  Let ident level binding body
-    | Just expr' <- shouldDistributeBranches ident level binding body ->
-        expr'
-  Let _ level binding body
-    | Just expr' <- shouldEtaReduce level binding body ->
-        expr'
+    | Just expr <- shouldUncurryAbs ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackRecord ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackUpdate ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackCtor ident level binding body ->
+        expr
+    | Just expr <- shouldUnpackArray ident level binding body ->
+        expr
+    | Just expr <- shouldDistributeBranches ident level binding body ->
+        expr
+    | Just expr <- shouldEtaReduce level binding body ->
+        expr
   App (ExprSyntax analysis (Branch bs def)) tl
     | Just expr' <- shouldDistributeBranchApps analysis bs def tl ->
         expr'
@@ -1343,65 +1351,65 @@ build ctx = case _ of
     binding
   EffectDefer expr@(ExprSyntax _ (EffectDefer _)) ->
     expr
-  Branch pairs def | Just expr <- simplifyBranches ctx pairs def ->
-    expr
   PrimOp (Op1 OpBooleanNot (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr)))) ->
     expr
   expr ->
     buildDefault ctx expr
 
 buildBranchCond :: Ctx -> Pair BackendExpr -> BackendExpr -> BackendExpr
-buildBranchCond ctx (Pair a b) c = case b of
-  ExprSyntax _ (Lit (LitBoolean true))
-    | ExprSyntax _ (Lit (LitBoolean true)) <- c ->
-        c
-    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
-        a
-    | ExprSyntax _ x <- c, isBooleanTail x ->
-        build ctx (PrimOp (Op2 OpBooleanOr a c))
-  ExprSyntax _ (Lit (LitBoolean false))
-    | ExprSyntax _ (Lit (LitBoolean false)) <- c ->
-        c
-    | ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x1))) <- a
-    , ExprSyntax _ (PrimOp (Op1 (OpIsTag _) (ExprSyntax _ x2))) <- c
-    , isSameVariable x1 x2 ->
-        c
-  _ ->
-    build ctx (Branch (NonEmptyArray.singleton (Pair a b)) c)
-  where
-  isSameVariable = case _, _ of
-    Local _ l, Local _ r -> l == r
-    Var l, Var r -> l == r
-    _, _ -> false
+buildBranchCond ctx pair def
+  | Just expr <- simplifyCondIsTag ctx pair def =
+      expr
+  | Just expr <- simplifyCondBoolean ctx pair def =
+      expr
+  | Just expr <- simplifyCondLiftAnd ctx pair def =
+      expr
+  | Just expr <- simplifyCondRedundantElse ctx pair def =
+      expr
+  | ExprSyntax _ (Branch pairs def') <- def =
+      build ctx (Branch (NonEmptyArray.cons pair pairs) def')
+  | otherwise =
+      build ctx (Branch (NonEmptyArray.singleton pair) def)
 
-isBooleanTail :: forall a. BackendSyntax a -> Boolean
-isBooleanTail = case _ of
-  Lit _ -> true
-  Var _ -> true
-  Local _ _ -> true
-  PrimOp _ -> true
-  _ -> false
+simplifyCondIsTag :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondIsTag _ = case _, _ of
+  Pair (ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x1))) (ExprSyntax _ (Lit (LitBoolean false))), def@(ExprSyntax _ (PrimOp (Op1 (OpIsTag _) x2)))
+    | x1 == x2 ->
+        Just def
+  _, _ ->
+    Nothing
 
-simplifyBranches :: Ctx -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> Maybe BackendExpr
-simplifyBranches ctx pairs def = case NonEmptyArray.toArray pairs of
-  [ a ]
-    | Pair expr (ExprSyntax _ (Lit (LitBoolean true))) <- a
-    , ExprSyntax _ (Lit (LitBoolean false)) <- def ->
+simplifyCondBoolean :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondBoolean ctx = case _, _ of
+  Pair expr body@(ExprSyntax _ (Lit (LitBoolean body'))), ExprSyntax _ (Lit (LitBoolean other))
+    | body' == other ->
+        Just body
+    | body' && not other ->
         Just expr
-    | Pair expr (ExprSyntax _ (Lit (LitBoolean false))) <- a
-    , ExprSyntax _ (Lit (LitBoolean true)) <- def ->
+    | not body' && other ->
         Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
-  [ a, b ]
-    | Pair expr1@(ExprSyntax _ (Local _ lvl1)) body1 <- a
-    , Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot (ExprSyntax _ (Local _ lvl2))))) body2 <- b
-    , ExprSyntax _ (Fail _) <- def
-    , lvl1 == lvl2 ->
-        Just $ build ctx $ Branch (NonEmptyArray.singleton (Pair expr1 body1)) body2
-  _
-    | ExprSyntax _ (Branch pairs2 def2) <- def ->
-        Just $ build ctx (Branch (pairs <> pairs2) def2)
-    | otherwise ->
-        Nothing
+  Pair expr body, ExprSyntax _ (Lit (LitBoolean false)) ->
+    Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
+  _, _ ->
+    Nothing
+
+simplifyCondRedundantElse :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondRedundantElse ctx = case _, _ of
+  Pair expr1 body1, ExprSyntax _ (Branch pairs _)
+    | Pair (ExprSyntax _ (PrimOp (Op1 OpBooleanNot expr2))) body2 <- NonEmptyArray.head pairs
+    , expr1 == expr2 ->
+        Just $ buildBranchCond ctx (Pair expr1 body1) body2
+  _, _ ->
+    Nothing
+
+simplifyCondLiftAnd :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
+simplifyCondLiftAnd ctx pair def1 = case pair of
+  Pair x (ExprSyntax _ (Branch pairs def2))
+    | [ Pair y z ] <- NonEmptyArray.toArray pairs
+    , def1 == def2 ->
+        Just $ buildBranchCond ctx (Pair (build ctx (PrimOp (Op2 OpBooleanAnd x y))) z) def1
+  _ ->
+    Nothing
 
 buildStop :: Ctx -> Qualified Ident -> BackendExpr
 buildStop ctx stop = ExprRewrite (analyzeDefault ctx (Var stop)) (RewriteStop stop)
@@ -1670,7 +1678,7 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
 freeze init = Tuple (analysisOf init) $ foldBackendExpr NeutralExpr (\_ neutExpr -> neutExpr) init
 
-foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite -> a -> a) -> BackendExpr -> a
+foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite BackendExpr -> a -> a) -> BackendExpr -> a
 foldBackendExpr foldSyntax foldRewrite = go
   where
   go = case _ of

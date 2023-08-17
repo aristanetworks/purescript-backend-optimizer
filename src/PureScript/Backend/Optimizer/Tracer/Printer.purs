@@ -286,7 +286,7 @@ printBackendSyntax = case _ of
   Fail _ ->
     printUncurriedApp false (primOp "" "fail") []
 
-printBackendRewriteCase :: BackendRewrite -> Doc Void
+printBackendRewriteCase :: forall a. BackendRewrite a -> Doc Void
 printBackendRewriteCase = case _ of
   RewriteInline _ _ _ _ ->
     printRewrite "Inline"
@@ -301,7 +301,7 @@ printBackendRewriteCase = case _ of
   RewriteDistBranchesOp _ _ distOp ->
     printDistOpCase distOp
 
-printUnpackOpCase :: UnpackOp -> Doc Void
+printUnpackOpCase :: forall a. UnpackOp a -> Doc Void
 printUnpackOpCase = case _ of
   UnpackRecord _ ->
     printRewrite "UnpackRecord"
@@ -312,7 +312,7 @@ printUnpackOpCase = case _ of
   UnpackData _ _ _ _ _ ->
     printRewrite "UnpackData"
 
-printDistOpCase :: DistOp -> Doc Void
+printDistOpCase :: forall a. DistOp a -> Doc Void
 printDistOpCase = case _ of
   DistApp _ ->
     printRewrite "DistApp"
