@@ -11,11 +11,11 @@ const left = x => {
   $runtime.fail();
 };
 const fst = a => a[0];
-const test1 = [
-  /* #__PURE__ */ Data$dEither.$Either("Left", 5),
-  /* #__PURE__ */ (() => {
-    const b = Effect$dConsole.log("foo");
-    return Data$dEither.$Either(
+const test1 = /* #__PURE__ */ (() => {
+  const b = Effect$dConsole.log("foo");
+  return [
+    Data$dEither.$Either("Left", 5),
+    Data$dEither.$Either(
       "Right",
       [
         Data$dEither.$Either(
@@ -27,7 +27,7 @@ const test1 = [
         ),
         Data$dEither.$Either("Right", 6)
       ]
-    );
-  })()
-];
+    )
+  ];
+})();
 export {fst, left, right, snd, test1};
