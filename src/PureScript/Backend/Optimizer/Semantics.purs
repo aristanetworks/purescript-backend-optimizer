@@ -39,8 +39,8 @@ derive instance Functor Floatable
 
 type FreeFloatable = Free Floatable BackendSemantics
 
-floatMe :: BackendSemantics -> FreeFloatable
-floatMe a = liftF $ FloatMe a identity
+meFloat :: BackendSemantics -> FreeFloatable
+meFloat a = liftF $ FloatMe a identity
 
 runFloatLets :: FreeFloatable -> BackendSemantics
 runFloatLets ff = go ff
@@ -254,9 +254,9 @@ instance Eval f => Eval (BackendSyntax f) where
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
     App hd tl ->
-      runFloatLets (evalApp env <$> floatMe (eval env hd) <*> (NonEmptyArray.toArray <$> traverse (eval env >>> floatMe) tl))
+      evalApp env (eval env hd) (map (eval env) $ NonEmptyArray.toArray tl)
     UncurriedApp hd tl ->
-      runFloatLets (evalUncurriedApp env <$> floatMe (eval env hd) <*> traverse (eval env >>> floatMe) tl)
+      evalUncurriedApp env (eval env hd) (map (eval env) tl)
     UncurriedAbs idents body -> do
       let
         loop env' = case _ of
@@ -296,20 +296,32 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFail (eval env val) SemEffectDefer
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
-    Update lhs updates ->
-      runFloatLets (evalUpdate <$> floatMe (eval env lhs) <*> traverse (traverse (eval env >>> floatMe)) updates)
+    Update lhs updates -> do
+      let
+        folder acc = case _ of
+          List.Nil -> evalUpdate (eval env lhs) acc
+          List.Cons (Prop key sem) t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
+      folder [] (List.fromFoldable updates)
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
-      runFloatLets (evalPrimOp env <$> traverse (eval env >>> floatMe) op)
+      runFloatLets (evalPrimOp env <$> traverse (eval env >>> meFloat) op)
     PrimEffect eff ->
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
     PrimUndefined ->
       NeutPrimUndefined
-    Lit (LitArray arr) ->
-      runFloatLets $ NeutLit <$> (LitArray <$> traverse (eval env >>> floatMe) arr)
-    Lit (LitRecord arr) ->
-      runFloatLets $ NeutLit <$> (LitRecord <$> traverse (traverse (eval env >>> floatMe)) arr)
+    Lit (LitArray arr) -> do
+      let
+        folder acc = case _ of
+          List.Nil -> NeutLit (LitArray acc)
+          List.Cons sem t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ v ]) t
+      folder [] (List.fromFoldable arr)
+    Lit (LitRecord arr) -> do
+      let
+        folder acc = case _ of
+          List.Nil -> NeutLit (LitRecord acc)
+          List.Cons (Prop key sem) t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
+      folder [] (List.fromFoldable arr)
     Lit lit ->
       guardFailOver identity (eval env <$> lit) NeutLit
     Fail err ->
@@ -320,7 +332,7 @@ instance Eval f => Eval (BackendSyntax f) where
       let
         folder acc = case _ of
           List.Nil -> NeutData qual ct ty tag acc
-          List.Cons (Tuple key sem) t -> guardFail (eval env sem) \sem' -> floatLet sem' \v -> folder (acc <> [ Tuple key v ]) t
+          List.Cons (Tuple key sem) t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ Tuple key v ]) t
       folder [] (List.fromFoldable fields)
 
 instance Eval BackendExpr where
@@ -408,7 +420,7 @@ snocApp prev next = case Array.last prev of
     Array.snoc prev (ExternApp [ next ])
 
 evalApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalApp env hd spine = go env hd (List.fromFoldable spine)
+evalApp env hd spine = guardFloatLet hd $ flip (go env) (List.fromFoldable spine)
   where
   go env' = case _, _ of
     _, List.Cons (NeutFail err) _ ->
@@ -416,10 +428,10 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
     NeutFail err, _ ->
       NeutFail err
     SemLam _ k, List.Cons arg args ->
-      makeLet Nothing arg \nextArg ->
+      guardFloatLet arg $ flip (makeLet Nothing) \nextArg ->
         go env' (k nextArg) args
     SemRef ref sp sem, List.Cons arg args ->
-      go env' (evalRef env' ref sp (ExternApp [ arg ]) sem) args
+      guardFloatLet arg \arg' -> go env' (evalRef env' ref sp (ExternApp [ arg' ]) sem) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
@@ -430,11 +442,15 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
           go (bindLocal (bindLocal env' (Group nextVals)) (One nextFn)) nextFn args
     fn, List.Nil ->
       fn
-    fn, args ->
-      NeutApp fn (List.toUnfoldable args)
+    fn, args -> do
+      let
+        folder acc = case _ of
+          List.Nil -> NeutApp fn acc
+          List.Cons sem t -> guardFloatLet sem \v -> folder (acc <> [ v ]) t
+      folder [] (List.fromFoldable args)
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalUncurriedApp env hd spine = case hd of
+evalUncurriedApp env hd spine = guardFloatLet hd case _ of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
   SemRef ref sp sem ->
@@ -469,7 +485,7 @@ evalUncurriedBeta fn mk spine = go mk (List.fromFoldable spine)
     MkFnNext _ _, List.Cons (NeutFail err) _ ->
       NeutFail err
     MkFnNext _ k, List.Cons arg args ->
-      makeLet Nothing arg \nextArg ->
+      guardFloatLet arg $ flip (makeLet Nothing) \nextArg ->
         go (k nextArg) args
     MkFnNext _ _, _ ->
       unsafeCrashWith "Uncurried function applied to too few arguments"
@@ -542,8 +558,11 @@ evalAccessor env lhs accessor = floatLet lhs case _ of
   lhs' ->
     NeutAccessor lhs' accessor
 
+guardFloatLet :: BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
+guardFloatLet v f = guardFail v \sem' -> floatLet sem' f
+
 evalUpdate :: BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
-evalUpdate lhs props = case lhs of
+evalUpdate lhs props = guardFloatLet lhs case _ of
   NeutLit (LitRecord props') ->
     NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
   NeutUpdate r props' ->

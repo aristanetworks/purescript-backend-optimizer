@@ -29,18 +29,18 @@ const test2 = /* #__PURE__ */ (() => flubImpl(Record$dUnsafe$dUnion.unsafeUnionF
   convertRecordOptionsCons1(convertFlubBar2)()()()(barIsSymbol).convertRecordOptions(Flub)(Type$dProxy.Proxy)({foo: 99, bar: "Hello"})({}),
   defaultOptions
 )))();
-const test3 = /* #__PURE__ */ (() => {
-  const $0 = {foo: 99, bar: "Hello", baz: Data$dMaybe.$Maybe("Just", true)};
-  return flubImpl(Record$dUnsafe$dUnion.unsafeUnionFn(
-    Record$dBuilder.unsafeInsert("bar")($0.bar)(convertRecordOptionsCons1(convertFlubBaz2)()()()(bazIsSymbol).convertRecordOptions(Flub)(Type$dProxy.Proxy)($0)({})),
-    defaultOptions
-  ));
-})();
-const test4 = /* #__PURE__ */ (() => {
-  const $0 = {foo: 99, bar: 42, baz: true};
-  return flubImpl(Record$dUnsafe$dUnion.unsafeUnionFn(
-    Record$dBuilder.unsafeInsert("bar")(Data$dShow.showIntImpl($0.bar))(convertRecordOptionsCons1(convertFlubBaz1)()()()(bazIsSymbol).convertRecordOptions(Flub)(Type$dProxy.Proxy)($0)({})),
-    defaultOptions
-  ));
-})();
+const test3 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ Record$dUnsafe$dUnion.unsafeUnionFn(
+  /* #__PURE__ */ (() => {
+    const $0 = {foo: 99, bar: "Hello", baz: Data$dMaybe.$Maybe("Just", true)};
+    return Record$dBuilder.unsafeInsert("bar")($0.bar)(convertRecordOptionsCons1(convertFlubBaz2)()()()(bazIsSymbol).convertRecordOptions(Flub)(Type$dProxy.Proxy)($0)({}));
+  })(),
+  defaultOptions
+));
+const test4 = /* #__PURE__ */ flubImpl(/* #__PURE__ */ Record$dUnsafe$dUnion.unsafeUnionFn(
+  /* #__PURE__ */ (() => {
+    const $0 = {foo: 99, bar: 42, baz: true};
+    return Record$dBuilder.unsafeInsert("bar")(Data$dShow.showIntImpl($0.bar))(convertRecordOptionsCons1(convertFlubBaz1)()()()(bazIsSymbol).convertRecordOptions(Flub)(Type$dProxy.Proxy)($0)({}));
+  })(),
+  defaultOptions
+));
 export {$Flub, Flub, barIsSymbol, bazIsSymbol, convertFlubBar2, convertFlubBaz1, convertFlubBaz2, convertRecordOptionsCons1, defaultOptions, flubImpl, test1, test2, test3, test4};
