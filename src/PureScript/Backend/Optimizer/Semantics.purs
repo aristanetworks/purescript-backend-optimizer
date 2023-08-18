@@ -3,7 +3,6 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
-import Control.Monad.Free (Free, liftF, resume)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -21,7 +20,6 @@ import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.String as String
-import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
@@ -32,22 +30,6 @@ import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 type Spine a = Array a
 
 type RecSpine a = NonEmptyArray (Tuple Ident (Lazy a))
-
-data Floatable a = FloatMe BackendSemantics (BackendSemantics -> a)
-
-derive instance Functor Floatable
-
-type FreeFloatable = Free Floatable BackendSemantics
-
-meFloat :: BackendSemantics -> FreeFloatable
-meFloat a = liftF $ FloatMe a identity
-
-runFloatLets :: FreeFloatable -> BackendSemantics
-runFloatLets ff = go ff
-  where
-  go = resume >>> case _ of
-    Left (FloatMe sem f) -> guardFail sem \sem' -> floatLet sem' \v -> go (f v)
-    Right a -> a
 
 data MkFn a
   = MkFnApplied a
@@ -305,7 +287,7 @@ instance Eval f => Eval (BackendSyntax f) where
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
-      runFloatLets (evalPrimOp env <$> traverse (eval env >>> meFloat) op)
+      evalPrimOp env (eval env <$> op)
     PrimEffect eff ->
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
     PrimUndefined ->
@@ -671,8 +653,8 @@ deref = case _ of
 
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
-  Op1 op1 x ->
-    case op1, x of
+  Op1 op1 x' ->
+    guardFloatLet x' \x -> case op1, x of
       OpBooleanNot, _
         | NeutLit (LitBoolean bool) <- deref x ->
             liftBoolean (not bool)
@@ -699,9 +681,14 @@ evalPrimOp env = case _ of
       _, NeutFail err ->
         NeutFail err
       _, _ ->
-        floatLet x (NeutPrimOp <<< Op1 op1)
-  Op2 op2 x y ->
-    case op2 of
+        NeutPrimOp $ Op1 op1 x
+  Op2 op2 x' y' -> do
+    let
+      f g = case op2 of
+        OpBooleanAnd -> g x' y'
+        OpBooleanOr -> g x' y'
+        _ -> guardFloatLet x' \x -> guardFloatLet y' \y -> g x y
+    f \x y -> case op2 of
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- deref x ->
             x
@@ -805,12 +792,10 @@ evalPrimOp env = case _ of
           NeutFail err, _ -> NeutFail err
           _, NeutFail err -> NeutFail err
           _, _ ->
-            floatLet x \x' ->
-              floatLet y \y' ->
-                if isAssocPrimOp op2 then
-                  evalAssocOp env (Right op2) x' y'
-                else
-                  NeutPrimOp (Op2 op2 x' y')
+            if isAssocPrimOp op2 then
+              evalAssocOp env (Right op2) x y
+            else
+              NeutPrimOp (Op2 op2 x y)
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
