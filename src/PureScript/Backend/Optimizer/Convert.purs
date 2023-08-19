@@ -67,15 +67,15 @@ import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR, sequence, traverse)
-import Data.TraversableWithIndex (forWithIndex)
+import Data.TraversableWithIndex (forWithIndex, mapAccumLWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
+import PureScript.Backend.Optimizer.Analysis (BackendAnalysis, usedDep)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, freezeWithLetRewrites, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
-import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
+import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), LetRewrite(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
 import Safe.Coerce (coerce)
 
@@ -155,7 +155,6 @@ toBackendModule (Module mod) env = do
             directives.exports
       , moduleImplementations = Map.empty
       }
-
     localExports :: Set Ident
     localExports = Set.fromFoldable mod.exports
 
@@ -176,7 +175,7 @@ toBackendModule (Module mod) env = do
                   { accum: deps, value: [] }
               else
                 mapAccumR
-                  ( \deps' binding@(Tuple ident (Tuple deps'' expr)) ->
+                  ( \deps' binding@(Tuple ident (Tuple deps'' expr)) -> do
                       if isBindingUsed deps' binding then
                         { accum: deps'' <> deps'
                         , value: Just (Tuple ident expr)
@@ -233,7 +232,7 @@ toBackendTopLevelBindingGroup env = case _ of
       # overValue { recursive: false, bindings: _ }
   where
   overValue f a =
-    a { value = f a.value }
+    a { value = f $ join a.value }
 
 -- | For the NonEmptyArray,
 -- | - `head` = the original expression
@@ -241,34 +240,41 @@ toBackendTopLevelBindingGroup env = case _ of
 -- | - everything in-between the two are the steps that were taken from `head` to `last`
 type OptimizationSteps = Array (Tuple (Qualified Ident) (NonEmptyArray BackendExpr))
 
-toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
-toTopLevelBackendBinding group env (Binding _ ident cfn) = do
-  let evalEnv = Env { currentModule: env.currentModule, evalExternRef: makeExternEvalRef env, evalExternSpine: makeExternEvalSpine env, locals: [], directives: env.directives }
-  let qualifiedIdent = Qualified (Just env.currentModule) ident
-  let backendExpr = toBackendExpr cfn env
-  let enableTracing = Set.member qualifiedIdent env.traceIdents
-  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv qualifiedIdent env.rewriteLimit backendExpr
-  let Tuple impl expr' = toExternImpl env group optimizedExpr
-  { accum: env
-      { implementations = Map.insert qualifiedIdent impl env.implementations
-      , moduleImplementations = Map.insert qualifiedIdent impl env.moduleImplementations
-      , optimizationSteps = maybe env.optimizationSteps (Array.snoc env.optimizationSteps <<< Tuple qualifiedIdent) $ NonEmptyArray.fromArray mbSteps
-      , directives =
-          case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
-            Just dirs ->
-              Map.alter
-                case _ of
-                  Just oldDirs ->
-                    Just $ Map.union oldDirs dirs
-                  Nothing ->
-                    Just dirs
-                (EvalExtern (Qualified (Just env.currentModule) ident))
+-- foreign import spyyyyy :: forall a b. a -> b -> b
+
+toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Array (Tuple Ident (WithDeps NeutralExpr)))
+toTopLevelBackendBinding group env' (Binding _ originalIdent cfn) = do
+  let evalEnv = Env { currentModule: env'.currentModule, evalExternRef: makeExternEvalRef env', evalExternSpine: makeExternEvalSpine env', locals: [], directives: env'.directives }
+  let qualifiedIdent = Qualified (Just env'.currentModule) originalIdent
+  let enableTracing = Set.member qualifiedIdent env'.traceIdents
+  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env') evalEnv qualifiedIdent env'.rewriteLimit backendExpr
+  let iie = toExternImpl env' qualifiedIdent group optimizedExpr
+  mapAccumLWithIndex (go mbSteps) env' iie
+  where
+  backendExpr = toBackendExpr cfn env'
+
+  go :: Array BackendExpr -> Int -> ConvertEnv -> Tuple (Qualified Ident) (Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr) -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
+  go mbSteps i env (Tuple qualifiedIdent@(Qualified _ ident) (Tuple impl expr')) =
+    { accum: env
+        { implementations = Map.insert qualifiedIdent impl env.implementations
+        , moduleImplementations = Map.insert qualifiedIdent impl env.moduleImplementations
+        , optimizationSteps = if i /= 0 then env.optimizationSteps else maybe env.optimizationSteps (Array.snoc env.optimizationSteps <<< Tuple qualifiedIdent) $ NonEmptyArray.fromArray mbSteps
+        , directives =
+            case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
+              Just dirs ->
+                Map.alter
+                  case _ of
+                    Just oldDirs ->
+                      Just $ Map.union oldDirs dirs
+                    Nothing ->
+                      Just dirs
+                  (EvalExtern (Qualified (Just env.currentModule) ident))
+                  env.directives
+              Nothing ->
                 env.directives
-            Nothing ->
-              env.directives
-      }
-  , value: Tuple ident (Tuple (unwrap (fst impl)).deps expr')
-  }
+        }
+    , value: Tuple ident (Tuple (unwrap (fst impl)).deps expr')
+    }
 
 inferTransitiveDirective :: InlineDirectiveMap -> ExternImpl -> BackendExpr -> Expr Ann -> Maybe (Map InlineAccessor InlineDirective)
 inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBackendExpr
@@ -320,18 +326,31 @@ inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBack
     _ ->
       Nothing
 
-toExternImpl :: ConvertEnv -> Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr
-toExternImpl env group expr = case expr of
-  ExprSyntax analysis (Lit (LitRecord props)) -> do
-    let propsWithAnalysis = map freeze <$> props
-    Tuple (Tuple analysis (ExternDict group propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis))))
-  ExprSyntax _ (CtorDef ct ty tag fields) -> do
-    let Tuple analysis expr' = freeze expr
-    let meta = unsafePartial $ fromJust $ Map.lookup ty env.dataTypes
-    Tuple (Tuple analysis (ExternCtor meta ct ty tag fields)) expr'
-  _ -> do
-    let Tuple analysis expr' = freeze expr
-    Tuple (Tuple analysis (ExternExpr group expr')) expr'
+toExternImpl :: ConvertEnv -> Qualified Ident -> Array (Qualified Ident) -> BackendExpr -> Array (Tuple (Qualified Ident) (Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr))
+toExternImpl env = go 0 []
+  where
+  go levelShrinkage rewrites qualifiedIdent@(Qualified modName topId) group expr =
+    case expr of
+      ExprSyntax analysis (Lit (LitRecord props)) -> do
+        let propsWithAnalysis = map (freezeWithLetRewrites levelShrinkage rewrites) <$> props
+        [ Tuple qualifiedIdent $ Tuple (Tuple (addDeps analysis) (ExternDict group propsWithAnalysis)) (NeutralExpr (Lit (LitRecord (map snd <$> propsWithAnalysis)))) ]
+      ExprSyntax _ (CtorDef ct ty tag fields) -> do
+        let Tuple analysis expr' = freeze expr
+        let meta = unsafePartial $ fromJust $ Map.lookup ty env.dataTypes
+        [ Tuple qualifiedIdent $ Tuple (Tuple analysis (ExternCtor meta ct ty tag fields)) expr' ]
+      ExprSyntax _ (Let ident level binding body) -> do
+        let newQualifiedIdent = Qualified modName $ Ident (unwrap topId <> "$" <> (show $ unwrap level) <> maybe "" (unwrap >>> ("$" <> _)) ident)
+        let newRewrites = Array.cons (LetRewrite { newQualifiedIdent, oldIdent: ident, oldLevel: level }) rewrites
+        go levelShrinkage rewrites newQualifiedIdent group binding <> go (levelShrinkage + 1) newRewrites qualifiedIdent group body
+      ExprSyntax _ (LetRec level bindings body) -> do
+        let bindingsWithQualifiedIdents = bindings <#> \(Tuple ident binding) -> Tuple (Qualified modName $ Ident (unwrap topId <> "$" <> (show $ unwrap level) <> "$" <> unwrap ident)) (Tuple ident binding)
+        let newRewrites = NonEmptyArray.toArray (map (\(Tuple newQualifiedIdent (Tuple ident _)) -> LetRewrite { newQualifiedIdent, oldIdent: Just ident, oldLevel: level }) bindingsWithQualifiedIdents) <> rewrites
+        join (map (\(Tuple newQualifiedIdent (Tuple _ binding)) -> go (levelShrinkage + 1) newRewrites newQualifiedIdent group binding) (NonEmptyArray.toArray bindingsWithQualifiedIdents)) <> go (levelShrinkage + 1) newRewrites qualifiedIdent group body
+      _ -> do
+        let Tuple analysis expr' = freezeWithLetRewrites levelShrinkage rewrites expr
+        [ Tuple qualifiedIdent $ Tuple (Tuple (addDeps analysis) (ExternExpr group expr')) expr' ]
+    where
+    addDeps analysis = foldr (unwrap >>> _.newQualifiedIdent >>> usedDep) analysis rewrites
 
 topEnv :: Env -> Env
 topEnv (Env env) = Env env { locals = [] }

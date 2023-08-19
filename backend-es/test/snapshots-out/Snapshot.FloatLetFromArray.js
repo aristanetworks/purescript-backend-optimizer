@@ -11,23 +11,27 @@ const left = x => {
   $runtime.fail();
 };
 const fst = a => a[0];
-const test1 = /* #__PURE__ */ (() => {
-  const b = Effect$dConsole.log("foo");
-  return [
-    Data$dEither.$Either("Left", 5),
-    Data$dEither.$Either(
-      "Right",
-      [
-        Data$dEither.$Either(
-          "Left",
-          [
-            Data$dEither.$Either("Left", 1),
-            Data$dEither.$Either("Right", [Data$dEither.$Either("Left", b), Data$dEither.$Either("Right", [Data$dEither.$Either("Left", 5), Data$dEither.$Either("Right", b)])])
-          ]
-        ),
-        Data$dEither.$Either("Right", 6)
-      ]
-    )
-  ];
-})();
-export {fst, left, right, snd, test1};
+const test1$0$b = /* #__PURE__ */ Effect$dConsole.log("foo");
+const test1 = [
+  /* #__PURE__ */ Data$dEither.$Either("Left", 5),
+  /* #__PURE__ */ Data$dEither.$Either(
+    "Right",
+    [
+      /* #__PURE__ */ Data$dEither.$Either(
+        "Left",
+        [
+          /* #__PURE__ */ Data$dEither.$Either("Left", 1),
+          /* #__PURE__ */ Data$dEither.$Either(
+            "Right",
+            [
+              /* #__PURE__ */ Data$dEither.$Either("Left", test1$0$b),
+              /* #__PURE__ */ Data$dEither.$Either("Right", [/* #__PURE__ */ Data$dEither.$Either("Left", 5), /* #__PURE__ */ Data$dEither.$Either("Right", test1$0$b)])
+            ]
+          )
+        ]
+      ),
+      /* #__PURE__ */ Data$dEither.$Either("Right", 6)
+    ]
+  )
+];
+export {fst, left, right, snd, test1, test1$0$b};
