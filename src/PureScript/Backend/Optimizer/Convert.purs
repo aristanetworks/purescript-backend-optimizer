@@ -247,12 +247,20 @@ bindingsToBackendBindingGroups origIsRecursive bindingList = Array.fromFoldable 
   where
   bindingsToBackendBindingGroup :: NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> BackendBindingGroup Ident (WithDeps NeutralExpr)
   bindingsToBackendBindingGroup bindings = { recursive: if hasUndollared bindings then origIsRecursive else hasRec bindings, bindings: Array.fromFoldable bindings }
+  -- this is stringly-typed, asking if there are any terms that don't have a dollar.
+  -- no dollar means that it's an original term (it didn't come from a top-level let)
   hasUndollared l = Array.any (fst >>> unwrap >>> findDollarNumber >>> isNothing) $ Array.fromFoldable l
+  -- $$rec is added to all let-bound terms that are recursive
+  -- so we use this to know if we got these top-level terms from a
+  -- `LetRec` and, if so, we mark them recursive
   hasRec l = Array.any (fst >>> unwrap >>> String.contains (String.Pattern "$$rec")) $ Array.fromFoldable l
 
 backendBindingGroupToBackendBindingGroups :: ModuleName -> BackendBindingGroup Ident (WithDeps NeutralExpr) -> Array (BackendBindingGroup Ident (WithDeps NeutralExpr))
 backendBindingGroupToBackendBindingGroups mn v = bindingsToBackendBindingGroups v.recursive splitBindings
   where
+  -- the ordering here guarantees that the let-bound values will always appear before
+  -- the terms that refer to them
+  -- that's necessary later on when we're constructing the `usedBindings` array
   splitBindings :: List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr)))
   splitBindings = fixSplitBindings mn $ List.groupAllBy (compare `on` (fst >>> unwrap >>> findDollarNumber >>> maybe 0 (add 1 >>> mul (-1)))) $ List.fromFoldable v.bindings
 
@@ -289,6 +297,12 @@ toBackendTopLevelBindingGroup env = makeNewBindingGroupsUsingTopLevelLets <<< ca
   overValue f a =
     a { value = f $ join a.value }
 
+  -- `toTopLevelBackendBinding` returns the original binding _plus_
+  -- any top-level lets that have been extracted
+  -- these new top-level lets often belong in their own binding group
+  --  `makeNewBindingGroupsUsingTopLevelLets` does that, and it also updates the
+  -- `ConvertEnv` so that the correct bindings are used in `implementations`
+  -- and `moduleImplementations`
   makeNewBindingGroupsUsingTopLevelLets :: Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr)) -> Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
   makeNewBindingGroupsUsingTopLevelLets { accum, value } = mapAccumL rewriteBindingsInEnv accum (backendBindingGroupToBackendBindingGroups accum.currentModule value)
 
