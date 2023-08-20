@@ -283,7 +283,7 @@ instance Eval f => Eval (BackendSyntax f) where
       let
         folder acc = case _ of
           List.Nil -> evalUpdate (eval env lhs) acc
-          List.Cons (Prop key sem) t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
+          List.Cons (Prop key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
       folder [] (List.fromFoldable updates)
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
@@ -297,13 +297,13 @@ instance Eval f => Eval (BackendSyntax f) where
       let
         folder acc = case _ of
           List.Nil -> NeutLit (LitArray acc)
-          List.Cons sem t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ v ]) t
+          List.Cons sem t -> floatLet (eval env sem) \v -> folder (acc <> [ v ]) t
       folder [] (List.fromFoldable arr)
     Lit (LitRecord arr) -> do
       let
         folder acc = case _ of
           List.Nil -> NeutLit (LitRecord acc)
-          List.Cons (Prop key sem) t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
+          List.Cons (Prop key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
       folder [] (List.fromFoldable arr)
     Lit lit ->
       guardFailOver identity (eval env <$> lit) NeutLit
@@ -315,7 +315,7 @@ instance Eval f => Eval (BackendSyntax f) where
       let
         folder acc = case _ of
           List.Nil -> NeutData qual ct ty tag acc
-          List.Cons (Tuple key sem) t -> guardFloatLet (eval env sem) \v -> folder (acc <> [ Tuple key v ]) t
+          List.Cons (Tuple key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Tuple key v ]) t
       folder [] (List.fromFoldable fields)
 
 instance Eval BackendExpr where
@@ -403,7 +403,7 @@ snocApp prev next = case Array.last prev of
     Array.snoc prev (ExternApp [ next ])
 
 evalApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalApp env hd spine = guardFloatLet hd $ flip (go env) (List.fromFoldable spine)
+evalApp env hd spine = floatLet hd $ flip (go env) (List.fromFoldable spine)
   where
   go env' = case _, _ of
     _, List.Cons (NeutFail err) _ ->
@@ -411,10 +411,10 @@ evalApp env hd spine = guardFloatLet hd $ flip (go env) (List.fromFoldable spine
     NeutFail err, _ ->
       NeutFail err
     SemLam _ k, List.Cons arg args ->
-      guardFloatLet arg $ flip (makeLet Nothing) \nextArg ->
+      floatLet arg $ flip (makeLet Nothing) \nextArg ->
         go env' (k nextArg) args
     SemRef ref sp sem, List.Cons arg args ->
-      guardFloatLet arg \arg' -> go env' (evalRef env' ref sp (ExternApp [ arg' ]) sem) args
+      floatLet arg \arg' -> go env' (evalRef env' ref sp (ExternApp [ arg' ]) sem) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
@@ -429,11 +429,11 @@ evalApp env hd spine = guardFloatLet hd $ flip (go env) (List.fromFoldable spine
       let
         folder acc = case _ of
           List.Nil -> NeutApp fn acc
-          List.Cons sem t -> guardFloatLet sem \v -> folder (acc <> [ v ]) t
+          List.Cons sem t -> floatLet sem \v -> folder (acc <> [ v ]) t
       folder [] (List.fromFoldable args)
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalUncurriedApp env hd spine = guardFloatLet hd case _ of
+evalUncurriedApp env hd spine = floatLet hd case _ of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
   SemRef ref sp sem ->
@@ -468,7 +468,7 @@ evalUncurriedBeta fn mk spine = go mk (List.fromFoldable spine)
     MkFnNext _ _, List.Cons (NeutFail err) _ ->
       NeutFail err
     MkFnNext _ k, List.Cons arg args ->
-      guardFloatLet arg $ flip (makeLet Nothing) \nextArg ->
+      floatLet arg $ flip (makeLet Nothing) \nextArg ->
         go (k nextArg) args
     MkFnNext _ _, _ ->
       unsafeCrashWith "Uncurried function applied to too few arguments"
@@ -541,11 +541,8 @@ evalAccessor env lhs accessor = floatLet lhs case _ of
   lhs' ->
     NeutAccessor lhs' accessor
 
-guardFloatLet :: BackendSemantics -> (BackendSemantics -> BackendSemantics) -> BackendSemantics
-guardFloatLet v f = guardFail v \sem' -> floatLet sem' f
-
 evalUpdate :: BackendSemantics -> Array (Prop BackendSemantics) -> BackendSemantics
-evalUpdate lhs props = guardFloatLet lhs case _ of
+evalUpdate lhs props = floatLet lhs case _ of
   NeutLit (LitRecord props') ->
     NeutLit (LitRecord (NonEmptyArray.head <$> Array.groupAllBy (comparing propKey) (props <> props')))
   NeutUpdate r props' ->
@@ -655,7 +652,7 @@ deref = case _ of
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
   Op1 op1 x' ->
-    guardFloatLet x' \x -> case op1, x of
+    floatLet x' \x -> case op1, x of
       OpBooleanNot, _
         | NeutLit (LitBoolean bool) <- deref x ->
             liftBoolean (not bool)
@@ -688,7 +685,7 @@ evalPrimOp env = case _ of
       f g = case op2 of
         OpBooleanAnd -> g x' y'
         OpBooleanOr -> g x' y'
-        _ -> guardFloatLet x' \x -> guardFloatLet y' \y -> g x y
+        _ -> floatLet x' \x -> floatLet y' \y -> g x y
     f \x y -> case op2 of
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- deref x ->
