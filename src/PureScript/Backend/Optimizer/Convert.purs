@@ -433,6 +433,12 @@ toExternImpl env = go 0 0 []
         let newQualifiedIdent = Qualified modName $ Ident (unwrap topId <> "$" <> (show levelNamingCtr) <> maybe "" (unwrap >>> ("$" <> _)) ident)
         let newRewrites = Array.cons (LetRewrite { newQualifiedIdent, oldIdent: ident, oldLevel: level }) rewrites
         go levelShrinkage (levelNamingCtr + 1) rewrites newQualifiedIdent group binding <> go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group body
+      -- this is a special case for let-recs that are immediately followed by a local
+      -- in which case we can replace the local with the single binding
+      ExprSyntax _ (LetRec level bindings (ExprSyntax _ (Local _ _)))
+        | { head: Tuple ident binding, tail: [] } <- NonEmptyArray.uncons bindings -> do
+            let newRewrites = [ LetRewrite { newQualifiedIdent: qualifiedIdent, oldIdent: Just ident, oldLevel: level } ] <> rewrites
+            go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group binding
       ExprSyntax _ (LetRec level bindings body) -> do
         let bindingsWithQualifiedIdents = bindings <#> \(Tuple ident binding) -> Tuple (Qualified modName $ Ident (unwrap topId <> "$" <> (show $ levelNamingCtr) <> "$" <> unwrap ident <> "$$rec")) (Tuple ident binding)
         let newRewrites = NonEmptyArray.toArray (map (\(Tuple newQualifiedIdent (Tuple ident _)) -> LetRewrite { newQualifiedIdent, oldIdent: Just ident, oldLevel: level }) bindingsWithQualifiedIdents) <> rewrites
