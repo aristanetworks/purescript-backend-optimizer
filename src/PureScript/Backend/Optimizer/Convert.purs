@@ -164,6 +164,7 @@ toBackendModule (Module mod) env = do
             directives.exports
       , moduleImplementations = Map.empty
       }
+
     localExports :: Set Ident
     localExports = Set.fromFoldable mod.exports
 
@@ -253,7 +254,7 @@ backendBindingGroupToBackendBindingGroups :: ModuleName -> BackendBindingGroup I
 backendBindingGroupToBackendBindingGroups mn v = bindingsToBackendBindingGroups v.recursive splitBindings
   where
   splitBindings :: List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr)))
-  splitBindings = fixSplitBindings mn $ List.groupBy (eq `on` (fst >>> unwrap >>> findDollarNumber)) $ List.fromFoldable v.bindings
+  splitBindings = fixSplitBindings mn $ List.groupAllBy (compare `on` (fst >>> unwrap >>> findDollarNumber >>> maybe 0 (add 1 >>> mul (-1)))) $ List.fromFoldable v.bindings
 
 findDollarNumber :: String -> Maybe Int
 findDollarNumber str = do
@@ -275,9 +276,8 @@ toBackendTopLevelBindingGroups binds env = do
           Array.groupBy ((&&) `on` (not <<< _.recursive)) (join result.value)
     }
 
-
 toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
-toBackendTopLevelBindingGroup env = makeNewBindingGroupsUsingTopLevelLets  <<< case _ of
+toBackendTopLevelBindingGroup env = makeNewBindingGroupsUsingTopLevelLets <<< case _ of
   Rec bindings -> do
     let group = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
     mapAccumL (toTopLevelBackendBinding group) env bindings
