@@ -247,7 +247,7 @@ bindingsToBackendBindingGroups :: Boolean -> List.List (NonEmptyList (Tuple Iden
 bindingsToBackendBindingGroups origIsRecursive bindingList = Array.fromFoldable $ map bindingsToBackendBindingGroup bindingList
   where
   bindingsToBackendBindingGroup :: NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> BackendBindingGroup Ident (WithDeps NeutralExpr)
-  bindingsToBackendBindingGroup bindings = { recursive: if hasUndollared bindings then origIsRecursive else hasRec bindings, bindings: Array.fromFoldable bindings }
+  bindingsToBackendBindingGroup bindings = { recursive: hasRec bindings || if hasUndollared bindings then origIsRecursive else false, bindings: Array.fromFoldable bindings }
   -- this is stringly-typed, asking if there are any terms that don't have a dollar.
   -- no dollar means that it's an original term (it didn't come from a top-level let)
   hasUndollared l = Array.any (fst >>> unwrap >>> findDollarNumber >>> isNothing) $ Array.fromFoldable l
