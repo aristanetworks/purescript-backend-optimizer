@@ -13,18 +13,18 @@ const functorExprF = {
     $runtime.fail();
   }
 };
-const test1$0$go = v => {
-  if (v.tag === "Add") { return test1$0$go(v._1) + test1$0$go(v._2) | 0; }
-  if (v.tag === "Mul") { return test1$0$go(v._1) * test1$0$go(v._2) | 0; }
+const test1$0$go$$rec = v => {
+  if (v.tag === "Add") { return test1$0$go$$rec(v._1) + test1$0$go$$rec(v._2) | 0; }
+  if (v.tag === "Mul") { return test1$0$go$$rec(v._1) * test1$0$go$$rec(v._2) | 0; }
   if (v.tag === "Lit") { return v._1; }
   $runtime.fail();
 };
-const test1 = test1$0$go;
-const test2$0$go = v => {
-  if (v.tag === "Add") { return test2$0$go(v._1) + test2$0$go(v._2) | 0; }
-  if (v.tag === "Mul") { return test2$0$go(v._1) * test2$0$go(v._2) | 0; }
+const test1 = test1$0$go$$rec;
+const test2$0$go$$rec = v => {
+  if (v.tag === "Add") { return test2$0$go$$rec(v._1) + test2$0$go$$rec(v._2) | 0; }
+  if (v.tag === "Mul") { return test2$0$go$$rec(v._1) * test2$0$go$$rec(v._2) | 0; }
   if (v.tag === "Lit") { return v._1 + 1 | 0; }
   $runtime.fail();
 };
-const test2 = test2$0$go;
-export {$ExprF, Add, Lit, Mul, functorExprF, test1, test1$0$go, test2, test2$0$go};
+const test2 = test2$0$go$$rec;
+export {$ExprF, Add, Lit, Mul, functorExprF, test1, test1$0$go$$rec, test2, test2$0$go$$rec};

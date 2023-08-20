@@ -52,13 +52,19 @@ import Control.Monad.RWS (ask)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Either (hush)
 import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
+import Data.Int (fromString)
+import Data.Lens.Lens.Tuple (_2)
+import Data.Lens.Setter as Setter
+import Data.List as List
+import Data.List.Types (NonEmptyList)
 import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromJust, fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromJust, fromMaybe, isNothing, maybe)
 import Data.Monoid as Monoid
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (class Newtype, over, unwrap)
@@ -66,6 +72,9 @@ import Data.Semigroup.First (First(..))
 import Data.Semigroup.Foldable (maximum)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.String as String
+import Data.String.Regex (Regex, match, regex)
+import Data.String.Regex.Flags (noFlags)
 import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR, sequence, traverse)
 import Data.TraversableWithIndex (forWithIndex, mapAccumLWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -212,17 +221,63 @@ toBackendModule (Module mod) env = do
 
 type WithDeps = Tuple (Set (Qualified Ident))
 
+mergeBindings :: ModuleName -> NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> Maybe (NonEmptyList (Tuple Ident (WithDeps NeutralExpr)))
+mergeBindings modName a' b' = if depsOverlap a' b' && depsOverlap b' a' then Just (a' <> b') else Nothing
+  where
+  depsOverlap :: NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> Boolean
+  depsOverlap a b = not (Set.isEmpty (Set.intersection (foldMap (snd >>> fst >>> Set.filter (\(Qualified mn _) -> if mn == Nothing || mn == (Just modName) then true else false) >>> Set.map unQualified) a) (foldMap (fst >>> Set.singleton) b)))
+
+fixSplitBindings :: ModuleName -> List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr))) -> List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr)))
+fixSplitBindings modName i = case i of
+  List.Nil -> List.Nil
+  List.Cons binding List.Nil -> pure binding
+  List.Cons binding rest -> case go binding List.Nil false rest of
+    Tuple true res -> fixSplitBindings modName res
+    Tuple false res -> res
+  where
+  go hd acc _ (List.Cons binding rest)
+    | Just merged <- mergeBindings modName hd binding = Tuple true (acc <> pure merged <> rest)
+  go hd acc tf (List.Cons binding rest) = go hd (List.snoc acc binding) tf rest
+  go hd List.Nil tf List.Nil = Tuple tf (pure hd)
+  go hd (List.Cons nhd rest) tf List.Nil = Setter.over _2 (List.Cons hd) (go nhd List.Nil tf rest)
+
+bindingsToBackendBindingGroups :: Boolean -> List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr))) -> Array (BackendBindingGroup Ident (WithDeps NeutralExpr))
+bindingsToBackendBindingGroups origIsRecursive bindingList = Array.fromFoldable $ map bindingsToBackendBindingGroup bindingList
+  where
+  bindingsToBackendBindingGroup :: NonEmptyList (Tuple Ident (WithDeps NeutralExpr)) -> BackendBindingGroup Ident (WithDeps NeutralExpr)
+  bindingsToBackendBindingGroup bindings = { recursive: if hasUndollared bindings then origIsRecursive else hasRec bindings, bindings: Array.fromFoldable bindings }
+  hasUndollared l = Array.any (fst >>> unwrap >>> findDollarNumber >>> isNothing) $ Array.fromFoldable l
+  hasRec l = Array.any (fst >>> unwrap >>> String.contains (String.Pattern "$$rec")) $ Array.fromFoldable l
+
+backendBindingGroupToBackendBindingGroups :: ModuleName -> BackendBindingGroup Ident (WithDeps NeutralExpr) -> Array (BackendBindingGroup Ident (WithDeps NeutralExpr))
+backendBindingGroupToBackendBindingGroups mn v = bindingsToBackendBindingGroups v.recursive splitBindings
+  where
+  splitBindings :: List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr)))
+  splitBindings = fixSplitBindings mn $ List.groupBy (eq `on` (fst >>> unwrap >>> findDollarNumber)) $ List.fromFoldable v.bindings
+
+findDollarNumber :: String -> Maybe Int
+findDollarNumber str = do
+  rx <- dollarRegex
+  matched <- match rx str
+  guard $ NonEmptyArray.length matched == 1
+  s <- NonEmptyArray.head matched
+  fromString $ String.replace (String.Pattern "$") (String.Replacement "") s
+  where
+  dollarRegex :: Maybe Regex
+  dollarRegex = hush $ regex "\\$\\d+" noFlags
+
 toBackendTopLevelBindingGroups :: Array (Bind Ann) -> ConvertM (Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr))))
 toBackendTopLevelBindingGroups binds env = do
   let result = mapAccumL toBackendTopLevelBindingGroup env binds
   result
     { value =
         (\as -> { recursive: (NonEmptyArray.head as).recursive, bindings: _.bindings =<< NonEmptyArray.toArray as }) <$>
-          Array.groupBy ((&&) `on` (not <<< _.recursive)) result.value
+          Array.groupBy ((&&) `on` (not <<< _.recursive)) (join result.value)
     }
 
-toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr))
-toBackendTopLevelBindingGroup env = case _ of
+
+toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
+toBackendTopLevelBindingGroup env = makeNewBindingGroupsUsingTopLevelLets  <<< case _ of
   Rec bindings -> do
     let group = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
     mapAccumL (toTopLevelBackendBinding group) env bindings
@@ -234,13 +289,35 @@ toBackendTopLevelBindingGroup env = case _ of
   overValue f a =
     a { value = f $ join a.value }
 
+  makeNewBindingGroupsUsingTopLevelLets :: Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr)) -> Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
+  makeNewBindingGroupsUsingTopLevelLets { accum, value } = mapAccumL rewriteBindingsInEnv accum (backendBindingGroupToBackendBindingGroups accum.currentModule value)
+
+  overBindings recursive a =
+    a { value = { recursive, bindings: a.value } }
+
+  rewriteBindingsInEnv :: ConvertEnv -> BackendBindingGroup Ident (WithDeps NeutralExpr) -> Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr))
+  rewriteBindingsInEnv accum value = overBindings value.recursive $ mapAccumL (rewriteBindingInEnv (if not value.recursive then [] else map fst value.bindings)) accum value.bindings
+
+  rewriteBindingInEnv :: Array Ident -> ConvertEnv -> Tuple Ident (WithDeps NeutralExpr) -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
+  rewriteBindingInEnv group accum value =
+    { accum: accum
+        { moduleImplementations = Map.update (Setter.over _2 (changeGroupInExterImpl accum.currentModule group) >>> Just) (Qualified (Just accum.currentModule) (fst value)) accum.moduleImplementations
+        , implementations = Map.update (Setter.over _2 (changeGroupInExterImpl accum.currentModule group) >>> Just) (Qualified (Just accum.currentModule) (fst value)) accum.implementations
+        }
+    , value
+    }
+
+  changeGroupInExterImpl :: ModuleName -> Array Ident -> ExternImpl -> ExternImpl
+  changeGroupInExterImpl mn group = case _ of
+    ExternExpr _ expr -> ExternExpr (map (Qualified (Just mn)) group) expr
+    ExternDict _ dict -> ExternDict (map (Qualified (Just mn)) group) dict
+    externCtor -> externCtor
+
 -- | For the NonEmptyArray,
 -- | - `head` = the original expression
 -- | - `last` = the final optimized expression
 -- | - everything in-between the two are the steps that were taken from `head` to `last`
 type OptimizationSteps = Array (Tuple (Qualified Ident) (NonEmptyArray BackendExpr))
-
--- foreign import spyyyyy :: forall a b. a -> b -> b
 
 toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Array (Tuple Ident (WithDeps NeutralExpr)))
 toTopLevelBackendBinding group env' (Binding _ originalIdent cfn) = do
@@ -327,9 +404,9 @@ inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBack
       Nothing
 
 toExternImpl :: ConvertEnv -> Qualified Ident -> Array (Qualified Ident) -> BackendExpr -> Array (Tuple (Qualified Ident) (Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr))
-toExternImpl env = go 0 []
+toExternImpl env = go 0 0 []
   where
-  go levelShrinkage rewrites qualifiedIdent@(Qualified modName topId) group expr =
+  go levelShrinkage levelNamingCtr rewrites qualifiedIdent@(Qualified modName topId) group expr =
     case expr of
       ExprSyntax analysis (Lit (LitRecord props)) -> do
         let propsWithAnalysis = map (freezeWithLetRewrites levelShrinkage rewrites) <$> props
@@ -339,13 +416,13 @@ toExternImpl env = go 0 []
         let meta = unsafePartial $ fromJust $ Map.lookup ty env.dataTypes
         [ Tuple qualifiedIdent $ Tuple (Tuple analysis (ExternCtor meta ct ty tag fields)) expr' ]
       ExprSyntax _ (Let ident level binding body) -> do
-        let newQualifiedIdent = Qualified modName $ Ident (unwrap topId <> "$" <> (show $ unwrap level) <> maybe "" (unwrap >>> ("$" <> _)) ident)
+        let newQualifiedIdent = Qualified modName $ Ident (unwrap topId <> "$" <> (show levelNamingCtr) <> maybe "" (unwrap >>> ("$" <> _)) ident)
         let newRewrites = Array.cons (LetRewrite { newQualifiedIdent, oldIdent: ident, oldLevel: level }) rewrites
-        go levelShrinkage rewrites newQualifiedIdent group binding <> go (levelShrinkage + 1) newRewrites qualifiedIdent group body
+        go levelShrinkage (levelNamingCtr + 1) rewrites newQualifiedIdent group binding <> go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group body
       ExprSyntax _ (LetRec level bindings body) -> do
-        let bindingsWithQualifiedIdents = bindings <#> \(Tuple ident binding) -> Tuple (Qualified modName $ Ident (unwrap topId <> "$" <> (show $ unwrap level) <> "$" <> unwrap ident)) (Tuple ident binding)
+        let bindingsWithQualifiedIdents = bindings <#> \(Tuple ident binding) -> Tuple (Qualified modName $ Ident (unwrap topId <> "$" <> (show $ levelNamingCtr) <> "$" <> unwrap ident <> "$$rec")) (Tuple ident binding)
         let newRewrites = NonEmptyArray.toArray (map (\(Tuple newQualifiedIdent (Tuple ident _)) -> LetRewrite { newQualifiedIdent, oldIdent: Just ident, oldLevel: level }) bindingsWithQualifiedIdents) <> rewrites
-        join (map (\(Tuple newQualifiedIdent (Tuple _ binding)) -> go (levelShrinkage + 1) newRewrites newQualifiedIdent group binding) (NonEmptyArray.toArray bindingsWithQualifiedIdents)) <> go (levelShrinkage + 1) newRewrites qualifiedIdent group body
+        join (map (\(Tuple newQualifiedIdent (Tuple _ binding)) -> go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites newQualifiedIdent group binding) (NonEmptyArray.toArray bindingsWithQualifiedIdents)) <> go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group body
       _ -> do
         let Tuple analysis expr' = freezeWithLetRewrites levelShrinkage rewrites expr
         [ Tuple qualifiedIdent $ Tuple (Tuple (addDeps analysis) (ExternExpr group expr')) expr' ]
