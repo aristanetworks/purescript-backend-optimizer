@@ -3,6 +3,7 @@ import * as Data$dEither from "../Data.Either/index.js";
 import * as Data$dFoldable from "../Data.Foldable/index.js";
 import * as Data$dTuple from "../Data.Tuple/index.js";
 import * as Effect$dConsole from "../Effect.Console/index.js";
+const test1$0$b = /* #__PURE__ */ Effect$dConsole.log("foo");
 const test1$1$a = /* #__PURE__ */ Data$dFoldable.foldlArray(a => b => {
   if (a.tag === "Left") { return Data$dEither.$Either("Left", a._1); }
   if (a.tag === "Right") {
@@ -15,7 +16,6 @@ const test1$1$a = /* #__PURE__ */ Data$dFoldable.foldlArray(a => b => {
   /* #__PURE__ */ Data$dEither.$Either("Right", 4),
   /* #__PURE__ */ Data$dEither.$Either("Left", test1$0$b)
 ]);
-const test1$0$b = /* #__PURE__ */ Effect$dConsole.log("foo");
 const test1 = /* #__PURE__ */ Data$dTuple.$Tuple(
   1,
   /* #__PURE__ */ Data$dTuple.$Tuple(

@@ -19,8 +19,8 @@ const testArrayIndex = arr => ix => {
   if (ix >= 0 && ix < arr.length) { return Data$dMaybe.$Maybe("Just", arr[ix]); }
   return Data$dMaybe.Nothing;
 };
-const main$1 = /* #__PURE__ */ assertEqual("index -1")({expected: Data$dMaybe.Nothing, actual: /* #__PURE__ */ testArrayIndex(main$0$array)(-1)});
 const main$0$array = [1, 2, 3];
+const main$1 = /* #__PURE__ */ assertEqual("index -1")({expected: Data$dMaybe.Nothing, actual: /* #__PURE__ */ testArrayIndex(main$0$array)(-1)});
 const main = () => {
   main$1();
   assertEqual("index 0")({expected: Data$dMaybe.$Maybe("Just", 1), actual: testArrayIndex(main$0$array)(0)})();
