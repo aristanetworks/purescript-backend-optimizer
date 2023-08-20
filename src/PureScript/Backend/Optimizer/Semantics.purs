@@ -213,8 +213,35 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
+floatLetOverTuples :: forall f a eval. Eval eval => Foldable f => Env -> (Array (Tuple a BackendSemantics) -> BackendSemantics) -> f (Tuple a eval) -> BackendSemantics
+floatLetOverTuples env cont propFoldable = do
+  let
+    folder acc = case _ of
+      List.Nil -> cont acc
+      List.Cons (Tuple key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Tuple key v ]) t
+  folder [] (List.fromFoldable propFoldable)
+
+floatLetOverProps :: forall f eval. Eval eval => Foldable f => Env -> (Array (Prop BackendSemantics) -> BackendSemantics) -> f (Prop eval) -> BackendSemantics
+floatLetOverProps env cont propFoldable = do
+  let
+    folder acc = case _ of
+      List.Nil -> cont acc
+      List.Cons (Prop key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
+  folder [] (List.fromFoldable propFoldable)
+
+floatLetOverVals :: forall f eval. Eval eval => Foldable f => Env -> (Array BackendSemantics -> BackendSemantics) -> f eval -> BackendSemantics
+floatLetOverVals env cont propFoldable = do
+  let
+    folder acc = case _ of
+      List.Nil -> cont acc
+      List.Cons sem t -> floatLet (eval env sem) \v -> folder (acc <> [ v ]) t
+  folder [] (List.fromFoldable propFoldable)
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
+
+instance Eval BackendSemantics where
+  eval = const identity
 
 instance Eval f => Eval (BackendSyntax f) where
   eval env@(Env e) = case _ of
@@ -279,12 +306,7 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFail (eval env val) SemEffectDefer
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
-    Update lhs updates -> do
-      let
-        folder acc = case _ of
-          List.Nil -> evalUpdate (eval env lhs) acc
-          List.Cons (Prop key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
-      folder [] (List.fromFoldable updates)
+    Update lhs updates -> floatLetOverProps env (evalUpdate (eval env lhs)) updates
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
@@ -293,30 +315,15 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
     PrimUndefined ->
       NeutPrimUndefined
-    Lit (LitArray arr) -> do
-      let
-        folder acc = case _ of
-          List.Nil -> NeutLit (LitArray acc)
-          List.Cons sem t -> floatLet (eval env sem) \v -> folder (acc <> [ v ]) t
-      folder [] (List.fromFoldable arr)
-    Lit (LitRecord arr) -> do
-      let
-        folder acc = case _ of
-          List.Nil -> NeutLit (LitRecord acc)
-          List.Cons (Prop key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
-      folder [] (List.fromFoldable arr)
+    Lit (LitArray arr) -> floatLetOverVals env (NeutLit <<< LitArray) arr
+    Lit (LitRecord arr) -> floatLetOverProps env (NeutLit <<< LitRecord) arr
     Lit lit ->
       guardFailOver identity (eval env <$> lit) NeutLit
     Fail err ->
       NeutFail err
     CtorDef ct ty tag fields ->
       NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-    CtorSaturated qual ct ty tag fields -> do
-      let
-        folder acc = case _ of
-          List.Nil -> NeutData qual ct ty tag acc
-          List.Cons (Tuple key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Tuple key v ]) t
-      folder [] (List.fromFoldable fields)
+    CtorSaturated qual ct ty tag fields -> floatLetOverTuples env (NeutData qual ct ty tag) fields
 
 instance Eval BackendExpr where
   eval = go
@@ -425,12 +432,7 @@ evalApp env hd spine = floatLet hd $ flip (go env) (List.fromFoldable spine)
           go (bindLocal (bindLocal env' (Group nextVals)) (One nextFn)) nextFn args
     fn, List.Nil ->
       fn
-    fn, args -> do
-      let
-        folder acc = case _ of
-          List.Nil -> NeutApp fn acc
-          List.Cons sem t -> floatLet sem \v -> folder (acc <> [ v ]) t
-      folder [] (List.fromFoldable args)
+    fn, args -> floatLetOverVals env (NeutApp fn) args
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
 evalUncurriedApp env hd spine = floatLet hd case _ of
