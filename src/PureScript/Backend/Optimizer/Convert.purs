@@ -262,7 +262,7 @@ backendBindingGroupToBackendBindingGroups mn v = bindingsToBackendBindingGroups 
   -- the terms that refer to them
   -- that's necessary later on when we're constructing the `usedBindings` array
   splitBindings :: List.List (NonEmptyList (Tuple Ident (WithDeps NeutralExpr)))
-  splitBindings = fixSplitBindings mn $ List.groupBy (eq `on` (fst >>> unwrap >>> findDollarNumber)) $ List.fromFoldable v.bindings
+  splitBindings = fixSplitBindings mn $ List.groupAllBy (compare `on` (fst >>> unwrap >>> findDollarNumber >>> fromMaybe top)) $ List.fromFoldable v.bindings
 
 findDollarNumber :: String -> Maybe Int
 findDollarNumber str = do
