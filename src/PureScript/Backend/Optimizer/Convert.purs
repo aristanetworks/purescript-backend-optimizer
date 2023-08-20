@@ -53,6 +53,7 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Either (hush)
+import Data.Filterable (filter)
 import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
@@ -435,10 +436,13 @@ toExternImpl env = go 0 0 []
         go levelShrinkage (levelNamingCtr + 1) rewrites newQualifiedIdent group binding <> go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group body
       -- this is a special case for let-recs that are immediately followed by a local
       -- in which case we can replace the local with the single binding
-      ExprSyntax _ (LetRec level bindings (ExprSyntax _ (Local _ _)))
-        | { head: Tuple ident binding, tail: [] } <- NonEmptyArray.uncons bindings -> do
+      ExprSyntax analysis (LetRec level bindings (ExprSyntax _ (Local mident _)))
+        | Just (Tuple ident binding) <- NonEmptyArray.find (\(Tuple i _) -> Just i == mident) bindings -> do
             let newRewrites = [ LetRewrite { newQualifiedIdent: qualifiedIdent, oldIdent: Just ident, oldLevel: level } ] <> rewrites
-            go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group binding
+            let remaining = NonEmptyArray.fromArray $ filter (\(Tuple i _) -> Just i /= mident) $ NonEmptyArray.toArray bindings
+            case remaining of
+              Just nea -> go levelShrinkage levelNamingCtr newRewrites qualifiedIdent group (ExprSyntax analysis (LetRec level nea binding))
+              Nothing -> go (levelShrinkage + 1) (levelNamingCtr + 1) newRewrites qualifiedIdent group binding
       ExprSyntax _ (LetRec level bindings body) -> do
         let bindingsWithQualifiedIdents = bindings <#> \(Tuple ident binding) -> Tuple (Qualified modName $ Ident (unwrap topId <> "$" <> (show $ levelNamingCtr) <> "$" <> unwrap ident <> "$$rec")) (Tuple ident binding)
         let newRewrites = NonEmptyArray.toArray (map (\(Tuple newQualifiedIdent (Tuple ident _)) -> LetRewrite { newQualifiedIdent, oldIdent: Just ident, oldLevel: level }) bindingsWithQualifiedIdents) <> rewrites
