@@ -1692,6 +1692,7 @@ freezeWithLetRewrites levelShrinkage rewrites init =
             Let ident (Level level) binding body -> NeutralExpr $ Let ident (Level (level - levelShrinkage)) binding body
             LetRec (Level level) bindings body -> NeutralExpr $ LetRec (Level (level - levelShrinkage)) bindings body
             Abs idents body -> NeutralExpr $ Abs (shrink idents) body
+            EffectBind ident (Level level) binding body -> NeutralExpr $ EffectBind ident (Level (level - levelShrinkage)) binding body
             UncurriedAbs idents body -> NeutralExpr $ UncurriedAbs (shrink idents) body
             UncurriedEffectAbs idents body -> NeutralExpr $ UncurriedEffectAbs (shrink idents) body
             x -> NeutralExpr x
