@@ -43,6 +43,7 @@ You can edit this file as you like.
   , "partial"
   , "posix-types"
   , "prelude"
+  , "profunctor"
   , "profunctor-lenses"
   , "refs"
   , "safe-coerce"

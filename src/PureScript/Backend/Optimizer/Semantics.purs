@@ -3,7 +3,6 @@ module PureScript.Backend.Optimizer.Semantics where
 import Prelude
 
 import Control.Alternative (guard)
-import Data.Array (findMap)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -25,7 +24,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
-import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), LetRewrite(..), Level(..), Pair(..), syntaxOf)
+import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
 
 type Spine a = Array a
@@ -1678,29 +1677,7 @@ optimize traceSteps ctx env (Qualified mn (Ident id)) initN originalExpr =
         Tuple rewrite expr2
 
 freeze :: BackendExpr -> Tuple BackendAnalysis NeutralExpr
-freeze = freezeWithLetRewrites 0 []
-
-freezeWithLetRewrites :: Int -> Array LetRewrite -> BackendExpr -> Tuple BackendAnalysis NeutralExpr
-freezeWithLetRewrites levelShrinkage rewrites init =
-  Tuple (analysisOf init)
-    $ foldBackendExpr
-        ( case _ of
-            Local maybeIdent level
-              | Just qualifiedIdent <- findMap (\(LetRewrite { oldLevel, oldIdent, newQualifiedIdent }) -> if oldLevel == level && oldIdent == maybeIdent then Just newQualifiedIdent else Nothing) rewrites -> NeutralExpr $ Var qualifiedIdent
-            Local maybeIdent (Level level) -> NeutralExpr $ Local maybeIdent (Level (level - levelShrinkage))
-            Let ident (Level level) binding body -> NeutralExpr $ Let ident (Level (level - levelShrinkage)) binding body
-            LetRec (Level level) bindings body -> NeutralExpr $ LetRec (Level (level - levelShrinkage)) bindings body
-            Abs idents body -> NeutralExpr $ Abs (shrink idents) body
-            EffectBind ident (Level level) binding body -> NeutralExpr $ EffectBind ident (Level (level - levelShrinkage)) binding body
-            UncurriedAbs idents body -> NeutralExpr $ UncurriedAbs (shrink idents) body
-            UncurriedEffectAbs idents body -> NeutralExpr $ UncurriedEffectAbs (shrink idents) body
-            x -> NeutralExpr x
-        )
-        (\_ neutExpr -> neutExpr)
-        init
-  where
-  shrink :: forall f b. Functor f => f (Tuple b Level) -> f (Tuple b Level)
-  shrink = map (\(Tuple i (Level l)) -> Tuple i (Level (l - levelShrinkage)))
+freeze init = Tuple (analysisOf init) $ foldBackendExpr NeutralExpr (\_ neutExpr -> neutExpr) init
 
 foldBackendExpr :: forall a. (BackendSyntax a -> a) -> (BackendRewrite BackendExpr -> a -> a) -> BackendExpr -> a
 foldBackendExpr foldSyntax foldRewrite = go
