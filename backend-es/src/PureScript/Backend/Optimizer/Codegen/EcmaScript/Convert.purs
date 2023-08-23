@@ -272,7 +272,9 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   UncurriedEffectApp a bs ->
     case a of
       TcoExpr _ (Var qual)
-        | Just expr' <- inlineApp env qual (InlineEffectApp bs) ->
+        -- This is intentionally invoking this with InlineApp as we
+        -- are in a "pure" context, rather than binding an uncurried effect.
+        | Just expr' <- inlineApp env qual (InlineApp bs) ->
             expr'
       _ ->
         codegenEffectBlock env tcoExpr
