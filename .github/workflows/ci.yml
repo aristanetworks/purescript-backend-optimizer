@@ -53,6 +53,9 @@ jobs:
       - name: Run snapshots
         run: spago test --purs-args '--censor-lib'
 
+      - name: Test output-diff
+        run: cd backend-es && npm run test:output-diff
+
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest'
         run: npm run format:check
