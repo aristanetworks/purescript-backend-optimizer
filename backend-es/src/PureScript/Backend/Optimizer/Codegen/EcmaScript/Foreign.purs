@@ -23,8 +23,6 @@ esForeignSemantics = Map.fromFoldable
   , control_monad_st_internal_foreach
   , control_monad_st_internal_while
   , data_array_indexImpl
-  , data_array_st_push
-  , data_array_st_unshift
   , data_array_st_unsafeFreeze
   , data_bounded_topInt
   , data_bounded_bottomInt
@@ -71,23 +69,6 @@ data_array_indexImpl = Tuple (qualified "Data.Array" "indexImpl") go
             (pure nothing)
     _ ->
       Nothing
-
-data_array_st_push :: ForeignSemantics
-data_array_st_push = Tuple (qualified "Data.Array.ST" "push") $ arraySTAll (qualified "Data.Array.ST" "pushAll")
-
-data_array_st_unshift :: ForeignSemantics
-data_array_st_unshift = Tuple (qualified "Data.Array.ST" "unshift") $ arraySTAll (qualified "Data.Array.ST" "unshiftAll")
-
-arraySTAll :: Qualified Ident -> ForeignEval
-arraySTAll ident env _ = case _ of
-  [ ExternApp [ val ] ] ->
-    Just $
-      makeLet Nothing val \nextVal ->
-        SemLam Nothing \nextRef ->
-          SemEffectDefer $
-            evalApp env (NeutStop ident) [ NeutLit (LitArray [ nextVal ]), nextRef ]
-  _ ->
-    Nothing
 
 data_array_st_unsafeFreeze :: ForeignSemantics
 data_array_st_unsafeFreeze = Tuple (qualified "Data.Array.ST" "unsafeFreeze") unsafeSTCoerce
