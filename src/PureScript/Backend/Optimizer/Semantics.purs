@@ -632,7 +632,7 @@ evalPrimOp env = case _ of
         | NeutLit (LitBoolean bool) <- deref x ->
             liftBoolean (not bool)
       OpBooleanNot, _
-        | NeutPrimOp op <- deref x ->
+        | NeutPrimOp op <- x ->
             evalPrimOpNot op
       OpIntBitNot, _
         | NeutLit (LitInt a) <- deref x ->
