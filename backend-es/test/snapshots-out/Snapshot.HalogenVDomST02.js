@@ -1,5 +1,4 @@
 import * as Assert from "../Assert/index.js";
-import * as Data$dArray$dST from "../Data.Array.ST/index.js";
 import * as Data$dEq from "../Data.Eq/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Snapshot$dHalogenVDomST01 from "../Snapshot.HalogenVDomST01/index.js";
@@ -26,9 +25,9 @@ const main = () => {
       return {ix, a: "", b};
     }
   );
-  const m1 = Data$dArray$dST.freeze(merged1)();
-  const a1 = Data$dArray$dST.freeze(added1)();
-  const d1 = Data$dArray$dST.freeze(deleted1)();
+  const m1 = [...merged1];
+  const a1 = [...added1];
+  const d1 = [...deleted1];
   assertEqual("diffWithIxE/merged")({expected: [{a: "1", b: 1}, {a: "2", b: 2}], actual: m1})();
   Assert.assertEqual({eq: Data$dEq.eqArrayImpl(Data$dEq.eqIntImpl)})({show: Data$dShow.showArrayImpl(Data$dShow.showIntImpl)})("diffWithIxE/added")({expected: [], actual: a1})();
   Assert.assertEqual({eq: Data$dEq.eqArrayImpl(Data$dEq.eqStringImpl)})({show: Data$dShow.showArrayImpl(Data$dShow.showStringImpl)})("diffWithIxE/deleted")({

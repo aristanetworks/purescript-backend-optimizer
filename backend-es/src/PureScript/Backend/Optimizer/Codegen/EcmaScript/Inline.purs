@@ -25,9 +25,15 @@ esInlineMap = Map.fromFoldable
   , control_monad_st_internal_foreach
   , control_monad_st_internal_run
   , control_monad_st_internal_while
+  , data_array_st_freezeImpl
+  , data_array_st_thawImpl
   , data_array_st_new
   , data_array_st_pushAll
+  , data_array_st_pushAllImpl
+  , data_array_st_pushImpl
+  , data_array_st_unsafeThawImpl
   , data_array_st_unshiftAll
+  , data_array_st_unshiftAllImpl
   , data_semigroup_concatArray
   , effect_forE
   , effect_foreachE
@@ -62,6 +68,28 @@ control_monad_st_internal_foreach = Tuple (qualified "Control.Monad.ST.Internal"
 control_monad_st_internal_while :: EsInline
 control_monad_st_internal_while = Tuple (qualified "Control.Monad.ST.Internal" "while") whileLoop
 
+data_array_st_freezeImpl :: EsInline
+data_array_st_freezeImpl = Tuple (qualified "Data.Array.ST" "freezeImpl") arrayCopy
+
+data_array_st_thawImpl :: EsInline
+data_array_st_thawImpl = Tuple (qualified "Data.Array.ST" "thawImpl") arrayCopy
+
+arrayCopy :: EsInlineCall
+arrayCopy env _ = case _ of
+  InlineEffectApp [ a ] ->
+    Just $ build $ EsArray [ EsArraySpread (codegenExpr env a) ]
+  _ ->
+    Nothing
+
+data_array_st_unsafeThawImpl :: EsInline
+data_array_st_unsafeThawImpl = Tuple (qualified "Data.Array.ST" "unsafeThawImpl") go
+  where
+  go env _ = case _ of
+    InlineEffectApp [ TcoExpr _ (Lit (LitArray arr)) ] ->
+      Just $ build $ EsArray $ EsArrayValue <<< codegenExpr env <$> arr
+    _ ->
+      Nothing
+
 data_array_st_new :: EsInline
 data_array_st_new = Tuple (qualified "Data.Array.ST" "new") go
   where
@@ -74,8 +102,17 @@ data_array_st_new = Tuple (qualified "Data.Array.ST" "new") go
 data_array_st_pushAll :: EsInline
 data_array_st_pushAll = Tuple (qualified "Data.Array.ST" "pushAll") $ arraySTAll "push"
 
+data_array_st_pushAllImpl :: EsInline
+data_array_st_pushAllImpl = Tuple (qualified "Data.Array.ST" "pushAllImpl") $ arraySTAllImpl "push"
+
+data_array_st_pushImpl :: EsInline
+data_array_st_pushImpl = Tuple (qualified "Data.Array.ST" "pushImpl") $ arraySTImpl "push"
+
 data_array_st_unshiftAll :: EsInline
 data_array_st_unshiftAll = Tuple (qualified "Data.Array.ST" "unshiftAll") $ arraySTAll "unshift"
+
+data_array_st_unshiftAllImpl :: EsInline
+data_array_st_unshiftAllImpl = Tuple (qualified "Data.Array.ST" "unshiftAllImpl") $ arraySTAllImpl "unshift"
 
 arraySTAll :: String -> EsInlineCall
 arraySTAll method env _ = case _ of
@@ -83,6 +120,22 @@ arraySTAll method env _ = case _ of
     Just $ makeThunk $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ EsArrayValue <<< codegenExpr env <$> vals
   InlineApp [ vals, arr ] ->
     Just $ makeThunk $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ spreadConcatArray $ codegenExpr env vals
+  _ ->
+    Nothing
+
+arraySTAllImpl :: String -> EsInlineCall
+arraySTAllImpl method env _ = case _ of
+  InlineEffectApp [ TcoExpr _ (Lit (LitArray vals)), arr ] ->
+    Just $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ EsArrayValue <<< codegenExpr env <$> vals
+  InlineEffectApp [ vals, arr ] ->
+    Just $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ spreadConcatArray $ codegenExpr env vals
+  _ ->
+    Nothing
+
+arraySTImpl :: String -> EsInlineCall
+arraySTImpl method env _ = case _ of
+  InlineEffectApp [ val, arr ] ->
+    Just $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) [ EsArrayValue (codegenExpr env val) ]
   _ ->
     Nothing
 

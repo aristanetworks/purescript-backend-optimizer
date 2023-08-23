@@ -272,7 +272,9 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
   UncurriedEffectApp a bs ->
     case a of
       TcoExpr _ (Var qual)
-        | Just expr' <- inlineApp env qual (InlineEffectApp bs) ->
+        -- This is intentionally invoking this with InlineApp as we
+        -- are in a "pure" context, rather than binding an uncurried effect.
+        | Just expr' <- inlineApp env qual (InlineApp bs) ->
             expr'
       _ ->
         codegenEffectBlock env tcoExpr
@@ -465,13 +467,18 @@ codegenBlockBranches mode env bs def = case mode.return of
       Tuple (codegenExpr env a) $ codegenBlockStatements mode env b
 
 codegenBindEffect :: CodegenEnv -> TcoExpr -> EsExpr
-codegenBindEffect env tcoExpr@(TcoExpr _ expr) = case expr of
+codegenBindEffect env@(CodegenEnv { inlineApp }) tcoExpr@(TcoExpr _ expr) = case expr of
   PrimEffect a ->
     codegenPrimEffect env a
   Branch _ _ ->
     build $ EsCall (esArrowFunction [] (codegenBlockStatements effectMode env tcoExpr)) []
   UncurriedEffectApp a bs ->
-    build $ EsCall (codegenExpr env a) (EsArrayValue <<< codegenExpr env <$> bs)
+    case a of
+      TcoExpr _ (Var qual)
+        | Just expr' <- inlineApp env qual (InlineEffectApp bs) ->
+            expr'
+      _ ->
+        build $ EsCall (codegenExpr env a) (EsArrayValue <<< codegenExpr env <$> bs)
   _ ->
     build $ EsCall (codegenExpr env tcoExpr) []
 

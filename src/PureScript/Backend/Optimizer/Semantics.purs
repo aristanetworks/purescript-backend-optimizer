@@ -632,7 +632,7 @@ evalPrimOp env = case _ of
         | NeutLit (LitBoolean bool) <- deref x ->
             liftBoolean (not bool)
       OpBooleanNot, _
-        | NeutPrimOp op <- deref x ->
+        | NeutPrimOp op <- x ->
             evalPrimOpNot op
       OpIntBitNot, _
         | NeutLit (LitInt a) <- deref x ->
@@ -1360,10 +1360,25 @@ simplifyCondBoolean ctx = case _, _ of
         Just expr
     | not body' && other ->
         Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+  Pair expr (ExprSyntax _ (Lit (LitBoolean true))), other
+    | isSimplePredicate other ->
+        Just $ build ctx $ PrimOp (Op2 OpBooleanOr expr other)
   Pair expr body, ExprSyntax _ (Lit (LitBoolean false)) ->
     Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
   _, _ ->
     Nothing
+
+isSimplePredicate :: BackendExpr -> Boolean
+isSimplePredicate = case _ of
+  ExprSyntax _ expr ->
+    case expr of
+      Lit _ -> true
+      Var _ -> true
+      Local _ _ -> true
+      PrimOp _ -> true
+      _ -> false
+  _ ->
+    false
 
 simplifyCondRedundantElse :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
 simplifyCondRedundantElse ctx = case _, _ of

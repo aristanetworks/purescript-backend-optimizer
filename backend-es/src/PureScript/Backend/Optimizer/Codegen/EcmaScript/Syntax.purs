@@ -313,6 +313,8 @@ build syn = case syn of
     | otherwise -> do
         let Tuple s cs' = buildStatements cs
         EsExpr (bumpSize (esAnalysisOf b <> s)) $ EsForOf a b cs'
+  EsUnary EsNot (EsExpr _ (EsBinary EsEquals a b)) ->
+    build $ EsBinary EsNotEquals a b
   _ ->
     EsExpr (pureAnn (bumpSize (foldMap esAnalysisOf syn))) syn
     where
