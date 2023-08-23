@@ -30,6 +30,7 @@ esInlineMap = Map.fromFoldable
   , data_array_st_new
   , data_array_st_pushAll
   , data_array_st_pushAllImpl
+  , data_array_st_pushImpl
   , data_array_st_unsafeThawImpl
   , data_array_st_unshiftAll
   , data_array_st_unshiftAllImpl
@@ -104,6 +105,9 @@ data_array_st_pushAll = Tuple (qualified "Data.Array.ST" "pushAll") $ arraySTAll
 data_array_st_pushAllImpl :: EsInline
 data_array_st_pushAllImpl = Tuple (qualified "Data.Array.ST" "pushAllImpl") $ arraySTAllImpl "push"
 
+data_array_st_pushImpl :: EsInline
+data_array_st_pushImpl = Tuple (qualified "Data.Array.ST" "pushImpl") $ arraySTImpl "push"
+
 data_array_st_unshiftAll :: EsInline
 data_array_st_unshiftAll = Tuple (qualified "Data.Array.ST" "unshiftAll") $ arraySTAll "unshift"
 
@@ -125,6 +129,13 @@ arraySTAllImpl method env _ = case _ of
     Just $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ EsArrayValue <<< codegenExpr env <$> vals
   InlineEffectApp [ vals, arr ] ->
     Just $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) $ spreadConcatArray $ codegenExpr env vals
+  _ ->
+    Nothing
+
+arraySTImpl :: String -> EsInlineCall
+arraySTImpl method env _ = case _ of
+  InlineEffectApp [ val, arr ] ->
+    Just $ build $ EsCall (build (EsAccess (codegenExpr env arr) method)) [ EsArrayValue (codegenExpr env val) ]
   _ ->
     Nothing
 
