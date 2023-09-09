@@ -398,8 +398,9 @@ removeTrailingReturn stmts = case Array.last stmts of
         Just $ Array.snoc (Array.dropEnd 1 stmts) $ build $ EsIfElse a cs []
   Just (EsExpr _ (EsReturn Nothing)) ->
     Just (Array.dropEnd 1 stmts)
-  Just expr ->
-    inlineReturnBlock expr
+  Just expr
+    | Just stmts' <- inlineReturnBlock expr ->
+        Just (Array.dropEnd 1 stmts <> stmts')
   _ ->
     Nothing
 
