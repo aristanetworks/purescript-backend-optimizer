@@ -37,6 +37,21 @@ defaultDirectives =
   Control.Semigroupoid.composeFlipped arity=1
   Control.Semigroupoid.semigroupoidFn.compose arity=2
 
+  Data.Array.ST.freeze arity=1
+  Data.Array.ST.length arity=1
+  Data.Array.ST.pop arity=1
+  Data.Array.ST.poke arity=3
+  Data.Array.ST.peek arity=2
+  Data.Array.ST.pushAll arity=2
+  Data.Array.ST.push arity=2
+  Data.Array.ST.thaw arity=1
+  Data.Array.ST.toAssocArray arity=1
+  Data.Array.ST.shift arity=1
+  Data.Array.ST.unsafeFreeze arity=1
+  Data.Array.ST.unsafeThaw arity=1
+  Data.Array.ST.unshift arity=2
+  Data.Array.ST.unshiftAll arity=2
+
   Data.Boolean.otherwise always
 
   Data.Bounded.boundedRecordCons arity=5

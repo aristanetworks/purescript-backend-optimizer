@@ -16,16 +16,15 @@ import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval, ForeignSeman
 import PureScript.Backend.Optimizer.Syntax (BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..))
 import PureScript.Backend.Optimizer.Utils (foldr1Array)
 
+-- NOTE: As a precaution, do not inline ST "thaw" functions to an unsafe
+-- coercion as the optimizer may analyze the binding as a known immutable value.
 esForeignSemantics :: Map (Interned (Qualified Ident)) ForeignEval
 esForeignSemantics = Map.fromFoldable
   [ control_monad_st_internal_for
   , control_monad_st_internal_foreach
   , control_monad_st_internal_while
   , data_array_indexImpl
-  , data_array_st_push
-  , data_array_st_unshift
   , data_array_st_unsafeFreeze
-  , data_array_st_unsafeThaw
   , data_bounded_topInt
   , data_bounded_bottomInt
   , data_bounded_topChar
@@ -72,28 +71,8 @@ data_array_indexImpl = Tuple (qualified "Data.Array" "indexImpl") go
     _ ->
       Nothing
 
-data_array_st_push :: ForeignSemantics
-data_array_st_push = Tuple (qualified "Data.Array.ST" "push") $ arraySTAll (qualified "Data.Array.ST" "pushAll")
-
-data_array_st_unshift :: ForeignSemantics
-data_array_st_unshift = Tuple (qualified "Data.Array.ST" "unshift") $ arraySTAll (qualified "Data.Array.ST" "unshiftAll")
-
-arraySTAll :: Interned (Qualified Ident) -> ForeignEval
-arraySTAll ident env _ = case _ of
-  [ ExternApp [ val ] ] ->
-    Just $
-      makeLet Nothing val \nextVal ->
-        SemLam Nothing \nextRef ->
-          SemEffectDefer $
-            evalApp env (NeutStop ident) [ NeutLit (LitArray [ nextVal ]), nextRef ]
-  _ ->
-    Nothing
-
 data_array_st_unsafeFreeze :: ForeignSemantics
 data_array_st_unsafeFreeze = Tuple (qualified "Data.Array.ST" "unsafeFreeze") unsafeSTCoerce
-
-data_array_st_unsafeThaw :: ForeignSemantics
-data_array_st_unsafeThaw = Tuple (qualified "Data.Array.ST" "unsafeThaw") unsafeSTCoerce
 
 unsafeSTCoerce :: ForeignEval
 unsafeSTCoerce _ _ = case _ of

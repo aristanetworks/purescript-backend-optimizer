@@ -608,8 +608,8 @@ floatLetWith = go
   where
   go f ident1 binding1 k1 = case binding1 of
     SemLet ident2 binding2 k2 ->
-      go f ident2 binding2 \nextBinding2 ->
-        makeLet ident1 (k2 nextBinding2) k1
+      go makeLet ident2 binding2 \nextBinding2 ->
+        f ident1 (k2 nextBinding2) k1
     SemLetRec bindings k2 ->
       SemLetRec bindings \nextBindings ->
         makeLet ident1 (k2 nextBindings) k1
@@ -633,7 +633,7 @@ evalPrimOp env = case _ of
         | NeutLit (LitBoolean bool) <- deref x ->
             toSemantics (not bool)
       OpBooleanNot, _
-        | NeutPrimOp op <- deref x ->
+        | NeutPrimOp op <- x ->
             evalPrimOpNot op
       OpIntBitNot, _
         | NeutLit (LitInt a) <- deref x ->
@@ -1334,10 +1334,25 @@ simplifyCondBoolean ctx = case _, _ of
         Just expr
     | not body' && other ->
         Just $ build ctx $ PrimOp (Op1 OpBooleanNot expr)
+  Pair expr (ExprSyntax _ (Lit (LitBoolean true))), other
+    | isSimplePredicate other ->
+        Just $ build ctx $ PrimOp (Op2 OpBooleanOr expr other)
   Pair expr body, ExprSyntax _ (Lit (LitBoolean false)) ->
     Just $ build ctx $ PrimOp (Op2 OpBooleanAnd expr body)
   _, _ ->
     Nothing
+
+isSimplePredicate :: BackendExpr -> Boolean
+isSimplePredicate = case _ of
+  ExprSyntax _ expr ->
+    case expr of
+      Lit _ -> true
+      Var _ -> true
+      Local _ _ -> true
+      PrimOp _ -> true
+      _ -> false
+  _ ->
+    false
 
 simplifyCondRedundantElse :: Ctx -> Pair BackendExpr -> BackendExpr -> Maybe BackendExpr
 simplifyCondRedundantElse ctx = case _, _ of

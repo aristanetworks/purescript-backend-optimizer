@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Setup PureScript dependencies
-        run: npm i --global purescript@0.15.10 purs-tidy@latest spago@latest purescript-psa@latest
+        run: npm i --global purescript@0.15.10 purs-tidy@latest spago@latest purescript-psa@latest esbuild@latest
 
       - name: Cache PureScript dependencies
         uses: actions/cache@v2
@@ -52,6 +52,10 @@ jobs:
 
       - name: Run snapshots
         run: spago test --purs-args '--censor-lib'
+
+      - name: Test output-diff (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: cd backend-es && npm run test:output-diff
 
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest'
