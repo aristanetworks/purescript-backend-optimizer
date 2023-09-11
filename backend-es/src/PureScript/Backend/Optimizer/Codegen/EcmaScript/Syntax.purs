@@ -44,7 +44,6 @@ import Data.Newtype (class Newtype)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
-import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
@@ -277,42 +276,39 @@ build syn = case syn of
   EsCall (EsExpr _ (EsArrowFunction [] bs)) []
     | Just expr <- inlineCallBlock bs ->
         expr
-  EsReturn (Just b)
-    | Just expr' <- inlineLoopBlockStatement b ->
-        expr'
   EsReturn (Just (EsExpr _ EsUndefined)) ->
     build $ EsReturn Nothing
-  EsArrowFunction as bs
-    | Just (EsExpr _ (EsReturn Nothing)) <- Array.last bs ->
-        esArrowFunction as $ Array.dropEnd 1 bs
   EsArrowFunction as [ block ]
     | Just bs <- inlineReturnBlock block ->
         esArrowFunction as bs
   EsArrowFunction as bs -> do
-    let Tuple s bs' = buildStatements bs
-    EsExpr (alwaysPure (bumpSize s)) $ EsArrowFunction as bs'
-  EsIfElse a [ block ] cs
-    | Just bs <- inlineReturnBlock block ->
-        build $ EsIfElse a bs cs
+    let bs' = buildStatements bs
+    case removeTrailingReturn bs' of
+      Just bs'' ->
+        build $ EsArrowFunction as bs''
+      Nothing ->
+        EsExpr (alwaysPure (bumpSize (foldMap esAnalysisOf bs'))) $ EsArrowFunction as bs'
   EsIfElse a bs [ block ]
     | Just cs <- inlineReturnBlock block ->
         build $ EsIfElse a bs cs
   EsIfElse a bs cs -> do
-    let Tuple s1 bs' = buildStatements bs
-    let Tuple s2 cs' = buildStatements cs
-    EsExpr (bumpSize (esAnalysisOf a <> s1 <> s2)) $ EsIfElse a bs' cs'
-  EsWhile a bs
-    | Just bs' <- removeTrailingContinue bs ->
-        build $ EsWhile a bs'
-    | otherwise -> do
-        let Tuple s bs' = buildStatements bs
-        EsExpr (bumpSize (esAnalysisOf a <> s)) $ EsWhile a bs'
-  EsForOf a b cs
-    | Just cs' <- removeTrailingContinue cs ->
-        build $ EsForOf a b cs'
-    | otherwise -> do
-        let Tuple s cs' = buildStatements cs
-        EsExpr (bumpSize (esAnalysisOf b <> s)) $ EsForOf a b cs'
+    let bs' = buildStatements bs
+    let cs' = buildStatements cs
+    EsExpr (bumpSize (esAnalysisOf a <> foldMap esAnalysisOf bs' <> foldMap esAnalysisOf cs')) $ EsIfElse a bs' cs'
+  EsWhile a bs -> do
+    let bs' = buildStatements bs
+    case removeTrailingContinue bs' of
+      Just bs'' ->
+        build $ EsWhile a bs''
+      Nothing ->
+        EsExpr (bumpSize (esAnalysisOf a <> foldMap esAnalysisOf bs')) $ EsWhile a bs'
+  EsForOf a b cs -> do
+    let cs' = buildStatements cs
+    case removeTrailingContinue cs' of
+      Just cs'' ->
+        build $ EsForOf a b cs''
+      Nothing ->
+        EsExpr (bumpSize (esAnalysisOf b <> foldMap esAnalysisOf cs')) $ EsForOf a b cs'
   EsUnary EsNot (EsExpr _ (EsBinary EsEquals a b)) ->
     build $ EsBinary EsNotEquals a b
   _ ->
@@ -327,14 +323,18 @@ build syn = case syn of
       EsArrowFunction _ _ -> alwaysPure
       _ -> identity
 
-buildStatements :: Array EsExpr -> Tuple EsAnalysis (Array EsExpr)
-buildStatements = traverse go <<< mergeBranchTails
+buildStatements :: Array EsExpr -> Array EsExpr
+buildStatements = (go =<< _) <<< mergeBranchTails
   where
-  go expr = case expr of
-    _ | Just expr' <- inlineLoopBlockStatement expr ->
-      go expr'
-    _ ->
-      Tuple (esAnalysisOf expr) expr
+  go = case _ of
+    EsExpr _ (EsReturn (Just expr'))
+      | Just expr'' <- inlineLoopBlockStatement expr' ->
+          Array.snoc (go expr'') $ build $ EsReturn Nothing
+    expr
+      | Just expr' <- inlineLoopBlockStatement expr ->
+          go expr'
+    expr ->
+      [ expr ]
 
   -- For nested if/else blocks, merges a duplicate tail of alternatives
   -- via fallthrough. If an inner branch has a tail that matches the
@@ -391,11 +391,24 @@ inlineLoopBlockStatement (EsExpr _ expr) = case expr of
   _ ->
     Nothing
 
+removeTrailingReturn :: Array EsExpr -> Maybe (Array EsExpr)
+removeTrailingReturn stmts = case Array.last stmts of
+  Just (EsExpr _ (EsIfElse a bs []))
+    | Just cs <- removeTrailingReturn bs ->
+        Just $ Array.snoc (Array.dropEnd 1 stmts) $ build $ EsIfElse a cs []
+  Just (EsExpr _ (EsReturn Nothing)) ->
+    Just (Array.dropEnd 1 stmts)
+  Just expr
+    | Just stmts' <- inlineReturnBlock expr ->
+        Just (Array.dropEnd 1 stmts <> stmts')
+  _ ->
+    Nothing
+
 removeTrailingContinue :: Array EsExpr -> Maybe (Array EsExpr)
 removeTrailingContinue stmts = case Array.last stmts of
-  Just (EsExpr s (EsIfElse a bs []))
+  Just (EsExpr _ (EsIfElse a bs []))
     | Just cs <- removeTrailingContinue bs ->
-        Just $ Array.snoc (Array.dropEnd 1 stmts) $ EsExpr s $ EsIfElse a cs []
+        Just $ Array.snoc (Array.dropEnd 1 stmts) $ build $ EsIfElse a cs []
   Just (EsExpr _ EsContinue) ->
     Just (Array.dropEnd 1 stmts)
   _ ->
