@@ -9,6 +9,10 @@ import Data.Traversable (class Foldable, class Traversable, foldMap, foldlDefaul
 import Data.Tuple (Tuple)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident, Literal(..), Prop, ProperName, Qualified)
 
+newtype LetRewrite = LetRewrite { newQualifiedIdent :: Qualified Ident, oldIdent :: Maybe Ident, oldLevel :: Level }
+
+derive instance Newtype LetRewrite _
+
 data BackendSyntax a
   = Var (Qualified Ident)
   | Local (Maybe Ident) Level

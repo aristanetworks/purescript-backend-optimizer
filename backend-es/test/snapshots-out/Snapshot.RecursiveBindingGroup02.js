@@ -1,14 +1,12 @@
 // @fails Binding demanded before initialized
 import * as $runtime from "../runtime.js";
-const test = /* #__PURE__ */ (() => {
-  const test3 = n => {
-    if (n < 100) { return n; }
-    return test1$lazy().bar;
-  };
-  const test2$lazy = $runtime.binding(() => ({baz: test1$lazy().bar}));
-  const test1$lazy = $runtime.binding(() => ({foo: test2$lazy().baz, bar: test3(42)}));
-  const test2 = test2$lazy();
-  const test1 = test1$lazy();
-  return test1.bar;
-})();
-export {test};
+const test$0$test3$$rec = n => {
+  if (n < 100) { return n; }
+  return test$0$test1$$rec$lazy().bar;
+};
+const test$0$test2$$rec$lazy = /* #__PURE__ */ $runtime.binding(() => ({baz: test$0$test1$$rec$lazy().bar}));
+const test$0$test1$$rec$lazy = /* #__PURE__ */ $runtime.binding(() => ({foo: test$0$test2$$rec$lazy().baz, bar: test$0$test3$$rec(42)}));
+const test$0$test2$$rec = /* #__PURE__ */ test$0$test2$$rec$lazy();
+const test$0$test1$$rec = /* #__PURE__ */ test$0$test1$$rec$lazy();
+const test = /* #__PURE__ */ (() => test$0$test1$$rec.bar)();
+export {test, test$0$test1$$rec, test$0$test2$$rec, test$0$test3$$rec};

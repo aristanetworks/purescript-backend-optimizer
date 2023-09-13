@@ -212,8 +212,35 @@ addStop (Env env) ref acc = Env env
       env.directives
   }
 
+floatLetOverTuples :: forall f a eval. Eval eval => Foldable f => Env -> (Array (Tuple a BackendSemantics) -> BackendSemantics) -> f (Tuple a eval) -> BackendSemantics
+floatLetOverTuples env cont propFoldable = do
+  let
+    folder acc = case _ of
+      List.Nil -> cont acc
+      List.Cons (Tuple key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Tuple key v ]) t
+  folder [] (List.fromFoldable propFoldable)
+
+floatLetOverProps :: forall f eval. Eval eval => Foldable f => Env -> (Array (Prop BackendSemantics) -> BackendSemantics) -> f (Prop eval) -> BackendSemantics
+floatLetOverProps env cont propFoldable = do
+  let
+    folder acc = case _ of
+      List.Nil -> cont acc
+      List.Cons (Prop key sem) t -> floatLet (eval env sem) \v -> folder (acc <> [ Prop key v ]) t
+  folder [] (List.fromFoldable propFoldable)
+
+floatLetOverVals :: forall f eval. Eval eval => Foldable f => Env -> (Array BackendSemantics -> BackendSemantics) -> f eval -> BackendSemantics
+floatLetOverVals env cont propFoldable = do
+  let
+    folder acc = case _ of
+      List.Nil -> cont acc
+      List.Cons sem t -> floatLet (eval env sem) \v -> folder (acc <> [ v ]) t
+  folder [] (List.fromFoldable propFoldable)
+
 class Eval f where
   eval :: Env -> f -> BackendSemantics
+
+instance Eval BackendSemantics where
+  eval = const identity
 
 instance Eval f => Eval (BackendSyntax f) where
   eval env@(Env e) = case _ of
@@ -236,9 +263,9 @@ instance Eval f => Eval (BackendSyntax f) where
         _ ->
           unsafeCrashWith $ "Unbound local at level " <> show (unwrap lvl)
     App hd tl ->
-      evalApp env (eval env hd) (NonEmptyArray.toArray (eval env <$> tl))
+      evalApp env (eval env hd) (map (eval env) $ NonEmptyArray.toArray tl)
     UncurriedApp hd tl ->
-      evalUncurriedApp env (eval env hd) (eval env <$> tl)
+      evalUncurriedApp env (eval env hd) (map (eval env) tl)
     UncurriedAbs idents body -> do
       let
         loop env' = case _ of
@@ -278,8 +305,7 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFail (eval env val) SemEffectDefer
     Accessor lhs accessor ->
       evalAccessor env (eval env lhs) accessor
-    Update lhs updates ->
-      evalUpdate (eval env lhs) (map (eval env) <$> updates)
+    Update lhs updates -> floatLetOverProps env (evalUpdate (eval env lhs)) updates
     Branch branches def ->
       evalBranches env (evalPair env <$> branches) (defer \_ -> eval env def)
     PrimOp op ->
@@ -288,14 +314,15 @@ instance Eval f => Eval (BackendSyntax f) where
       guardFailOver identity (eval env <$> eff) NeutPrimEffect
     PrimUndefined ->
       NeutPrimUndefined
+    Lit (LitArray arr) -> floatLetOverVals env (NeutLit <<< LitArray) arr
+    Lit (LitRecord arr) -> floatLetOverProps env (NeutLit <<< LitRecord) arr
     Lit lit ->
       guardFailOver identity (eval env <$> lit) NeutLit
     Fail err ->
       NeutFail err
     CtorDef ct ty tag fields ->
       NeutCtorDef (Qualified (Just (unwrap env).currentModule) tag) ct ty tag fields
-    CtorSaturated qual ct ty tag fields ->
-      guardFailOver snd (map (eval env) <$> fields) $ NeutData qual ct ty tag
+    CtorSaturated qual ct ty tag fields -> floatLetOverTuples env (NeutData qual ct ty tag) fields
 
 instance Eval BackendExpr where
   eval = go
@@ -382,7 +409,7 @@ snocApp prev next = case Array.last prev of
     Array.snoc prev (ExternApp [ next ])
 
 evalApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalApp env hd spine = go env hd (List.fromFoldable spine)
+evalApp env hd spine = floatLet hd $ flip (go env) (List.fromFoldable spine)
   where
   go env' = case _, _ of
     _, List.Cons (NeutFail err) _ ->
@@ -390,10 +417,10 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
     NeutFail err, _ ->
       NeutFail err
     SemLam _ k, List.Cons arg args ->
-      makeLet Nothing arg \nextArg ->
+      floatLet arg $ flip (makeLet Nothing) \nextArg ->
         go env' (k nextArg) args
     SemRef ref sp sem, List.Cons arg args ->
-      go env' (evalRef env' ref sp (ExternApp [ arg ]) sem) args
+      floatLet arg \arg' -> go env' (evalRef env' ref sp (ExternApp [ arg' ]) sem) args
     SemLet ident val k, args ->
       SemLet ident val \nextVal ->
         makeLet Nothing (k nextVal) \nextFn ->
@@ -404,11 +431,10 @@ evalApp env hd spine = go env hd (List.fromFoldable spine)
           go (bindLocal (bindLocal env' (Group nextVals)) (One nextFn)) nextFn args
     fn, List.Nil ->
       fn
-    fn, args ->
-      NeutApp fn (List.toUnfoldable args)
+    fn, args -> floatLetOverVals env (NeutApp fn) args
 
 evalUncurriedApp :: Env -> BackendSemantics -> Spine BackendSemantics -> BackendSemantics
-evalUncurriedApp env hd spine = case hd of
+evalUncurriedApp env hd spine = floatLet hd case _ of
   SemMkFn mk ->
     evalUncurriedBeta NeutUncurriedApp mk spine
   SemRef ref sp sem ->
@@ -443,7 +469,7 @@ evalUncurriedBeta fn mk spine = go mk (List.fromFoldable spine)
     MkFnNext _ _, List.Cons (NeutFail err) _ ->
       NeutFail err
     MkFnNext _ k, List.Cons arg args ->
-      makeLet Nothing arg \nextArg ->
+      floatLet arg $ flip (makeLet Nothing) \nextArg ->
         go (k nextArg) args
     MkFnNext _ _, _ ->
       unsafeCrashWith "Uncurried function applied to too few arguments"
@@ -626,8 +652,8 @@ deref = case _ of
 
 evalPrimOp :: Env -> BackendOperator BackendSemantics -> BackendSemantics
 evalPrimOp env = case _ of
-  Op1 op1 x ->
-    case op1, x of
+  Op1 op1 x' ->
+    floatLet x' \x -> case op1, x of
       OpBooleanNot, _
         | NeutLit (LitBoolean bool) <- deref x ->
             liftBoolean (not bool)
@@ -654,9 +680,14 @@ evalPrimOp env = case _ of
       _, NeutFail err ->
         NeutFail err
       _, _ ->
-        floatLet x (NeutPrimOp <<< Op1 op1)
-  Op2 op2 x y ->
-    case op2 of
+        NeutPrimOp $ Op1 op1 x
+  Op2 op2 x' y' -> do
+    let
+      f g = case op2 of
+        OpBooleanAnd -> g x' y'
+        OpBooleanOr -> g x' y'
+        _ -> floatLet x' \x -> floatLet y' \y -> g x y
+    f \x y -> case op2 of
       OpBooleanAnd
         | NeutLit (LitBoolean false) <- deref x ->
             x
@@ -760,12 +791,10 @@ evalPrimOp env = case _ of
           NeutFail err, _ -> NeutFail err
           _, NeutFail err -> NeutFail err
           _, _ ->
-            floatLet x \x' ->
-              floatLet y \y' ->
-                if isAssocPrimOp op2 then
-                  evalAssocOp env (Right op2) x' y'
-                else
-                  NeutPrimOp (Op2 op2 x' y')
+            if isAssocPrimOp op2 then
+              evalAssocOp env (Right op2) x y
+            else
+              NeutPrimOp (Op2 op2 x y)
 
 evalPrimOpOrd :: forall a. Ord a => BackendOperatorOrd -> a -> a -> Boolean
 evalPrimOpOrd op x y = case op of
