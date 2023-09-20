@@ -293,6 +293,8 @@ codegenExpr env@(CodegenEnv { currentModule, inlineApp }) tcoExpr@(TcoExpr _ exp
       [ build $ EsReturn $ Just $ codegenCtor env currentModule ct ty tag $
           (build <<< EsIdent <<< Qualified Nothing <<< toEsIdent <<< Ident) <$> fields
       ]
+  CtorSaturated qual _ _ _ [] ->
+    codegenExpr env (TcoExpr mempty (Var qual))
   CtorSaturated (Qualified qual _) ct ty tag fields ->
     codegenCtor env (fromMaybe currentModule qual) ct ty tag (codegenExpr env <<< snd <$> fields)
   PrimOp op ->

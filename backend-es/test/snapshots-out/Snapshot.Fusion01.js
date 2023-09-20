@@ -1,12 +1,17 @@
 // @inline export overArray arity=1
 import * as $runtime from "../runtime.js";
 import * as Data$dArray from "../Data.Array/index.js";
-import * as Data$dList from "../Data.List/index.js";
 import * as Data$dList$dTypes from "../Data.List.Types/index.js";
+import * as Data$dMaybe from "../Data.Maybe/index.js";
 import * as Data$dShow from "../Data.Show/index.js";
 import * as Data$dString$dCodeUnits from "../Data.String.CodeUnits/index.js";
+import * as Data$dTuple from "../Data.Tuple/index.js";
 import * as Data$dUnfoldable from "../Data.Unfoldable/index.js";
-const toUnfoldable = /* #__PURE__ */ Data$dList.toUnfoldable(Data$dUnfoldable.unfoldableArray);
+const toUnfoldable = /* #__PURE__ */ (() => Data$dUnfoldable.unfoldableArray.unfoldr(xs => {
+  if (xs.tag === "Nil") { return Data$dMaybe.Nothing; }
+  if (xs.tag === "Cons") { return Data$dMaybe.$Maybe("Just", Data$dTuple.$Tuple(xs._1, xs._2)); }
+  $runtime.fail();
+}))();
 const test = x => Data$dArray.reverse(toUnfoldable((() => {
   const loop = loop$a0$copy => loop$a1$copy => {
     let loop$a0 = loop$a0$copy, loop$a1 = loop$a1$copy, loop$c = true, loop$r;

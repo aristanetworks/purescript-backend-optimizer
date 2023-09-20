@@ -1,44 +1,36 @@
-import * as $runtime from "../runtime.js";
-import * as Data$dArray from "../Data.Array/index.js";
 const test1 = test1$a0$copy => test1$a1$copy => {
   let test1$a0 = test1$a0$copy, test1$a1 = test1$a1$copy, test1$c = true, test1$r;
   while (test1$c) {
     const b = test1$a0, arr = test1$a1;
-    const v = Data$dArray.last(arr);
-    if (0 < arr.length) {
-      if (v.tag === "Just") {
-        if (v._1 === 2 && arr[0] === 1) {
+    const $0 = arr.length - 1 | 0;
+    if ($0 >= 0 && $0 < arr.length) {
+      if (0 < arr.length) {
+        if (arr[$0] === 2 && arr[0] === 1) {
           test1$c = false;
           test1$r = arr;
           continue;
         }
+        const $1 = arr[$0];
         if (b) {
           test1$c = false;
           test1$r = [];
           continue;
         }
         test1$a0 = b;
-        test1$a1 = [v._1, arr[0], 3, v._1, 5, 6, 7, 8, 9, 10, arr[0], 12, 13, 14, 15, 16, 17, ...arr];
+        test1$a1 = [$1, arr[0], 3, $1, 5, 6, 7, 8, 9, 10, arr[0], 12, 13, 14, 15, 16, 17, ...arr];
         continue;
       }
-      if (v.tag === "Nothing") {
-        test1$c = false;
-        test1$r = [...arr, arr[0]];
-        continue;
-      }
-      $runtime.fail();
-    }
-    if (v.tag === "Just") {
       test1$c = false;
-      test1$r = [...arr, v._1];
+      test1$r = [...arr, arr[$0]];
       continue;
     }
-    if (v.tag === "Nothing") {
+    if (0 < arr.length) {
       test1$c = false;
-      test1$r = arr;
+      test1$r = [...arr, arr[0]];
       continue;
     }
-    $runtime.fail();
+    test1$c = false;
+    test1$r = arr;
   }
   return test1$r;
 };
