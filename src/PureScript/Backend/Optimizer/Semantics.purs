@@ -1235,8 +1235,6 @@ quote = go
       build ctx $ Var qual
     NeutStop qual ->
       buildStop ctx qual
-    NeutData qual _ _ _ [] ->
-      build ctx $ Var qual
     NeutData qual ct ty tag values ->
       build ctx $ CtorSaturated qual ct ty tag (map (quote ctx) <$> values)
     NeutCtorDef _ ct ty tag fields ->
