@@ -15,7 +15,7 @@ import Data.Lazy as Lazy
 import Data.List (List)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (maybe)
+import Data.Maybe (Maybe, maybe)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Set.NonEmpty as NonEmptySet
@@ -28,6 +28,7 @@ import Node.FS.Aff as FS
 import Node.Glob.Basic (expandGlobs)
 import Node.Path (FilePath)
 import Node.Process as Process
+import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, ModuleName(..), Qualified)
@@ -35,8 +36,9 @@ import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
-import PureScript.Backend.Optimizer.Semantics (InlineDirectiveMap)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr, Ctx, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
+import PureScript.Backend.Optimizer.Syntax (BackendSyntax)
 import PureScript.CST.Errors (printParseError)
 
 coreFnModulesFromOutput :: String -> NonEmptyArray String -> Aff (Either (NonEmptyArray (Tuple FilePath String)) (List (Module Ann)))
@@ -83,6 +85,7 @@ externalDirectivesFromFile filePath = do
 basicBuildMain
   :: { resolveCoreFnDirectory :: Aff FilePath
      , resolveExternalDirectives :: Aff InlineDirectiveMap
+     , analyzeCustom :: Ctx -> BackendSyntax BackendExpr -> Maybe BackendAnalysis
      , foreignSemantics :: Map (Qualified Ident) ForeignEval
      , onCodegenBefore :: Aff Unit
      , onCodegenAfter :: Aff Unit
@@ -106,7 +109,8 @@ basicBuildMain options = do
     Right coreFnModules -> do
       options.onCodegenBefore
       coreFnModules # buildModules
-        { directives: allDirectives
+        { analyzeCustom: options.analyzeCustom
+        , directives: allDirectives
         , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
         , onPrepareModule: options.onPrepareModule

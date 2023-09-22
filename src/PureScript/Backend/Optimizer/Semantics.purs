@@ -22,7 +22,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith)
-import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, analyze, analyzeEffectBlock, bound, bump, complex, resultOf, updated, withResult, withRewrite)
+import PureScript.Backend.Optimizer.Analysis (class HasAnalysis, BackendAnalysis(..), Capture(..), Complexity(..), ResultTerm(..), Usage(..), analysisOf, bound, bump, complex, resultOf, updated, withResult, withRewrite)
 import PureScript.Backend.Optimizer.CoreFn (ConstructorType, Ident(..), Literal(..), ModuleName, Prop(..), ProperName, Qualified(..), findProp, propKey, propValue)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendEffect, BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorNum(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..), syntaxOf)
 import PureScript.Backend.Optimizer.Utils (foldl1Array, foldr1Array)
@@ -1150,14 +1150,25 @@ caseNumber = case _ of
   NeutLit (LitNumber a) -> Just a
   _ -> Nothing
 
-type Ctx =
+newtype Ctx = Ctx
   { currentLevel :: Int
-  , lookupExtern :: Tuple (Qualified Ident) (Maybe BackendAccessor) -> Maybe (Tuple BackendAnalysis NeutralExpr)
+  , lookupExtern :: Qualified Ident -> Maybe String -> Maybe BackendAnalysis
+  , analyze :: Ctx -> BackendSyntax BackendExpr -> BackendAnalysis
   , effect :: Boolean
   }
 
 nextLevel :: Ctx -> Tuple Level Ctx
-nextLevel ctx = Tuple (Level ctx.currentLevel) $ ctx { currentLevel = ctx.currentLevel + 1 }
+nextLevel (Ctx ctx) = Tuple (Level ctx.currentLevel) $ Ctx ctx { currentLevel = ctx.currentLevel + 1 }
+
+effectfully :: Ctx -> Ctx
+effectfully (Ctx ctx)
+  | ctx.effect = Ctx ctx
+  | otherwise = Ctx ctx { effect = true }
+
+purely :: Ctx -> Ctx
+purely (Ctx ctx)
+  | ctx.effect = Ctx ctx { effect = false }
+  | otherwise = Ctx ctx
 
 quote :: Ctx -> BackendSemantics -> BackendExpr
 quote = go
@@ -1166,7 +1177,7 @@ quote = go
     -- Block constructors
     SemLet ident binding k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Let ident level (quote (ctx { effect = false }) binding) $ quote ctx' $ k $ SemRef (EvalLocal ident level) [] $ defer \_ -> deref binding
+      build ctx $ Let ident level (quote (purely ctx) binding) $ quote ctx' $ k $ SemRef (EvalLocal ident level) [] $ defer \_ -> deref binding
     SemLetRec bindings k -> do
       let Tuple level ctx' = nextLevel ctx
       -- We are not currently propagating references
@@ -1175,18 +1186,18 @@ quote = go
       -- which we don't currently implement.
       let neutBindings = (\(Tuple ident _) -> Tuple ident $ defer \_ -> NeutLocal (Just ident) level) <$> bindings
       build ctx $ LetRec level
-        (map (\b -> quote (ctx' { effect = false }) $ b neutBindings) <$> bindings)
+        (map (\b -> quote (purely ctx') $ b neutBindings) <$> bindings)
         (quote ctx' $ k neutBindings)
     SemEffectBind ident binding k -> do
-      let ctx' = ctx { effect = true }
+      let ctx' = effectfully ctx
       let Tuple level ctx'' = nextLevel ctx'
       build ctx $ EffectBind ident level (quote ctx' binding) $ quote ctx'' $ k $ NeutLocal ident level
     SemEffectPure sem ->
-      build ctx $ EffectPure (quote (ctx { effect = false }) sem)
+      build ctx $ EffectPure (quote (purely ctx) sem)
     SemEffectDefer sem ->
-      build ctx $ EffectDefer (quote (ctx { effect = true }) sem)
+      build ctx $ EffectDefer (quote (effectfully ctx) sem)
     SemBranch branches def -> do
-      let ctx' = ctx { effect = false }
+      let ctx' = purely ctx
       let quoteCond (SemConditional a b) = Pair (quote ctx' $ force a) (quote ctx $ force b)
       let branches' = quoteCond <$> branches
       foldr (buildBranchCond ctx) (quote ctx <<< force $ def) branches'
@@ -1200,7 +1211,7 @@ quote = go
           go ctx $ neutralSpine (NeutLocal ident lvl) sp
     SemLam ident k -> do
       let Tuple level ctx' = nextLevel ctx
-      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (ctx' { effect = false }) $ k $ NeutLocal ident level
+      build ctx $ Abs (NonEmptyArray.singleton (Tuple ident level)) $ quote (purely ctx') $ k $ NeutLocal ident level
     SemMkFn pro -> do
       let
         loop ctx' idents = case _ of
@@ -1208,7 +1219,7 @@ quote = go
             let Tuple lvl ctx'' = nextLevel ctx'
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
-            build ctx' $ UncurriedAbs idents $ quote (ctx' { effect = false }) body
+            build ctx' $ UncurriedAbs idents $ quote (purely ctx') body
       loop ctx [] pro
     SemMkEffectFn pro -> do
       let
@@ -1217,7 +1228,7 @@ quote = go
             let Tuple lvl ctx'' = nextLevel ctx'
             loop ctx'' (Array.snoc idents (Tuple ident lvl)) (k (NeutLocal ident lvl))
           MkFnApplied body ->
-            build ctx' $ UncurriedEffectAbs idents $ quote (ctx' { effect = false }) body
+            build ctx' $ UncurriedEffectAbs idents $ quote (purely ctx') body
       loop ctx [] pro
     SemAssocOp op spine ->
       foldl1Array
@@ -1240,15 +1251,15 @@ quote = go
     NeutCtorDef _ ct ty tag fields ->
       build ctx $ CtorDef ct ty tag fields
     NeutUncurriedApp hd spine -> do
-      let ctx' = ctx { effect = false }
+      let ctx' = purely ctx
       let hd' = quote ctx' hd
       build ctx $ UncurriedApp hd' (quote ctx' <$> spine)
     NeutUncurriedEffectApp hd spine -> do
-      let ctx' = ctx { effect = false }
+      let ctx' = purely ctx
       let hd' = quote ctx' hd
       build ctx $ UncurriedEffectApp hd' (quote ctx' <$> spine)
     NeutApp hd spine -> do
-      let ctx' = ctx { effect = false }
+      let ctx' = purely ctx
       let hd' = quote ctx' hd
       case NonEmptyArray.fromArray (quote ctx' <$> spine) of
         Nothing ->
@@ -1264,7 +1275,7 @@ quote = go
     NeutPrimOp op ->
       build ctx $ PrimOp (quote ctx <$> op)
     NeutPrimEffect eff ->
-      build ctx $ PrimEffect (quote (ctx { effect = false }) <$> eff)
+      build ctx $ PrimEffect (quote (purely ctx) <$> eff)
     NeutPrimUndefined ->
       build ctx PrimUndefined
     NeutFail err ->
@@ -1397,13 +1408,10 @@ simplifyCondLiftAnd ctx pair def1 = case pair of
     Nothing
 
 buildStop :: Ctx -> Qualified Ident -> BackendExpr
-buildStop ctx stop = ExprRewrite (analyzeDefault ctx (Var stop)) (RewriteStop stop)
+buildStop ctx@(Ctx { analyze }) stop = ExprRewrite (analyze ctx (Var stop)) (RewriteStop stop)
 
 buildDefault :: Ctx -> BackendSyntax BackendExpr -> BackendExpr
-buildDefault ctx expr = ExprSyntax (analyzeDefault ctx expr) expr
-
-analyzeDefault :: Ctx -> BackendSyntax BackendExpr -> BackendAnalysis
-analyzeDefault ctx = (if ctx.effect then analyzeEffectBlock else analyze) (foldMap fst <<< ctx.lookupExtern)
+buildDefault ctx@(Ctx { analyze }) expr = ExprSyntax (analyze ctx expr) expr
 
 rewriteInline :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> BackendExpr
 rewriteInline ident level binding body = do

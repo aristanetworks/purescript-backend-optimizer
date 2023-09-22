@@ -250,6 +250,7 @@ main cliRoot =
   buildCmd args = liftEffect makeBuildState >>= \state -> basicBuildMain
     { resolveCoreFnDirectory: pure args.coreFnDir
     , resolveExternalDirectives: map (fromMaybe Map.empty) $ traverse externalDirectivesFromFile args.directivesFile
+    , analyzeCustom: \_ _ -> Nothing
     , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
     , onCodegenBefore: do
         liftEffect $ flip Ref.write state.codegenStartTime <<< Just =<< now
