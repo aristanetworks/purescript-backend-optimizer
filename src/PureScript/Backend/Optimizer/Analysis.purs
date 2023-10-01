@@ -200,14 +200,19 @@ class HasAnalysis a where
 resultOf :: forall a. HasAnalysis a => a -> ResultTerm
 resultOf = analysisOf >>> unwrap >>> _.result
 
-analyze :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+analyze :: forall a. HasAnalysis a => HasSyntax a => (Qualified Ident -> Maybe String -> Maybe BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyze externAnalysis expr = case expr of
-  Var qi -> do
-    let BackendAnalysis { args } = externAnalysis (Tuple qi Nothing)
-    withArgs args
-      $ bump
-      $ externs
-      $ usedDep qi mempty
+  Var qi ->
+    case externAnalysis qi Nothing of
+      Just (BackendAnalysis { args }) ->
+        withArgs args analysis
+      Nothing ->
+        analysis
+    where
+    analysis =
+      bump
+        $ externs
+        $ usedDep qi mempty
   Local _ lvl ->
     bump
       $ used lvl
@@ -351,9 +356,13 @@ analyze externAnalysis expr = case expr of
         analysis
       Just (Local _ lvl) ->
         accessed lvl $ complex Deref analysis
-      Just (Var qi) -> do
-        let BackendAnalysis { args } = externAnalysis (Tuple qi (Just acc))
-        withArgs args $ complex Trivial analysis
+      Just (Var qi) ->
+        case acc of
+          GetProp prop
+            | Just (BackendAnalysis { args }) <- externAnalysis qi (Just prop) ->
+                withArgs args $ complex Trivial analysis
+          _ ->
+            complex Trivial analysis
       _ ->
         complex Deref analysis
     where
@@ -381,7 +390,7 @@ analyze externAnalysis expr = case expr of
       withResult KnownNeutral
         $ analyzeDefault expr
 
-analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Tuple (Qualified Ident) (Maybe BackendAccessor) -> BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
+analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Qualified Ident -> Maybe String -> Maybe BackendAnalysis) -> BackendSyntax a -> BackendAnalysis
 analyzeEffectBlock externAnalysis expr = case expr of
   Let _ lvl a b ->
     withResult (resultOf b)

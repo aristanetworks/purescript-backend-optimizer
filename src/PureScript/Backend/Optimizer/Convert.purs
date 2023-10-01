@@ -70,10 +70,10 @@ import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR
 import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
+import PureScript.Backend.Optimizer.Analysis (BackendAnalysis, analyze, analyzeEffectBlock)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx, DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx(..), DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -100,7 +100,8 @@ type BackendModule =
   }
 
 type ConvertEnv =
-  { currentLevel :: Int
+  { analyzeCustom :: Ctx -> BackendSyntax BackendExpr -> Maybe BackendAnalysis
+  , currentLevel :: Int
   , currentModule :: ModuleName
   , dataTypes :: Map ProperName DataTypeMeta
   , toLevel :: Map Ident Level
@@ -357,29 +358,33 @@ buildM :: BackendSyntax BackendExpr -> ConvertM BackendExpr
 buildM a env = build (getCtx env) a
 
 getCtx :: ConvertEnv -> Ctx
-getCtx env =
+getCtx env = Ctx
   { currentLevel: env.currentLevel
   , lookupExtern
+  , analyze: \ctx@(Ctx { effect }) expr ->
+      case env.analyzeCustom ctx expr of
+        Just s -> s
+        Nothing ->
+          if effect then
+            analyzeEffectBlock lookupExtern expr
+          else
+            analyze lookupExtern expr
   , effect: false
   }
   where
-  lookupExtern (Tuple qual acc) = do
+  lookupExtern qual acc = do
     Tuple s impl <- Map.lookup qual env.implementations
     case impl of
-      ExternExpr _ a ->
+      ExternExpr _ _ ->
         case acc of
-          Nothing ->
-            Just (Tuple s a)
-          _ ->
-            Nothing
+          Nothing -> Just s
+          _ -> Nothing
       ExternDict _ a ->
         case acc of
-          Just (GetProp prop) ->
-            findProp prop a
-          -- Nothing ->
-          --   Just $ Tuple s $ NeutralExpr $ Lit $ LitRecord (map snd <$> a)
-          _ ->
-            Nothing
+          Just prop ->
+            fst <$> findProp prop a
+          Nothing ->
+            Just s
       ExternCtor _ _ _ _ _ ->
         Nothing
 

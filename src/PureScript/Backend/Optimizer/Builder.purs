@@ -11,13 +11,15 @@ import Data.List (List, foldM)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Maybe (Maybe)
 import Data.Set (Set)
 import Data.Tuple (Tuple(..))
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps, toBackendModule)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module(..), Qualified)
-import PureScript.Backend.Optimizer.Semantics (ExternImpl, InlineDirectiveMap)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr, Ctx, ExternImpl, InlineDirectiveMap)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
+import PureScript.Backend.Optimizer.Syntax (BackendSyntax)
 
 type BuildEnv =
   { implementations :: Map (Qualified Ident) (Tuple BackendAnalysis ExternImpl)
@@ -26,7 +28,8 @@ type BuildEnv =
   }
 
 type BuildOptions m =
-  { directives :: InlineDirectiveMap
+  { analyzeCustom :: Ctx -> BackendSyntax BackendExpr -> Maybe BackendAnalysis
+  , directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
   , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
@@ -45,7 +48,8 @@ buildModules options coreFnModules =
     coreFnModule'@(Module { name }) <- options.onPrepareModule buildEnv coreFnModule
     let
       Tuple optimizationSteps backendMod = toBackendModule coreFnModule'
-        { currentModule: name
+        { analyzeCustom: options.analyzeCustom
+        , currentModule: name
         , currentLevel: 0
         , toLevel: Map.empty
         , implementations

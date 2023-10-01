@@ -120,6 +120,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
       stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
+        , analyzeCustom: \_ _ -> Nothing
         , foreignSemantics: Map.union coreForeignSemantics esForeignSemantics
         , onCodegenModule: \build (Module { name: ModuleName name, path }) backendMod optimizationSteps -> do
             let
