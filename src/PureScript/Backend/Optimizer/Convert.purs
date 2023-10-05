@@ -399,7 +399,7 @@ floatTopLevelBackendBindings quoteCtx evalEnv baseQual@(Qualified mod (Ident bas
           }
     Nothing -> do
       let n = fromMaybe 0 $ Map.lookup (Ident "") used
-      { accum: Map.insert (Ident "") 1 used
+      { accum: Map.insert (Ident "") (n + 1) used
       , value: Qualified mod $ Ident $ baseIdent <> "." <> show n
       }
 
