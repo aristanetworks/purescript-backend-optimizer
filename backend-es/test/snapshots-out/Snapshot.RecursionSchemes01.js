@@ -13,22 +13,16 @@ const functorExprF = {
     $runtime.fail();
   }
 };
-const test1 = /* #__PURE__ */ (() => {
-  const go = v => {
-    if (v.tag === "Add") { return go(v._1) + go(v._2) | 0; }
-    if (v.tag === "Mul") { return go(v._1) * go(v._2) | 0; }
-    if (v.tag === "Lit") { return v._1; }
-    $runtime.fail();
-  };
-  return go;
-})();
-const test2 = /* #__PURE__ */ (() => {
-  const go = v => {
-    if (v.tag === "Add") { return go(v._1) + go(v._2) | 0; }
-    if (v.tag === "Mul") { return go(v._1) * go(v._2) | 0; }
-    if (v.tag === "Lit") { return v._1 + 1 | 0; }
-    $runtime.fail();
-  };
-  return go;
-})();
+const test1 = v => {
+  if (v.tag === "Add") { return test1(v._1) + test1(v._2) | 0; }
+  if (v.tag === "Mul") { return test1(v._1) * test1(v._2) | 0; }
+  if (v.tag === "Lit") { return v._1; }
+  $runtime.fail();
+};
+const test2 = v => {
+  if (v.tag === "Add") { return test2(v._1) + test2(v._2) | 0; }
+  if (v.tag === "Mul") { return test2(v._1) * test2(v._2) | 0; }
+  if (v.tag === "Lit") { return v._1 + 1 | 0; }
+  $runtime.fail();
+};
 export {$ExprF, Add, Lit, Mul, functorExprF, test1, test2};
