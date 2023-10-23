@@ -119,7 +119,7 @@ myAdd a b = a + b
 ```
 
 The `myAdd` function would likely already be inlined since it is so small, but
-to guarantee that it is always inlined after two argments are applied, you would
+to guarantee that it is always inlined after two arguments are applied, you would
 write the following directive:
 
 ```
