@@ -19,15 +19,13 @@ const testArrayIndex = arr => ix => {
   if (ix >= 0 && ix < arr.length) { return Data$dMaybe.$Maybe("Just", arr[ix]); }
   return Data$dMaybe.Nothing;
 };
-const main = /* #__PURE__ */ (() => {
-  const array = [1, 2, 3];
-  const $0 = assertEqual("index -1")({expected: Data$dMaybe.Nothing, actual: testArrayIndex(array)(-1)});
-  return () => {
-    $0();
-    assertEqual("index 0")({expected: Data$dMaybe.$Maybe("Just", 1), actual: testArrayIndex(array)(0)})();
-    assertEqual("index 1")({expected: Data$dMaybe.$Maybe("Just", 2), actual: testArrayIndex(array)(1)})();
-    assertEqual("index 2")({expected: Data$dMaybe.$Maybe("Just", 3), actual: testArrayIndex(array)(2)})();
-    return assertEqual("index 3")({expected: Data$dMaybe.Nothing, actual: testArrayIndex(array)(3)})();
-  };
-})();
-export {assertEqual, main, testArrayIndex};
+const main$darray = [1, 2, 3];
+const main$d0 = /* #__PURE__ */ assertEqual("index -1")({expected: Data$dMaybe.Nothing, actual: /* #__PURE__ */ testArrayIndex(main$darray)(-1)});
+const main = () => {
+  main$d0();
+  assertEqual("index 0")({expected: Data$dMaybe.$Maybe("Just", 1), actual: testArrayIndex(main$darray)(0)})();
+  assertEqual("index 1")({expected: Data$dMaybe.$Maybe("Just", 2), actual: testArrayIndex(main$darray)(1)})();
+  assertEqual("index 2")({expected: Data$dMaybe.$Maybe("Just", 3), actual: testArrayIndex(main$darray)(2)})();
+  return assertEqual("index 3")({expected: Data$dMaybe.Nothing, actual: testArrayIndex(main$darray)(3)})();
+};
+export {assertEqual, main, main$d0, main$darray, testArrayIndex};

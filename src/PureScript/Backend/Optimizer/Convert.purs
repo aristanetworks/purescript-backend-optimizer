@@ -56,6 +56,7 @@ import Data.Foldable (foldMap, foldl)
 import Data.FoldableWithIndex (foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.Function (on)
 import Data.FunctorWithIndex (mapWithIndex)
+import Data.Lazy (defer)
 import Data.Map (Map, SemigroupMap(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust, fromMaybe, maybe)
@@ -70,10 +71,10 @@ import Data.Traversable (class Foldable, Accum, foldr, for, mapAccumL, mapAccumR
 import Data.TraversableWithIndex (forWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
-import PureScript.Backend.Optimizer.Analysis (BackendAnalysis, analyze, analyzeEffectBlock)
+import PureScript.Backend.Optimizer.Analysis (BackendAnalysis(..), analysisOf, analyze, analyzeEffectBlock)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx(..), DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics(..), Ctx(..), DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, eval, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize, quote)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -220,106 +221,232 @@ toBackendTopLevelBindingGroups binds env = do
   result
     { value =
         (\as -> { recursive: (NonEmptyArray.head as).recursive, bindings: _.bindings =<< NonEmptyArray.toArray as }) <$>
-          Array.groupBy ((&&) `on` (not <<< _.recursive)) result.value
+          Array.groupBy ((&&) `on` (not <<< _.recursive)) (join result.value)
     }
 
-toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr))
+toBackendTopLevelBindingGroup :: ConvertEnv -> Bind Ann -> Accum ConvertEnv (Array (BackendBindingGroup Ident (WithDeps NeutralExpr)))
 toBackendTopLevelBindingGroup env = case _ of
+  NonRec binding -> do
+    let { floated, binding, directives, optimizationSteps, recursive } = toTopLevelBackendBinding env binding
+    let res1 = mapAccumL updateEnvForBindingGroup env floated
+    let res2 = updateEnvForBinding [] res1.accum binding
+    res2
+      { accum
+          { directives = Map.union res2.accum.directives directives
+          , optimizationSteps = res2.accum.optimizationSteps <> optimizationSteps
+          }
+      , value = Array.snoc res1.value { bindings: [ res2.value ], recursive }
+      }
   Rec bindings -> do
-    let group = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
-    mapAccumL (toTopLevelBackendBinding group) env bindings
-      # overValue { recursive: true, bindings: _ }
-  NonRec binding ->
-    mapAccumL (toTopLevelBackendBinding []) env [ binding ]
-      # overValue { recursive: false, bindings: _ }
-  where
-  overValue f a =
-    a { value = f a.value }
+    let
+      initGroup = (\(Binding _ ident _) -> Qualified (Just env.currentModule) ident) <$> bindings
+      res = mapAccumL
+        ( \env' binding -> do
+            let { floated, binding, directives, optimizationSteps } = toTopLevelBackendBinding env' binding
+            let regrouped = regroupBackendBindingGroups initGroup floated
+            let group = Array.nub $ initGroup <> map fst regrouped.bindings
+            let res1 = mapAccumL updateEnvForBindingGroup env' regrouped.free
+            let res2 = mapAccumL (updateEnvForBinding group) res1.accum regrouped.bindings
+            let res3 = updateEnvForBinding group res2.accum binding
+            { accum: res3.accum
+                { directives = Map.union res3.accum.directives directives
+                , optimizationSteps = res3.accum.optimizationSteps <> optimizationSteps
+                }
+            , value:
+                { free: res1.value
+                , bindings: Array.snoc res2.value res3.value
+                }
+            }
+        )
+        env
+        bindings
+    res
+      { value =
+          Array.snoc (foldMap _.free res.value)
+            { bindings: foldMap _.bindings res.value
+            , recursive: true
+            }
+      }
 
--- | For the NonEmptyArray,
--- | - `head` = the original expression
--- | - `last` = the final optimized expression
--- | - everything in-between the two are the steps that were taken from `head` to `last`
+updateEnvForBindingGroup :: ConvertEnv -> BackendBindingGroup (Qualified Ident) BackendExpr -> Accum ConvertEnv (BackendBindingGroup Ident (WithDeps NeutralExpr))
+updateEnvForBindingGroup env bindingGroup = do
+  let group = if bindingGroup.recursive then fst <$> bindingGroup.bindings else []
+  let res = mapAccumL (updateEnvForBinding group) env bindingGroup.bindings
+  res { value = bindingGroup { bindings = res.value } }
+
+updateEnvForBinding :: Array (Qualified Ident) -> ConvertEnv -> Tuple (Qualified Ident) BackendExpr -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
+updateEnvForBinding group env (Tuple qual expr) = do
+  let Tuple impl expr' = toExternImpl env group expr
+  { accum: env
+      { implementations = Map.insert qual impl env.implementations
+      , moduleImplementations = Map.insert qual impl env.moduleImplementations
+      }
+  , value: Tuple (unQualified qual) (Tuple (unwrap (fst impl)).deps expr')
+  }
+
+regroupBackendBindingGroups
+  :: Array (Qualified Ident)
+  -> Array (BackendBindingGroup (Qualified Ident) BackendExpr)
+  -> { free :: Array (BackendBindingGroup (Qualified Ident) BackendExpr)
+     , bindings :: Array (Tuple (Qualified Ident) BackendExpr)
+     }
+regroupBackendBindingGroups = go []
+  where
+  go acc group all = do
+    let { no, yes } = Array.partition (Array.any (addToGroup group <<< snd) <<< _.bindings) all
+    if Array.length no == Array.length all then
+      { free: no, bindings: acc }
+    else do
+      let newBindings = _.bindings =<< yes
+      go (acc <> newBindings) (group <> map fst newBindings) no
+
+  addToGroup group expr = do
+    let (BackendAnalysis s) = analysisOf expr
+    Array.any (_ `Set.member` s.deps) group
+
 type OptimizationSteps = Array (Tuple (Qualified Ident) (NonEmptyArray BackendExpr))
 
-toTopLevelBackendBinding :: Array (Qualified Ident) -> ConvertEnv -> Binding Ann -> Accum ConvertEnv (Tuple Ident (WithDeps NeutralExpr))
-toTopLevelBackendBinding group env (Binding _ ident cfn) = do
+type ConvertedBackendBinding =
+  { binding :: Tuple (Qualified Ident) BackendExpr
+  , directives :: InlineDirectiveMap
+  , floated :: Array (BackendBindingGroup (Qualified Ident) BackendExpr)
+  , optimizationSteps :: OptimizationSteps
+  , recursive :: Boolean
+  }
+
+toTopLevelBackendBinding :: ConvertEnv -> Binding Ann -> ConvertedBackendBinding
+toTopLevelBackendBinding env (Binding _ ident cfn) = do
   let evalEnv = Env { currentModule: env.currentModule, evalExternRef: makeExternEvalRef env, evalExternSpine: makeExternEvalSpine env, locals: [], directives: env.directives }
   let qualifiedIdent = Qualified (Just env.currentModule) ident
   let backendExpr = toBackendExpr cfn env
   let enableTracing = Set.member qualifiedIdent env.traceIdents
-  let Tuple mbSteps optimizedExpr = optimize enableTracing (getCtx env) evalEnv qualifiedIdent env.rewriteLimit backendExpr
-  let Tuple impl expr' = toExternImpl env group optimizedExpr
-  { accum: env
-      { implementations = Map.insert qualifiedIdent impl env.implementations
-      , moduleImplementations = Map.insert qualifiedIdent impl env.moduleImplementations
-      , optimizationSteps = maybe env.optimizationSteps (Array.snoc env.optimizationSteps <<< Tuple qualifiedIdent) $ NonEmptyArray.fromArray mbSteps
-      , directives =
-          case inferTransitiveDirective env.directives (snd impl) backendExpr cfn of
-            Just dirs ->
-              Map.alter
-                case _ of
-                  Just oldDirs ->
-                    Just $ Map.union oldDirs dirs
-                  Nothing ->
-                    Just dirs
-                (EvalExtern (Qualified (Just env.currentModule) ident))
-                env.directives
-            Nothing ->
-              env.directives
-      }
-  , value: Tuple ident (Tuple (unwrap (fst impl)).deps expr')
+  let quoteCtx = getCtx env
+  let Tuple steps optimizedExpr = optimize enableTracing quoteCtx evalEnv qualifiedIdent env.rewriteLimit backendExpr
+  let { expr: finalExpr, floated, recursive } = floatTopLevelBackendBindings quoteCtx evalEnv qualifiedIdent optimizedExpr
+  let directives = inferTransitiveDirective env.directives cfn backendExpr finalExpr
+  { floated
+  , binding: Tuple qualifiedIdent finalExpr
+  , directives: if Map.size directives > 0 then Map.singleton (EvalExtern qualifiedIdent) directives else Map.empty
+  , optimizationSteps: case NonEmptyArray.fromArray steps of
+      Just steps' -> [ Tuple qualifiedIdent steps' ]
+      Nothing -> []
+  , recursive
   }
 
-inferTransitiveDirective :: InlineDirectiveMap -> ExternImpl -> BackendExpr -> Expr Ann -> Maybe (Map InlineAccessor InlineDirective)
-inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBackendExpr
+type FloatedBackendBinding =
+  { expr :: BackendExpr
+  , floated :: Array (BackendBindingGroup (Qualified Ident) BackendExpr)
+  , recursive :: Boolean
+  }
+
+floatTopLevelBackendBindings :: Ctx -> Env -> Qualified Ident -> BackendExpr -> FloatedBackendBinding
+floatTopLevelBackendBindings quoteCtx evalEnv baseQual@(Qualified mod (Ident baseIdent)) = case _ of
+  ExprSyntax _ expr@(Let _ _ _ _) ->
+    go Map.empty [] $ eval evalEnv expr
+  ExprSyntax _ expr@(LetRec _ _ _) ->
+    go Map.empty [] $ eval evalEnv expr
+  other ->
+    { expr: other, floated: [], recursive: false }
   where
-  fromImpl = case impl of
-    ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)) ->
-      case Map.lookup (EvalExtern qual) directives of
-        Just dirs -> do
+  go used acc = case _ of
+    SemLet ident binding k -> do
+      let { accum: used', value: topLevelQual } = toTopLevelIdent used ident
+      let bindingExpr = quote quoteCtx binding
+      let group = { bindings: [ Tuple topLevelQual bindingExpr ], recursive: false }
+      go used' (Array.snoc acc group) $ k $ NeutVar topLevelQual
+    SemLetRec bindings k
+      | [ Tuple ident binding ] <- NonEmptyArray.toArray bindings -> do
+          let { accum: used', value: topLevelQual } = toTopLevelIdent used (Just ident)
+          let groupSems = NonEmptyArray.singleton (Tuple ident (defer \_ -> NeutVar topLevelQual))
+          case k groupSems of
+            NeutVar qual | qual == topLevelQual -> do
+              let groupSems' = NonEmptyArray.singleton (Tuple ident (defer \_ -> NeutVar baseQual))
+              { expr: quote quoteCtx (binding groupSems')
+              , floated: acc
+              , recursive: true
+              }
+            sem -> do
+              let bindingExpr = quote quoteCtx (binding groupSems)
+              let group = { bindings: [ Tuple topLevelQual bindingExpr ], recursive: true }
+              go used' (Array.snoc acc group) sem
+      | otherwise -> do
+          let { accum: used', value: topLevelQuals } = mapAccumL (\a -> toTopLevelIdent a <<< Just <<< fst) used bindings
+          let groupSems = NonEmptyArray.zipWith (\a b -> a $> defer \_ -> NeutVar b) bindings topLevelQuals
           let
-            newDirs = foldrWithIndex
-              ( \ix dir accum -> case ix, dir of
-                  InlineRef, (InlineArity n) ->
-                    accum
-                      # Map.insert InlineRef (InlineArity (n - NonEmptyArray.length args))
-                  InlineSpineProp prop, _ ->
-                    accum
-                      # Map.insert (InlineProp prop) dir
-                      # Map.insert (InlineSpineProp prop) dir
-                  _, _ ->
-                    accum
+            bindingExprs = NonEmptyArray.zipWith
+              ( \topLevelQual (Tuple _ binding) ->
+                  Tuple topLevelQual (quote quoteCtx (binding groupSems))
               )
-              Map.empty
-              dirs
-          if Map.isEmpty newDirs then
-            Nothing
-          else
-            Just newDirs
+              topLevelQuals
+              bindings
+          let group = { bindings: NonEmptyArray.toArray bindingExprs, recursive: true }
+          go used' (Array.snoc acc group) $ k groupSems
+    other ->
+      { expr: quote quoteCtx other
+      , floated: acc
+      , recursive: true
+      }
+
+  toTopLevelIdent used = case _ of
+    Just ident
+      | Just n <- Map.lookup ident used ->
+          { accum: Map.insert ident (n + 1) used
+          , value: Qualified mod $ Ident $ baseIdent <> "." <> unwrap ident <> "$" <> show n
+          }
+      | otherwise ->
+          { accum: Map.insert ident 1 used
+          , value: Qualified mod $ Ident $ baseIdent <> "." <> unwrap ident
+          }
+    Nothing -> do
+      let n = fromMaybe 0 $ Map.lookup (Ident "") used
+      { accum: Map.insert (Ident "") (n + 1) used
+      , value: Qualified mod $ Ident $ baseIdent <> "." <> show n
+      }
+
+inferTransitiveDirective :: InlineDirectiveMap -> Expr Ann -> BackendExpr -> BackendExpr -> Map InlineAccessor InlineDirective
+inferTransitiveDirective directives cfn originalExpr optimizedExpr = fromOptimized <|> fromOriginal
+  where
+  fromOptimized = case optimizedExpr of
+    ExprSyntax _ (App (ExprSyntax _ (Var qual)) args) ->
+      case Map.lookup (EvalExtern qual) directives of
+        Just dirs ->
+          foldrWithIndex
+            ( \ix dir accum -> case ix, dir of
+                InlineRef, (InlineArity n) ->
+                  accum
+                    # Map.insert InlineRef (InlineArity (n - NonEmptyArray.length args))
+                InlineSpineProp prop, _ ->
+                  accum
+                    # Map.insert (InlineProp prop) dir
+                    # Map.insert (InlineSpineProp prop) dir
+                _, _ ->
+                  accum
+            )
+            Map.empty
+            dirs
         _ ->
-          Nothing
-    ExternExpr _ (NeutralExpr (Accessor (NeutralExpr (App (NeutralExpr (Var qual)) _)) (GetProp prop))) ->
+          Map.empty
+    ExprSyntax _ (Accessor (ExprSyntax _ (App (ExprSyntax _ (Var qual)) _)) (GetProp prop)) ->
       case Map.lookup (EvalExtern qual) directives >>= Map.lookup (InlineSpineProp prop) of
         Just (InlineArity n) ->
-          Just $ Map.singleton InlineRef (InlineArity n)
+          Map.singleton InlineRef (InlineArity n)
         _ ->
-          Nothing
+          Map.empty
     _ ->
-      Nothing
+      Map.empty
 
-  fromBackendExpr = case backendExpr of
+  fromOriginal = case originalExpr of
     ExprSyntax _ (App (ExprSyntax _ (Var qual)) args) ->
       case Map.lookup (EvalExtern qual) directives >>= Map.lookup InlineRef of
         Just (InlineArity n)
           | ExprApp (Ann { meta: Just IsSyntheticApp }) _ _ <- cfn
           , arity <- NonEmptyArray.length args
           , arity >= n ->
-              Just $ Map.singleton InlineRef InlineAlways
+              Map.singleton InlineRef InlineAlways
         _ ->
-          Nothing
+          Map.empty
     _ ->
-      Nothing
+      Map.empty
 
 toExternImpl :: ConvertEnv -> Array (Qualified Ident) -> BackendExpr -> Tuple (Tuple BackendAnalysis ExternImpl) NeutralExpr
 toExternImpl env group expr = case expr of
