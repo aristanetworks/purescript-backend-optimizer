@@ -1,4 +1,4 @@
-module Snapshot.KnownConstructor07 where
+module Snapshot.KnownConstructors07 where
 
 import Prelude
 

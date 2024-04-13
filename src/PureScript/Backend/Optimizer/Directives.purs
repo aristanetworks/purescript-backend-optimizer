@@ -111,6 +111,8 @@ qualified :: Parser (Qualified Ident)
 qualified = expectMap case _ of
   { value: CST.TokLowerName (Just (CST.ModuleName mod)) ident } ->
     Just $ Qualified (Just (ModuleName mod)) (Ident ident)
+  { value: CST.TokUpperName (Just (CST.ModuleName mod)) ident } ->
+    Just $ Qualified (Just (ModuleName mod)) (Ident ident)
   _ ->
     Nothing
 

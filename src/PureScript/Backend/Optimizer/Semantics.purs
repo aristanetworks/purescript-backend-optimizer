@@ -1155,6 +1155,7 @@ newtype Ctx = Ctx
   , lookupExtern :: Qualified Ident -> Maybe String -> Maybe BackendAnalysis
   , analyze :: Ctx -> BackendSyntax BackendExpr -> BackendAnalysis
   , effect :: Boolean
+  , directives :: InlineDirectiveMap
   }
 
 nextLevel :: Ctx -> Tuple Level Ctx
@@ -1300,7 +1301,7 @@ build ctx = case _ of
         expr
     | Just expr <- shouldUnpackArray ident level binding body ->
         expr
-    | Just expr <- shouldDistributeBranches ident level binding body ->
+    | Just expr <- shouldDistributeBranches ctx ident level binding body ->
         expr
     | Just expr <- shouldEtaReduce level binding body ->
         expr
@@ -1497,13 +1498,18 @@ shouldUnpackArray ident level binding body = do
     _ ->
       Nothing
 
-shouldDistributeBranches :: Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
-shouldDistributeBranches ident level a body = do
+shouldDistributeBranches :: Ctx -> Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
+shouldDistributeBranches (Ctx ctx) ident level a body = do
   let BackendAnalysis s2 = analysisOf body
   case a of
     ExprSyntax (BackendAnalysis s1) (Branch branches def)
+      | Known (Just qi) <- s1.result
+      , Just InlineAlways <- Map.lookup (EvalExtern qi) ctx.directives >>= Map.lookup InlineRef -> do
+          -- TODO: Not sure what to do about analysis, or if it matters.
+          let analysis = analysisOf a <> bound level (analysisOf body)
+          Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesLet ident level branches def body
       | s2.size <= 128
-      , s1.result == KnownNeutral
+      , s1.result == Known Nothing
       , Just (Usage us) <- Map.lookup level s2.usages
       , us.total == us.access + us.case -> do
           -- TODO: Not sure what to do about analysis, or if it matters.

@@ -13,7 +13,7 @@ import Data.Set as Set
 import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), Qualified)
+import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ProperName(..), Qualified)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
@@ -72,7 +72,7 @@ instance Semigroup Complexity where
 instance Monoid Complexity where
   mempty = Trivial
 
-data ResultTerm = KnownNeutral | Unknown
+data ResultTerm = Known (Maybe (Qualified Ident)) | Unknown
 
 derive instance Eq ResultTerm
 
@@ -80,10 +80,14 @@ instance Semigroup ResultTerm where
   append = case _, _ of
     Unknown, _ -> Unknown
     _, Unknown -> Unknown
-    _, _ -> KnownNeutral
+    a@(Known (Just x)), Known (Just y) | x == y -> a
+    a@(Known (Just _)), Known Nothing -> a
+    Known Nothing, b@(Known (Just _)) -> b
+    _, _ -> mempty
+
 
 instance Monoid ResultTerm where
-  mempty = KnownNeutral
+  mempty = Known Nothing
 
 newtype BackendAnalysis = BackendAnalysis
   { usages :: Map Level Usage
@@ -118,7 +122,7 @@ instance Monoid BackendAnalysis where
     , args: []
     , rewrite: false
     , deps: Set.empty
-    , result: KnownNeutral
+    , result: mempty
     , externs: false
     }
 
@@ -244,12 +248,12 @@ analyze externAnalysis expr = case expr of
       $ bump
       $ analysisOf a
   Abs args _ ->
-    withResult KnownNeutral
+    withResult mempty
       $ complex KnownSize
       $ capture CaptureClosure
       $ foldr (boundArg <<< snd) (analyzeDefault expr) args
   UncurriedAbs args _ ->
-    withResult KnownNeutral
+    withResult mempty
       $ complex KnownSize
       $ capture CaptureClosure
       $ foldr (boundArg <<< snd) (analyzeDefault expr) args
@@ -265,7 +269,7 @@ analyze externAnalysis expr = case expr of
         $ complex NonTrivial
         $ analyzeDefault expr
   UncurriedEffectAbs args _ ->
-    withResult KnownNeutral
+    withResult mempty
       $ complex KnownSize
       $ capture CaptureClosure
       $ foldr (boundArg <<< snd) (analyzeDefault expr) args
@@ -311,8 +315,8 @@ analyze externAnalysis expr = case expr of
       withResult Unknown
         $ complex NonTrivial
         $ analyzeDefault expr
-  CtorSaturated qi _ _ _ cs ->
-    withResult KnownNeutral
+  CtorSaturated qi _ (ProperName tyIdent) _ cs ->
+    withResult (Known (Just (qi $> Ident tyIdent)))
       $ bump
       $ usedDep qi
       $ foldMap (foldMap analysisOf) cs
@@ -387,7 +391,7 @@ analyze externAnalysis expr = case expr of
         analysis
     where
     analysis =
-      withResult KnownNeutral
+      withResult mempty
         $ analyzeDefault expr
 
 analyzeEffectBlock :: forall a. HasAnalysis a => HasSyntax a => (Qualified Ident -> Maybe String -> Maybe BackendAnalysis) -> BackendSyntax a -> BackendAnalysis

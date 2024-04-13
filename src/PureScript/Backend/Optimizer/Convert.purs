@@ -370,6 +370,7 @@ getCtx env = Ctx
           else
             analyze lookupExtern expr
   , effect: false
+  , directives: env.directives
   }
   where
   lookupExtern qual acc = do
