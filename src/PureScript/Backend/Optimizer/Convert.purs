@@ -73,7 +73,7 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import PureScript.Backend.Optimizer.Analysis (BackendAnalysis, analyze, analyzeEffectBlock)
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment, ConstructorType(..), Expr(..), Guard(..), Ident(..), Literal(..), Meta(..), Module(..), ModuleName(..), ProperName, Qualified(..), ReExport, findProp, propKey, propValue, qualifiedModuleName, unQualified)
 import PureScript.Backend.Optimizer.Directives (DirectiveHeaderResult, parseDirectiveHeader)
-import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx(..), DataTypeMeta, Env(..), EvalRef(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
+import PureScript.Backend.Optimizer.Semantics (BackendExpr(..), BackendSemantics, Ctx(..), DataTypeMeta, Env(..), ExternImpl(..), ExternSpine, InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, InlineRef(..), NeutralExpr(..), build, evalExternFromImpl, evalExternRefFromImpl, freeze, optimize)
 import PureScript.Backend.Optimizer.Semantics.Foreign (ForeignEval)
 import PureScript.Backend.Optimizer.Syntax (BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendOperator2(..), BackendOperatorOrd(..), BackendSyntax(..), Level(..), Pair(..))
 import PureScript.Backend.Optimizer.Utils (foldl1Array)
@@ -263,7 +263,7 @@ toTopLevelBackendBinding group env (Binding _ ident cfn) = do
                     Just $ Map.union oldDirs dirs
                   Nothing ->
                     Just dirs
-                (EvalExtern (Qualified (Just env.currentModule) ident))
+                (InlineExtern (Qualified (Just env.currentModule) ident))
                 env.directives
             Nothing ->
               env.directives
@@ -276,14 +276,14 @@ inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBack
   where
   fromImpl = case impl of
     ExternExpr _ (NeutralExpr (App (NeutralExpr (Var qual)) args)) ->
-      case Map.lookup (EvalExtern qual) directives of
+      case Map.lookup (InlineExtern qual) directives of
         Just dirs -> do
           let
             newDirs = foldrWithIndex
               ( \ix dir accum -> case ix, dir of
-                  InlineRef, (InlineArity n) ->
+                  InlineAt, (InlineArity n) ->
                     accum
-                      # Map.insert InlineRef (InlineArity (n - NonEmptyArray.length args))
+                      # Map.insert InlineAt (InlineArity (n - NonEmptyArray.length args))
                   InlineSpineProp prop, _ ->
                     accum
                       # Map.insert (InlineProp prop) dir
@@ -300,9 +300,9 @@ inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBack
         _ ->
           Nothing
     ExternExpr _ (NeutralExpr (Accessor (NeutralExpr (App (NeutralExpr (Var qual)) _)) (GetProp prop))) ->
-      case Map.lookup (EvalExtern qual) directives >>= Map.lookup (InlineSpineProp prop) of
+      case Map.lookup (InlineExtern qual) directives >>= Map.lookup (InlineSpineProp prop) of
         Just (InlineArity n) ->
-          Just $ Map.singleton InlineRef (InlineArity n)
+          Just $ Map.singleton InlineAt (InlineArity n)
         _ ->
           Nothing
     _ ->
@@ -310,12 +310,12 @@ inferTransitiveDirective directives impl backendExpr cfn = fromImpl <|> fromBack
 
   fromBackendExpr = case backendExpr of
     ExprSyntax _ (App (ExprSyntax _ (Var qual)) args) ->
-      case Map.lookup (EvalExtern qual) directives >>= Map.lookup InlineRef of
+      case Map.lookup (InlineExtern qual) directives >>= Map.lookup InlineAt of
         Just (InlineArity n)
           | ExprApp (Ann { meta: Just IsSyntheticApp }) _ _ <- cfn
           , arity <- NonEmptyArray.length args
           , arity >= n ->
-              Just $ Map.singleton InlineRef InlineAlways
+              Just $ Map.singleton InlineAt InlineAlways
         _ ->
           Nothing
     _ ->

@@ -1,4 +1,3 @@
-// @inline Data.Generic.Rep.Sum always
 // @inline Data.Show.Generic.genericShowConstructor arity=2
 // @inline export genericTest.from arity=1
 import * as $runtime from "../runtime.js";

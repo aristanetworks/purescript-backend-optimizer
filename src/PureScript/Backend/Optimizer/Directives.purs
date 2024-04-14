@@ -19,8 +19,8 @@ import Data.Maybe (Maybe(..))
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..), fst)
-import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), Qualified(..))
-import PureScript.Backend.Optimizer.Semantics (EvalRef(..), InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, insertDirective)
+import PureScript.Backend.Optimizer.CoreFn (Comment(..), Ident(..), ModuleName(..), ProperName(..), Qualified(..))
+import PureScript.Backend.Optimizer.Semantics (InlineAccessor(..), InlineDirective(..), InlineDirectiveMap, InlineRef(..), insertDirective)
 import PureScript.CST.Errors (ParseError(..))
 import PureScript.CST.Lexer (lex)
 import PureScript.CST.Parser.Monad (Parser, PositionedError, eof, runParser, take)
@@ -69,36 +69,36 @@ parseDirectiveHeader moduleName = foldl go { errors: [], locals: Map.empty, expo
   parser =
     Left <$> parseDirectiveExport moduleName <|> Right <$> parseDirective
 
-parseDirectiveLine :: String -> Either PositionedError (Maybe (Tuple EvalRef (Tuple InlineAccessor InlineDirective)))
+parseDirectiveLine :: String -> Either PositionedError (Maybe (Tuple InlineRef (Tuple InlineAccessor InlineDirective)))
 parseDirectiveLine line = fst <$> runParser (lex line) parseDirectiveMaybe
 
-parseDirectiveMaybe :: Parser (Maybe (Tuple EvalRef (Tuple InlineAccessor InlineDirective)))
+parseDirectiveMaybe :: Parser (Maybe (Tuple InlineRef (Tuple InlineAccessor InlineDirective)))
 parseDirectiveMaybe = Just <$> parseDirective <|> (Nothing <$ eof)
 
-parseDirectiveExport :: ModuleName -> Parser (Tuple EvalRef (Tuple InlineAccessor InlineDirective))
+parseDirectiveExport :: ModuleName -> Parser (Tuple InlineRef (Tuple InlineAccessor InlineDirective))
 parseDirectiveExport moduleName =
-  ( ado
-      keyword "export"
-      ident <- unqualified
-      accessor <- parseInlineAccessor
-      directive <- parseInlineDirective
-      in Tuple (EvalExtern (Qualified (Just moduleName) ident)) (Tuple accessor directive)
-  ) <* eof
+  keyword "export" *> parseWithAccessorAndDirective inlineRef <* eof
+  where
+  inlineRef =
+    InlineDataType <<< Qualified (Just moduleName) <$> unqualifiedProper
+      <|> InlineExtern <<< Qualified (Just moduleName) <$> unqualifiedIdent
 
-parseDirective :: Parser (Tuple EvalRef (Tuple InlineAccessor InlineDirective))
+parseDirective :: Parser (Tuple InlineRef (Tuple InlineAccessor InlineDirective))
 parseDirective =
-  ( ado
-      qual <- qualified
-      accessor <- parseInlineAccessor
-      directive <- parseInlineDirective
-      in Tuple (EvalExtern qual) (Tuple accessor directive)
-  ) <* eof
+  parseWithAccessorAndDirective inlineRef <* eof
+  where
+  inlineRef =
+    InlineDataType <$> qualifiedProper
+      <|> InlineExtern <$> qualifiedIdent
+
+parseWithAccessorAndDirective :: Parser InlineRef -> Parser (Tuple InlineRef (Tuple InlineAccessor InlineDirective))
+parseWithAccessorAndDirective p = Tuple <$> p <*> (Tuple <$> parseInlineAccessor <*> parseInlineDirective)
 
 parseInlineAccessor :: Parser InlineAccessor
 parseInlineAccessor =
   InlineProp <$> (dot *> label)
     <|> InlineSpineProp <$> (dotDot *> dot *> label)
-    <|> pure InlineRef
+    <|> pure InlineAt
 
 parseInlineDirective :: Parser InlineDirective
 parseInlineDirective =
@@ -107,19 +107,31 @@ parseInlineDirective =
     <|> InlineAlways <$ keyword "always"
     <|> InlineArity <$> (keyword "arity" *> equals *> natural)
 
-qualified :: Parser (Qualified Ident)
-qualified = expectMap case _ of
+qualifiedIdent :: Parser (Qualified Ident)
+qualifiedIdent = expectMap case _ of
   { value: CST.TokLowerName (Just (CST.ModuleName mod)) ident } ->
-    Just $ Qualified (Just (ModuleName mod)) (Ident ident)
-  { value: CST.TokUpperName (Just (CST.ModuleName mod)) ident } ->
     Just $ Qualified (Just (ModuleName mod)) (Ident ident)
   _ ->
     Nothing
 
-unqualified :: Parser Ident
-unqualified = expectMap case _ of
+qualifiedProper :: Parser (Qualified ProperName)
+qualifiedProper = expectMap case _ of
+  { value: CST.TokUpperName (Just (CST.ModuleName mod)) ident } ->
+    Just $ Qualified (Just (ModuleName mod)) (ProperName ident)
+  _ ->
+    Nothing
+
+unqualifiedIdent :: Parser Ident
+unqualifiedIdent = expectMap case _ of
   { value: CST.TokLowerName Nothing ident } ->
     Just $ Ident ident
+  _ ->
+    Nothing
+
+unqualifiedProper :: Parser ProperName
+unqualifiedProper = expectMap case _ of
+  { value: CST.TokUpperName Nothing ident } ->
+    Just $ ProperName ident
   _ ->
     Nothing
 

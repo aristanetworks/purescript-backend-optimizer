@@ -13,7 +13,7 @@ import Data.Set as Set
 import Data.String.CodeUnits as SCU
 import Data.Traversable (foldMap, foldr)
 import Data.Tuple (Tuple(..), snd)
-import PureScript.Backend.Optimizer.CoreFn (Ident(..), Literal(..), ProperName(..), Qualified)
+import PureScript.Backend.Optimizer.CoreFn (Ident, Literal(..), ProperName, Qualified)
 import PureScript.Backend.Optimizer.Syntax (class HasSyntax, BackendAccessor(..), BackendOperator(..), BackendOperator1(..), BackendSyntax(..), Level, Pair(..), sndPair, syntaxOf)
 
 data Capture = CaptureNone | CaptureBranch | CaptureClosure
@@ -72,7 +72,7 @@ instance Semigroup Complexity where
 instance Monoid Complexity where
   mempty = Trivial
 
-data ResultTerm = Known (Maybe (Qualified Ident)) | Unknown
+data ResultTerm = Known (Set (Tuple (Qualified Ident) ProperName)) | Unknown
 
 derive instance Eq ResultTerm
 
@@ -80,14 +80,10 @@ instance Semigroup ResultTerm where
   append = case _, _ of
     Unknown, _ -> Unknown
     _, Unknown -> Unknown
-    a@(Known (Just x)), Known (Just y) | x == y -> a
-    a@(Known (Just _)), Known Nothing -> a
-    Known Nothing, b@(Known (Just _)) -> b
-    _, _ -> mempty
-
+    Known a, Known b -> Known (a <> b)
 
 instance Monoid ResultTerm where
-  mempty = Known Nothing
+  mempty = Known mempty
 
 newtype BackendAnalysis = BackendAnalysis
   { usages :: Map Level Usage
@@ -315,8 +311,8 @@ analyze externAnalysis expr = case expr of
       withResult Unknown
         $ complex NonTrivial
         $ analyzeDefault expr
-  CtorSaturated qi _ (ProperName tyIdent) _ cs ->
-    withResult (Known (Just (qi $> Ident tyIdent)))
+  CtorSaturated qi _ ty _ cs ->
+    withResult (Known (Set.singleton (Tuple qi ty)))
       $ bump
       $ usedDep qi
       $ foldMap (foldMap analysisOf) cs

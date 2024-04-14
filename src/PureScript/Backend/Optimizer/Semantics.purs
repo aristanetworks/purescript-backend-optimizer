@@ -10,6 +10,7 @@ import Data.Either (Either(..))
 import Data.Foldable (class Foldable, and, foldMap, foldl, foldr, or)
 import Data.Foldable as Foldable
 import Data.Foldable as Tuple
+import Data.Int as Int
 import Data.Int.Bits (complement, shl, shr, xor, zshr, (.&.), (.|.))
 import Data.Lazy (Lazy, defer, force)
 import Data.List as List
@@ -18,6 +19,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Monoid (power)
 import Data.Newtype (class Newtype, unwrap)
+import Data.Number as Number
 import Data.Set as Set
 import Data.String as String
 import Data.Tuple (Tuple(..), fst, snd)
@@ -162,7 +164,7 @@ derive instance Ord EvalRef
 data InlineAccessor
   = InlineProp String
   | InlineSpineProp String
-  | InlineRef
+  | InlineAt
 
 derive instance Eq InlineAccessor
 derive instance Ord InlineAccessor
@@ -173,7 +175,15 @@ data InlineDirective
   | InlineAlways
   | InlineArity Int
 
-type InlineDirectiveMap = Map EvalRef (Map InlineAccessor InlineDirective)
+data InlineRef
+  = InlineExtern (Qualified Ident)
+  | InlineDataType (Qualified ProperName)
+  | InlineLocal Level
+
+derive instance Eq InlineRef
+derive instance Ord InlineRef
+
+type InlineDirectiveMap = Map InlineRef (Map InlineAccessor InlineDirective)
 
 newtype Env = Env
   { currentModule :: ModuleName
@@ -191,7 +201,7 @@ lookupLocal (Env { locals }) (Level lvl) = Array.index locals lvl
 bindLocal :: Env -> LocalBinding BackendSemantics -> Env
 bindLocal (Env env) sem = Env env { locals = Array.snoc env.locals sem }
 
-insertDirective :: EvalRef -> InlineAccessor -> InlineDirective -> InlineDirectiveMap -> InlineDirectiveMap
+insertDirective :: InlineRef -> InlineAccessor -> InlineDirective -> InlineDirectiveMap -> InlineDirectiveMap
 insertDirective ref acc dir = Map.alter
   case _ of
     Just dirs ->
@@ -200,7 +210,7 @@ insertDirective ref acc dir = Map.alter
       Just $ Map.singleton acc dir
   ref
 
-addStop :: Env -> EvalRef -> InlineAccessor -> Env
+addStop :: Env -> InlineRef -> InlineAccessor -> Env
 addStop (Env env) ref acc = Env env
   { directives = Map.alter
       case _ of
@@ -939,7 +949,7 @@ snocSpine spine = case _ of
   other ->
     Array.snoc spine other
 
-envForGroup :: Env -> EvalRef -> InlineAccessor -> Array (Qualified Ident) -> Env
+envForGroup :: Env -> InlineRef -> InlineAccessor -> Array (Qualified Ident) -> Env
 envForGroup env ref acc group
   | Array.null group = env
   | otherwise = addStop env ref acc
@@ -949,20 +959,20 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [] ->
     case impl of
       ExternExpr group expr -> do
-        let ref = EvalExtern qual
-        case Map.lookup ref e.directives >>= Map.lookup InlineRef of
+        let ref = InlineExtern qual
+        case Map.lookup ref e.directives >>= Map.lookup InlineAt of
           Just InlineNever ->
             Just $ NeutStop qual
           Just InlineAlways ->
-            Just $ eval (envForGroup env ref InlineRef group) expr
+            Just $ eval (envForGroup env ref InlineAt group) expr
           Just (InlineArity _) ->
             Nothing
           _ ->
             case expr of
               NeutralExpr (Lit lit) | shouldInlineExternLiteral lit ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval (envForGroup env ref InlineAt group) expr
               _ | shouldInlineExternReference qual analysis expr ->
-                Just $ eval (envForGroup env ref InlineRef group) expr
+                Just $ eval (envForGroup env ref InlineAt group) expr
               _ ->
                 Nothing
       ExternCtor _ ct ty tag [] ->
@@ -972,7 +982,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [ ExternAccessor acc@(GetProp prop) ] ->
     case impl of
       ExternExpr group expr -> do
-        let ref = EvalExtern qual
+        let ref = InlineExtern qual
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
@@ -981,7 +991,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           _ ->
             Nothing
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
-        let ref = EvalExtern qual
+        let ref = InlineExtern qual
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
@@ -998,7 +1008,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [ ExternAccessor (GetProp prop), ExternApp args ] ->
     case impl of
       ExternExpr group expr -> do
-        let ref = EvalExtern qual
+        let ref = InlineExtern qual
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
@@ -1012,7 +1022,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
           _ ->
             Nothing
       ExternDict group props | Just (Tuple analysis' body) <- findProp prop props -> do
-        let ref = EvalExtern qual
+        let ref = InlineExtern qual
         case Map.lookup ref e.directives >>= Map.lookup (InlineProp prop) of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
@@ -1032,19 +1042,19 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [ ExternApp args ] ->
     case impl of
       ExternExpr group expr -> do
-        let ref = EvalExtern qual
-        case Map.lookup ref e.directives >>= Map.lookup InlineRef of
+        let ref = InlineExtern qual
+        case Map.lookup ref e.directives >>= Map.lookup InlineAt of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
           Just InlineAlways ->
-            Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+            Just $ evalApp env (eval (envForGroup env ref InlineAt group) expr) args
           Just (InlineArity n)
             | Array.length args >= n ->
-                Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+                Just $ evalApp env (eval (envForGroup env ref InlineAt group) expr) args
             | otherwise ->
                 Nothing
           _ | shouldInlineExternApp qual analysis expr args ->
-            Just $ evalApp env (eval (envForGroup env ref InlineRef group) expr) args
+            Just $ evalApp env (eval (envForGroup env ref InlineAt group) expr) args
           _ ->
             Nothing
       ExternCtor _ ct ty tag fields | Array.length fields == Array.length args ->
@@ -1054,7 +1064,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [ ExternApp _, ExternAccessor (GetProp prop) ] ->
     case impl of
       ExternExpr group fn -> do
-        let ref = EvalExtern qual
+        let ref = InlineExtern qual
         case Map.lookup ref e.directives >>= Map.lookup (InlineSpineProp prop) of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
@@ -1067,7 +1077,7 @@ evalExternFromImpl env@(Env e) qual (Tuple analysis impl) spine = case spine of
   [ ExternApp _, ExternAccessor (GetProp prop), ExternApp args2 ] ->
     case impl of
       ExternExpr group fn -> do
-        let ref = EvalExtern qual
+        let ref = InlineExtern qual
         case Map.lookup ref e.directives >>= Map.lookup (InlineSpineProp prop) of
           Just InlineNever ->
             Just $ neutralSpine (NeutStop qual) spine
@@ -1086,11 +1096,11 @@ evalExternRefFromImpl :: Env -> Qualified Ident -> Tuple BackendAnalysis ExternI
 evalExternRefFromImpl env qual (Tuple _ impl) = case impl of
   ExternExpr group (NeutralExpr expr)
     | isRefExpr expr ->
-        eval (envForGroup env (EvalExtern qual) InlineRef group) expr
+        eval (envForGroup env (InlineExtern qual) InlineAt group) expr
   ExternDict group props ->
     NeutLit $ LitRecord $ map
       ( \(Prop prop (Tuple _ (NeutralExpr expr))) ->
-          Prop prop $ eval (envForGroup env (EvalExtern qual) (InlineProp prop) group) expr
+          Prop prop $ eval (envForGroup env (InlineExtern qual) (InlineProp prop) group) expr
       )
       props
   _ ->
@@ -1499,24 +1509,70 @@ shouldUnpackArray ident level binding body = do
       Nothing
 
 shouldDistributeBranches :: Ctx -> Maybe Ident -> Level -> BackendExpr -> BackendExpr -> Maybe BackendExpr
-shouldDistributeBranches (Ctx ctx) ident level a body = do
-  let BackendAnalysis s2 = analysisOf body
+shouldDistributeBranches (Ctx ctx) ident level a body =
   case a of
-    ExprSyntax (BackendAnalysis s1) (Branch branches def)
-      | Known (Just qi) <- s1.result
-      , Just InlineAlways <- Map.lookup (EvalExtern qi) ctx.directives >>= Map.lookup InlineRef -> do
-          -- TODO: Not sure what to do about analysis, or if it matters.
-          let analysis = analysisOf a <> bound level (analysisOf body)
-          Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesLet ident level branches def body
-      | s2.size <= 128
-      , s1.result == Known Nothing
-      , Just (Usage us) <- Map.lookup level s2.usages
-      , us.total == us.access + us.case -> do
-          -- TODO: Not sure what to do about analysis, or if it matters.
-          let analysis = analysisOf a <> bound level (analysisOf body)
-          Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesLet ident level branches def body
+    ExprSyntax (BackendAnalysis s1) (Branch branches def) ->
+      inlinePredicate s1 (unwrap (analysisOf body)) branches def
     _ ->
       Nothing
+  where
+  inlinePredicate s1 s2 branches def
+    | Known ks <- s1.result
+    , Just (Tuple qi pn) <- Set.findMin ks
+    , Just directive <- Map.lookup (InlineDataType (qi $> pn)) ctx.directives >>= Map.lookup InlineAt =
+        case directive of
+          InlineNever ->
+            Nothing
+          InlineArity _ ->
+            Nothing
+          InlineAlways ->
+            defaultRewrite branches def
+          InlineDefault ->
+            defaultPredicate s1 s2 branches def
+    | otherwise =
+        defaultPredicate s1 s2 branches def
+
+  defaultPredicate s1 s2 branches def
+    | isConservativeCaseOfCase s1 s2 || isLiberalCaseOfCase s1 s2 branches =
+        defaultRewrite branches def
+    | otherwise =
+        Nothing
+
+  defaultRewrite branches def = do
+    -- TODO: Not sure what to do about analysis, or if it matters.
+    let analysis = analysisOf a <> bound level (analysisOf body)
+    Just $ ExprRewrite (withRewrite analysis) $ RewriteDistBranchesLet ident level branches def body
+
+  nextBranchConds = case _ of
+    ExprSyntax _ (Branch conds _) ->
+      Just conds
+    ExprSyntax _ (Let _ _ (ExprSyntax _ (Branch conds _)) _) ->
+      Just conds
+    _ ->
+      Nothing
+
+  isConservativeCaseOfCase s1 s2
+    | Known ks <- s1.result
+    , Just conds <- nextBranchConds body
+    , Just (Usage us) <- Map.lookup level s2.usages
+    , us.captured <= CaptureBranch
+    , us.case == NonEmptyArray.length conds
+    , us.total == us.access + us.case =
+        true
+    | otherwise =
+        false
+
+  isLiberalCaseOfCase s1 s2 branches
+    -- We cap the size of the continuation in the liberal case to
+    -- mitigate code explosion. This size is arbitrary, but we try
+    -- to scale based on the number of cases.
+    | Known _ <- s1.result
+    , s2.size <= Int.floor (256.0 / Number.sqrt (Int.toNumber (NonEmptyArray.length branches)))
+    , Just (Usage us) <- Map.lookup level s2.usages
+    , us.total == us.access + us.case =
+        true
+    | otherwise =
+        false
 
 shouldDistributeBranchApps :: BackendAnalysis -> NonEmptyArray (Pair BackendExpr) -> BackendExpr -> NonEmptyArray BackendExpr -> Maybe BackendExpr
 shouldDistributeBranchApps analysis1 branches def spine =
