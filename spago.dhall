@@ -6,7 +6,6 @@ You can edit this file as you like.
 , dependencies =
   [ "aff"
   , "ansi"
-  , "argonaut"
   , "argparse-basic"
   , "arrays"
   , "bifunctors"
@@ -20,8 +19,8 @@ You can edit this file as you like.
   , "enums"
   , "filterable"
   , "foldable-traversable"
-  , "foreign-object"
   , "integers"
+  , "json"
   , "language-cst-parser"
   , "lazy"
   , "lists"

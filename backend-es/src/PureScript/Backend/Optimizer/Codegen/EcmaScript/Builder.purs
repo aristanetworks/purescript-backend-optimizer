@@ -4,7 +4,6 @@ import Prelude
 
 import Control.Monad.Except (ExceptT(..), lift, runExceptT)
 import Control.Parallel (parTraverse)
-import Data.Argonaut as Json
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Bifunctor (lmap)
@@ -23,6 +22,7 @@ import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff, parallel, sequential)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
+import JSON as JSON
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
 import Node.Glob.Basic (expandGlobs)
@@ -32,7 +32,7 @@ import PureScript.Backend.Optimizer.Analysis (BackendAnalysis)
 import PureScript.Backend.Optimizer.Builder (BuildEnv, buildModules)
 import PureScript.Backend.Optimizer.Convert (BackendModule, OptimizationSteps)
 import PureScript.Backend.Optimizer.CoreFn (Ann, Ident, Module, ModuleName(..), Qualified)
-import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule)
+import PureScript.Backend.Optimizer.CoreFn.Json (decodeModule, printJsonDecodeError)
 import PureScript.Backend.Optimizer.CoreFn.Sort (emptyPull, pullResult, resumePull, sortModules)
 import PureScript.Backend.Optimizer.Directives (parseDirectiveFile)
 import PureScript.Backend.Optimizer.Directives.Defaults as Defaults
@@ -66,7 +66,7 @@ coreFnModulesFromOutput path globs = runExceptT do
 readCoreFnModule :: String -> Aff (Either (Tuple FilePath String) (Module Ann))
 readCoreFnModule filePath = do
   contents <- FS.readTextFile UTF8 filePath
-  case lmap Json.printJsonDecodeError <<< decodeModule =<< Json.jsonParser contents of
+  case lmap printJsonDecodeError <<< decodeModule =<< JSON.parse contents of
     Left err -> do
       pure $ Left $ Tuple filePath err
     Right mod ->
