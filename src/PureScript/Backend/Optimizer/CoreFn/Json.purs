@@ -1,3 +1,4 @@
+-- @inline JSON.case_ always
 module PureScript.Backend.Optimizer.CoreFn.Json
   ( decodeModule
   , decodeModule'
