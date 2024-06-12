@@ -3,32 +3,49 @@ module Main where
 import Prelude
 
 import ArgParse.Basic (ArgParser)
+import ArgParse.Basic as ArgParser
 import Control.Plus (empty)
+import Data.Array as Array
 import Data.DateTime.Instant (Instant)
+import Data.DateTime.Instant as Instant
 import Data.Either (Either(..), isRight)
 import Data.Foldable (foldMap, for_, oneOf)
 import Data.Function (on)
 import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (guard, power)
 import Data.Newtype (over2, unwrap)
 import Data.Ord.Down (Down(..))
 import Data.Posix.Signal (Signal(..))
 import Data.Set (Set)
+import Data.Set as Set
 import Data.String (Pattern(..))
+import Data.String as String
+import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd, uncurry)
+import Dodo as Dodo
 import Effect (Effect)
 import Effect.Aff (Aff, Milliseconds(..), attempt, effectCanceler, error, launchAff_, makeAff, nonCanceler, throwError)
 import Effect.Class (liftEffect)
+import Effect.Class.Console as Console
 import Effect.Now (now)
 import Effect.Ref (Ref)
+import Effect.Ref as Ref
 import Main.Print (formatMs, printTimings, printTotals)
 import Node.ChildProcess (Exit(..), StdIOBehaviour(..), defaultSpawnOptions)
+import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (writeTextFile)
+import Node.FS.Aff as FS
+import Node.FS.Perms as Perms
+import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.Path (FilePath)
+import Node.Path as Path
+import Node.Process as Process
+import Node.Stream as Stream
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
@@ -37,27 +54,10 @@ import PureScript.Backend.Optimizer.CoreFn (Ident(..), Module(..), ModuleName(..
 import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
 import PureScript.CST.Lexer (lexToken)
-import PureScript.CST.Types (Token(..))
-import Unsafe.Coerce (unsafeCoerce)
-import ArgParse.Basic as ArgParser
-import Data.Array as Array
-import PureScript.CST.Types as CST
-import Node.ChildProcess as ChildProcess
-import Effect.Class.Console as Console
-import Dodo as Dodo
-import Node.FS.Aff as FS
-import Data.DateTime.Instant as Instant
 import PureScript.CST.Lexer as Lexer
-import Data.Map as Map
-import Node.Path as Path
-import Node.FS.Perms as Perms
-import Node.Process as Process
-import Effect.Ref as Ref
-import Data.String.CodeUnits as SCU
-import Data.Set as Set
-import Node.FS.Stats as Stats
-import Node.Stream as Stream
-import Data.String as String
+import PureScript.CST.Types (Token(..))
+import PureScript.CST.Types as CST
+import Unsafe.Coerce (unsafeCoerce)
 import Version as Version
 
 type BuildArgs =

@@ -1,19 +1,17 @@
 module Main.Print where
 
-
 import Prelude
 
+import Data.Array (last, sort)
 import Data.Bifunctor (bimap)
 import Data.Maybe (fromMaybe)
 import Data.Newtype (unwrap)
+import Data.Number.Format (toString)
 import Data.Tuple (Tuple(..), fst, snd)
-import Effect.Aff (Milliseconds(..))
-import PureScript.Backend.Optimizer.CoreFn (ModuleName)
-import Data.Array (last, sort)
 import Dodo as Dodo
 import Dodo.Box as Dodo.Box
-import Data.Number.Format (toString)
-
+import Effect.Aff (Milliseconds(..))
+import PureScript.Backend.Optimizer.CoreFn (ModuleName)
 
 formatMs :: Milliseconds -> String
 formatMs (Milliseconds m) = toString m <> "ms"
