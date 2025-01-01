@@ -19,10 +19,9 @@ import Data.Monoid (guard, power)
 import Data.Newtype (over2, unwrap)
 import Data.Number.Format as Number
 import Data.Ord.Down (Down(..))
-import Data.Posix.Signal (Signal(..))
 import Data.Set (Set)
 import Data.Set as Set
-import Data.String (Pattern(..))
+import Data.String (Pattern(..), Replacement(..))
 import Data.String as String
 import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
@@ -36,9 +35,11 @@ import Effect.Class.Console as Console
 import Effect.Now (now)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
-import Node.ChildProcess (Exit(..), StdIOBehaviour(..), defaultSpawnOptions)
+import Node.ChildProcess (exitH)
 import Node.ChildProcess as ChildProcess
+import Node.ChildProcess.Types (Exit(..), enableShell, pipe, shareStream, stringSignal)
 import Node.Encoding (Encoding(..))
+import Node.EventEmitter (on_)
 import Node.FS.Aff (writeTextFile)
 import Node.FS.Aff as FS
 import Node.FS.Perms as Perms
@@ -47,7 +48,9 @@ import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.Path (FilePath)
 import Node.Path as Path
 import Node.Process as Process
+import Node.Stream (errorH, finishH)
 import Node.Stream as Stream
+import Node.UnsafeChildProcess.Unsafe as UnsafeChildProcess
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Foreign (esForeignSemantics)
@@ -223,7 +226,7 @@ type BuildState =
   }
 
 main :: FilePath -> Effect Unit
-main cliRoot =
+main cliRoot = do
   parseArgs >>= case _ of
     Left err ->
       Console.error $ ArgParser.printArgError err
@@ -341,8 +344,11 @@ main cliRoot =
         , "--outfile=" <> bundleArgs.targetFile
         , "--bundle"
         ]
-    if shouldInvokeMain then do
-      spawnFromParentWithStdin "esbuild" esBuildArgs $ Just $ "import { main } from '" <> entryPath <> "'; main();"
+      fixBackSlash = String.replaceAll (Pattern "\\") (Replacement "\\\\")
+    if shouldInvokeMain then
+      spawnFromParentWithStdin "esbuild" esBuildArgs
+        $ Just
+        $ "import { main } from '" <> fixBackSlash entryPath <> "'; main();"
     else
       spawnFromParentWithStdin "esbuild" (Array.snoc esBuildArgs entryPath) Nothing
 
@@ -354,19 +360,17 @@ copyFile from to = do
   makeAff \k -> do
     src <- createReadStream from
     dst <- createWriteStream to
-    res <- Stream.pipe src dst
-    Stream.onError src (k <<< Left)
-    Stream.onError dst (k <<< Left)
-    Stream.onError res (k <<< Left)
-    Stream.onFinish res (k (Right unit))
+    Stream.pipe src dst
+    src # on_ errorH (k <<< Left)
+    dst # on_ errorH (k <<< Left)
+    dst # on_ finishH (k (Right unit))
     pure $ effectCanceler do
-      Stream.destroy res
       Stream.destroy dst
       Stream.destroy src
 
 writeString :: forall r. Stream.Writable r -> String -> Aff Unit
 writeString stream str = makeAff \k -> do
-  _ <- Stream.writeString stream UTF8 str (k <<< maybe (Right unit) Left)
+  _ <- Stream.writeString' stream UTF8 str (k <<< maybe (Right unit) Left)
   pure nonCanceler
 
 mkdirp :: FilePath -> Aff Unit
@@ -377,24 +381,26 @@ esModulePackageJson = """{"type": "module"}"""
 
 spawnFromParentWithStdin :: String -> Array String -> Maybe String -> Aff Unit
 spawnFromParentWithStdin command args input = makeAff \k -> do
-  childProc <- ChildProcess.spawn command args defaultSpawnOptions
-    { stdio =
-        [ Just $ Pipe
-        , Just $ ShareStream (unsafeCoerce Process.stdout)
-        , Just $ ShareStream (unsafeCoerce Process.stderr)
+  -- To preserve colors in stdout need to pass it into spawn's stdio.
+  childProc <- unsafeCoerce <$> UnsafeChildProcess.spawn' command args
+    { stdio:
+        [ pipe
+        , shareStream Process.stdout
+        , shareStream Process.stderr
         ]
+    , shell: enableShell
     }
   for_ input \inp -> do
-    _ <- Stream.writeString (ChildProcess.stdin childProc) UTF8 inp mempty
-    Stream.end (ChildProcess.stdin childProc) mempty
-  ChildProcess.onExit childProc case _ of
+    _ <- Stream.writeString (ChildProcess.stdin childProc) UTF8 inp
+    Stream.end (ChildProcess.stdin childProc)
+  childProc # on_ exitH case _ of
     Normally code
-      | code > 0 -> Process.exit code
+      | code > 0 -> Process.exit' code
       | otherwise -> k (Right unit)
     BySignal _ ->
-      Process.exit 1
+      Process.exit' 1
   pure $ effectCanceler do
-    ChildProcess.kill SIGABRT childProc
+    void $ ChildProcess.kill' (stringSignal "SIGABRT") childProc
 
 timeDiff :: Instant -> Instant -> Milliseconds
 timeDiff = over2 Milliseconds (flip (-)) `on` Instant.unInstant
