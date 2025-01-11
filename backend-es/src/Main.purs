@@ -17,8 +17,10 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (guard, power)
 import Data.Newtype (over2, unwrap)
+import Data.Nullable (toMaybe)
 import Data.Number.Format as Number
 import Data.Ord.Down (Down(..))
+import Data.Posix.Signal (Signal(..))
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String (Pattern(..), Replacement(..))
@@ -35,9 +37,7 @@ import Effect.Class.Console as Console
 import Effect.Now (now)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
-import Node.ChildProcess (exitH)
-import Node.ChildProcess as ChildProcess
-import Node.ChildProcess.Types (Exit(..), enableShell, pipe, shareStream, stringSignal)
+import Node.ChildProcess.Types (Exit(..), enableShell, pipe, shareStream)
 import Node.Encoding (Encoding(..))
 import Node.EventEmitter (on_)
 import Node.FS.Aff (writeTextFile)
@@ -50,6 +50,7 @@ import Node.Path as Path
 import Node.Process as Process
 import Node.Stream (errorH, finishH)
 import Node.Stream as Stream
+import Node.UnsafeChildProcess.Safe (exitH, killSignal)
 import Node.UnsafeChildProcess.Unsafe as UnsafeChildProcess
 import PureScript.Backend.Optimizer.Codegen.EcmaScript (codegenModule, esModulePath)
 import PureScript.Backend.Optimizer.Codegen.EcmaScript.Builder (basicBuildMain, externalDirectivesFromFile)
@@ -62,7 +63,6 @@ import PureScript.CST.Lexer (lexToken)
 import PureScript.CST.Lexer as Lexer
 import PureScript.CST.Types (Token(..))
 import PureScript.CST.Types as CST
-import Unsafe.Coerce (unsafeCoerce)
 import Version as Version
 
 type BuildArgs =
@@ -382,7 +382,7 @@ esModulePackageJson = """{"type": "module"}"""
 spawnFromParentWithStdin :: String -> Array String -> Maybe String -> Aff Unit
 spawnFromParentWithStdin command args input = makeAff \k -> do
   -- To preserve colors in stdout need to pass it into spawn's stdio.
-  childProc <- unsafeCoerce <$> UnsafeChildProcess.spawn' command args
+  childProc <- UnsafeChildProcess.spawn' command args
     { stdio:
         [ pipe
         , shareStream Process.stdout
@@ -390,9 +390,11 @@ spawnFromParentWithStdin command args input = makeAff \k -> do
         ]
     , shell: enableShell
     }
+
   for_ input \inp -> do
-    _ <- Stream.writeString (ChildProcess.stdin childProc) UTF8 inp
-    Stream.end (ChildProcess.stdin childProc)
+    for_ (toMaybe $ UnsafeChildProcess.unsafeStdin childProc) \stdin -> do
+      _ <- Stream.writeString stdin UTF8 inp
+      Stream.end stdin
   childProc # on_ exitH case _ of
     Normally code
       | code > 0 -> Process.exit' code
@@ -400,7 +402,7 @@ spawnFromParentWithStdin command args input = makeAff \k -> do
     BySignal _ ->
       Process.exit' 1
   pure $ effectCanceler do
-    void $ ChildProcess.kill' (stringSignal "SIGABRT") childProc
+    void $ killSignal SIGABRT childProc
 
 timeDiff :: Instant -> Instant -> Milliseconds
 timeDiff = over2 Milliseconds (flip (-)) `on` Instant.unInstant

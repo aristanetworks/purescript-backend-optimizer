@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.Posix.Signal (Signal(..))
 import Effect (Effect)
 import Effect.Aff (Aff, Error, effectCanceler, error, makeAff, throwError)
 import Effect.Class (liftEffect)
@@ -11,7 +12,7 @@ import Node.Buffer (Buffer, freeze)
 import Node.Buffer.Immutable as ImmutableBuffer
 import Node.ChildProcess (ChildProcess, ExecResult, exitH)
 import Node.ChildProcess as ChildProcess
-import Node.ChildProcess.Types (Exit(..), stringSignal)
+import Node.ChildProcess.Types (Exit(..))
 import Node.Encoding (Encoding(..))
 import Node.EventEmitter (on_)
 import Node.FS.Aff as FS
@@ -34,15 +35,14 @@ spawnFromParent command args = makeAff \k -> do
     BySignal _ ->
       Process.exit' 1
   pure $ effectCanceler do
-    void $ ChildProcess.kill' (stringSignal "SIGABRT") childProc
+    void $ ChildProcess.killSignal SIGABRT childProc
 
 execWithStdin :: String -> String -> Aff ExecResult
 execWithStdin command input = makeAff \k -> do
   childProc <- ChildProcess.exec' command identity (k <<< pure)
   _ <- Stream.writeString' (ChildProcess.stdin childProc) UTF8 input mempty
-  --Stream.end (ChildProcess.stdin childProc) mempty
   (ChildProcess.stdin childProc) # on_ finishH mempty
-  pure $ effectCanceler $ void $ ChildProcess.kill' (stringSignal "SIGABRT") childProc
+  pure $ effectCanceler $ void $ ChildProcess.killSignal SIGABRT childProc
 
 bufferToUTF8 :: Buffer -> Aff String
 bufferToUTF8 = liftEffect <<< map (ImmutableBuffer.toString UTF8) <<< freeze
