@@ -1,6 +1,7 @@
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20221018/packages.dhall
-        sha256:b1db2e4a17260ace8d17858602f8c56f460982d6e404818d7f6cb9f053324bb1
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.15-20241231/packages.dhall
+        sha256:61533129f1e3369392665ecd389caecf1da74bec897e7ff355e5d920c92dda61
+
 in  upstream
   with dodo-printer =
     { dependencies =
@@ -15,7 +16,7 @@ in  upstream
       , "effect"
       , "lists"
       , "maybe"
-      , "node-fs-aff"
+      , "node-fs"
       , "node-path"
       , "node-process"
       , "ordered-collections"

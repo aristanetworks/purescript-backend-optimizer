@@ -113,7 +113,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
     Left errors -> do
       for_ errors \(Tuple filePath err) -> do
         Console.error $ filePath <> " " <> err
-      liftEffect $ Process.exit 1
+      liftEffect $ Process.exit' 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
       copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
@@ -185,7 +185,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
                 Console.log diff
                 pure false
       unless (Foldable.and results) do
-        liftEffect $ Process.exit 1
+        liftEffect $ Process.exit' 1
 
 hasFails :: BackendModule -> Maybe String
 hasFails = findMap go <<< _.comments

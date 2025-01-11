@@ -10,9 +10,11 @@ import Effect.Aff (Aff, Error, effectCanceler, error, makeAff, throwError)
 import Effect.Class (liftEffect)
 import Node.Buffer (Buffer, freeze)
 import Node.Buffer.Immutable as ImmutableBuffer
-import Node.ChildProcess (ChildProcess, ExecResult, Exit(..), defaultExecOptions)
+import Node.ChildProcess (ChildProcess, ExecResult, exitH)
 import Node.ChildProcess as ChildProcess
+import Node.ChildProcess.Types (Exit(..))
 import Node.Encoding (Encoding(..))
+import Node.EventEmitter (on_)
 import Node.FS.Aff as FS
 import Node.FS.Perms (mkPerms)
 import Node.FS.Perms as Perms
@@ -20,26 +22,27 @@ import Node.FS.Stats as Stats
 import Node.FS.Stream (createReadStream, createWriteStream)
 import Node.Path (FilePath)
 import Node.Process as Process
+import Node.Stream (errorH, finishH)
 import Node.Stream as Stream
 
 spawnFromParent :: String -> Array String -> Aff Unit
 spawnFromParent command args = makeAff \k -> do
   childProc <- spawnImpl command args
-  ChildProcess.onExit childProc case _ of
+  childProc # on_ exitH case _ of
     Normally code
-      | code > 0 -> Process.exit code
+      | code > 0 -> Process.exit' code
       | otherwise -> k (Right unit)
     BySignal _ ->
-      Process.exit 1
+      Process.exit' 1
   pure $ effectCanceler do
-    ChildProcess.kill SIGABRT childProc
+    void $ ChildProcess.killSignal SIGABRT childProc
 
 execWithStdin :: String -> String -> Aff ExecResult
 execWithStdin command input = makeAff \k -> do
-  childProc <- ChildProcess.exec command defaultExecOptions (k <<< pure)
-  _ <- Stream.writeString (ChildProcess.stdin childProc) UTF8 input mempty
-  Stream.end (ChildProcess.stdin childProc) mempty
-  pure $ effectCanceler $ ChildProcess.kill SIGABRT childProc
+  childProc <- ChildProcess.exec' command identity (k <<< pure)
+  _ <- Stream.writeString' (ChildProcess.stdin childProc) UTF8 input mempty
+  (ChildProcess.stdin childProc) # on_ finishH mempty
+  pure $ effectCanceler $ void $ ChildProcess.killSignal SIGABRT childProc
 
 bufferToUTF8 :: Buffer -> Aff String
 bufferToUTF8 = liftEffect <<< map (ImmutableBuffer.toString UTF8) <<< freeze
@@ -62,15 +65,14 @@ copyFile from to = do
   stats <- FS.stat from
   unless (Stats.isFile stats) do
     throwError $ error $ "Not a file: " <> from
+  --FS.copyFile from to
   makeAff \k -> do
     src <- createReadStream from
     dst <- createWriteStream to
-    res <- Stream.pipe src dst
-    Stream.onError src (k <<< Left)
-    Stream.onError dst (k <<< Left)
-    Stream.onError res (k <<< Left)
-    Stream.onFinish res (k (Right unit))
+    Stream.pipe src dst
+    src # on_ errorH (k <<< Left)
+    dst # on_ errorH (k <<< Left)
+    dst # on_ finishH (k (Right unit))
     pure $ effectCanceler do
-      Stream.destroy res
       Stream.destroy dst
       Stream.destroy src
