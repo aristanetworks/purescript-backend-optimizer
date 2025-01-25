@@ -32,7 +32,6 @@ You can edit this file as you like.
   , "node-event-emitter"
   , "node-fs"
   , "node-glob-basic"
-  , "node-os"
   , "node-path"
   , "node-process"
   , "node-streams"
