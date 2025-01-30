@@ -27,3 +27,19 @@ in  upstream
     }
   with arrays.version = "v7.2.1"
   with ordered-collections.version = "v3.1.0"
+  with json =
+    { dependencies =
+      [ "prelude"
+      , "functions"
+      , "integers"
+      , "maybe"
+      , "either"
+      , "tuples"
+      , "foldable-traversable"
+      , "gen"
+      , "strings"
+      , "unfoldable"
+      ]
+    , repo = "https://github.com/purescript/purescript-json.git"
+    , version = "da4695707d8aacd54e7cbbd54c069509248ff989"
+    }

@@ -1,8 +1,10 @@
--- @inline Data.Argonaut.Core.caseJson always
+-- @inline JSON.case_ always
 module PureScript.Backend.Optimizer.CoreFn.Json
   ( decodeModule
   , decodeModule'
   , decodeAnn
+  , JsonDecodeError
+  , printJsonDecodeError
   ) where
 
 import Prelude hiding (bind)
@@ -11,7 +13,6 @@ import Control.Alternative (guard)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.ST as ST
 import Control.Monad.ST.Ref as STRef
-import Data.Argonaut (Json, JsonDecodeError(..), caseJson, decodeJson, isNull)
 import Data.Array as Array
 import Data.Array.ST as STArray
 import Data.Either (Either(..), note)
@@ -21,13 +22,20 @@ import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Foreign.Object (Object)
-import Foreign.Object as Object
+import JSON (JObject, JSON, case_, isNull)
+import JSON.Array as JA
+import JSON.Object as Object
 import Partial.Unsafe (unsafePartial)
 import Prelude as Prelude
 import PureScript.Backend.Optimizer.CoreFn (Ann(..), Bind(..), Binder(..), Binding(..), CaseAlternative(..), CaseGuard(..), Comment(..), ConstructorType(..), Expr(..), Guard(..), Ident(..), Import(..), Literal(..), Meta(..), Module(..), ModuleName(..), Prop(..), ProperName(..), Qualified(..), ReExport(..), SourcePos, SourceSpan, emptySpan)
 import Safe.Coerce (coerce)
 import Unsafe.Coerce (unsafeCoerce)
+
+data JsonDecodeError
+  = TypeMismatch String
+  | AtIndex Int JsonDecodeError
+  | AtKey String JsonDecodeError
+  | MissingValue
 
 type JsonDecode = Either JsonDecodeError
 
@@ -47,19 +55,24 @@ bind a k = case a of
   Right a' ->
     k a'
 
-decodeSourcePos :: Json -> JsonDecode SourcePos
+decodeSourcePos :: JSON -> JsonDecode SourcePos
 decodeSourcePos json = do
-  Tuple line column <- decodeJson json
-  pure { line, column }
+  res <- decodeJArray json
+  case res of
+    [ l, c ] -> do
+      line <- decodeInt l
+      column <- decodeInt c
+      pure { line, column }
+    _ -> Left $ TypeMismatch "SourcePos"
 
-decodeSourceSpan :: String -> Json -> JsonDecode SourceSpan
+decodeSourceSpan :: String -> JSON -> JsonDecode SourceSpan
 decodeSourceSpan path json = do
   obj <- decodeJObject json
   start <- getField decodeSourcePos obj "start"
   end <- getField decodeSourcePos obj "end"
   pure { path, start, end }
 
-decodeConstructorType :: Json -> JsonDecode ConstructorType
+decodeConstructorType :: JSON -> JsonDecode ConstructorType
 decodeConstructorType json = do
   str <- decodeString json
   case str of
@@ -67,23 +80,23 @@ decodeConstructorType json = do
     "SumType" -> pure SumType
     _ -> throwError $ TypeMismatch "ConstructorType"
 
-decodeIdent :: Json -> JsonDecode Ident
+decodeIdent :: JSON -> JsonDecode Ident
 decodeIdent = coerce decodeString
 
-decodeProperName :: Json -> JsonDecode ProperName
+decodeProperName :: JSON -> JsonDecode ProperName
 decodeProperName = coerce decodeString
 
-decodeModuleName :: Json -> JsonDecode ModuleName
+decodeModuleName :: JSON -> JsonDecode ModuleName
 decodeModuleName = map (ModuleName <<< intercalate ".") <<< decodeArray decodeString
 
-decodeQualified :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Qualified a)
+decodeQualified :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Qualified a)
 decodeQualified k json = do
   obj <- decodeJObject json
   moduleName <- getFieldOptional' decodeModuleName obj "moduleName"
   identifier <- getField k obj "identifier"
   pure $ Qualified moduleName identifier
 
-decodeMeta :: Json -> JsonDecode Meta
+decodeMeta :: JSON -> JsonDecode Meta
 decodeMeta json = do
   obj <- decodeJObject json
   typ <- getField decodeString obj "metaType"
@@ -105,7 +118,7 @@ decodeMeta json = do
     _ ->
       throwError $ TypeMismatch "Meta"
 
-decodeAnn :: String -> Json -> JsonDecode Ann
+decodeAnn :: String -> JSON -> JsonDecode Ann
 decodeAnn _path json = do
   obj <- decodeJObject json
   -- Currently disabled because spans are not used and are a performance drain.
@@ -113,17 +126,17 @@ decodeAnn _path json = do
   meta <- getFieldOptional' decodeMeta obj "meta"
   pure $ Ann { span: emptySpan, meta }
 
-decodeImport :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Import a)
+decodeImport :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Import a)
 decodeImport decodeAnn' json = do
   obj <- decodeJObject json
   ann <- getField decodeAnn' obj "annotation"
   mod <- getField decodeModuleName obj "moduleName"
   pure $ Import ann mod
 
-decodeModule :: Json -> JsonDecode (Module Ann)
+decodeModule :: JSON -> JsonDecode (Module Ann)
 decodeModule = decodeModule' decodeAnn
 
-decodeModule' :: forall a. (String -> Json -> JsonDecode a) -> Json -> JsonDecode (Module a)
+decodeModule' :: forall a. (String -> JSON -> JsonDecode a) -> JSON -> JsonDecode (Module a)
 decodeModule' decodeAnn' json = do
   obj <- decodeJObject json
   name <- getField decodeModuleName obj "moduleName"
@@ -147,13 +160,13 @@ decodeModule' decodeAnn' json = do
     , comments
     }
 
-decodeReExports :: Json -> JsonDecode (Array ReExport)
+decodeReExports :: JSON -> JsonDecode (Array ReExport)
 decodeReExports json = do
   obj <- decodeJObject json
-  all <- traverse (traverse (decodeArray decodeIdent)) $ Object.toArrayWithKey Tuple obj
+  all <- traverse (traverse (decodeArray decodeIdent)) $ Object.toUnfoldable obj
   pure $ all >>= \(Tuple mn idents) -> ReExport (ModuleName mn) <$> idents
 
-decodeBind :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Bind a)
+decodeBind :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Bind a)
 decodeBind decAnn json = do
   obj <- decodeJObject json
   typ <- getField decodeString obj "bindType"
@@ -162,14 +175,14 @@ decodeBind decAnn json = do
     "Rec" -> Rec <$> getField (decodeArray (decodeJObject >=> decodeBinding decAnn)) obj "binds"
     _ -> throwError $ TypeMismatch "Bind"
 
-decodeBinding :: forall a. (Json -> JsonDecode a) -> Object Json -> JsonDecode (Binding a)
+decodeBinding :: forall a. (JSON -> JsonDecode a) -> JObject -> JsonDecode (Binding a)
 decodeBinding decAnn obj = do
   ann <- getField decAnn obj "annotation"
   ident <- getField decodeIdent obj "identifier"
   expr <- getField (decodeExpr decAnn) obj "expression"
   pure $ Binding ann ident expr
 
-decodeExpr :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Expr a)
+decodeExpr :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Expr a)
 decodeExpr decAnn json = do
   obj <- decodeJObject json
   ann <- getField decAnn obj "annotation"
@@ -211,7 +224,7 @@ decodeExpr decAnn json = do
     _ ->
       throwError $ TypeMismatch "Expr"
 
-decodeCaseAlternative :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (CaseAlternative a)
+decodeCaseAlternative :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (CaseAlternative a)
 decodeCaseAlternative decAnn json = do
   obj <- decodeJObject json
   binders <- getField (decodeArray (decodeBinder decAnn)) obj "binders"
@@ -223,14 +236,14 @@ decodeCaseAlternative decAnn json = do
     e <- getField (decodeExpr decAnn) obj "expression"
     pure $ CaseAlternative binders (Unconditional e)
 
-decodeGuard :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Guard a)
+decodeGuard :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Guard a)
 decodeGuard decAnn json = do
   obj <- decodeJObject json
   guard <- getField (decodeExpr decAnn) obj "guard"
   expr <- getField (decodeExpr decAnn) obj "expression"
   pure $ Guard guard expr
 
-decodeBinder :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Binder a)
+decodeBinder :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Binder a)
 decodeBinder decAnn json = do
   obj <- decodeJObject json
   ann <- getField decAnn obj "annotation"
@@ -254,7 +267,7 @@ decodeBinder decAnn json = do
     _ ->
       throwError $ TypeMismatch "Binder"
 
-decodeLiteral :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Literal a)
+decodeLiteral :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Literal a)
 decodeLiteral dec json = do
   obj <- decodeJObject json
   typ <- getField decodeString obj "literalType"
@@ -279,7 +292,7 @@ decodeLiteral dec json = do
     _ ->
       throwError $ TypeMismatch "Literal"
 
-decodeRecord :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Array (Prop a))
+decodeRecord :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Array (Prop a))
 decodeRecord = decodeArray <<< decodeProp
   where
   decodeProp decoder json = do
@@ -292,13 +305,13 @@ decodeRecord = decodeArray <<< decodeProp
       _ ->
         Left $ TypeMismatch "Tuple"
 
-decodeComment :: Json -> JsonDecode Comment
+decodeComment :: JSON -> JsonDecode Comment
 decodeComment json = do
   obj <- decodeJObject json
   LineComment <$> getField decodeString obj "LineComment"
     <|> \_ -> BlockComment <$> getField decodeString obj "BlockComment"
 
-decodeArray :: forall a. (Json -> JsonDecode a) -> Json -> JsonDecode (Array a)
+decodeArray :: forall a. (JSON -> JsonDecode a) -> JSON -> JsonDecode (Array a)
 decodeArray decoder json = case decodeJArray json of
   Left err ->
     Left err
@@ -327,7 +340,7 @@ decodeArray decoder json = case decodeJArray json of
             pure unit
     STRef.read res
 
-getField :: forall a. (Json -> JsonDecode a) -> Object Json -> String -> JsonDecode a
+getField :: forall a. (JSON -> JsonDecode a) -> JObject -> String -> JsonDecode a
 getField decode obj prop =
   case Object.lookup prop obj of
     Nothing ->
@@ -335,7 +348,7 @@ getField decode obj prop =
     Just json ->
       decode json
 
-getFieldOptional' :: forall a. (Json -> JsonDecode a) -> Object Json -> String -> JsonDecode (Maybe a)
+getFieldOptional' :: forall a. (JSON -> JsonDecode a) -> JObject -> String -> JsonDecode (Maybe a)
 getFieldOptional' decode obj prop = do
   case Object.lookup prop obj of
     Nothing ->
@@ -346,37 +359,37 @@ getFieldOptional' decode obj prop = do
       | otherwise ->
           Just <$> decode json
 
-decodeJObject :: Json -> JsonDecode (Object Json)
-decodeJObject = caseJson fail fail fail fail fail Right
+decodeJObject :: JSON -> JsonDecode JObject
+decodeJObject = case_ fail fail fail fail fail Right
   where
-  fail :: forall a. a -> JsonDecode (Object Json)
+  fail :: forall a. a -> JsonDecode JObject
   fail _ = Left $ TypeMismatch "Object"
 
-decodeJArray :: Json -> JsonDecode (Array Json)
-decodeJArray = caseJson fail fail fail fail Right fail
+decodeJArray :: JSON -> JsonDecode (Array JSON)
+decodeJArray = case_ fail fail fail fail (Right <<< JA.toUnfoldable) fail
   where
-  fail :: forall a. a -> JsonDecode (Array Json)
+  fail :: forall a. a -> JsonDecode (Array JSON)
   fail _ = Left $ TypeMismatch "Array"
 
-decodeString :: Json -> JsonDecode String
-decodeString = caseJson fail fail fail Right fail fail
+decodeString :: JSON -> JsonDecode String
+decodeString = case_ fail fail fail Right fail fail
   where
   fail :: forall a. a -> JsonDecode String
   fail _ = Left $ TypeMismatch "String"
 
-decodeNumber :: Json -> JsonDecode Number
-decodeNumber = caseJson fail fail Right fail fail fail
+decodeNumber :: JSON -> JsonDecode Number
+decodeNumber = case_ fail fail Right fail fail fail
   where
   fail :: forall a. a -> JsonDecode Number
   fail _ = Left $ TypeMismatch "Number"
 
-decodeBoolean :: Json -> JsonDecode Boolean
-decodeBoolean = caseJson fail Right fail fail fail fail
+decodeBoolean :: JSON -> JsonDecode Boolean
+decodeBoolean = case_ fail Right fail fail fail fail
   where
   fail :: forall a. a -> JsonDecode Boolean
   fail _ = Left $ TypeMismatch "Boolean"
 
-decodeInt :: Json -> JsonDecode Int
+decodeInt :: JSON -> JsonDecode Int
 decodeInt json = do
   num <- decodeNumber json
   case Int.fromNumber num of
@@ -384,3 +397,14 @@ decodeInt json = do
       Left $ TypeMismatch "Int"
     Just int ->
       Right int
+
+printJsonDecodeError :: JsonDecodeError -> String
+printJsonDecodeError err =
+  "An error occurred while decoding a JSON value:\n" <> go err
+  where
+  go = case _ of
+    TypeMismatch ty -> "  Expected value of type '" <> ty <> "'."
+    AtIndex ix inner -> "  At array index " <> show ix <> ":\n" <> go inner
+    AtKey key inner -> "  At object key \'" <> key <> "\':\n" <> go inner
+    MissingValue -> "  No value was found."
+

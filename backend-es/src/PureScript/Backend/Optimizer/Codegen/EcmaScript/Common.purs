@@ -18,7 +18,6 @@ module PureScript.Backend.Optimizer.Codegen.EcmaScript.Common
 
 import Prelude
 
-import Data.Argonaut as Json
 import Data.Array (fold)
 import Data.Array as Array
 import Data.Enum (fromEnum)
@@ -31,6 +30,7 @@ import Data.String.Regex.Flags (global, noFlags, unicode)
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
+import JSON as JSON
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), ModuleName(..))
 
 esModuleName :: forall a. ModuleName -> Dodo.Doc a
@@ -248,4 +248,4 @@ esTernary a b c =
     ]
 
 esEscapeString :: String -> String
-esEscapeString = Json.stringify <<< Json.fromString
+esEscapeString = JSON.print <<< JSON.fromString
