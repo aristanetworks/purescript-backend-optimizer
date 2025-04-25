@@ -1,0 +1,90 @@
+package:
+  name: backend-es
+  dependencies:
+    - console
+    - effect
+    - prelude
+    - aff
+    - ansi
+    - argonaut
+    - argparse-basic
+    - arrays
+    - bifunctors
+    - console
+    - control
+    - datetime
+    - debug
+    - dodo-printer
+    - effect
+    - either
+    - enums
+    - filterable
+    - foldable-traversable
+    - foreign-object
+    - integers
+    - language-cst-parser
+    - lazy
+    - lists
+    - maybe
+    - newtype
+    - node-buffer
+    - node-child-process
+    - node-event-emitter
+    - node-fs
+    - node-glob-basic
+    - node-path
+    - node-process
+    - node-streams
+    - now
+    - nullable
+    - numbers
+    - ordered-collections
+    - orders
+    - parallel
+    - partial
+    - posix-types
+    - prelude
+    - refs
+    - safe-coerce
+    - st
+    - strings
+    - transformers
+    - tuples
+    - unsafe-coerce
+  test:
+    main: Test.Main
+    dependencies:
+      - arrays
+      - console
+      - convertable-options
+      - effect
+      - either
+      - exceptions
+      - exists
+      - foldable-traversable
+      - foreign-object
+      - functions
+      - heterogeneous
+      - identity
+      - integers
+      - lists
+      - maybe
+      - partial
+      - prelude
+      - profunctor-lenses
+      - record
+      - refs
+      - safe-coerce
+      - st
+      - strings
+      - tuples
+      - type-equality
+      - unsafe-coerce
+      - variant
+      - backend-optimizer
+workspace:
+  packageSet:
+    registry: 64.3.0
+  extraPackages:
+    backend-optimizer:
+      path: ..

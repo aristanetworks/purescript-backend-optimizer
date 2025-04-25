@@ -1,0 +1,122 @@
+package:
+  name: backend-optimizer
+  publish:
+    license: MIT
+    version: 1.0.0
+    location:
+      githubOwner: purescript-contrib
+      githubRepo: purescript-backend-optimizer
+  dependencies:
+    - aff
+    - ansi
+    - argonaut
+    - argparse-basic
+    - arrays
+    - bifunctors
+    - console
+    - control
+    - datetime
+    - debug
+    - dodo-printer
+    - effect
+    - either
+    - enums
+    - filterable
+    - foldable-traversable
+    - foreign-object
+    - integers
+    - language-cst-parser
+    - lazy
+    - lists
+    - maybe
+    - newtype
+    - node-buffer
+    - node-child-process
+    - node-event-emitter
+    - node-fs
+    - node-glob-basic
+    - node-path
+    - node-process
+    - node-streams
+    - now
+    - nullable
+    - numbers
+    - ordered-collections
+    - orders
+    - parallel
+    - partial
+    - posix-types
+    - prelude
+    - refs
+    - safe-coerce
+    - st
+    - strings
+    - transformers
+    - tuples
+    - unsafe-coerce
+  test:
+    main: Test.Main
+    dependencies:
+      - console
+      - effect
+workspace:
+  extra_packages:
+    {}
+    # arrays:
+    #   dependencies:
+    #     - bifunctors
+    #     - control
+    #     - foldable-traversable
+    #     - functions
+    #     - maybe
+    #     - nonempty
+    #     - partial
+    #     - prelude
+    #     - safe-coerce
+    #     - st
+    #     - tailrec
+    #     - tuples
+    #     - unfoldable
+    #     - unsafe-coerce
+    #   git: https://github.com/purescript/purescript-arrays.git
+    #   ref: v7.2.1
+    # dodo-printer:
+    #   dependencies:
+    #     - ansi
+    #     - foldable-traversable
+    #     - lists
+    #     - maybe
+    #     - strings
+    #   git: https://github.com/natefaubion/purescript-dodo-printer.git
+    #   ref: v2.2.1
+    # node-glob-basic:
+    #   dependencies:
+    #     - aff
+    #     - console
+    #     - effect
+    #     - lists
+    #     - maybe
+    #     - node-fs
+    #     - node-path
+    #     - node-process
+    #     - ordered-collections
+    #     - strings
+    #   git: https://github.com/natefaubion/purescript-node-glob-basic.git
+    #   ref: v1.2.2
+    # ordered-collections:
+    #   dependencies:
+    #     - arrays
+    #     - foldable-traversable
+    #     - gen
+    #     - lists
+    #     - maybe
+    #     - partial
+    #     - prelude
+    #     - st
+    #     - tailrec
+    #     - tuples
+    #     - unfoldable
+    #   git: https://github.com/purescript/purescript-ordered-collections.git
+    #   ref: v3.1.0
+  package_set:
+    registry: 64.3.0

@@ -32,7 +32,7 @@ import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
-import Node.Glob.Basic (expandGlobsCwd)
+import Node.Glob.Basic (expandGlobs)
 import Node.Path as Path
 import Node.Process as Process
 import PureScript.Backend.Optimizer.Builder (buildModules)
@@ -100,13 +100,13 @@ main = do
 
 runSnapshotTests :: TestArgs -> Aff Unit
 runSnapshotTests { accept, filter, traceIdents } = do
-  liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
-  spawnFromParent "spago" [ "build -u \"-g corefn,js\"" ]
-  snapshotDir <- liftEffect Process.cwd
-  snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
+  spawnFromParent "spago" [ "build" ]
+  cwd <- liftEffect Process.cwd
+  let snapshotDir = Path.concat [ cwd, "test", "snapshots" ]
+  snapshotPaths <- expandGlobs snapshotDir [ "Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
-  let snapshotsOut = Path.concat [ "..", "snapshots-out" ]
-  let testOut = Path.concat [ "..", "test-out" ]
+  let snapshotsOut = Path.concat [ cwd, "test", "snapshots-out" ]
+  let testOut = Path.concat [ cwd, "test", "test-out" ]
   mkdirp snapshotsOut
   mkdirp testOut
   coreFnModulesFromOutput "output" filter >>= case _ of
@@ -116,7 +116,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
       liftEffect $ Process.exit' 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
+      copyFile (Path.concat [ cwd, "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
@@ -135,7 +135,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
               let foreignSiblingPath = fromMaybe path (String.stripSuffix (Pattern (Path.extname path)) path) <> ".js"
               let foreignOutputPath = Path.concat [ testFileDir, "foreign.js" ]
               copyFile foreignSiblingPath foreignOutputPath
-            when (Set.member (Path.concat [ snapshotDir, path ]) snapshotPaths) do
+            when (Set.member (Path.concat [ cwd, path ]) snapshotPaths) do
               void $ liftEffect $ Ref.modify (Map.insert name (Tuple formatted (hasFails backendMod))) outputRef
             unless (Array.null optimizationSteps) do
               liftEffect $ Ref.modify_ (flip Array.snoc (Tuple backendMod.name optimizationSteps)) stepsRef
