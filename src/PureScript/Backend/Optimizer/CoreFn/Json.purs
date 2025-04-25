@@ -15,9 +15,11 @@ import Data.Argonaut (Json, JsonDecodeError(..), caseJson, decodeJson, isNull)
 import Data.Array as Array
 import Data.Array.ST as STArray
 import Data.Either (Either(..), note)
+import Data.Enum (toEnum)
 import Data.Foldable (intercalate)
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
+import Data.String.CodePoints (CodePoint, fromCodePointArray)
 import Data.String.CodeUnits as SCU
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
@@ -264,7 +266,7 @@ decodeLiteral dec json = do
     "NumberLiteral" ->
       LitNumber <$> getField decodeNumber obj "value"
     "StringLiteral" ->
-      LitString <$> getField decodeString obj "value"
+      LitString <$> getField decodeStringLiteral obj "value"
     "CharLiteral" -> do
       str <- getField decodeString obj "value"
       LitChar <$> note (TypeMismatch "Char") do
@@ -358,11 +360,21 @@ decodeJArray = caseJson fail fail fail fail Right fail
   fail :: forall a. a -> JsonDecode (Array Json)
   fail _ = Left $ TypeMismatch "Array"
 
+decodeStringLiteral :: Json -> JsonDecode String
+decodeStringLiteral json =
+  decodeString json <|> \_ -> (map fromCodePointArray $ decodeCodePointArray json) <|> \_ -> throwError (TypeMismatch "StringLiteral")
+
 decodeString :: Json -> JsonDecode String
 decodeString = caseJson fail fail fail Right fail fail
   where
   fail :: forall a. a -> JsonDecode String
   fail _ = Left $ TypeMismatch "String"
+
+decodeCodePointArray :: Json -> JsonDecode (Array CodePoint)
+decodeCodePointArray = decodeArray decodeCodePoint
+
+decodeCodePoint :: Json -> JsonDecode CodePoint
+decodeCodePoint = note (TypeMismatch "CodePoint") <<< toEnum <=< decodeInt
 
 decodeNumber :: Json -> JsonDecode Number
 decodeNumber = caseJson fail fail Right fail fail fail
