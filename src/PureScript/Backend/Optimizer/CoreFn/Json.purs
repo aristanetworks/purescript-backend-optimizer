@@ -362,7 +362,7 @@ decodeJArray = caseJson fail fail fail fail Right fail
 
 decodeStringLiteral :: Json -> JsonDecode String
 decodeStringLiteral json =
-  decodeString json <|> \_ -> (map fromCodePointArray $ decodeCodePointArray json) <|> \_ -> throwError (TypeMismatch "StringLiteral")
+  decodeString json <|> \_ -> map fromCodePointArray (decodeCodePointArray json) <|> \_ -> throwError (TypeMismatch "StringLiteral")
 
 decodeString :: Json -> JsonDecode String
 decodeString = caseJson fail fail fail Right fail fail
