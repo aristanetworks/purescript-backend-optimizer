@@ -1,6 +1,6 @@
 {
   "name": "purs-backend-es",
-  "version": "1.4.3",
+  "version": "1.4.2",
   "description": "A modern ECMAScript optimizing backend for PureScript",
   "main": "index.js",
   "type": "module",
@@ -17,7 +17,7 @@
     "preversion": "npm run test && npm run test:output-diff",
     "version": "echo 'export const version = \"v'$npm_package_version'\";' > ./src/Version.js && git add .",
     "postversion": "git commit -m \"Bump purs-backend-es version ($npm_package_version)\" && git tag purs-backend-es-v$npm_package_version",
-    "test": "cd .. && spago test",
+    "test": "cd .. && npm run test",
     "test:output-diff": "npm run build && cd ../ && ./backend-es/index.js build --timing --int-tags --output-dir=output-es2 && diff -r output-es output-es2 && rm -r output-es2",
     "build": "cd .. && spago build -u \"-g corefn,js\" && node ./backend-es/index.dev.js bundle-module -m Main --timing --int-tags --platform=node --minify --to=./backend-es/bundle/index.js",
     "prepublishOnly": "rm -rf bundle ../output ../output-es && npm run build"
