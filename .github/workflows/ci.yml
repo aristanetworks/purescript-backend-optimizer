@@ -21,7 +21,7 @@ jobs:
       - name: Cache PureScript dependencies
         uses: actions/cache@v4
         with:
-          key: ${{ runner.os }}-spago-${{ hashFiles('**/*.dhall') }}
+          key: ${{ runner.os }}-spago-${{ hashFiles('**/spago.lock') }}
           path: |
             .spago
             output
@@ -33,7 +33,7 @@ jobs:
         run: npm run install
 
       - name: Build project
-        run: npm run build
+        run: npm run build -- --pedantic-packages
 
       - name: Run snapshots
         run: npm run test

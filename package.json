@@ -3,16 +3,15 @@
   "type": "module",
   "scripts": {
     "install": "spago install",
-    "build": "spago build --purs-args '--censor-lib --strict'",
-    "test": "spago test --purs-args '--censor-lib'",
+    "build": "spago build",
+    "test": "spago test -p backend-es",
     "format": "purs-tidy format-in-place src backend-es/src backend-es/test/*.purs",
     "format:check": "purs-tidy check src backend-es/src backend-es/test/*.purs"
   },
   "devDependencies": {
-    "esbuild": "^0.25.3",
+    "esbuild": "^0.27.0",
     "purescript": "^0.15.15",
-    "purescript-psa": "^0.9.0",
-    "purs-tidy": "^0.11.0",
-    "spago": "^0.21.0"
+    "purs-tidy": "^0.11.1",
+    "spago": "^0.93.45"
   }
 }
