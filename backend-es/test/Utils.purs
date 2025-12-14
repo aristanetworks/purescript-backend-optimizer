@@ -10,7 +10,7 @@ import Effect.Aff (Aff, Error, effectCanceler, error, makeAff, throwError)
 import Effect.Class (liftEffect)
 import Node.Buffer (Buffer, freeze)
 import Node.Buffer.Immutable as ImmutableBuffer
-import Node.ChildProcess (ChildProcess, ExecResult, exitH)
+import Node.ChildProcess (ChildProcess, exitH)
 import Node.ChildProcess as ChildProcess
 import Node.ChildProcess.Types (Exit(..))
 import Node.Encoding (Encoding(..))
@@ -36,13 +36,6 @@ spawnFromParent command args = makeAff \k -> do
       Process.exit' 1
   pure $ effectCanceler do
     void $ ChildProcess.killSignal SIGABRT childProc
-
-execWithStdin :: String -> String -> Aff ExecResult
-execWithStdin command input = makeAff \k -> do
-  childProc <- ChildProcess.exec' command identity (k <<< pure)
-  _ <- Stream.writeString' (ChildProcess.stdin childProc) UTF8 input mempty
-  (ChildProcess.stdin childProc) # on_ finishH mempty
-  pure $ effectCanceler $ void $ ChildProcess.killSignal SIGABRT childProc
 
 bufferToUTF8 :: Buffer -> Aff String
 bufferToUTF8 = liftEffect <<< map (ImmutableBuffer.toString UTF8) <<< freeze

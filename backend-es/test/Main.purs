@@ -30,6 +30,7 @@ import Effect.Aff as Error
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
+import Node.ChildProcess as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
 import Node.Glob.Basic (expandGlobsCwd)
@@ -47,7 +48,7 @@ import PureScript.Backend.Optimizer.Semantics.Foreign (coreForeignSemantics)
 import PureScript.Backend.Optimizer.Tracer.Printer (printModuleSteps)
 import PureScript.CST.Lexer (lexToken)
 import PureScript.CST.Types as CST
-import Test.Utils (bufferToUTF8, copyFile, execWithStdin, loadModuleMain, mkdirp, spawnFromParent)
+import Test.Utils (bufferToUTF8, copyFile, loadModuleMain, mkdirp, spawnFromParent)
 
 type TestArgs =
   { accept :: Boolean
@@ -100,13 +101,13 @@ main = do
 
 runSnapshotTests :: TestArgs -> Aff Unit
 runSnapshotTests { accept, filter, traceIdents } = do
-  liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test", "snapshots" ]
-  spawnFromParent "spago" [ "build -u \"-g corefn,js\"" ]
+  liftEffect $ Process.chdir $ Path.concat [ "backend-es", "test-snapshots" ]
+  spawnFromParent "spago" [ "build" ]
   snapshotDir <- liftEffect Process.cwd
-  snapshotPaths <- expandGlobsCwd [ "Snapshot.*.purs" ]
+  snapshotPaths <- expandGlobsCwd [ "src/Snapshot.*.purs" ]
   outputRef <- liftEffect $ Ref.new Map.empty
-  let snapshotsOut = Path.concat [ "..", "snapshots-out" ]
-  let testOut = Path.concat [ "..", "test-out" ]
+  let snapshotsOut = "snapshots-out"
+  let testOut = "output-es"
   mkdirp snapshotsOut
   mkdirp testOut
   coreFnModulesFromOutput "output" filter >>= case _ of
@@ -116,7 +117,7 @@ runSnapshotTests { accept, filter, traceIdents } = do
       liftEffect $ Process.exit' 1
     Right coreFnModules -> do
       let { directives } = parseDirectiveFile defaultDirectives
-      copyFile (Path.concat [ "..", "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
+      copyFile (Path.concat [ "..", "runtime.js" ]) (Path.concat [ testOut, "runtime.js" ])
       stepsRef <- liftEffect $ Ref.new []
       coreFnModules # buildModules
         { directives
@@ -181,8 +182,9 @@ runSnapshotTests { accept, filter, traceIdents } = do
                 runAcceptedTest
             | otherwise -> do
                 Console.log $ withGraphics (foreground Red) "✗" <> " " <> name <> " failed."
-                diff <- bufferToUTF8 <<< _.stdout =<< execWithStdin ("diff " <> snapshotFilePath <> " -") output
-                Console.log diff
+                let testFilePath = Path.concat [ testOut, name, "index.js" ]
+                res <- liftEffect $ ChildProcess.spawnSync "diff" [ snapshotFilePath, testFilePath ]
+                Console.log =<< bufferToUTF8 res.stdout
                 pure false
       unless (Foldable.and results) do
         liftEffect $ Process.exit' 1
