@@ -18,14 +18,16 @@ module PureScript.Backend.Optimizer.Codegen.EcmaScript.Common
 
 import Prelude
 
-import Data.Argonaut as Json
 import Data.Array (fold)
 import Data.Array as Array
 import Data.Enum (fromEnum)
+import Data.Foldable (foldMap)
+import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
+import Data.String.CodeUnits as SCU
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (global, noFlags, unicode)
 import Data.String.Regex.Unsafe (unsafeRegex)
@@ -247,5 +249,29 @@ esTernary a b c =
         ]
     ]
 
+-- Mirrors `prettyPrintStringJS` in the purescript compiler:
+-- https://github.com/purescript/purescript/blob/master/src/Language/PureScript/PSString.hs#L200-L214
+-- Every code unit > 0xFF is escaped as \uXXXX, every other non-printable
+-- ASCII as \xXX. This catches Unicode noncharacters (U+FFFE, U+FFFF,
+-- U+FDD0..U+FDEF) that Chrome MV3 rejects in extension scripts, and avoids
+-- a JSON round-trip.
 esEscapeString :: String -> String
-esEscapeString = Json.stringify <<< Json.fromString
+esEscapeString s = "\"" <> foldMap encode (SCU.toCharArray s) <> "\""
+  where
+  encode c = case fromEnum c of
+    0x08 -> "\\b"
+    0x09 -> "\\t"
+    0x0A -> "\\n"
+    0x0B -> "\\v"
+    0x0C -> "\\f"
+    0x0D -> "\\r"
+    0x22 -> "\\\""
+    0x5C -> "\\\\"
+    n
+      | n > 0xFF -> "\\u" <> padHex 4 n
+      | n < 0x20 || n > 0x7E -> "\\x" <> padHex 2 n
+      | otherwise -> SCU.singleton c
+  padHex width n = leftPadZero width (Int.toStringAs Int.hexadecimal n)
+  leftPadZero width str
+    | String.length str >= width = str
+    | otherwise = leftPadZero width ("0" <> str)
