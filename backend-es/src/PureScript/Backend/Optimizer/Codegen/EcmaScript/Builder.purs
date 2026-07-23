@@ -113,7 +113,7 @@ basicBuildMain options = do
         , directives: allDirectives
         , foreignSemantics: options.foreignSemantics
         , onCodegenModule: options.onCodegenModule
-        , onPrepareModule: options.onPrepareModule
+        , onPrepareModule: \env mod -> Right <$> options.onPrepareModule env mod
         , traceIdents: options.traceIdents
         }
       options.onCodegenAfter

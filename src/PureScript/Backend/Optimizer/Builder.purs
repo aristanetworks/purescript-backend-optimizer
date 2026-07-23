@@ -6,6 +6,7 @@ module PureScript.Backend.Optimizer.Builder
 
 import Prelude
 
+import Data.Either (Either(..))
 import Data.FoldableWithIndex (foldrWithIndex)
 import Data.List (List, foldM)
 import Data.List as List
@@ -31,7 +32,7 @@ type BuildOptions m =
   { analyzeCustom :: Ctx -> BackendSyntax BackendExpr -> Maybe BackendAnalysis
   , directives :: InlineDirectiveMap
   , foreignSemantics :: Map (Qualified Ident) ForeignEval
-  , onPrepareModule :: BuildEnv -> Module Ann -> m (Module Ann)
+  , onPrepareModule :: BuildEnv -> Module Ann -> m (Either BackendModule (Module Ann))
   , onCodegenModule :: BuildEnv -> Module Ann -> BackendModule -> OptimizationSteps -> m Unit
   , traceIdents :: Set (Qualified Ident)
   }
@@ -45,25 +46,30 @@ buildModules options coreFnModules =
   moduleCount = List.length coreFnModules
   go { directives, implementations, moduleIndex } coreFnModule = do
     let buildEnv = { implementations, moduleCount, moduleIndex }
-    coreFnModule'@(Module { name }) <- options.onPrepareModule buildEnv coreFnModule
-    let
-      Tuple optimizationSteps backendMod = toBackendModule coreFnModule'
-        { analyzeCustom: options.analyzeCustom
-        , currentModule: name
-        , currentLevel: 0
-        , toLevel: Map.empty
-        , implementations
-        , moduleImplementations: Map.empty
-        , directives
-        , dataTypes: Map.empty
-        , foreignSemantics: options.foreignSemantics
-        , rewriteLimit: 10_000
-        , traceIdents: options.traceIdents
-        , optimizationSteps: []
-        }
-      newImplementations =
-        foldrWithIndex Map.insert implementations backendMod.implementations
-    options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' backendMod optimizationSteps
+    prepared <- options.onPrepareModule buildEnv coreFnModule
+    Tuple backendMod newImplementations <- case prepared of
+      Left cachedMod -> do
+        let newImplementations = foldrWithIndex Map.insert implementations cachedMod.implementations
+        pure (Tuple cachedMod newImplementations)
+      Right coreFnModule'@(Module { name }) -> do
+        let
+          Tuple optimizationSteps compiledMod = toBackendModule coreFnModule'
+            { analyzeCustom: options.analyzeCustom
+            , currentModule: name
+            , currentLevel: 0
+            , toLevel: Map.empty
+            , implementations
+            , moduleImplementations: Map.empty
+            , directives
+            , dataTypes: Map.empty
+            , foreignSemantics: options.foreignSemantics
+            , rewriteLimit: 10_000
+            , traceIdents: options.traceIdents
+            , optimizationSteps: []
+            }
+          newImplementations = foldrWithIndex Map.insert implementations compiledMod.implementations
+        options.onCodegenModule (buildEnv { implementations = newImplementations }) coreFnModule' compiledMod optimizationSteps
+        pure (Tuple compiledMod newImplementations)
     pure
       { directives: foldrWithIndex Map.insert directives backendMod.directives
       , implementations: newImplementations
