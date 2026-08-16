@@ -1,4 +1,4 @@
-import * as Effect$dUncurried from "../Effect.Uncurried/index.js";
+import * as $mEffect$dUncurried from "../Effect.Uncurried/index.js";
 const test6 = f => g => {
   const $0 = g(1);
   return () => {
@@ -14,9 +14,9 @@ const test5 = f => g => {
     return f(g(1), 2, 3);
   };
 };
-const test4 = f => Effect$dUncurried.runEffectFn3(f);
-const test3 = f => g => Effect$dUncurried.runEffectFn3(f)(g(1));
-const test2 = f => g => Effect$dUncurried.runEffectFn3(f)(g(1))(2);
+const test4 = f => $mEffect$dUncurried.runEffectFn3(f);
+const test3 = f => g => $mEffect$dUncurried.runEffectFn3(f)(g(1));
+const test2 = f => g => $mEffect$dUncurried.runEffectFn3(f)(g(1))(2);
 const test1 = f => g => {
   const $0 = g(1);
   return () => f($0, 2, 3);

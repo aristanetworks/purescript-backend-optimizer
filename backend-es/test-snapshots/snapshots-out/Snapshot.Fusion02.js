@@ -5,16 +5,16 @@
 // @inline export toArray arity=1
 // @inline export overArray arity=1
 import * as $runtime from "../runtime.js";
-import * as Data$dArray from "../Data.Array/index.js";
-import * as Data$dList$dTypes from "../Data.List.Types/index.js";
-import * as Data$dMaybe from "../Data.Maybe/index.js";
-import * as Data$dShow from "../Data.Show/index.js";
-import * as Data$dString$dCodeUnits from "../Data.String.CodeUnits/index.js";
-import * as Data$dTuple from "../Data.Tuple/index.js";
-import * as Data$dUnfoldable from "../Data.Unfoldable/index.js";
-const toUnfoldable = /* #__PURE__ */ (() => Data$dUnfoldable.unfoldableArray.unfoldr(xs => {
-  if (xs.tag === "Nil") { return Data$dMaybe.Nothing; }
-  if (xs.tag === "Cons") { return Data$dMaybe.$Maybe("Just", Data$dTuple.$Tuple(xs._1, xs._2)); }
+import * as $mData$dArray from "../Data.Array/index.js";
+import * as $mData$dList$dTypes from "../Data.List.Types/index.js";
+import * as $mData$dMaybe from "../Data.Maybe/index.js";
+import * as $mData$dShow from "../Data.Show/index.js";
+import * as $mData$dString$dCodeUnits from "../Data.String.CodeUnits/index.js";
+import * as $mData$dTuple from "../Data.Tuple/index.js";
+import * as $mData$dUnfoldable from "../Data.Unfoldable/index.js";
+const toUnfoldable = /* #__PURE__ */ (() => $mData$dUnfoldable.unfoldableArray.unfoldr(xs => {
+  if (xs.tag === "Nil") { return $mData$dMaybe.Nothing; }
+  if (xs.tag === "Cons") { return $mData$dMaybe.$Maybe("Just", $mData$dTuple.$Tuple(xs._1, xs._2)); }
   $runtime.fail();
 }))();
 const test = x => {
@@ -32,11 +32,11 @@ const test = x => {
               const s3$1 = loop$2$a0;
               if (s3$1 === x.length) {
                 loop$c = loop$1$c = loop$2$c = false;
-                loop$r = Data$dArray.reverse(toUnfoldable(acc));
+                loop$r = $mData$dArray.reverse(toUnfoldable(acc));
                 continue;
               }
               const $0 = s3$1 + 1 | 0;
-              const v1 = Data$dString$dCodeUnits.stripPrefix("1")(Data$dShow.showIntImpl(1 + x[s3$1] | 0));
+              const v1 = $mData$dString$dCodeUnits.stripPrefix("1")($mData$dShow.showIntImpl(1 + x[s3$1] | 0));
               if (v1.tag === "Nothing") {
                 loop$2$a0 = $0;
                 continue;
@@ -46,7 +46,7 @@ const test = x => {
                 if ($1 !== "wat") {
                   loop$1$c = loop$2$c = false;
                   loop$a0 = $0;
-                  loop$a1 = Data$dList$dTypes.$List("Cons", $1 + "1", acc);
+                  loop$a1 = $mData$dList$dTypes.$List("Cons", $1 + "1", acc);
                   continue;
                 }
                 loop$2$c = false;
@@ -65,6 +65,6 @@ const test = x => {
     }
     return loop$r;
   };
-  return loop(0)(Data$dList$dTypes.Nil);
+  return loop(0)($mData$dList$dTypes.Nil);
 };
 export {test, toUnfoldable};

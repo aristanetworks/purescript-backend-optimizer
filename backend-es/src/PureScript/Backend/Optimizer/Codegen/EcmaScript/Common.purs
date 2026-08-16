@@ -37,7 +37,7 @@ import Dodo.Common as Dodo.Common
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), ModuleName(..))
 
 esModuleName :: forall a. ModuleName -> Dodo.Doc a
-esModuleName (ModuleName mn) = Dodo.text (esEscapeIdent mn)
+esModuleName (ModuleName mn) = Dodo.text (esEscapeIdent ("$m" <> mn))
 
 esEscapeIdent :: String -> String
 esEscapeIdent = escapeReserved

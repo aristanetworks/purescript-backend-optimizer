@@ -2,10 +2,10 @@
 // @inline Snapshot.Cps02.unState always
 // @inline Snapshot.Cps02.put arity=1
 // @inline Snapshot.Cps02.get always
-import * as Data$dTuple from "../Data.Tuple/index.js";
+import * as $mData$dTuple from "../Data.Tuple/index.js";
 const State = x => x;
 const unState = v => k$p => s => v(($0, $1) => k$p($0)($1), s);
-const runState = s => k => k(($0, $1) => Data$dTuple.$Tuple($0, $1), s);
+const runState = s => k => k(($0, $1) => $mData$dTuple.$Tuple($0, $1), s);
 const mkState = k => (k$p, s) => k($0 => $1 => k$p($0, $1))(s);
 const put = s => (k$p, s$1) => k$p(s, undefined);
 const functorState = {map: f => k => (k$p, s) => k(($0, $1) => k$p($0, f($1)), s)};
