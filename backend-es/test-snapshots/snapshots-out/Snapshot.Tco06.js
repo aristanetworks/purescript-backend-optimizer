@@ -1,23 +1,23 @@
-const $gf = ($gf$b$copy, $gf$a0$copy, $gf$a1$copy) => {
-  let $gf$b = $gf$b$copy, $gf$a0 = $gf$a0$copy, $gf$a1 = $gf$a1$copy, $gf$c = true, $gf$r;
-  while ($gf$c) {
-    if ($gf$b === 0) {
-      const a = $gf$a0;
-      $gf$b = 1;
-      $gf$a0 = a;
-      $gf$a1 = a + 1 | 0;
+const $tco$gf = ($tco$gf$b$copy, $tco$gf$a0$copy, $tco$gf$a1$copy) => {
+  let $tco$gf$b = $tco$gf$b$copy, $tco$gf$a0 = $tco$gf$a0$copy, $tco$gf$a1 = $tco$gf$a1$copy, $tco$gf$c = true, $tco$gf$r;
+  while ($tco$gf$c) {
+    if ($tco$gf$b === 0) {
+      const a = $tco$gf$a0;
+      $tco$gf$b = 1;
+      $tco$gf$a0 = a;
+      $tco$gf$a1 = a + 1 | 0;
       continue;
     }
-    if ($gf$b === 1) {
-      const a = $gf$a0, b = $gf$a1;
+    if ($tco$gf$b === 1) {
+      const a = $tco$gf$a0, b = $tco$gf$a1;
       const $0 = a + b | 0;
-      $gf$b = 1;
-      $gf$a0 = $0;
-      $gf$a1 = $0 + 1 | 0;
+      $tco$gf$b = 1;
+      $tco$gf$a0 = $0;
+      $tco$gf$a1 = $0 + 1 | 0;
     }
   }
-  return $gf$r;
+  return $tco$gf$r;
 };
-const g = a => $gf(0, a);
-const f = a => b => $gf(1, a, b);
+const g = a => $tco$gf(0, a);
+const f = a => b => $tco$gf(1, a, b);
 export {f, g};

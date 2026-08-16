@@ -784,7 +784,7 @@ asTcoCopyIdent = toEsIdentWith "copy"
 asTcoMutualIdent :: NonEmptyArray Ident -> Ident
 asTcoMutualIdent idents = case NonEmptyArray.toArray idents of
   [ ident ] -> ident
-  _ -> Ident $ "$" <> foldMap (esEscapeIdent <<< String.take 5 <<< unwrap) idents
+  _ -> Ident $ "$tco$" <> foldMap (esEscapeIdent <<< String.take 5 <<< unwrap) idents
 
 asLazyIdent :: forall a. ToEsIdent a => a -> EsIdent
 asLazyIdent = toEsIdentWith "lazy"
