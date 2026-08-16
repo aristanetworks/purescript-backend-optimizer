@@ -1,39 +1,39 @@
-import * as Effect$dConsole from "../Effect.Console/index.js";
+import * as $mEffect$dConsole from "../Effect.Console/index.js";
 const test4 = cond => ref => () => {
   while (cond.value) {
     const a = ref.value;
     if (a < 10) {
-      Effect$dConsole.log("foo")();
+      $mEffect$dConsole.log("foo")();
     } else {
-      Effect$dConsole.log("wat")();
+      $mEffect$dConsole.log("wat")();
     }
   }
 };
 const test3 = cond => ref => () => {
   while (cond.value) {
     const a = ref.value;
-    const $0 = Effect$dConsole.log("foo");
+    const $0 = $mEffect$dConsole.log("foo");
     if (a < 10) { $0(); }
   }
 };
 const test2 = cond => {
-  const $0 = Effect$dConsole.log("foo");
+  const $0 = $mEffect$dConsole.log("foo");
   return () => {
     while (cond.value) {
       $0();
     }
-    const $1 = Effect$dConsole.log("bar");
+    const $1 = $mEffect$dConsole.log("bar");
     while (cond.value) {
       $1();
     }
   };
 };
 const test1 = cond => {
-  const $0 = Effect$dConsole.log("foo");
+  const $0 = $mEffect$dConsole.log("foo");
   return () => {
     while (cond.value) {
       $0();
-      Effect$dConsole.log("bar")();
+      $mEffect$dConsole.log("bar")();
     }
   };
 };

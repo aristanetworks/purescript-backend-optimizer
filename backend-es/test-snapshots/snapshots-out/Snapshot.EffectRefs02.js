@@ -1,7 +1,7 @@
-import * as Data$dTuple from "../Data.Tuple/index.js";
+import * as $mData$dTuple from "../Data.Tuple/index.js";
 const test3 = () => {
   const count = {value: 0};
-  return Data$dTuple.$Tuple(
+  return $mData$dTuple.$Tuple(
     count,
     n => () => {
       const $0 = count.value;

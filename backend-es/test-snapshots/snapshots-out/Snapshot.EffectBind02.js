@@ -1,10 +1,10 @@
-import * as Effect from "../Effect/index.js";
+import * as $mEffect from "../Effect/index.js";
 const MyEffect = x => x;
-const monadMyEffect = Effect.monadEffect;
-const functorMyEffect = Effect.functorEffect;
-const bindMyEffect = Effect.bindEffect;
-const applyMyEffect = Effect.applyEffect;
-const applicativeMyEffect = Effect.applicativeEffect;
+const monadMyEffect = $mEffect.monadEffect;
+const functorMyEffect = $mEffect.functorEffect;
+const bindMyEffect = $mEffect.bindEffect;
+const applyMyEffect = $mEffect.applyEffect;
+const applicativeMyEffect = $mEffect.applicativeEffect;
 const test = random => () => {
   const a = random();
   const b = random();

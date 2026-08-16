@@ -887,7 +887,7 @@ class ToEsIdent a where
   toEsIdentWith :: String -> a -> EsIdent
 
 instance ToEsIdent ModuleName where
-  toEsIdent (ModuleName mn) = Embedded (Ident mn) ""
+  toEsIdent (ModuleName mn) = Embedded (Ident ("$m" <> mn)) ""
   toEsIdentWith a = toEsIdentWith a <<< toEsIdent
 
 instance ToEsIdent Ident where
