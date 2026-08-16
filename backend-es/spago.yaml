@@ -16,6 +16,7 @@ package:
     - enums: ">=6.0.1 <7.0.0"
     - filterable: ">=5.0.0 <6.0.0"
     - foldable-traversable: ">=6.0.0 <7.0.0"
+    - integers: ">=6.0.0 <7.0.0"
     - language-cst-parser: ">=0.14.1 <0.15.0"
     - lazy: ">=6.0.0 <7.0.0"
     - lists: ">=7.0.0 <8.0.0"

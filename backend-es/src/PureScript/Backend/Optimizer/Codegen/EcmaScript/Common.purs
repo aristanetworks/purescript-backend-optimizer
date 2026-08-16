@@ -18,17 +18,20 @@ module PureScript.Backend.Optimizer.Codegen.EcmaScript.Common
 
 import Prelude
 
-import Data.Argonaut as Json
 import Data.Array (fold)
 import Data.Array as Array
 import Data.Enum (fromEnum)
+import Data.Int as Int
 import Data.Maybe (Maybe(..))
+import Data.Monoid (power)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.String as String
+import Data.String.Regex (Regex)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (global, noFlags, unicode)
 import Data.String.Regex.Unsafe (unsafeRegex)
+import Data.String.Unsafe as String.Unsafe
 import Dodo as Dodo
 import Dodo.Common as Dodo.Common
 import PureScript.Backend.Optimizer.CoreFn (Comment(..), ModuleName(..))
@@ -247,5 +250,26 @@ esTernary a b c =
         ]
     ]
 
+esStringEscapeRegex :: Regex
+esStringEscapeRegex = unsafeRegex """[\x00-\x1f"\\\x7f-\uffff]""" global
+
 esEscapeString :: String -> String
-esEscapeString = Json.stringify <<< Json.fromString
+esEscapeString str = "\"" <> Regex.replace' esStringEscapeRegex encode str <> "\""
+  where
+  encode match _ = case fromEnum (String.Unsafe.char match) of
+    0x08 -> "\\b"
+    0x09 -> "\\t"
+    0x0A -> "\\n"
+    0x0B -> "\\v"
+    0x0C -> "\\f"
+    0x0D -> "\\r"
+    0x22 -> "\\\""
+    0x5C -> "\\\\"
+    n
+      | n <= 0xFF -> "\\x" <> padHex 2 n
+      | otherwise -> "\\u" <> padHex 4 n
+
+padHex :: Int -> Int -> String
+padHex width n = power "0" (width - String.length str) <> str
+  where
+  str = Int.toStringAs Int.hexadecimal n
